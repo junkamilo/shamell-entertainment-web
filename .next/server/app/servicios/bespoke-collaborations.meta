@@ -1,7 +1,0 @@
-{
-  "headers": {
-    "x-nextjs-stale-time": "300",
-    "x-nextjs-prerender": "1",
-    "x-next-cache-tags": "_N_T_/layout,_N_T_/(sitio-publico)/layout,_N_T_/(sitio-publico)/servicios/layout,_N_T_/(sitio-publico)/servicios/bespoke-collaborations/layout,_N_T_/(sitio-publico)/servicios/bespoke-collaborations/page,_N_T_/servicios/bespoke-collaborations"
-  }
-}
