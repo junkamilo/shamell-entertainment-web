@@ -13,15 +13,14 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { label: "Inicio", href: "/#hero", sectionId: "hero" },
-  { label: "Acerca de", href: "/#about", sectionId: "about" },
   { label: "Servicios", href: "/#services", sectionId: "services" },
   {
     label: "Experiencias Especiales",
     href: "/#experiences",
     sectionId: "experiences",
   },
+  { label: "Acerca de", href: "/#about", sectionId: "about" },
   { label: "Galeria", href: "/#gallery", sectionId: "gallery" },
-  { label: "Blog", href: "/blog" },
   { label: "Contacto", href: "/#contacto", sectionId: "contacto" },
 ];
 
@@ -74,7 +73,11 @@ export default function SiteHeader() {
   }, [activeSection, pathname]);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-90 border-b border-gold/20 bg-background/90 backdrop-blur-sm">
+    <header
+      className={`fixed top-0 left-0 right-0 z-90 border-b border-gold/20 backdrop-blur-sm ${
+        isMenuOpen ? "bg-transparent" : "bg-background/90"
+      }`}
+    >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Link href="/#hero" className="font-brand text-gold text-sm tracking-[0.2em]">
           SHAMELL
@@ -95,6 +98,9 @@ export default function SiteHeader() {
               ) : null}
             </Link>
           ))}
+          <a href="/#contacto" className="btn-outline-gold font-brand text-[11px] lg:text-xs">
+            GET A INQUIRE
+          </a>
         </nav>
 
         <button
@@ -108,7 +114,7 @@ export default function SiteHeader() {
       </div>
 
       {isMenuOpen ? (
-        <nav className="md:hidden border-t border-gold/20 bg-background/95 px-4 py-3 flex flex-col gap-3">
+        <nav className="md:hidden absolute top-16 left-0 right-0 border-t border-gold/20 bg-black/45 backdrop-blur-xl px-4 py-3 flex flex-col gap-3">
           {navItems.map((item) => (
             <Link
               key={item.label}
@@ -121,6 +127,13 @@ export default function SiteHeader() {
               {item.label.toUpperCase()}
             </Link>
           ))}
+          <a
+            href="/#contacto"
+            onClick={() => setIsMenuOpen(false)}
+            className="btn-outline-gold font-brand text-xs text-center mt-1"
+          >
+            GET A INQUIRE
+          </a>
         </nav>
       ) : null}
     </header>

@@ -1,14 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import { UsersService } from './users.service';
+import { Body, Controller, ForbiddenException, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
-
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   register(@Body() dto: CreateUserDto) {
-    return this.usersService.register(dto);
+    void dto;
+    throw new ForbiddenException('Public registration is disabled.');
   }
 }

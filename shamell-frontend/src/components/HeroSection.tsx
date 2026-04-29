@@ -1,5 +1,4 @@
 import Image from "next/image";
-import Link from "next/link";
 import heroBg from "@/assets/hero-bg.jpg";
 import FlameIcon from "./FlameIcon";
 import PearlDivider from "./PearlDivider";
@@ -33,15 +32,9 @@ const HeroSection = () => {
           Exclusive Performance Artistry
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
-          <Link href="/login" className="btn-outline-gold font-brand text-xs">
-            Login
-          </Link>
           <a href="#contacto" className="btn-outline-gold font-brand text-xs">
             Inquire
           </a>
-          <Link href="/registro" className="btn-outline-gold font-brand text-xs">
-            Register
-          </Link>
         </div>
       </div>
 
