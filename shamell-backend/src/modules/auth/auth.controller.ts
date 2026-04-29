@@ -8,10 +8,16 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Post('admin/login')
+  @HttpCode(HttpStatus.OK)
+  loginAdmin(@Body() dto: LoginDto) {
+    return this.authService.loginAdmin(dto);
+  }
+
   @Post('login')
   @HttpCode(HttpStatus.OK)
   login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+    return this.authService.loginAdmin(dto);
   }
 
   @Post('forgot-password')
