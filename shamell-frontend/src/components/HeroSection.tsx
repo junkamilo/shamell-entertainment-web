@@ -32,10 +32,17 @@ const HeroSection = () => {
           Exclusive Performance Artistry
         </p>
         <div className="flex flex-col sm:flex-row gap-4">
-          <a href="#contacto" className="btn-outline-gold font-brand text-xs">
+          <a href="/contacto" className="btn-outline-gold font-brand text-xs">
             Inquire
           </a>
         </div>
+      </div>
+
+      <div className="absolute bottom-32 left-1/2 z-10 w-full max-w-[320px] -translate-x-1/2 px-4 text-center">
+        <p className="font-script text-gold text-3xl leading-tight">
+          Dance is the hidden language of the soul.
+          <span className="inline-block w-2 h-2 rounded-full bg-gold-light ml-2 align-middle" />
+        </p>
       </div>
 
       {/* Pearl divider at bottom */}

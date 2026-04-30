@@ -145,4 +145,30 @@
   .gold-glow {
     box-shadow: 0 0 18px rgba(197, 165, 90, 0.22);
   }
+
+  .shamell-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(197, 165, 90, 0.65) rgba(12, 16, 22, 0.5);
+  }
+
+  .shamell-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  .shamell-scrollbar::-webkit-scrollbar-track {
+    background: rgba(12, 16, 22, 0.55);
+    border-radius: 9999px;
+    border: 1px solid rgba(197, 165, 90, 0.14);
+  }
+
+  .shamell-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(245, 230, 184, 0.82), rgba(197, 165, 90, 0.72));
+    border-radius: 9999px;
+    border: 2px solid rgba(12, 16, 22, 0.75);
+  }
+
+  .shamell-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(245, 230, 184, 0.95), rgba(197, 165, 90, 0.9));
+  }
 }

@@ -11,13 +11,6 @@ const AboutSection = () => {
     "Luxury",
   ];
 
-  const highlights = [
-    "Luxury private galas and high-profile celebrations",
-    "Signature acts: veil, fan, fire, sword and candelabra",
-    "Custom choreography tailored to each audience and venue",
-    "Collaborations with planners, creative directors and brands",
-  ];
-
   return (
     <section id="about" className="bg-background py-20 px-4">
       <div className="max-w-6xl mx-auto">
@@ -39,12 +32,6 @@ const AboutSection = () => {
           </div>
 
           <div className="lg:col-span-3">
-            <blockquote className="border-l-2 border-gold pl-4 mb-6">
-              <p className="font-script text-gold-light text-3xl leading-tight">
-                "Dance is the hidden language of the soul."
-              </p>
-            </blockquote>
-
             <p className="text-foreground/85 text-base md:text-lg font-body leading-relaxed mb-5">
               Shamell is a professional Oriental dance artist specializing in luxury performances
               for private galas, elite social events, and bespoke collaborations. Her work blends
@@ -69,17 +56,6 @@ const AboutSection = () => {
               ))}
             </div>
 
-            <h3 className="font-brand text-gold text-xs tracking-[0.18em] mb-3">
-              EXPERIENCE HIGHLIGHTS
-            </h3>
-            <ul className="space-y-2">
-              {highlights.map((item) => (
-                <li key={item} className="text-foreground/75 font-body text-sm md:text-base">
-                  <span className="text-gold mr-2">✦</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
         </div>
 

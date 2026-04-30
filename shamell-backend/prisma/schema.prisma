@@ -24,12 +24,6 @@ enum BookingStatus {
   CANCELLED
 }
 
-enum ServiceType {
-  BESPOKE_COLLABORATION
-  PRIVATE_GALA
-  VIP_EVENT
-}
-
 // ============ MODELS ============
 model User {
   id                     String    @id @default(uuid())
@@ -50,17 +44,91 @@ model User {
 }
 
 model Service {
-  id          String      @id @default(uuid())
-  type        ServiceType @unique
-  title       String
-  description String      @db.Text
-  imageUrl    String?
-  isActive    Boolean     @default(true)
-  bookings    Booking[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id            String      @id @default(uuid())
+  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id])
+  serviceTypeId String      @unique
+  description   String      @db.Text
+  items         String[]
+  imageUrl      String?
+  isActive      Boolean     @default(true)
+  bookings      Booking[]
+  galleryPhotos GalleryPhoto[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   @@map("services")
+}
+
+model ServiceType {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  isActive  Boolean   @default(true)
+  services  Service[]
+  galleryPhotos GalleryPhoto[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@map("service_types")
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  eventType   EventType @relation(fields: [eventTypeId], references: [id])
+  eventTypeId String    @unique
+  description String    @db.Text
+  items       String[]
+  isActive    Boolean   @default(true)
+  galleryPhotos GalleryPhoto[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("events")
+}
+
+model EventType {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  events    Event[]
+  galleryPhotos GalleryPhoto[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("event_types")
+}
+
+model GalleryCategory {
+  id        String         @id @default(uuid())
+  name      String         @unique
+  slug      String         @unique
+  isActive  Boolean        @default(true)
+  photos    GalleryPhoto[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@map("gallery_categories")
+}
+
+model GalleryPhoto {
+  id            String            @id @default(uuid())
+  category      GalleryCategory   @relation(fields: [categoryId], references: [id])
+  categoryId    String
+  imageUrl      String
+  imagePublicId String
+  isActive      Boolean           @default(true)
+  serviceId     String?
+  serviceTypeId String?
+  eventId       String?
+  eventTypeId   String?
+  service       Service?          @relation(fields: [serviceId], references: [id])
+  serviceType   ServiceType?      @relation(fields: [serviceTypeId], references: [id])
+  event         Event?            @relation(fields: [eventId], references: [id])
+  eventType     EventType?        @relation(fields: [eventTypeId], references: [id])
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([categoryId, isActive])
+  @@map("gallery_photos")
 }
 
 model Booking {

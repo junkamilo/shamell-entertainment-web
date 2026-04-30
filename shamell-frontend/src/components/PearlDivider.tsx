@@ -12,12 +12,14 @@ const PearlDivider = ({ className = "" }: { className?: string }) => {
             const x = 20 + t * 760;
             const sag = Math.sin(t * Math.PI) * 30;
             const y = 5 + sag;
+            const normalizedX = Number(x.toFixed(6));
+            const normalizedY = Number(y.toFixed(6));
             const r = i === 30 ? 5 : 2;
             return (
               <circle
                 key={i}
-                cx={x}
-                cy={y}
+                cx={normalizedX}
+                cy={normalizedY}
                 r={r}
                 fill={i === 30 ? "#F5E6B8" : "#C5A55A"}
                 opacity={i === 30 ? 1 : 0.7}

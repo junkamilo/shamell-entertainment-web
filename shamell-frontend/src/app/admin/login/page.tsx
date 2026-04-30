@@ -1,10 +1,17 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import FlameIcon from "@/components/FlameIcon";
 import PearlDivider from "@/components/PearlDivider";
+import {
+  ADMIN_ACCESS_TOKEN_KEY,
+  ADMIN_USER_KEY,
+  notifyAdminSessionChanged,
+} from "@/lib/adminSession";
 
 export default function AdminLoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [enable2FA, setEnable2FA] = useState(false);
@@ -47,7 +54,16 @@ export default function AdminLoginPage() {
         return;
       }
 
-      setMessage("Admin login successful.");
+      if (data?.accessToken) {
+        localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, data.accessToken);
+      }
+      if (data?.user) {
+        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(data.user));
+      }
+
+      notifyAdminSessionChanged();
+      setMessage("Admin login successful. Redirecting...");
+      router.push("/");
     } catch {
       setError("Cannot reach backend. Ensure API is running.");
     } finally {

@@ -4,6 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import FlameIcon from "@/components/FlameIcon";
+import {
+  ADMIN_SESSION_CHANGED_EVENT,
+  isAdminLoggedIn,
+} from "@/lib/adminSession";
 
 type NavItem = {
   label: string;
@@ -21,13 +26,24 @@ const navItems: NavItem[] = [
   },
   { label: "Acerca de", href: "/#about", sectionId: "about" },
   { label: "Galeria", href: "/#gallery", sectionId: "gallery" },
-  { label: "Contacto", href: "/#contacto", sectionId: "contacto" },
 ];
 
 export default function SiteHeader() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
+  const [showAdminEntry, setShowAdminEntry] = useState(false);
+
+  useEffect(() => {
+    const syncAdmin = () => setShowAdminEntry(isAdminLoggedIn());
+    syncAdmin();
+    window.addEventListener(ADMIN_SESSION_CHANGED_EVENT, syncAdmin);
+    window.addEventListener("storage", syncAdmin);
+    return () => {
+      window.removeEventListener(ADMIN_SESSION_CHANGED_EVENT, syncAdmin);
+      window.removeEventListener("storage", syncAdmin);
+    };
+  }, []);
 
   useEffect(() => {
     if (pathname !== "/") return;
@@ -67,7 +83,7 @@ export default function SiteHeader() {
     }
 
     if (pathname.startsWith("/blog")) return "/blog";
-    if (pathname.startsWith("/contacto")) return "/#contacto";
+    if (pathname.startsWith("/contacto")) return "/contacto";
 
     return "";
   }, [activeSection, pathname]);
@@ -98,19 +114,42 @@ export default function SiteHeader() {
               ) : null}
             </Link>
           ))}
-          <a href="/#contacto" className="btn-outline-gold font-brand text-[11px] lg:text-xs">
+          {showAdminEntry ? (
+            <Link
+              href="/shamell-admin"
+              className="flex items-center gap-1.5 rounded-sm border border-gold/50 px-2 py-1 text-gold transition-colors hover:bg-gold/10"
+              aria-label="Admin panel"
+              title="Admin panel"
+            >
+              <FlameIcon className="h-6 w-4 shrink-0 text-gold" />
+              <span className="font-brand text-[10px] tracking-[0.14em]">ADMIN</span>
+            </Link>
+          ) : null}
+          <a href="/contacto" className="btn-outline-gold font-brand text-[11px] lg:text-xs">
             GET A INQUIRE
           </a>
         </nav>
 
-        <button
-          type="button"
-          onClick={() => setIsMenuOpen((prev) => !prev)}
-          className="md:hidden text-gold p-2"
-          aria-label="Toggle menu"
-        >
-          {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        <div className="flex items-center gap-2 md:hidden">
+          {showAdminEntry ? (
+            <Link
+              href="/shamell-admin"
+              className="flex items-center gap-1 rounded-sm border border-gold/50 px-2 py-1 text-gold"
+              aria-label="Admin panel"
+            >
+              <FlameIcon className="h-5 w-3.5 shrink-0" />
+              <span className="font-brand text-[9px] tracking-[0.12em]">ADMIN</span>
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen((prev) => !prev)}
+            className="text-gold p-2"
+            aria-label="Toggle menu"
+          >
+            {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
       </div>
 
       {isMenuOpen ? (
@@ -128,12 +167,22 @@ export default function SiteHeader() {
             </Link>
           ))}
           <a
-            href="/#contacto"
+            href="/contacto"
             onClick={() => setIsMenuOpen(false)}
             className="btn-outline-gold font-brand text-xs text-center mt-1"
           >
             GET A INQUIRE
           </a>
+          {showAdminEntry ? (
+            <Link
+              href="/shamell-admin"
+              onClick={() => setIsMenuOpen(false)}
+              className="mt-2 flex items-center justify-center gap-2 border border-gold/40 py-2 font-brand text-xs tracking-[0.12em] text-gold"
+            >
+              <FlameIcon className="h-6 w-4" />
+              ADMIN PANEL
+            </Link>
+          ) : null}
         </nav>
       ) : null}
     </header>

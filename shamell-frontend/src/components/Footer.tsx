@@ -9,7 +9,7 @@ const Footer = () => {
         </p>
 
         <a
-          href="#contacto"
+          href="/contacto"
           className="text-gold text-xs font-brand tracking-widest hover:text-gold-light transition-colors"
         >
           Inquire
