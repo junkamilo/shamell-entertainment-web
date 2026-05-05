@@ -8,24 +8,32 @@ const ExperiencesSection = () => {
   const { experiences, isLoading } = useExperiences();
 
   return (
-    <section id="experiences" className="bg-background py-20 px-4">
+    <section id="experiences" className="bg-transparent py-20 px-4">
       <OrnamentDivider />
 
-      <div className="max-w-6xl mx-auto">
-        <h2 className="font-brand text-gold text-center text-sm md:text-base tracking-[0.3em] mb-3">
-          SPECIAL EXPERIENCES
-        </h2>
-        <p className="text-center text-foreground/60 text-sm font-body max-w-3xl mx-auto mb-12">
-          Signature experiences crafted to elevate the atmosphere with visual impact, refined
-          staging, and expressive artistry.
-        </p>
+      <div className="relative mx-auto mb-12 max-w-6xl text-center">
+        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2">
+          <div className="h-28 w-[min(22rem,90vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.14),transparent_72%)] blur-3xl opacity-70" />
+        </div>
+        <div className="relative">
+          <h2 className="mb-3 font-brand text-sm tracking-[0.3em] text-gold md:text-base">
+            SPECIAL EXPERIENCES
+          </h2>
+          <p className="mx-auto max-w-3xl text-center font-body text-sm text-foreground/60">
+            Signature experiences crafted to elevate the atmosphere with visual impact, refined
+            staging, and expressive artistry.
+          </p>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-6xl">
 
         {isLoading ? (
           <p className="text-center text-foreground/60 text-sm font-body">Loading special experiences...</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {experiences.map((experience) => (
-              <ExperienceCard key={experience.id} experience={experience} />
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
+            {experiences.map((experience, index) => (
+              <ExperienceCard key={experience.id} experience={experience} index={index} />
             ))}
           </div>
         )}

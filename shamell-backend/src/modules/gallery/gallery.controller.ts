@@ -12,11 +12,11 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFile,
+  UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { CreateGalleryCategoryDto } from './dto/create-gallery-category.dto';
@@ -80,37 +80,38 @@ export class GalleryController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(
-    FileInterceptor('image', {
+    FilesInterceptor('media', undefined, {
       storage: memoryStorage(),
-      limits: { fileSize: 8 * 1024 * 1024 },
+      limits: { fileSize: 200 * 1024 * 1024 },
     }),
   )
-  createPhoto(@Body() dto: CreateGalleryPhotoDto, @UploadedFile() imageFile?: Express.Multer.File) {
-    if (!imageFile) {
-      throw new BadRequestException('Image file is required.');
+  createPhoto(@Body() dto: CreateGalleryPhotoDto, @UploadedFiles() mediaFiles?: Express.Multer.File[]) {
+    if (!mediaFiles?.length) {
+      throw new BadRequestException('At least one media file is required.');
     }
-    return this.galleryService.createPhoto(dto, imageFile);
+    return this.galleryService.createPhoto(dto, mediaFiles);
   }
 
   @Patch('admin/photos/:id')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(
-    FileInterceptor('image', {
+    FilesInterceptor('media', 1, {
       storage: memoryStorage(),
-      limits: { fileSize: 8 * 1024 * 1024 },
+      limits: { fileSize: 200 * 1024 * 1024 },
     }),
   )
   updatePhoto(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() dto: UpdateGalleryPhotoDto,
-    @UploadedFile() imageFile?: Express.Multer.File,
+    @UploadedFiles() mediaFiles?: Express.Multer.File[],
   ) {
+    const mediaFile = mediaFiles?.[0];
     const hasBodyFields = Object.keys(dto).length > 0;
-    if (!hasBodyFields && !imageFile) {
-      throw new BadRequestException('Provide at least one field or image to update.');
+    if (!hasBodyFields && !mediaFile) {
+      throw new BadRequestException('Provide at least one field or media file to update.');
     }
-    return this.galleryService.updatePhoto(id, dto, imageFile);
+    return this.galleryService.updatePhoto(id, dto, mediaFile);
   }
 
   @Delete('admin/photos/:id')

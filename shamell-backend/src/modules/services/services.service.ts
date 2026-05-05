@@ -82,6 +82,25 @@ export class ServicesService {
     return services.map((service) => this.mapService(service));
   }
 
+  /** Public snippet for contact deep-link (active service + active type only). */
+  async getPublicCatalogById(id: string) {
+    const service = await this.prisma.service.findFirst({
+      where: { id, isActive: true },
+      include: { serviceType: true },
+    });
+    if (!service || !service.serviceType.isActive) {
+      throw new NotFoundException('Service not found.');
+    }
+    const preview = service.description.replace(/\s+/g, ' ').trim().slice(0, 280);
+    return {
+      kind: 'service' as const,
+      id: service.id,
+      title: service.serviceType.name.trim(),
+      descriptionPreview: preview || undefined,
+      contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
+    };
+  }
+
   async getAdminServices() {
     const services = await this.prisma.service.findMany({
       orderBy: { createdAt: 'asc' },
@@ -196,7 +215,10 @@ export class ServicesService {
   async createServiceType(dto: CreateServiceTypeDto) {
     try {
       const created = await this.prisma.serviceType.create({
-        data: { name: dto.name },
+        data: {
+          name: dto.name,
+          contactInquiryCode: dto.contactInquiryCode ?? null,
+        },
       });
 
       return {
@@ -242,6 +264,7 @@ export class ServicesService {
         where: { id },
         data: {
           ...(dto.name !== undefined ? { name: dto.name } : {}),
+          ...(dto.contactInquiryCode !== undefined ? { contactInquiryCode: dto.contactInquiryCode } : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         },
       });
@@ -283,6 +306,7 @@ export class ServicesService {
     serviceType: {
       id: string;
       name: string;
+      contactInquiryCode: string | null;
       isActive: boolean;
       createdAt: Date;
       updatedAt: Date;
@@ -298,6 +322,7 @@ export class ServicesService {
       id: service.id,
       serviceTypeId: service.serviceType.id,
       serviceTypeName: service.serviceType.name,
+      contactInquiryCode: service.serviceType.contactInquiryCode,
       serviceType: this.mapServiceType(service.serviceType),
       description: service.description,
       items: service.items,
@@ -311,6 +336,7 @@ export class ServicesService {
   private mapServiceType(serviceType: {
     id: string;
     name: string;
+    contactInquiryCode: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -318,6 +344,7 @@ export class ServicesService {
     return {
       id: serviceType.id,
       name: serviceType.name,
+      contactInquiryCode: serviceType.contactInquiryCode,
       isActive: serviceType.isActive,
       createdAt: serviceType.createdAt,
       updatedAt: serviceType.updatedAt,

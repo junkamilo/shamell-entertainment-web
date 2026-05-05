@@ -24,23 +24,51 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum GalleryMediaType {
+  IMAGE
+  VIDEO
+}
+
+enum EventTypeOccasionUsage {
+  OCCASION_SINGLE
+  BESPOKE_PROJECT
+  BESPOKE_ROLE
+}
+
 // ============ MODELS ============
 model User {
-  id                     String    @id @default(uuid())
-  email                  String    @unique
-  password               String
+  id                     String        @id @default(uuid())
+  email                  String        @unique
+  password               String?
+  googleSub              String?       @unique
   fullName               String
   phone                  String?
-  role                   UserRole  @default(CLIENT)
-  twoFactorEnabled       Boolean   @default(false)
+  role                   UserRole      @default(CLIENT)
+  twoFactorEnabled       Boolean       @default(false)
   twoFactorSecret        String?
   passwordResetToken     String?
   passwordResetExpiresAt DateTime?
   bookings               Booking[]
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
+  adminInvitesCreated    AdminInvite[] @relation("AdminInviteInvitedBy")
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
   @@map("users")
+}
+
+model AdminInvite {
+  id          String    @id @default(uuid())
+  email       String
+  codeHash    String
+  fullName    String
+  invitedById String
+  invitedBy   User      @relation("AdminInviteInvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([email])
+  @@map("admin_invites")
 }
 
 model Service {
@@ -60,13 +88,14 @@ model Service {
 }
 
 model ServiceType {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  isActive  Boolean   @default(true)
-  services  Service[]
-  galleryPhotos GalleryPhoto[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id                  String    @id @default(uuid())
+  name                String    @unique
+  contactInquiryCode  String?
+  isActive            Boolean   @default(true)
+  services            Service[]
+  galleryPhotos       GalleryPhoto[]
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   @@map("service_types")
 }
@@ -78,6 +107,7 @@ model Event {
   description String    @db.Text
   items       String[]
   isActive    Boolean   @default(true)
+  showOnHome  Boolean   @default(true)
   galleryPhotos GalleryPhoto[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -85,14 +115,41 @@ model Event {
   @@map("events")
 }
 
+model OccasionType {
+  id          String              @id @default(uuid())
+  name        String              @unique
+  isActive    Boolean             @default(true)
+  eventLinks  EventTypeOccasion[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@map("occasion_types")
+}
+
+model EventTypeOccasion {
+  id             String                @id @default(uuid())
+  eventTypeId    String
+  occasionTypeId String
+  usage          EventTypeOccasionUsage
+  sortOrder      Int                   @default(0)
+  eventType      EventType             @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  occasionType   OccasionType          @relation(fields: [occasionTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([eventTypeId, occasionTypeId])
+  @@index([eventTypeId])
+  @@map("event_type_occasions")
+}
+
 model EventType {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  events    Event[]
-  galleryPhotos GalleryPhoto[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String              @id @default(uuid())
+  name                String              @unique
+  contactInquiryCode  String?
+  isActive            Boolean             @default(true)
+  events              Event[]
+  occasionLinks       EventTypeOccasion[]
+  galleryPhotos       GalleryPhoto[]
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 
   @@map("event_types")
 }
@@ -115,6 +172,7 @@ model GalleryPhoto {
   categoryId    String
   imageUrl      String
   imagePublicId String
+  mediaType     GalleryMediaType  @default(IMAGE)
   isActive      Boolean           @default(true)
   serviceId     String?
   serviceTypeId String?
@@ -150,18 +208,19 @@ model Booking {
 }
 
 model ContactRequest {
-  id           String    @id @default(uuid())
-  fullName     String
-  email        String
-  phone        String?
-  eventDate    DateTime?
-  location     String?
-  serviceType  String?
-  preferences  String?   @db.Text
-  subject      String
-  message      String    @db.Text
-  isRead       Boolean   @default(false)
-  createdAt    DateTime  @default(now())
+  id              String    @id @default(uuid())
+  fullName        String
+  email           String
+  phone           String?
+  eventDate       DateTime?
+  location        String?
+  serviceType     String?
+  preferences     String?   @db.Text
+  subject         String
+  message         String    @db.Text
+  inquiryDetails  Json?
+  isRead          Boolean   @default(false)
+  createdAt       DateTime  @default(now())
 
   @@map("contact_requests")
 }
@@ -177,6 +236,20 @@ model Performer {
   updatedAt   DateTime @updatedAt
 
   @@map("performers")
+}
+
+model AboutContent {
+  id          String   @id @default(uuid())
+  title       String
+  paragraph1  String   @db.Text
+  coreValues  String[]
+  imageUrl    String?
+  imagePublicId String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("about_content")
 }
 
 

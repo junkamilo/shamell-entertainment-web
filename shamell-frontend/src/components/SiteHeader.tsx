@@ -9,6 +9,7 @@ import {
   ADMIN_SESSION_CHANGED_EVENT,
   isAdminLoggedIn,
 } from "@/lib/adminSession";
+import { cn } from "@/lib/utils";
 
 type NavItem = {
   label: string;
@@ -28,11 +29,50 @@ const navItems: NavItem[] = [
   { label: "Galeria", href: "/#gallery", sectionId: "gallery" },
 ];
 
+function DesktopNavLink({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={cn(
+        "group relative whitespace-nowrap px-2 py-2 font-brand text-[10px] tracking-[0.12em] uppercase transition-colors duration-300 lg:px-2.5 lg:text-[11px] lg:tracking-[0.14em]",
+        active ? "text-gold" : "text-foreground/68 hover:text-gold-light",
+      )}
+    >
+      <span className="relative z-10">{label}</span>
+      <span
+        className={cn(
+          "pointer-events-none absolute inset-x-1 bottom-0.5 h-px origin-center scale-x-0 bg-linear-to-r from-transparent via-gold/90 to-transparent opacity-0 transition-[transform,opacity] duration-400 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          active && "scale-x-100 opacity-100",
+          !active && "group-hover:scale-x-100 group-hover:opacity-100",
+        )}
+        aria-hidden
+      />
+      <span
+        className={cn(
+          "pointer-events-none absolute -inset-x-0.5 -inset-y-1 -z-0 rounded-md bg-white/[0.03] opacity-0 transition-opacity duration-300",
+          "group-hover:opacity-100",
+          active && "opacity-100 ring-1 ring-gold/15",
+        )}
+        aria-hidden
+      />
+    </Link>
+  );
+}
+
 export default function SiteHeader() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
   const [showAdminEntry, setShowAdminEntry] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     const syncAdmin = () => setShowAdminEntry(isAdminLoggedIn());
@@ -43,6 +83,13 @@ export default function SiteHeader() {
       window.removeEventListener(ADMIN_SESSION_CHANGED_EVENT, syncAdmin);
       window.removeEventListener("storage", syncAdmin);
     };
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -76,6 +123,22 @@ export default function SiteHeader() {
     return () => observers.forEach((observer) => observer.disconnect());
   }, [pathname]);
 
+  useEffect(() => {
+    document.body.style.overflow = isMenuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isMenuOpen]);
+
   const activeHref = useMemo(() => {
     if (pathname === "/") {
       const bySection = navItems.find((item) => item.sectionId === activeSection);
@@ -89,102 +152,169 @@ export default function SiteHeader() {
   }, [activeSection, pathname]);
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-90 border-b border-gold/20 backdrop-blur-sm ${
-        isMenuOpen ? "bg-transparent" : "bg-background/90"
-      }`}
-    >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-        <Link href="/#hero" className="font-brand text-gold text-sm tracking-[0.2em]">
-          SHAMELL
-        </Link>
+    <>
+      <div
+        className="pointer-events-none fixed top-0 left-0 right-0 z-[91] h-px bg-linear-to-r from-transparent via-gold/35 to-transparent opacity-80"
+        aria-hidden
+      />
 
-        <nav className="hidden md:flex items-center gap-4 lg:gap-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`relative text-[11px] lg:text-xs font-brand tracking-[0.12em] transition-colors ${
-                activeHref === item.href ? "text-gold" : "text-foreground/75 hover:text-gold"
-              }`}
-            >
-              {item.label.toUpperCase()}
-              {activeHref === item.href ? (
-                <span className="absolute left-0 -bottom-1 h-px w-full bg-gold" />
-              ) : null}
-            </Link>
-          ))}
-          {showAdminEntry ? (
-            <Link
-              href="/shamell-admin"
-              className="flex items-center gap-1.5 rounded-sm border border-gold/50 px-2 py-1 text-gold transition-colors hover:bg-gold/10"
-              aria-label="Admin panel"
-              title="Admin panel"
-            >
-              <FlameIcon className="h-6 w-4 shrink-0 text-gold" />
-              <span className="font-brand text-[10px] tracking-[0.14em]">ADMIN</span>
-            </Link>
-          ) : null}
-          <a href="/contacto" className="btn-outline-gold font-brand text-[11px] lg:text-xs">
-            GET A INQUIRE
-          </a>
-        </nav>
-
-        <div className="flex items-center gap-2 md:hidden">
-          {showAdminEntry ? (
-            <Link
-              href="/shamell-admin"
-              className="flex items-center gap-1 rounded-sm border border-gold/50 px-2 py-1 text-gold"
-              aria-label="Admin panel"
-            >
-              <FlameIcon className="h-5 w-3.5 shrink-0" />
-              <span className="font-brand text-[9px] tracking-[0.12em]">ADMIN</span>
-            </Link>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="text-gold p-2"
-            aria-label="Toggle menu"
+      <header
+        className={cn(
+          "fixed top-px left-0 right-0 z-90 transition-[background-color,box-shadow,backdrop-filter,border-color] duration-500 ease-out",
+          scrolled || isMenuOpen
+            ? "border-b border-gold/25 bg-[oklch(0.1_0.015_45_/_0.88)] shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl"
+            : "border-b border-gold/12 bg-background/55 backdrop-blur-md",
+          isMenuOpen && "md:border-gold/20",
+        )}
+      >
+        <div className="mx-auto flex h-[4.25rem] max-w-6xl items-center gap-3 px-4 sm:px-5">
+          <Link
+            href="/#hero"
+            className="group relative flex shrink-0 items-center gap-2.5 pr-1"
           >
-            {isMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-      </div>
+            <span
+              className="hidden h-8 w-px bg-linear-to-b from-gold/5 via-gold/45 to-gold/5 sm:block"
+              aria-hidden
+            />
+            <span className="flex flex-col leading-none">
+              <span className="font-brand text-sm tracking-[0.28em] text-gold transition-colors duration-300 group-hover:text-gold-light sm:text-[0.95rem]">
+                SHAMELL
+              </span>
+              <span className="mt-1 hidden font-body text-[9px] tracking-[0.2em] text-foreground/45 uppercase sm:block">
+                Performance Artistry
+              </span>
+            </span>
+          </Link>
 
-      {isMenuOpen ? (
-        <nav className="md:hidden absolute top-16 left-0 right-0 border-t border-gold/20 bg-black/45 backdrop-blur-xl px-4 py-3 flex flex-col gap-3">
-          {navItems.map((item) => (
+          <nav
+            className="relative hidden min-w-0 flex-1 items-center justify-center gap-0 md:flex lg:gap-0.5"
+            aria-label="Principal"
+          >
+            {navItems.map((item) => (
+              <DesktopNavLink
+                key={item.label}
+                href={item.href}
+                label={item.label.toUpperCase()}
+                active={activeHref === item.href}
+              />
+            ))}
+          </nav>
+
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            {showAdminEntry ? (
+              <Link
+                href="/shamell-admin"
+                className={cn(
+                  "hidden items-center gap-1.5 rounded-md border border-gold/35 bg-black/25 px-2.5 py-1.5 text-gold transition-all duration-300 md:flex",
+                  "hover:border-gold/55 hover:bg-gold/[0.08] hover:shadow-[0_0_20px_rgba(197,165,90,0.12)]",
+                )}
+                aria-label="Panel de administración"
+                title="Admin"
+              >
+                <FlameIcon className="h-5 w-3.5 shrink-0 opacity-90" />
+                <span className="font-brand text-[10px] tracking-[0.18em]">ADMIN</span>
+              </Link>
+            ) : null}
+
+            <a
+              href="/contacto"
+              className={cn(
+                "relative hidden overflow-hidden rounded-md border border-gold/55 px-4 py-2.5 font-brand text-[10px] tracking-[0.22em] text-gold uppercase transition-all duration-300 md:inline-flex md:items-center md:justify-center",
+                "before:pointer-events-none before:absolute before:inset-0 before:-translate-x-full before:bg-linear-to-r before:from-transparent before:via-white/10 before:to-transparent before:transition-transform before:duration-500",
+                "hover:border-gold hover:text-gold-light hover:shadow-[0_0_24px_rgba(197,165,90,0.18)] hover:before:translate-x-full",
+              )}
+            >
+              <span className="relative z-10">Inquire</span>
+            </a>
+
+            <div className="flex items-center gap-1 md:hidden">
+              {showAdminEntry ? (
+                <Link
+                  href="/shamell-admin"
+                  className="flex items-center gap-1 rounded-md border border-gold/40 bg-black/30 px-2 py-1.5 text-gold"
+                  aria-label="Admin"
+                >
+                  <FlameIcon className="h-4 w-3 shrink-0" />
+                  <span className="font-brand text-[9px] tracking-[0.14em]">ADMIN</span>
+                </Link>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+                className="rounded-md border border-gold/25 p-2 text-gold transition-colors hover:border-gold/45 hover:bg-white/5"
+                aria-expanded={isMenuOpen}
+                aria-label={isMenuOpen ? "Cerrar menú" : "Abrir menú"}
+              >
+                {isMenuOpen ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile: full-height overlay */}
+      <div
+        className={cn(
+          "fixed inset-0 z-80 bg-black/70 backdrop-blur-md transition-opacity duration-300 md:hidden",
+          isMenuOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
+        )}
+        aria-hidden={!isMenuOpen}
+        onClick={() => setIsMenuOpen(false)}
+      />
+
+      <nav
+        className={cn(
+          "fixed left-0 right-0 top-[calc(4.25rem+1px)] z-85 flex max-h-[min(85dvh,calc(100dvh-5rem))] flex-col border-b border-gold/20 bg-[oklch(0.08_0.02_45_/_0.97)] shadow-[0_24px_48px_rgba(0,0,0,0.65)] backdrop-blur-2xl transition-[opacity,transform,visibility] duration-300 ease-out md:hidden",
+          isMenuOpen
+            ? "visible translate-y-0 opacity-100"
+            : "invisible -translate-y-2 opacity-0 pointer-events-none",
+        )}
+        aria-label="Menú móvil"
+        aria-hidden={!isMenuOpen}
+      >
+        <div className="shamell-scrollbar mx-auto flex w-full max-w-md flex-1 flex-col gap-0 overflow-y-auto px-6 py-6">
+          {navItems.map((item, i) => (
             <Link
               key={item.label}
               href={item.href}
               onClick={() => setIsMenuOpen(false)}
-              className={`text-xs font-brand tracking-[0.12em] ${
-                activeHref === item.href ? "text-gold" : "text-foreground/75"
-              }`}
+              style={{ transitionDelay: isMenuOpen ? `${40 + i * 45}ms` : "0ms" }}
+              className={cn(
+                "border-b border-white/[0.06] py-4 font-brand text-sm tracking-[0.2em] uppercase transition-[color,opacity,transform] duration-300",
+                activeHref === item.href ? "text-gold" : "text-foreground/75",
+                isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+              )}
             >
-              {item.label.toUpperCase()}
+              {item.label}
             </Link>
           ))}
           <a
             href="/contacto"
             onClick={() => setIsMenuOpen(false)}
-            className="btn-outline-gold font-brand text-xs text-center mt-1"
+            className={cn(
+              "btn-outline-gold mx-auto mt-6 w-full max-w-xs py-3 text-center font-brand text-xs tracking-[0.2em]",
+              isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+            )}
+            style={{ transitionDelay: isMenuOpen ? `${40 + navItems.length * 45}ms` : "0ms" }}
           >
-            GET A INQUIRE
+            Inquire
           </a>
           {showAdminEntry ? (
             <Link
               href="/shamell-admin"
               onClick={() => setIsMenuOpen(false)}
-              className="mt-2 flex items-center justify-center gap-2 border border-gold/40 py-2 font-brand text-xs tracking-[0.12em] text-gold"
+              className={cn(
+                "mt-4 flex items-center justify-center gap-2 border border-gold/35 py-3 font-brand text-xs tracking-[0.18em] text-gold transition-all",
+                isMenuOpen ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+              )}
+              style={{ transitionDelay: isMenuOpen ? `${40 + (navItems.length + 1) * 45}ms` : "0ms" }}
             >
               <FlameIcon className="h-6 w-4" />
               ADMIN PANEL
             </Link>
           ) : null}
-        </nav>
-      ) : null}
-    </header>
+        </div>
+      </nav>
+    </>
   );
 }

@@ -9,16 +9,22 @@ type ServicesApiItem = {
   description?: string;
   items?: string[];
   imageUrl?: string | null;
+  contactInquiryCode?: string | null;
 };
 
-const isValidService = (item: ServicesApiItem): item is Required<Pick<ServicesApiItem, "id" | "serviceTypeName" | "description" | "items" | "imageUrl">> =>
+type ValidServiceApiItem = Required<Pick<ServicesApiItem, "id" | "serviceTypeName" | "description" | "items">> & {
+  imageUrl: string;
+} & Pick<ServicesApiItem, "contactInquiryCode">;
+
+const isValidService = (item: ServicesApiItem): item is ValidServiceApiItem =>
   Boolean(
     item.id &&
       item.serviceTypeName &&
       item.description &&
       Array.isArray(item.items) &&
       item.items.length > 0 &&
-      item.imageUrl,
+      typeof item.imageUrl === "string" &&
+      item.imageUrl.trim().length > 0,
   );
 
 const toSlug = (value: string) =>
@@ -36,6 +42,7 @@ export function useExperiences() {
     const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, "");
 
     let isCancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
 
     fetch(`${baseUrl}/api/v1/services`)
@@ -55,6 +62,7 @@ export function useExperiences() {
             description: item.description,
             items: item.items,
             image: item.imageUrl,
+            contactInquiryCode: item.contactInquiryCode ?? null,
           }));
 
         setExperiences(normalized);

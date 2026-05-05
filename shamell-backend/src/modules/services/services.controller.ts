@@ -39,6 +39,12 @@ export class ServicesController {
     return this.servicesService.getPublicServiceTypes();
   }
 
+  @Get('catalog/:id')
+  @HttpCode(HttpStatus.OK)
+  getPublicCatalogById(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.servicesService.getPublicCatalogById(id);
+  }
+
   @Get('admin')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)

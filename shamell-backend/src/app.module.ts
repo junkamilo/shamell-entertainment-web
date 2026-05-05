@@ -11,6 +11,7 @@ import { PerformersModule } from './modules/performers/performers.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EventsModule } from './modules/events/events.module';
 import { GalleryModule } from './modules/gallery/gallery.module';
+import { AboutModule } from './modules/about/about.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { GalleryModule } from './modules/gallery/gallery.module';
     AuthModule,
     EventsModule,
     GalleryModule,
+    AboutModule,
   ],
 })
 export class AppModule {}

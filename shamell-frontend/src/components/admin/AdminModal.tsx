@@ -13,10 +13,10 @@ export default function AdminModal({ title, isOpen, onClose, children }: AdminMo
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-90 flex items-center justify-center bg-black/70 px-4 py-6">
-      <div className="shamell-scrollbar max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-gold/20 bg-[#0c1016] shadow-2xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gold/15 bg-[#0c1016] px-6 py-5">
-          <h2 className="font-brand text-2xl tracking-[0.08em] text-gold">{title}</h2>
+    <div className="admin-overlay fixed inset-0 z-90 flex items-center justify-center px-4 py-6">
+      <div className="admin-panel shamell-scrollbar max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gold/15 bg-(--background-elevated) px-6 py-5">
+          <h2 className="admin-text-brand font-brand text-2xl tracking-[0.08em]">{title}</h2>
           <button
             type="button"
             onClick={onClose}

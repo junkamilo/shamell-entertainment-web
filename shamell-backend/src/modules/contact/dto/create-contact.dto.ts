@@ -8,17 +8,14 @@ import {
   MinLength,
   IsIn,
   IsDateString,
+  IsObject,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { CONTACT_INQUIRY_CODES, type ContactInquiryCode } from '../../../common/contact-inquiry-codes';
 
-export const SERVICE_TYPES = [
-  'PRIVATE_GALA',
-  'VIP_EVENT',
-  'BESPOKE',
-  'GENERAL',
-] as const;
+export const SERVICE_TYPES = CONTACT_INQUIRY_CODES;
 
-export type ServiceTypeCode = (typeof SERVICE_TYPES)[number];
+export type ServiceTypeCode = ContactInquiryCode;
 
 export class CreateContactDto {
   @ApiProperty({ example: 'Juan Pérez' })
@@ -66,6 +63,14 @@ export class CreateContactDto {
   @IsString()
   @MaxLength(200)
   subject?: string;
+
+  @ApiPropertyOptional({
+    description: 'Structured wizard fields (occasion, add-ons, times, etc.)',
+    example: { occasionCode: 'WEDDING', experienceAddons: ['FIRE'] },
+  })
+  @IsOptional()
+  @IsObject()
+  inquiryDetails?: Record<string, unknown>;
 
   @ApiProperty({ example: 'I would like to book a private event...' })
   @IsString()

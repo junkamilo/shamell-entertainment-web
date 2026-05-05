@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 import FlameIcon from "@/components/FlameIcon";
 import PearlDivider from "@/components/PearlDivider";
+import GoogleSignInButton from "@/components/admin/GoogleSignInButton";
 import {
   ADMIN_ACCESS_TOKEN_KEY,
   ADMIN_USER_KEY,
@@ -63,7 +64,38 @@ export default function AdminLoginPage() {
 
       notifyAdminSessionChanged();
       setMessage("Admin login successful. Redirecting...");
-      router.push("/");
+      router.push("/shamell-admin");
+    } catch {
+      setError("Cannot reach backend. Ensure API is running.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const onGoogleLogin = async (credential: string) => {
+    setError(null);
+    setMessage(null);
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/auth/admin/google-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(typeof data?.message === "string" ? data.message : "Google login failed.");
+        return;
+      }
+      if (data?.accessToken) {
+        localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, data.accessToken);
+      }
+      if (data?.user) {
+        localStorage.setItem(ADMIN_USER_KEY, JSON.stringify(data.user));
+      }
+      notifyAdminSessionChanged();
+      setMessage("Signing in with Google...");
+      router.push("/shamell-admin");
     } catch {
       setError("Cannot reach backend. Ensure API is running.");
     } finally {
@@ -115,6 +147,15 @@ export default function AdminLoginPage() {
         </form>
 
         <PearlDivider className="mt-10" />
+
+        <p className="mb-4 text-center font-brand text-xs tracking-[0.14em] text-gold/80">
+          Or continue with Google
+        </p>
+        <GoogleSignInButton onCredential={onGoogleLogin} />
+
+        <p className="mt-8 text-center text-xs text-foreground/55">
+          Si un administrador va a darte acceso, completará el alta desde el panel (Agregar administrador).
+        </p>
       </section>
     </main>
   );

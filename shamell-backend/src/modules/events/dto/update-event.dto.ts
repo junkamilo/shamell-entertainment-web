@@ -32,4 +32,12 @@ export class UpdateEventDto {
   })
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return value === 'true' || value === true;
+  })
+  @IsBoolean()
+  showOnHome?: boolean;
 }

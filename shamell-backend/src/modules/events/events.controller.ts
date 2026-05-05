@@ -2,8 +2,10 @@ import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatu
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
+import { CreateOccasionTypeDto } from './dto/create-occasion-type.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateEventTypeDto } from './dto/update-event-type.dto';
+import { UpdateOccasionTypeDto } from './dto/update-occasion-type.dto';
 import { EventsService } from './events.service';
 
 @Controller('events')
@@ -16,10 +18,53 @@ export class EventsController {
     return this.eventsService.getPublicEvents();
   }
 
+  @Get('contact-lines')
+  @HttpCode(HttpStatus.OK)
+  getContactLines() {
+    return this.eventsService.getContactLines();
+  }
+
   @Get('types')
   @HttpCode(HttpStatus.OK)
   getPublicEventTypes() {
     return this.eventsService.getPublicEventTypes();
+  }
+
+  @Get('catalog/:id')
+  @HttpCode(HttpStatus.OK)
+  getPublicCatalogById(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.eventsService.getPublicCatalogById(id);
+  }
+
+  @Get('occasions/admin')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  getAdminOccasionTypes() {
+    return this.eventsService.getAdminOccasionTypes();
+  }
+
+  @Post('occasions/admin')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard)
+  createOccasionType(@Body() dto: CreateOccasionTypeDto) {
+    return this.eventsService.createOccasionType(dto);
+  }
+
+  @Patch('occasions/admin/:id')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  updateOccasionType(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateOccasionTypeDto) {
+    if (Object.keys(dto).length === 0) {
+      throw new BadRequestException('Provide at least one field to update.');
+    }
+    return this.eventsService.updateOccasionType(id, dto);
+  }
+
+  @Delete('occasions/admin/:id')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  deleteOccasionType(@Param('id', new ParseUUIDPipe()) id: string) {
+    return this.eventsService.deleteOccasionType(id);
   }
 
   @Get('admin')

@@ -10,6 +10,8 @@ export type Experience = {
   description: string;
   items: string[];
   image: StaticImageData | string;
+  /** From API: precarga del formulario /contacto */
+  contactInquiryCode?: string | null;
 };
 
 export const experiencesFallbackData: Experience[] = [

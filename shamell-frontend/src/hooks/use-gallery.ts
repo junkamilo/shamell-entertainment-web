@@ -17,6 +17,7 @@ export type GalleryCategoryApiItem = {
 export type GalleryPhotoApiItem = {
   id: string;
   imageUrl: string;
+  mediaType: "IMAGE" | "VIDEO";
   category: {
     id: string;
     name: string;
@@ -44,6 +45,7 @@ export type GalleryPhotoItem = {
   src: string;
   alt: string;
   categorySlug: string;
+  mediaType: "IMAGE" | "VIDEO";
 };
 
 export function useGalleryCategories() {
@@ -128,6 +130,7 @@ export function useGalleryPhotos(filter: string, limit?: number) {
             src: item.imageUrl,
             alt: `Foto de ${item.category.name}`,
             categorySlug: item.category.slug,
+            mediaType: item.mediaType,
           })),
         );
       })
@@ -142,6 +145,7 @@ export function useGalleryPhotos(filter: string, limit?: number) {
             src: item.src.src,
             alt: item.alt,
             categorySlug: item.category,
+            mediaType: "IMAGE",
           })),
         );
       })

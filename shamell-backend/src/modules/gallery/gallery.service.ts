@@ -5,6 +5,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { GalleryMediaType } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateGalleryCategoryDto } from './dto/create-gallery-category.dto';
@@ -17,6 +18,7 @@ type PhotoWithCategory = {
   categoryId: string;
   imageUrl: string;
   imagePublicId: string;
+  mediaType: GalleryMediaType;
   isActive: boolean;
   serviceId: string | null;
   serviceTypeId: string | null;
@@ -98,11 +100,13 @@ export class GalleryService {
   }
 
   async createCategory(dto: CreateGalleryCategoryDto) {
+    const slug = await this.ensureUniqueGalleryCategorySlug(this.slugFromDisplayName(dto.name));
+
     try {
       const created = await this.prisma.galleryCategory.create({
         data: {
           name: dto.name,
-          slug: dto.slug,
+          slug,
         },
       });
 
@@ -113,7 +117,7 @@ export class GalleryService {
     } catch (error: unknown) {
       const prismaError = error as { code?: string };
       if (prismaError?.code === 'P2002') {
-        throw new ConflictException('Category name or slug already exists.');
+        throw new ConflictException('Category name already exists.');
       }
       throw error;
     }
@@ -128,12 +132,16 @@ export class GalleryService {
       throw new NotFoundException('Gallery category not found.');
     }
 
+    const slug =
+      dto.name !== undefined
+        ? await this.ensureUniqueGalleryCategorySlug(this.slugFromDisplayName(dto.name), id)
+        : undefined;
+
     try {
       const updated = await this.prisma.galleryCategory.update({
         where: { id },
         data: {
-          ...(dto.name !== undefined ? { name: dto.name } : {}),
-          ...(dto.slug !== undefined ? { slug: dto.slug } : {}),
+          ...(dto.name !== undefined ? { name: dto.name, slug } : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         },
       });
@@ -145,7 +153,7 @@ export class GalleryService {
     } catch (error: unknown) {
       const prismaError = error as { code?: string };
       if (prismaError?.code === 'P2002') {
-        throw new ConflictException('Category name or slug already exists.');
+        throw new ConflictException('Category name already exists.');
       }
       throw error;
     }
@@ -159,35 +167,39 @@ export class GalleryService {
     return items.map((item) => this.mapPhoto(item));
   }
 
-  async createPhoto(dto: CreateGalleryPhotoDto, imageFile: Express.Multer.File) {
+  async createPhoto(dto: CreateGalleryPhotoDto, mediaFiles: Express.Multer.File[]) {
     this.ensureCloudinaryEnv();
-    this.ensureImageFile(imageFile);
+    mediaFiles.forEach((file) => this.ensureMediaFile(file));
     await this.ensureReferencesAreValid(dto);
 
-    const upload = await this.uploadImageToCloudinary(imageFile);
-
-    try {
-      const created = await this.prisma.galleryPhoto.create({
-        data: {
-          categoryId: dto.categoryId,
-          imageUrl: upload.secureUrl,
-          imagePublicId: upload.publicId,
-          ...(dto.serviceId ? { serviceId: dto.serviceId } : {}),
-          ...(dto.serviceTypeId ? { serviceTypeId: dto.serviceTypeId } : {}),
-          ...(dto.eventId ? { eventId: dto.eventId } : {}),
-          ...(dto.eventTypeId ? { eventTypeId: dto.eventTypeId } : {}),
-        },
-        include: { category: true },
-      });
-
-      return {
-        message: 'Gallery photo created successfully.',
-        photo: this.mapPhoto(created),
-      };
-    } catch (error) {
-      await this.deleteImageFromCloudinary(upload.publicId).catch(() => null);
-      throw error;
+    const createdPhotos: PhotoWithCategory[] = [];
+    for (const file of mediaFiles) {
+      const upload = await this.uploadMediaToCloudinary(file);
+      try {
+        const created = await this.prisma.galleryPhoto.create({
+          data: {
+            categoryId: dto.categoryId,
+            imageUrl: upload.secureUrl,
+            imagePublicId: upload.publicId,
+            mediaType: upload.mediaType,
+            ...(dto.serviceId ? { serviceId: dto.serviceId } : {}),
+            ...(dto.serviceTypeId ? { serviceTypeId: dto.serviceTypeId } : {}),
+            ...(dto.eventId ? { eventId: dto.eventId } : {}),
+            ...(dto.eventTypeId ? { eventTypeId: dto.eventTypeId } : {}),
+          },
+          include: { category: true },
+        });
+        createdPhotos.push(created);
+      } catch (error) {
+        await this.deleteMediaFromCloudinary(upload.publicId, upload.mediaType).catch(() => null);
+        throw error;
+      }
     }
+
+    return {
+      message: `${createdPhotos.length} media file(s) created successfully.`,
+      items: createdPhotos.map((photo) => this.mapPhoto(photo)),
+    };
   }
 
   async updatePhoto(id: string, dto: UpdateGalleryPhotoDto, imageFile?: Express.Multer.File) {
@@ -201,13 +213,13 @@ export class GalleryService {
 
     this.ensureCloudinaryEnv();
     if (imageFile) {
-      this.ensureImageFile(imageFile);
+      this.ensureMediaFile(imageFile);
     }
     await this.ensureReferencesAreValid(dto);
 
-    let newUpload: { secureUrl: string; publicId: string } | null = null;
+    let newUpload: { secureUrl: string; publicId: string; mediaType: GalleryMediaType } | null = null;
     if (imageFile) {
-      newUpload = await this.uploadImageToCloudinary(imageFile);
+      newUpload = await this.uploadMediaToCloudinary(imageFile);
     }
 
     try {
@@ -224,6 +236,7 @@ export class GalleryService {
             ? {
                 imageUrl: newUpload.secureUrl,
                 imagePublicId: newUpload.publicId,
+                mediaType: newUpload.mediaType,
               }
             : {}),
         },
@@ -231,7 +244,7 @@ export class GalleryService {
       });
 
       if (newUpload) {
-        await this.deleteImageFromCloudinary(existing.imagePublicId).catch(() => null);
+        await this.deleteMediaFromCloudinary(existing.imagePublicId, existing.mediaType).catch(() => null);
       }
 
       return {
@@ -240,7 +253,7 @@ export class GalleryService {
       };
     } catch (error) {
       if (newUpload) {
-        await this.deleteImageFromCloudinary(newUpload.publicId).catch(() => null);
+        await this.deleteMediaFromCloudinary(newUpload.publicId, newUpload.mediaType).catch(() => null);
       }
       throw error;
     }
@@ -255,15 +268,11 @@ export class GalleryService {
       throw new NotFoundException('Gallery photo not found.');
     }
 
-    const updated = await this.prisma.galleryPhoto.update({
-      where: { id },
-      data: { isActive: false },
-      include: { category: true },
-    });
+    await this.deleteMediaFromCloudinary(existing.imagePublicId, existing.mediaType).catch(() => null);
+    await this.prisma.galleryPhoto.delete({ where: { id } });
 
     return {
-      message: 'Gallery photo disabled successfully.',
-      photo: this.mapPhoto(updated),
+      message: 'Gallery media deleted successfully.',
     };
   }
 
@@ -273,12 +282,14 @@ export class GalleryService {
     }
   }
 
-  private ensureImageFile(imageFile?: Express.Multer.File) {
-    if (!imageFile?.buffer) {
-      throw new BadRequestException('Image file is required.');
+  private ensureMediaFile(mediaFile?: Express.Multer.File) {
+    if (!mediaFile?.buffer) {
+      throw new BadRequestException('Media file is required.');
     }
-    if (!imageFile.mimetype.startsWith('image/')) {
-      throw new BadRequestException('Only image files are allowed.');
+    const isImage = mediaFile.mimetype.startsWith('image/');
+    const isVideo = mediaFile.mimetype.startsWith('video/');
+    if (!isImage && !isVideo) {
+      throw new BadRequestException('Only image and video files are allowed.');
     }
   }
 
@@ -340,21 +351,25 @@ export class GalleryService {
     }
   }
 
-  private uploadImageToCloudinary(file: Express.Multer.File): Promise<{ secureUrl: string; publicId: string }> {
+  private uploadMediaToCloudinary(
+    file: Express.Multer.File,
+  ): Promise<{ secureUrl: string; publicId: string; mediaType: GalleryMediaType }> {
     return new Promise((resolve, reject) => {
+      const isVideo = file.mimetype.startsWith('video/');
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'shamell/gallery',
-          resource_type: 'image',
+          resource_type: isVideo ? 'video' : 'image',
         },
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
-            reject(new InternalServerErrorException('Image upload failed.'));
+            reject(new InternalServerErrorException('Media upload failed.'));
             return;
           }
           resolve({
             secureUrl: result.secure_url,
             publicId: result.public_id,
+            mediaType: isVideo ? GalleryMediaType.VIDEO : GalleryMediaType.IMAGE,
           });
         },
       );
@@ -363,12 +378,45 @@ export class GalleryService {
     });
   }
 
-  private async deleteImageFromCloudinary(publicId: string) {
-    const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+  private async deleteMediaFromCloudinary(publicId: string, mediaType: GalleryMediaType) {
+    const result = await cloudinary.uploader.destroy(publicId, {
+      resource_type: mediaType === GalleryMediaType.VIDEO ? 'video' : 'image',
+    });
     const ok = result.result === 'ok' || result.result === 'not found';
     if (!ok) {
       throw new InternalServerErrorException('Cloudinary image deletion failed.');
     }
+  }
+
+  private slugFromDisplayName(name: string): string {
+    const trimmed = name.trim();
+    const withoutAccents = trimmed.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const slug = withoutAccents
+      .toLowerCase()
+      .replace(/&/g, ' y ')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-+/g, '-');
+    return slug.length >= 2 ? slug : 'categoria';
+  }
+
+  private async ensureUniqueGalleryCategorySlug(base: string, excludeId?: string): Promise<string> {
+    let suffix = 0;
+    while (suffix < 500) {
+      const candidate = suffix === 0 ? base : `${base}-${suffix}`;
+      const existing = await this.prisma.galleryCategory.findFirst({
+        where: {
+          slug: candidate,
+          ...(excludeId ? { NOT: { id: excludeId } } : {}),
+        },
+        select: { id: true },
+      });
+      if (!existing) {
+        return candidate;
+      }
+      suffix += 1;
+    }
+    throw new ConflictException('Could not generate a unique category slug.');
   }
 
   private mapCategory(category: {
@@ -396,6 +444,7 @@ export class GalleryService {
       category: this.mapCategory(photo.category),
       imageUrl: photo.imageUrl,
       imagePublicId: photo.imagePublicId,
+      mediaType: photo.mediaType,
       isActive: photo.isActive,
       serviceId: photo.serviceId,
       serviceTypeId: photo.serviceTypeId,

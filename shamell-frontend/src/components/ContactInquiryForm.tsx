@@ -1,164 +1,707 @@
 "use client";
 
-import { FormEvent, useCallback, useMemo, useState } from "react";
-import { Loader2, Mail, MessageCircle, Phone } from "lucide-react";
+import type { HTMLAttributes } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import ContactDatePickerModal from "@/components/contact/ContactDatePickerModal";
+import ContactTimePickerModal from "@/components/contact/ContactTimePickerModal";
+import {
+  formatDateDisplayUs,
+  formatTimeDisplayUs,
+  hhmmToMinutes,
+  parseISOLocal,
+  startOfTodayLocal,
+} from "@/components/contact/contactLogisticsUtils";
+import {
+  EXPERIENCE_ADDON_OPTIONS,
+  isValidInquiryCode,
+  resolveServiceLineFromCatalog,
+  type ContactCatalogKind,
+  type InquiryEntrySource,
+  type ServiceTypeCode,
+} from "@/lib/contactInquiryConstants";
 
-const CONTACT_EMAIL = "info@shamellentertainment.com";
+export type ContactInquiryFormProps = {
+  initialServiceType?: ServiceTypeCode;
+  /** URL had valid `serviceType` — do not override inquiry code from catalog snapshot. */
+  hadServiceTypeInUrl?: boolean;
+  initialEventId?: string;
+  hadEventIdInUrl?: boolean;
+  entrySource?: InquiryEntrySource;
+  initialCatalog?: { kind: ContactCatalogKind; id: string };
+};
 
-const SERVICE_OPTIONS = [
-  { value: "", label: "Select service type" },
-  { value: "PRIVATE_GALA", label: "Private Galas" },
-  { value: "VIP_EVENT", label: "VIP Events" },
-  { value: "BESPOKE", label: "Bespoke Collaborations" },
-  { value: "GENERAL", label: "General inquiry" },
-] as const;
+type CatalogSnapshot = {
+  kind: ContactCatalogKind;
+  id: string;
+  title: string;
+  contactInquiryCode: string | null;
+  descriptionPreview?: string;
+};
 
-type FormState = {
+export type ContactLine = {
+  id: string;
+  eventTypeId: string;
+  eventTypeName: string;
+  contactInquiryCode: string | null;
+  description: string;
+  /** `event_type` = solo existe tipo de evento (sin fila Event); no enviar `eventId` al crear contacto. */
+  lineKind?: "event" | "event_type";
+  occasionSingle: { id: string; name: string }[];
+  occasionBespokeProject: { id: string; name: string }[];
+  occasionBespokeRole: { id: string; name: string }[];
+};
+
+type Phase =
+  | "service"
+  | "detail"
+  | "experiences"
+  | "logistics"
+  | "expectations"
+  | "contact"
+  | "review";
+
+type ExperienceAddon = "FIRE" | "VEIL_FAN_LED" | "SWORD_CANDELABRA";
+
+type WizardData = {
+  contactLineId: string;
+  contactLineKind: "event" | "event_type";
+  eventTypeId: string;
+  inquiryCode: ServiceTypeCode | "";
+  occasionTypeId: string;
+  occasionTypeIdsProject: string[];
+  occasionTypeIdsRole: string[];
+  occasionOther: string;
+  projectDeadlineNote: string;
+  experienceAddons: ExperienceAddon[];
+  eventDate: string;
+  eventTimeStart: string;
+  eventTimeEnd: string;
+  location: string;
+  eventAddress: string;
+  guestCount: string;
+  venueIndoor: "" | "indoor" | "outdoor";
+  preferences: string;
+  message: string;
   fullName: string;
   email: string;
   phone: string;
-  eventDate: string;
-  location: string;
-  serviceType: string;
-  preferences: string;
-  message: string;
 };
 
-const initialForm: FormState = {
-  fullName: "",
-  email: "",
-  phone: "",
-  eventDate: "",
-  location: "",
-  serviceType: "",
-  preferences: "",
-  message: "",
-};
+function emptyWizard(initialServiceType?: ServiceTypeCode): WizardData {
+  return {
+    contactLineId: "",
+    contactLineKind: "event",
+    eventTypeId: "",
+    inquiryCode: initialServiceType ?? "",
+    occasionTypeId: "",
+    occasionTypeIdsProject: [],
+    occasionTypeIdsRole: [],
+    occasionOther: "",
+    projectDeadlineNote: "",
+    experienceAddons: [],
+    eventDate: "",
+    eventTimeStart: "",
+    eventTimeEnd: "",
+    location: "",
+    eventAddress: "",
+    guestCount: "",
+    venueIndoor: "",
+    preferences: "",
+    message: "",
+    fullName: "",
+    email: "",
+    phone: "",
+  };
+}
+
+function phaseFlow(inquiryCode: string): Phase[] {
+  const flow: Phase[] = ["service", "detail"];
+  if (inquiryCode === "PRIVATE_GALA" || inquiryCode === "VIP_EVENT") {
+    flow.push("experiences");
+  }
+  flow.push("logistics", "expectations", "contact", "review");
+  return flow;
+}
+
+function isGalaOrVip(code: string): boolean {
+  return code === "PRIVATE_GALA" || code === "VIP_EVENT";
+}
+
+function isBespoke(code: string): boolean {
+  return code === "BESPOKE";
+}
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function validateForm(values: FormState): Partial<Record<keyof FormState, string>> {
-  const e: Partial<Record<keyof FormState, string>> = {};
+function validatePhase(
+  phase: Phase,
+  d: WizardData,
+  contactLines: ContactLine[],
+  opts: {
+    catalogDismissed: boolean;
+    catalogSnapshot: CatalogSnapshot | null;
+    hadServiceTypeInUrl: boolean;
+  },
+): string | null {
+  const serviceCatalogActive = opts.catalogSnapshot?.kind === "service" && !opts.catalogDismissed;
 
-  if (values.fullName.trim().length < 2) {
-    e.fullName = "Name must be at least 2 characters.";
-  }
-
-  if (!values.email.trim()) {
-    e.email = "Email is required.";
-  } else if (!emailRegex.test(values.email.trim())) {
-    e.email = "Enter a valid email address.";
-  }
-
-  if (values.phone.trim()) {
-    const digits = values.phone.replace(/\D/g, "");
-    if (digits.length < 7 || values.phone.length > 40) {
-      e.phone = "Enter a valid phone number (7+ digits).";
+  switch (phase) {
+    case "service": {
+      if (serviceCatalogActive) {
+        if (!isValidInquiryCode(d.inquiryCode)) {
+          return "Please select an offering that matches what you are planning.";
+        }
+        return null;
+      }
+      if (opts.hadServiceTypeInUrl && isValidInquiryCode(d.inquiryCode)) return null;
+      if (contactLines.length === 0) {
+        if (!isValidInquiryCode(d.inquiryCode)) {
+          return "Please select an offering that matches what you are planning.";
+        }
+        return null;
+      }
+      if (!d.contactLineId) return "Please select one of the catalog offerings below.";
+      return null;
     }
-  }
-
-  if (values.eventDate) {
-    const d = new Date(values.eventDate);
-    if (Number.isNaN(d.getTime())) {
-      e.eventDate = "Invalid date.";
+    case "detail": {
+      const line = contactLines.find((l) => l.id === d.contactLineId);
+      const singles = line?.occasionSingle ?? [];
+      if (singles.length > 0 && !d.occasionTypeId) {
+        return "Please select the type of occasion.";
+      }
+      const projects = line?.occasionBespokeProject ?? [];
+      const roles = line?.occasionBespokeRole ?? [];
+      if (projects.length > 0 && d.occasionTypeIdsProject.length === 0) {
+        return "Select at least one project type.";
+      }
+      if (roles.length > 0 && d.occasionTypeIdsRole.length === 0) {
+        return "Select at least one collaboration role.";
+      }
+      return null;
     }
+    case "experiences":
+      return null;
+    case "logistics": {
+      if (isGalaOrVip(d.inquiryCode)) {
+        if (!d.eventDate.trim()) return "Please choose an event date (approximate is fine).";
+        return null;
+      }
+      const line = contactLines.find((l) => l.id === d.contactLineId);
+      const lineHasBespokeGroups =
+        (line?.occasionBespokeProject?.length ?? 0) > 0 || (line?.occasionBespokeRole?.length ?? 0) > 0;
+      if (isBespoke(d.inquiryCode) || lineHasBespokeGroups) {
+        const hasDate = Boolean(d.eventDate.trim());
+        const noteOk = d.projectDeadlineNote.trim().length >= 5;
+        if (!hasDate && !noteOk) {
+          return "Provide an event date or a project deadline / date window (at least 5 characters).";
+        }
+        return null;
+      }
+      return null;
+    }
+    case "expectations": {
+      if (d.message.trim().length < 10) return "Please share at least 10 characters about your vision.";
+      if (d.message.length > 4000) return "Description must be at most 4000 characters.";
+      if (d.preferences.length > 2000) return "Preferences must be at most 2000 characters.";
+      return null;
+    }
+    case "contact": {
+      if (d.fullName.trim().length < 2) return "Name must be at least 2 characters.";
+      if (!d.email.trim()) return "Email is required.";
+      if (!emailRegex.test(d.email.trim())) return "Enter a valid email address.";
+      if (d.phone.trim()) {
+        const digits = d.phone.replace(/\D/g, "");
+        if (digits.length < 7 || d.phone.length > 40) {
+          return "Enter a valid phone number (7+ digits).";
+        }
+      }
+      return null;
+    }
+    case "review":
+      return null;
+    default:
+      return null;
   }
-
-  if (values.location.length > 300) {
-    e.location = "Location must be at most 300 characters.";
-  }
-
-  if (!values.serviceType) {
-    e.serviceType = "Please select a service type.";
-  }
-
-  if (values.preferences.length > 2000) {
-    e.preferences = "Preferences must be at most 2000 characters.";
-  }
-
-  if (values.message.trim().length < 10) {
-    e.message = "Description must be at least 10 characters.";
-  } else if (values.message.length > 4000) {
-    e.message = "Description must be at most 4000 characters.";
-  }
-
-  return e;
 }
 
-export default function ContactInquiryForm() {
-  const [form, setForm] = useState<FormState>(initialForm);
-  const [touched, setTouched] = useState<Partial<Record<keyof FormState, boolean>>>({});
-  const [submitAttempted, setSubmitAttempted] = useState(false);
+function validateLogisticsFields(d: WizardData): string | null {
+  if (d.location.length > 300) return "Location must be at most 300 characters.";
+  if (d.eventAddress.length > 400) return "Event address must be at most 400 characters.";
+  if (d.eventDate.trim()) {
+    const dt = parseISOLocal(d.eventDate);
+    if (!dt) return "Invalid date.";
+    if (dt < startOfTodayLocal()) return "Event date cannot be in the past.";
+  }
+  const ts = d.eventTimeStart.trim() ? hhmmToMinutes(d.eventTimeStart) : null;
+  const te = d.eventTimeEnd.trim() ? hhmmToMinutes(d.eventTimeEnd) : null;
+  if (d.eventTimeStart.trim() && ts === null) return "Invalid performance start time.";
+  if (d.eventTimeEnd.trim() && te === null) return "Invalid performance end time.";
+  if (ts !== null && te !== null && te <= ts) {
+    return "Performance end must be after performance start.";
+  }
+  if (d.guestCount.trim()) {
+    const n = Number(d.guestCount);
+    if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) return "Guest count must be a whole number.";
+  }
+  return null;
+}
+
+function buildInquiryDetails(
+  d: WizardData,
+  entrySource: InquiryEntrySource,
+  activeCatalog: CatalogSnapshot | null,
+): Record<string, unknown> | undefined {
+  const out: Record<string, unknown> = { entrySource };
+
+  if (activeCatalog) {
+    const title =
+      activeCatalog.title.length > 120 ? activeCatalog.title.slice(0, 120) : activeCatalog.title;
+    out.sourceCatalogKind = activeCatalog.kind;
+    out.sourceCatalogId = activeCatalog.id;
+    out.sourceCatalogTitle = title;
+  }
+
+  if (d.contactLineKind === "event" && d.contactLineId.trim()) {
+    out.eventId = d.contactLineId.trim();
+  }
+  if (d.eventTypeId.trim()) {
+    out.eventTypeId = d.eventTypeId.trim();
+  }
+
+  if (d.occasionTypeId.trim()) out.occasionTypeId = d.occasionTypeId.trim();
+  if (d.occasionOther.trim()) out.occasionOther = d.occasionOther.trim();
+
+  if (isGalaOrVip(d.inquiryCode) && d.experienceAddons.length) {
+    out.experienceAddons = d.experienceAddons;
+  }
+
+  if (d.occasionTypeIdsProject.length) out.occasionTypeIdsProject = d.occasionTypeIdsProject;
+  if (d.occasionTypeIdsRole.length) out.occasionTypeIdsRole = d.occasionTypeIdsRole;
+  if (d.projectDeadlineNote.trim()) out.projectDeadlineNote = d.projectDeadlineNote.trim();
+
+  if (d.eventTimeStart.trim()) out.eventTimeStart = d.eventTimeStart.trim();
+  if (d.eventTimeEnd.trim()) out.eventTimeEnd = d.eventTimeEnd.trim();
+
+  if (d.eventAddress.trim()) out.eventAddress = d.eventAddress.trim();
+
+  if (d.guestCount.trim()) {
+    const n = Number(d.guestCount);
+    if (Number.isFinite(n) && n > 0) out.guestCount = n;
+  }
+
+  if (d.venueIndoor === "indoor") out.venueIndoor = true;
+  if (d.venueIndoor === "outdoor") out.venueIndoor = false;
+
+  return out;
+}
+
+function lineDescriptionPreview(description: string, max = 140): string {
+  const oneLine = description.replace(/\s+/g, " ").trim();
+  if (!oneLine) return "";
+  return oneLine.length > max ? `${oneLine.slice(0, max - 1)}…` : oneLine;
+}
+
+export default function ContactInquiryForm({
+  initialServiceType,
+  hadServiceTypeInUrl = false,
+  initialEventId,
+  hadEventIdInUrl = false,
+  entrySource = "contact_page",
+  initialCatalog,
+}: ContactInquiryFormProps) {
+  const router = useRouter();
+  const pathname = usePathname() ?? "/contacto";
+  const searchParams = useSearchParams();
+
+  const [data, setData] = useState<WizardData>(() => emptyWizard(initialServiceType));
+  const [phaseIndex, setPhaseIndex] = useState(0);
+  const [stepError, setStepError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [timePickerWhich, setTimePickerWhich] = useState<null | "start" | "end">(null);
+
+  const [catalogSnapshot, setCatalogSnapshot] = useState<CatalogSnapshot | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogFetchError, setCatalogFetchError] = useState<string | null>(null);
+  const [catalogDismissed, setCatalogDismissed] = useState(false);
+
+  const [contactLines, setContactLines] = useState<ContactLine[]>([]);
+  const [linesLoading, setLinesLoading] = useState(true);
+  const [linesError, setLinesError] = useState<string | null>(null);
+
+  /** Avoid re-jumping phases when contact-lines refetch; reset when `eventId` leaves the URL. */
+  const skipServiceAppliedForEventIdRef = useRef<string | undefined>(undefined);
+
+  const flow = useMemo(() => phaseFlow(data.inquiryCode), [data.inquiryCode]);
+  const currentPhase = flow[phaseIndex] ?? "service";
+
+  useEffect(() => {
+    setPhaseIndex((i) => Math.min(i, Math.max(0, flow.length - 1)));
+  }, [flow]);
 
   const apiBaseUrl = useMemo(
-    () => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
+    () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
     [],
   );
+  useEffect(() => {
+    let cancelled = false;
+    setLinesLoading(true);
+    setLinesError(null);
+    fetch(`${apiBaseUrl}/api/v1/events/contact-lines`)
+      .then((res) => {
+        if (!res.ok) throw new Error("lines");
+        return res.json();
+      })
+      .then((json: unknown) => {
+        if (cancelled || !Array.isArray(json)) return;
+        const parsed: ContactLine[] = [];
+        for (const row of json as Record<string, unknown>[]) {
+          const id = typeof row.id === "string" ? row.id : "";
+          const eventTypeId = typeof row.eventTypeId === "string" ? row.eventTypeId : "";
+          const eventTypeName = typeof row.eventTypeName === "string" ? row.eventTypeName : "";
+          if (!id || !eventTypeId) continue;
+          const mapOpts = (v: unknown): { id: string; name: string }[] => {
+            if (!Array.isArray(v)) return [];
+            return v
+              .map((x) => {
+                const o = x as Record<string, unknown>;
+                const oid = typeof o.id === "string" ? o.id : "";
+                const name = typeof o.name === "string" ? o.name : "";
+                return oid && name ? { id: oid, name } : null;
+              })
+              .filter(Boolean) as { id: string; name: string }[];
+          };
+          parsed.push({
+            id,
+            eventTypeId,
+            eventTypeName,
+            contactInquiryCode: typeof row.contactInquiryCode === "string" ? row.contactInquiryCode : null,
+            description: typeof row.description === "string" ? row.description : "",
+            lineKind: row.lineKind === "event_type" ? "event_type" : "event",
+            occasionSingle: mapOpts(row.occasionSingle),
+            occasionBespokeProject: mapOpts(row.occasionBespokeProject),
+            occasionBespokeRole: mapOpts(row.occasionBespokeRole),
+          });
+        }
+        setContactLines(parsed);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setContactLines([]);
+          setLinesError("Could not load offerings. You can still submit if you arrived via a direct link.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLinesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl]);
 
-  const phoneDisplay = process.env.NEXT_PUBLIC_CONTACT_PHONE ?? "";
-  const whatsappE164 = process.env.NEXT_PUBLIC_WHATSAPP_E164 ?? "";
+  useEffect(() => {
+    if (!initialEventId) skipServiceAppliedForEventIdRef.current = undefined;
+  }, [initialEventId]);
 
-  const errors = useMemo(() => validateForm(form), [form]);
+  useEffect(() => {
+    if (!initialEventId || contactLines.length === 0 || catalogDismissed) return;
+    const line = contactLines.find((l) => l.id === initialEventId);
+    if (!line) return;
+    setData((prev) => ({
+      ...prev,
+      contactLineId: line.id,
+      contactLineKind: line.lineKind ?? "event",
+      eventTypeId: line.eventTypeId,
+      inquiryCode: resolveServiceLineFromCatalog(line.contactInquiryCode),
+      occasionTypeId: "",
+      occasionTypeIdsProject: [],
+      occasionTypeIdsRole: [],
+    }));
 
-  const shouldShow = useCallback(
-    (field: keyof FormState) => Boolean(touched[field] || submitAttempted),
-    [touched, submitAttempted],
+    if (
+      hadEventIdInUrl &&
+      skipServiceAppliedForEventIdRef.current !== initialEventId
+    ) {
+      skipServiceAppliedForEventIdRef.current = initialEventId;
+      const code = resolveServiceLineFromCatalog(line.contactInquiryCode);
+      const detailIdx = phaseFlow(code).indexOf("detail");
+      if (detailIdx >= 0) setPhaseIndex(detailIdx);
+    }
+  }, [initialEventId, contactLines, hadEventIdInUrl, catalogDismissed]);
+
+  useEffect(() => {
+    if (initialCatalog) setCatalogDismissed(false);
+  }, [initialCatalog?.id, initialCatalog?.kind]);
+
+  const stripCatalogFromUrl = useCallback(() => {
+    const sp = new URLSearchParams(searchParams.toString());
+    sp.delete("catalogKind");
+    sp.delete("catalogId");
+    sp.delete("eventId");
+    sp.delete("serviceType");
+    const q = sp.toString();
+    router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+  }, [router, pathname, searchParams]);
+
+  useEffect(() => {
+    if (!initialCatalog || catalogDismissed) {
+      if (!initialCatalog) {
+        setCatalogSnapshot(null);
+        setCatalogFetchError(null);
+        setCatalogLoading(false);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    setCatalogLoading(true);
+    setCatalogFetchError(null);
+
+    const path = initialCatalog.kind === "service" ? "services" : "events";
+    fetch(`${apiBaseUrl}/api/v1/${path}/catalog/${initialCatalog.id}`)
+      .then(async (res) => {
+        if (cancelled) return;
+        if (!res.ok) {
+          if (res.status === 404) {
+            setCatalogFetchError(
+              "That catalog item is no longer available. You can still complete your inquiry below.",
+            );
+            setCatalogSnapshot(null);
+            return;
+          }
+          throw new Error("catalog_fetch");
+        }
+        const body = (await res.json()) as {
+          id?: string;
+          title?: string;
+          contactInquiryCode?: string | null;
+          descriptionPreview?: string;
+        };
+        if (cancelled) return;
+        const title = typeof body.title === "string" ? body.title.trim() : "";
+        if (!title) {
+          setCatalogFetchError("Could not load catalog details.");
+          setCatalogSnapshot(null);
+          return;
+        }
+        const snap: CatalogSnapshot = {
+          kind: initialCatalog.kind,
+          id: typeof body.id === "string" ? body.id : initialCatalog.id,
+          title,
+          contactInquiryCode:
+            typeof body.contactInquiryCode === "string"
+              ? body.contactInquiryCode
+              : body.contactInquiryCode ?? null,
+          descriptionPreview:
+            typeof body.descriptionPreview === "string" ? body.descriptionPreview : undefined,
+        };
+        setCatalogSnapshot(snap);
+        setCatalogFetchError(null);
+
+        if (!hadServiceTypeInUrl && snap.contactInquiryCode) {
+          const code = resolveServiceLineFromCatalog(snap.contactInquiryCode);
+          setData((prev) => {
+            if (hadServiceTypeInUrl && prev.inquiryCode) return prev;
+            return { ...prev, inquiryCode: code };
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCatalogFetchError("Could not load catalog context. You can still complete your inquiry below.");
+          setCatalogSnapshot(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCatalogLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialCatalog, catalogDismissed, apiBaseUrl, hadServiceTypeInUrl]);
+
+  useEffect(() => {
+    if (!catalogSnapshot || catalogSnapshot.kind !== "event" || catalogDismissed) return;
+    const line = contactLines.find((l) => l.id === catalogSnapshot.id);
+    if (!line) return;
+    setData((prev) => ({
+      ...prev,
+      contactLineId: line.id,
+      contactLineKind: line.lineKind ?? "event",
+      eventTypeId: line.eventTypeId,
+      inquiryCode: resolveServiceLineFromCatalog(line.contactInquiryCode ?? catalogSnapshot.contactInquiryCode),
+      occasionTypeId: "",
+      occasionTypeIdsProject: [],
+      occasionTypeIdsRole: [],
+    }));
+  }, [contactLines, catalogSnapshot, catalogDismissed]);
+
+  useEffect(() => {
+    const line = contactLines.find((l) => l.id === data.contactLineId);
+    const singles = line?.occasionSingle ?? [];
+    if (singles.length !== 1 || data.occasionTypeId) return;
+    setData((prev) => ({ ...prev, occasionTypeId: singles[0].id }));
+  }, [contactLines, data.contactLineId, data.occasionTypeId]);
+
+  const dismissCatalogContext = useCallback(() => {
+    stripCatalogFromUrl();
+    setCatalogDismissed(true);
+    setCatalogSnapshot(null);
+    setCatalogFetchError(null);
+    setCatalogLoading(false);
+    skipServiceAppliedForEventIdRef.current = undefined;
+    setData(() => emptyWizard(undefined));
+    setPhaseIndex(0);
+    setStepError(null);
+  }, [stripCatalogFromUrl]);
+
+  const update = useCallback(<K extends keyof WizardData>(key: K, value: WizardData[K]) => {
+    setData((prev) => ({ ...prev, [key]: value }));
+    setStepError(null);
+    setApiError(null);
+    setSuccess(false);
+  }, []);
+
+  const validationOpts = useMemo(
+    () => ({ catalogDismissed, catalogSnapshot, hadServiceTypeInUrl }),
+    [catalogDismissed, catalogSnapshot, hadServiceTypeInUrl],
   );
 
-  const update = (field: keyof FormState, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-    setTouched((prev) => ({ ...prev, [field]: true }));
-    setSuccess(false);
-    setApiError(null);
+  /** Home event-card deep link: cannot revisit Offering until "Remove context" clears the URL. */
+  const offeringStepLocked = useMemo(
+    () => Boolean(hadEventIdInUrl && !catalogDismissed),
+    [hadEventIdInUrl, catalogDismissed],
+  );
+
+  const detailPhaseIndex = useMemo(() => flow.indexOf("detail"), [flow]);
+
+  const goNext = useCallback(() => {
+    const phase = flow[phaseIndex];
+    if (!phase) return;
+
+    const err =
+      phase === "logistics"
+        ? validatePhase(phase, data, contactLines, validationOpts) || validateLogisticsFields(data)
+        : validatePhase(phase, data, contactLines, validationOpts);
+    if (err) {
+      setStepError(err);
+      return;
+    }
+    setStepError(null);
+    if (phaseIndex < flow.length - 1) {
+      setPhaseIndex((i) => i + 1);
+    }
+  }, [data, flow, phaseIndex, contactLines, validationOpts]);
+
+  const goBack = useCallback(() => {
+    setStepError(null);
+    setPhaseIndex((i) => {
+      if (offeringStepLocked && detailPhaseIndex >= 0 && i === detailPhaseIndex) return i;
+      return Math.max(0, i - 1);
+    });
+  }, [offeringStepLocked, detailPhaseIndex]);
+
+  const goToPhaseIndex = useCallback(
+    (idx: number) => {
+      setStepError(null);
+      if (offeringStepLocked && idx === 0 && phaseIndex > 0) return;
+      setPhaseIndex(Math.max(0, Math.min(idx, flow.length - 1)));
+    },
+    [flow.length, offeringStepLocked, phaseIndex],
+  );
+
+  const toggleAddon = (code: ExperienceAddon) => {
+    setData((prev) => {
+      const has = prev.experienceAddons.includes(code);
+      return {
+        ...prev,
+        experienceAddons: has
+          ? prev.experienceAddons.filter((c) => c !== code)
+          : [...prev.experienceAddons, code],
+      };
+    });
+    setStepError(null);
   };
 
-  const blur = (field: keyof FormState) => {
-    setTouched((prev) => ({ ...prev, [field]: true }));
+  const toggleUuidList = (field: "occasionTypeIdsProject" | "occasionTypeIdsRole", id: string) => {
+    setData((prev) => {
+      const arr = prev[field];
+      const has = arr.includes(id);
+      return {
+        ...prev,
+        [field]: has ? arr.filter((x) => x !== id) : [...arr, id],
+      };
+    });
+    setStepError(null);
+  };
+
+  const selectContactLine = (line: ContactLine) => {
+    setData((prev) => ({
+      ...prev,
+      contactLineId: line.id,
+      contactLineKind: line.lineKind ?? "event",
+      eventTypeId: line.eventTypeId,
+      inquiryCode: resolveServiceLineFromCatalog(line.contactInquiryCode),
+      occasionTypeId: "",
+      occasionTypeIdsProject: [],
+      occasionTypeIdsRole: [],
+    }));
+    setPhaseIndex(0);
+    setStepError(null);
   };
 
   const onSubmit = async (ev: FormEvent) => {
     ev.preventDefault();
-    setSubmitAttempted(true);
+    const errContact = validatePhase("contact", data, contactLines, validationOpts);
+    const errExp = validatePhase("expectations", data, contactLines, validationOpts);
+    const errLog =
+      validatePhase("logistics", data, contactLines, validationOpts) || validateLogisticsFields(data);
+    if (errContact || errExp || errLog) {
+      setStepError(errContact ?? errExp ?? errLog);
+      return;
+    }
     setApiError(null);
-    const v = validateForm(form);
-    if (Object.keys(v).length > 0) return;
-
     setIsSubmitting(true);
     try {
+      const activeCatalog = catalogDismissed ? null : catalogSnapshot;
+      const inquiryDetails = buildInquiryDetails(data, entrySource, activeCatalog);
       const res = await fetch(`${apiBaseUrl}/api/v1/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          fullName: form.fullName.trim(),
-          email: form.email.trim(),
-          phone: form.phone.trim() || undefined,
-          eventDate: form.eventDate || undefined,
-          location: form.location.trim() || undefined,
-          serviceType: form.serviceType || undefined,
-          preferences: form.preferences.trim() || undefined,
-          message: form.message.trim(),
+          fullName: data.fullName.trim(),
+          email: data.email.trim(),
+          phone: data.phone.trim() || undefined,
+          eventDate: data.eventDate || undefined,
+          location: data.location.trim() || undefined,
+          serviceType: data.inquiryCode || undefined,
+          preferences: data.preferences.trim() || undefined,
+          message: data.message.trim(),
+          inquiryDetails,
         }),
       });
-
-      const data = await res.json().catch(() => ({}));
+      const resData = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg =
-          Array.isArray(data?.message)
-            ? data.message.join(" ")
-            : typeof data?.message === "string"
-              ? data.message
-              : "Could not send your inquiry. Please try again.";
+        const msg = Array.isArray(resData?.message)
+          ? resData.message.join(" ")
+          : typeof resData?.message === "string"
+            ? resData.message
+            : "Could not send your inquiry. Please try again.";
         setApiError(msg);
         return;
       }
-
       setSuccess(true);
-      setForm(initialForm);
-      setTouched({});
-      setSubmitAttempted(false);
+      setData(emptyWizard(initialServiceType));
+      setPhaseIndex(0);
+      setCatalogSnapshot(null);
+      setCatalogDismissed(false);
+      setCatalogFetchError(null);
+      router.replace(pathname, { scroll: false });
     } catch {
       setApiError("Cannot reach the server. Check that the API is running.");
     } finally {
@@ -166,218 +709,745 @@ export default function ContactInquiryForm() {
     }
   };
 
+  const phaseLabel = (p: Phase): string => {
+    switch (p) {
+      case "service":
+        return "Offering";
+      case "detail":
+        return "Event or project";
+      case "experiences":
+        return "Performance add-ons";
+      case "logistics":
+        return "Date and venue";
+      case "expectations":
+        return "Your vision";
+      case "contact":
+        return "Contact";
+      case "review":
+        return "Review";
+      default:
+        return p;
+    }
+  };
+
+  const selectedLine = contactLines.find((l) => l.id === data.contactLineId);
+
+  const lineHasBespokeGroups =
+    (selectedLine?.occasionBespokeProject?.length ?? 0) > 0 ||
+    (selectedLine?.occasionBespokeRole?.length ?? 0) > 0;
+  const logisticsUsesBespokeDeadlineRule = isBespoke(data.inquiryCode) || lineHasBespokeGroups;
+
+  const logisticsPickerTriggerClass =
+    "mt-2 flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-gold/40 bg-black/30 px-4 py-3 text-left text-sm text-foreground outline-none transition hover:border-gold focus:border-gold focus:ring-1 focus:ring-gold/30";
+
+  const occasionSingleLabel =
+    selectedLine?.occasionSingle.find((o) => o.id === data.occasionTypeId)?.name ?? "";
+
+  const reviewProjectLabels = data.occasionTypeIdsProject
+    .map((id) => selectedLine?.occasionBespokeProject.find((o) => o.id === id)?.name ?? id)
+    .join(", ");
+
+  const reviewRoleLabels = data.occasionTypeIdsRole
+    .map((id) => selectedLine?.occasionBespokeRole.find((o) => o.id === id)?.name ?? id)
+    .join(", ");
+
   return (
     <div className="max-w-2xl mx-auto text-left">
-      <h2 className="font-brand text-gold text-center text-xl md:text-2xl tracking-[0.16em] mb-2">
+      <h1 className="font-brand text-gold text-center text-3xl md:text-5xl tracking-[0.14em] mb-4">
         BOOKING INQUIRY
-      </h2>
-      <p className="text-foreground/65 text-sm font-body text-center mb-8">
-        Share your event details. We respond as soon as possible.
+      </h1>
+      <p className="font-elegant text-foreground/80 text-lg text-center mb-10">
+        Step-by-step — tell us about your event or project. We respond as soon as possible.
       </p>
 
-      <form onSubmit={onSubmit} className="space-y-5" noValidate>
-        <Field
-          label="Full name"
-          name="fullName"
-          value={form.fullName}
-          onChange={(v) => update("fullName", v)}
-          onBlur={() => blur("fullName")}
-          error={shouldShow("fullName") ? errors.fullName : undefined}
-          required
-        />
-        <Field
-          label="Email"
-          name="email"
-          type="email"
-          value={form.email}
-          onChange={(v) => update("email", v)}
-          onBlur={() => blur("email")}
-          error={shouldShow("email") ? errors.email : undefined}
-          required
-        />
-        <Field
-          label="Phone"
-          name="phone"
-          type="tel"
-          value={form.phone}
-          onChange={(v) => update("phone", v)}
-          onBlur={() => blur("phone")}
-          error={shouldShow("phone") ? errors.phone : undefined}
-          hint="Optional — include country code if outside your region."
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-          <Field
-            label="Event date"
-            name="eventDate"
-            type="date"
-            value={form.eventDate}
-            onChange={(v) => update("eventDate", v)}
-            onBlur={() => blur("eventDate")}
-            error={shouldShow("eventDate") ? errors.eventDate : undefined}
-            hint="Optional — approximate is fine."
-          />
-          <div>
-            <label className="block">
-              <span className="font-brand text-gold text-xs tracking-[0.14em]">
-                Service type <span className="text-red-300">*</span>
-              </span>
-              <select
-                name="serviceType"
-                value={form.serviceType}
-                onChange={(e) => update("serviceType", e.target.value)}
-                onBlur={() => blur("serviceType")}
-                required
-                className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold"
+      {initialCatalog && !catalogDismissed ? (
+        <div
+          className="mb-6 rounded border border-gold/30 bg-gold/5 px-4 py-3 text-left text-sm font-body text-foreground/85"
+          role="status"
+        >
+          {catalogLoading ? (
+            <p className="flex items-center gap-2 text-foreground/70">
+              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gold" aria-hidden />
+              Loading what you selected from the site…
+            </p>
+          ) : null}
+          {!catalogLoading && catalogFetchError && !catalogSnapshot ? (
+            <p className="text-amber-200/90">{catalogFetchError}</p>
+          ) : null}
+          {!catalogLoading && catalogSnapshot ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div>
+                <p className="text-[10px] font-brand uppercase tracking-[0.14em] text-gold/90">Catalog context</p>
+                <p className="mt-1">
+                  You are inquiring about:{" "}
+                  <span className="font-medium text-foreground">{catalogSnapshot.title}</span>
+                  {catalogSnapshot.descriptionPreview ? (
+                    <span className="mt-1 block text-xs text-foreground/60 line-clamp-2">
+                      {catalogSnapshot.descriptionPreview}
+                    </span>
+                  ) : null}
+                </p>
+                {!hadServiceTypeInUrl && catalogSnapshot.contactInquiryCode ? (
+                  <p className="mt-2 text-xs text-foreground/55">
+                    Inquiry type was suggested from this catalog entry; change your selection in step 1 if needed.
+                  </p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={dismissCatalogContext}
+                className="shrink-0 self-start rounded border border-white/20 bg-black/30 px-3 py-1.5 text-[10px] font-brand uppercase tracking-[0.12em] text-foreground/80 transition-colors hover:border-gold/40 hover:text-gold"
               >
-                {SERVICE_OPTIONS.map((opt) => (
-                  <option key={opt.value || "empty"} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {shouldShow("serviceType") && errors.serviceType ? (
-              <p className="mt-1 text-xs text-red-300" role="alert">
-                {errors.serviceType}
+                Remove context
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {linesLoading ? (
+        <p className="mb-6 flex items-center justify-center gap-2 text-sm text-foreground/65">
+          <Loader2 className="h-4 w-4 animate-spin text-gold" aria-hidden />
+          Loading offerings…
+        </p>
+      ) : null}
+      {linesError ? <p className="mb-6 text-center text-xs text-amber-200/85">{linesError}</p> : null}
+
+      <nav aria-label="Form progress" className="mb-8">
+        <ol className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
+          {flow.map((p, i) => {
+            const offeringNavLocked = offeringStepLocked && i === 0 && phaseIndex > 0;
+            const stepReachable = i <= phaseIndex && !offeringNavLocked;
+            const stepDisabled = i > phaseIndex || offeringNavLocked;
+            return (
+              <li key={`${p}-${i}`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (stepReachable) goToPhaseIndex(i);
+                  }}
+                  disabled={stepDisabled}
+                  title={
+                    offeringNavLocked
+                      ? "Remove catalog context below to change the catalog offering."
+                      : undefined
+                  }
+                  className={`rounded border px-2 py-1 text-[9px] font-brand tracking-[0.12em] uppercase transition-colors sm:text-[10px] ${
+                    i === phaseIndex
+                      ? "border-gold bg-gold/15 text-gold-light"
+                      : stepReachable
+                        ? "border-gold/35 text-gold/90 hover:bg-gold/10"
+                        : "border-white/15 text-foreground/35 cursor-default"
+                  }`}
+                >
+                  {i + 1}. {phaseLabel(p)}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </nav>
+
+      <div className="rounded border border-gold/25 bg-black/20 p-5 md:p-6">
+        {currentPhase === "service" ? (
+          <div className="space-y-4">
+            <p className="text-sm text-foreground/75 font-body">
+              Which catalog offering best matches what you are planning?
+            </p>
+            {catalogSnapshot?.kind === "service" && !catalogDismissed ? (
+              <p className="text-xs text-foreground/55 font-body">
+                You opened this form from a performance experience — continue with the suggested inquiry type, or pick
+                an event catalog line below if you are booking a full event tier.
+              </p>
+            ) : null}
+            <div className="space-y-3">
+              {contactLines.map((line) => {
+                const code = resolveServiceLineFromCatalog(line.contactInquiryCode);
+                const preview = lineDescriptionPreview(line.description);
+                const checked = data.contactLineId === line.id;
+                return (
+                  <label
+                    key={line.id}
+                    className={`flex cursor-pointer flex-col gap-1 rounded border p-4 transition-colors ${
+                      checked ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/45"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="contactLine"
+                        value={line.id}
+                        checked={checked}
+                        onChange={() => selectContactLine(line)}
+                        className="mt-1 border-gold/50 text-gold focus:ring-gold"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-brand text-xs tracking-[0.14em] text-gold">{line.eventTypeName}</span>
+                        <span className="mt-1 block font-body text-[10px] uppercase tracking-wider text-gold/50">
+                          {code.replace(/_/g, " ")}
+                        </span>
+                        {preview ? (
+                          <p className="mt-2 text-xs text-foreground/60 font-body leading-relaxed">{preview}</p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+            {hadServiceTypeInUrl && isValidInquiryCode(data.inquiryCode) ? (
+              <p className="text-xs text-foreground/50 font-body">
+                Inquiry type <span className="text-gold/90">{data.inquiryCode.replace(/_/g, " ")}</span> was set from
+                your link. Select a catalog line above when it matches your booking, or continue if you are only
+                inquiring about performances.
               </p>
             ) : null}
           </div>
-        </div>
-        <Field
-          label="Location"
-          name="location"
-          value={form.location}
-          onChange={(v) => update("location", v)}
-          onBlur={() => blur("location")}
-          error={shouldShow("location") ? errors.location : undefined}
-          hint="Venue or city — optional."
-        />
-        <div>
-          <label className="block">
-            <span className="font-brand text-gold text-xs tracking-[0.14em]">
-              Preferences <span className="text-foreground/40 font-body normal-case">(optional)</span>
-            </span>
-            <textarea
-              name="preferences"
-              value={form.preferences}
-              onChange={(e) => update("preferences", e.target.value)}
-              onBlur={() => blur("preferences")}
-              rows={3}
-              className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[88px]"
-            />
-          </label>
-          <div className="flex justify-between mt-1">
-            {shouldShow("preferences") && errors.preferences ? (
-              <p className="text-xs text-red-300" role="alert">
-                {errors.preferences}
-              </p>
-            ) : (
-              <span />
-            )}
-            <span className="text-[10px] text-foreground/40">{form.preferences.length}/2000</span>
-          </div>
-        </div>
-        <div>
-          <label className="block">
-            <span className="font-brand text-gold text-xs tracking-[0.14em]">
-              Description <span className="text-red-300">*</span>
-            </span>
-            <textarea
-              name="message"
-              value={form.message}
-              onChange={(e) => update("message", e.target.value)}
-              onBlur={() => blur("message")}
-              required
-              rows={6}
-              className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[140px]"
-            />
-          </label>
-          <div className="flex justify-between mt-1">
-            {shouldShow("message") && errors.message ? (
-              <p className="text-xs text-red-300" role="alert">
-                {errors.message}
-              </p>
-            ) : (
-              <span />
-            )}
-            <span className="text-[10px] text-foreground/40">{form.message.length}/4000</span>
-          </div>
-        </div>
+        ) : null}
 
+        {currentPhase === "detail" ? (
+          <div className="space-y-5">
+            {(selectedLine?.occasionSingle.length ?? 0) > 0 ? (
+              <>
+                <p className="text-sm text-foreground/75 font-body">What kind of occasion are you hosting?</p>
+                <select
+                  value={data.occasionTypeId}
+                  onChange={(e) => update("occasionTypeId", e.target.value)}
+                  className="w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold"
+                >
+                  <option value="">Select occasion</option>
+                  {(selectedLine?.occasionSingle ?? []).map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            ) : null}
+
+            {(selectedLine?.occasionSingle.length ?? 0) === 0 ? (
+              <p className="text-sm text-foreground/75 font-body">
+                Optional: add any occasion notes for our team if your catalog line does not list a specific occasion type.
+              </p>
+            ) : null}
+
+            {(selectedLine?.occasionBespokeProject.length ?? 0) > 0 ? (
+              <>
+                <p className="text-sm text-foreground/75 font-body">Project focus (select all that apply)</p>
+                <div className="grid gap-2">
+                  {(selectedLine?.occasionBespokeProject ?? []).map((o) => (
+                    <label
+                      key={o.id}
+                      className="flex cursor-pointer items-center gap-3 rounded border border-gold/20 px-3 py-2 text-sm hover:border-gold/40"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={data.occasionTypeIdsProject.includes(o.id)}
+                        onChange={() => toggleUuidList("occasionTypeIdsProject", o.id)}
+                        className="border-gold/50 text-gold focus:ring-gold"
+                      />
+                      {o.name}
+                    </label>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
+            {(selectedLine?.occasionBespokeRole.length ?? 0) > 0 ? (
+              <>
+                <p className="text-sm text-foreground/75 font-body pt-2">How can Shamell contribute?</p>
+                <div className="grid gap-2">
+                  {(selectedLine?.occasionBespokeRole ?? []).map((o) => (
+                    <label
+                      key={o.id}
+                      className="flex cursor-pointer items-center gap-3 rounded border border-gold/20 px-3 py-2 text-sm hover:border-gold/40"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={data.occasionTypeIdsRole.includes(o.id)}
+                        onChange={() => toggleUuidList("occasionTypeIdsRole", o.id)}
+                        className="border-gold/50 text-gold focus:ring-gold"
+                      />
+                      {o.name}
+                    </label>
+                  ))}
+                </div>
+              </>
+            ) : null}
+
+            {isBespoke(data.inquiryCode) ||
+            (selectedLine?.occasionBespokeProject.length ?? 0) > 0 ||
+            (selectedLine?.occasionBespokeRole.length ?? 0) > 0 ? (
+              <div>
+                <label className="block">
+                  <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                    Timeline / deadline notes <span className="text-foreground/40 font-body">(optional here)</span>
+                  </span>
+                  <textarea
+                    value={data.projectDeadlineNote}
+                    onChange={(e) => update("projectDeadlineNote", e.target.value)}
+                    rows={3}
+                    className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[88px]"
+                  />
+                </label>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {currentPhase === "experiences" ? (
+          <div className="space-y-4">
+            <p className="text-sm text-foreground/75 font-body">
+              Optional performance elements. Select any that interest you — we will confirm feasibility for your venue.
+            </p>
+            <div className="space-y-3">
+              {EXPERIENCE_ADDON_OPTIONS.map((o) => (
+                <label
+                  key={o.value}
+                  className={`flex cursor-pointer flex-col gap-1 rounded border p-4 transition-colors ${
+                    data.experienceAddons.includes(o.value)
+                      ? "border-gold bg-gold/10"
+                      : "border-gold/25 hover:border-gold/45"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={data.experienceAddons.includes(o.value)}
+                      onChange={() => toggleAddon(o.value)}
+                      className="mt-1 border-gold/50 text-gold focus:ring-gold"
+                    />
+                    <div>
+                      <span className="font-brand text-xs tracking-[0.12em] text-gold">{o.label}</span>
+                      {o.note ? <p className="mt-1 text-xs text-foreground/60 font-body">{o.note}</p> : null}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {currentPhase === "logistics" ? (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                  {logisticsUsesBespokeDeadlineRule ? "Key date (if any)" : "Event date"}{" "}
+                  {isGalaOrVip(data.inquiryCode) ? (
+                    <span className="text-red-300">*</span>
+                  ) : (
+                    <span className="text-foreground/40 font-body normal-case">(optional)</span>
+                  )}
+                </span>
+                {logisticsUsesBespokeDeadlineRule ? (
+                  <p className="mt-1 text-[10px] text-foreground/45 font-body">
+                    Optional if you provide a deadline note below.
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setDatePickerOpen(true)}
+                  className={logisticsPickerTriggerClass}
+                >
+                  <span className={data.eventDate ? "text-foreground font-body" : "text-foreground/45 font-body"}>
+                    {data.eventDate ? formatDateDisplayUs(data.eventDate) : "Select date"}
+                  </span>
+                  <span className="shrink-0 font-brand text-[10px] tracking-[0.14em] text-gold/75">CALENDAR</span>
+                </button>
+              </div>
+              <Field
+                label="Approx. guest count"
+                name="guestCount"
+                type="number"
+                min={0}
+                value={data.guestCount}
+                onChange={(v) => update("guestCount", v)}
+                hint="Optional · whole number"
+                inputMode="numeric"
+                inputClassName="rounded-xl"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div>
+                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                  Performance start{" "}
+                  <span className="text-foreground/40 font-body normal-case">(optional)</span>
+                </span>
+                <p className="mt-1 text-[10px] text-foreground/45 font-body">12-hour US format</p>
+                <button
+                  type="button"
+                  onClick={() => setTimePickerWhich("start")}
+                  className={logisticsPickerTriggerClass}
+                >
+                  <span
+                    className={
+                      data.eventTimeStart ? "text-foreground font-body" : "text-foreground/45 font-body"
+                    }
+                  >
+                    {data.eventTimeStart ? formatTimeDisplayUs(data.eventTimeStart) : "Select start time"}
+                  </span>
+                  <span className="shrink-0 font-brand text-[10px] tracking-[0.14em] text-gold/75">TIME</span>
+                </button>
+              </div>
+              <div>
+                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                  Performance end{" "}
+                  <span className="text-foreground/40 font-body normal-case">(optional)</span>
+                </span>
+                <p className="mt-1 text-[10px] text-foreground/45 font-body">Must be after start time</p>
+                <button
+                  type="button"
+                  onClick={() => setTimePickerWhich("end")}
+                  className={logisticsPickerTriggerClass}
+                >
+                  <span className={data.eventTimeEnd ? "text-foreground font-body" : "text-foreground/45 font-body"}>
+                    {data.eventTimeEnd ? formatTimeDisplayUs(data.eventTimeEnd) : "Select end time"}
+                  </span>
+                  <span className="shrink-0 font-brand text-[10px] tracking-[0.14em] text-gold/75">TIME</span>
+                </button>
+              </div>
+            </div>
+            <Field
+              label="City / venue"
+              name="location"
+              value={data.location}
+              onChange={(v) => update("location", v)}
+              hint="Optional — helps us quote travel and logistics."
+              inputClassName="rounded-xl"
+            />
+            <label className="block">
+              <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                Event address{" "}
+                <span className="text-foreground/40 font-body normal-case">(optional)</span>
+              </span>
+              <textarea
+                name="eventAddress"
+                value={data.eventAddress}
+                onChange={(e) => update("eventAddress", e.target.value)}
+                rows={2}
+                maxLength={400}
+                placeholder="Street, suite, venue name…"
+                className="mt-2 w-full resize-y rounded-xl border border-gold/40 bg-black/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold min-h-[72px]"
+              />
+              <p className="mt-1 text-[10px] text-foreground/45 font-body">
+                {data.eventAddress.length}/400 — street or venue address (city can go above)
+              </p>
+            </label>
+            {logisticsUsesBespokeDeadlineRule ? (
+              <div>
+                <label className="block">
+                  <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                    Project deadline or date window <span className="text-red-300">*</span>
+                    <span className="text-foreground/50 font-body normal-case text-[10px]">
+                      {" "}
+                      (required if no key date)
+                    </span>
+                  </span>
+                  <textarea
+                    value={data.projectDeadlineNote}
+                    onChange={(e) => update("projectDeadlineNote", e.target.value)}
+                    rows={3}
+                    className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[88px]"
+                  />
+                </label>
+              </div>
+            ) : null}
+            <div>
+              <span className="font-brand text-gold text-xs tracking-[0.14em]">Venue setting</span>
+              <div className="mt-2 flex flex-wrap gap-4 text-sm font-body">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="venueIndoor"
+                    checked={data.venueIndoor === ""}
+                    onChange={() => update("venueIndoor", "")}
+                    className="border-gold/50 text-gold focus:ring-gold"
+                  />
+                  Prefer not to say
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="venueIndoor"
+                    checked={data.venueIndoor === "indoor"}
+                    onChange={() => update("venueIndoor", "indoor")}
+                    className="border-gold/50 text-gold focus:ring-gold"
+                  />
+                  Indoor
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="venueIndoor"
+                    checked={data.venueIndoor === "outdoor"}
+                    onChange={() => update("venueIndoor", "outdoor")}
+                    className="border-gold/50 text-gold focus:ring-gold"
+                  />
+                  Outdoor
+                </label>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {currentPhase === "expectations" ? (
+          <div className="space-y-5">
+            <div>
+              <label className="block">
+                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                  Tone, music, or creative direction <span className="text-foreground/40 font-body">(optional)</span>
+                </span>
+                <textarea
+                  value={data.preferences}
+                  onChange={(e) => update("preferences", e.target.value)}
+                  rows={3}
+                  className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[88px]"
+                />
+              </label>
+              <p className="mt-1 text-[10px] text-foreground/40 text-right">{data.preferences.length}/2000</p>
+            </div>
+            <div>
+              <label className="block">
+                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                  Main description <span className="text-red-300">*</span>
+                </span>
+                <textarea
+                  value={data.message}
+                  onChange={(e) => update("message", e.target.value)}
+                  rows={6}
+                  required
+                  className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[140px]"
+                />
+              </label>
+              <p className="mt-1 text-[10px] text-foreground/40 text-right">{data.message.length}/4000</p>
+            </div>
+          </div>
+        ) : null}
+
+        {currentPhase === "contact" ? (
+          <div className="space-y-5">
+            <Field
+              label="Full name"
+              name="fullName"
+              value={data.fullName}
+              onChange={(v) => update("fullName", v)}
+              required
+            />
+            <Field
+              label="Email"
+              name="email"
+              type="email"
+              value={data.email}
+              onChange={(v) => update("email", v)}
+              required
+            />
+            <Field
+              label="Phone"
+              name="phone"
+              type="tel"
+              value={data.phone}
+              onChange={(v) => update("phone", v)}
+              hint="Optional — include country code if outside your region."
+            />
+          </div>
+        ) : null}
+
+        {currentPhase === "review" ? (
+          <div className="space-y-4 text-sm font-body">
+            <p className="text-foreground/75">Please confirm before sending.</p>
+            <ul className="space-y-2 rounded border border-gold/20 bg-black/30 p-4 text-foreground/85">
+              <li>
+                <span className="text-gold font-brand text-[10px] tracking-[0.14em]">INQUIRY TYPE</span>
+                <br />
+                {data.inquiryCode.replace(/_/g, " ") || "—"}
+              </li>
+              {data.contactLineId ? (
+                <li>
+                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">CATALOG LINE</span>
+                  <br />
+                  {selectedLine?.eventTypeName ?? data.contactLineId}
+                </li>
+              ) : null}
+              {data.occasionTypeId ? (
+                <li>
+                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">OCCASION</span>
+                  <br />
+                  {occasionSingleLabel || data.occasionTypeId}
+                </li>
+              ) : null}
+              {data.occasionTypeIdsProject.length > 0 || data.occasionTypeIdsRole.length > 0 ? (
+                <li>
+                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">PROJECT</span>
+                  <br />
+                  {reviewProjectLabels || "—"}
+                  {reviewRoleLabels ? (
+                    <>
+                      <br />
+                      <span className="text-gold/90">Roles:</span> {reviewRoleLabels}
+                    </>
+                  ) : null}
+                </li>
+              ) : null}
+              {data.experienceAddons.length > 0 ? (
+                <li>
+                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">ADD-ONS</span>
+                  <br />
+                  {data.experienceAddons.join(", ")}
+                </li>
+              ) : null}
+              <li>
+                <span className="text-gold font-brand text-[10px] tracking-[0.14em]">LOGISTICS</span>
+                <br />
+                {data.eventDate ? `Date: ${formatDateDisplayUs(data.eventDate)}` : "Date: —"}
+                {data.eventTimeStart || data.eventTimeEnd ? (
+                  <>
+                    {" · Time: "}
+                    {data.eventTimeStart ? formatTimeDisplayUs(data.eventTimeStart) : "—"}
+                    {" – "}
+                    {data.eventTimeEnd ? formatTimeDisplayUs(data.eventTimeEnd) : "—"}
+                  </>
+                ) : null}
+                <br />
+                {data.location ? `City / venue: ${data.location}` : "City / venue: —"}
+                {data.eventAddress.trim() ? (
+                  <>
+                    <br />
+                    {`Address: ${data.eventAddress.trim()}`}
+                  </>
+                ) : null}
+                {data.guestCount ? ` · Guests: ${data.guestCount}` : ""}
+                {data.venueIndoor === "indoor"
+                  ? " · Indoor"
+                  : data.venueIndoor === "outdoor"
+                    ? " · Outdoor"
+                    : ""}
+              </li>
+              {data.projectDeadlineNote.trim() ? (
+                <li>
+                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">DEADLINE / WINDOW</span>
+                  <br />
+                  {data.projectDeadlineNote}
+                </li>
+              ) : null}
+              {data.preferences.trim() ? (
+                <li>
+                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">PREFERENCES</span>
+                  <br />
+                  {data.preferences}
+                </li>
+              ) : null}
+              <li>
+                <span className="text-gold font-brand text-[10px] tracking-[0.14em]">MESSAGE</span>
+                <br />
+                <span className="whitespace-pre-wrap">{data.message}</span>
+              </li>
+              <li>
+                <span className="text-gold font-brand text-[10px] tracking-[0.14em]">CONTACT</span>
+                <br />
+                {data.fullName} · {data.email}
+                {data.phone ? ` · ${data.phone}` : ""}
+              </li>
+            </ul>
+            <p className="text-xs text-foreground/50">
+              Use the step tabs above to edit any section, or Back below.
+            </p>
+          </div>
+        ) : null}
+
+        {stepError ? (
+          <p className="mt-4 text-sm text-red-300" role="alert">
+            {stepError}
+          </p>
+        ) : null}
         {apiError ? (
-          <p className="text-sm text-red-300" role="alert">
+          <p className="mt-4 text-sm text-red-300" role="alert">
             {apiError}
           </p>
         ) : null}
         {success ? (
           <p
-            className="rounded border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-gold-light font-body"
+            className="mt-4 rounded border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-gold-light font-body"
             role="status"
           >
             Thank you — your inquiry was sent successfully. We will get back to you shortly.
           </p>
         ) : null}
 
-        <button
-          type="submit"
-          className="btn-outline-gold w-full font-brand justify-center gap-2 disabled:opacity-60 disabled:pointer-events-none"
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Sending...
-            </>
-          ) : (
-            "Submit inquiry"
-          )}
-        </button>
-      </form>
-
-      <div className="mt-10 border-t border-gold/20 pt-8">
-        <h3 className="font-brand text-gold text-xs tracking-[0.2em] mb-4 text-center">
-          DIRECT CONTACT
-        </h3>
-        <div className="flex flex-col sm:flex-row flex-wrap items-stretch justify-center gap-3">
-          <a
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="inline-flex items-center justify-center gap-2 border border-gold/35 px-4 py-3 text-xs font-brand tracking-wide text-gold hover:border-gold hover:bg-gold/10 transition-colors"
-          >
-            <Mail className="h-4 w-4 shrink-0" aria-hidden />
-            {CONTACT_EMAIL}
-          </a>
-          {phoneDisplay ? (
-            <a
-              href={`tel:${phoneDisplay.replace(/[^\d+]/g, "")}`}
-              className="inline-flex items-center justify-center gap-2 border border-gold/35 px-4 py-3 text-xs font-brand tracking-wide text-gold hover:border-gold hover:bg-gold/10 transition-colors"
+        {currentPhase !== "review" ? (
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={
+                phaseIndex === 0 ||
+                (offeringStepLocked && detailPhaseIndex >= 0 && phaseIndex === detailPhaseIndex)
+              }
+              title={
+                offeringStepLocked && detailPhaseIndex >= 0 && phaseIndex === detailPhaseIndex
+                  ? "Remove catalog context to go back and change offering."
+                  : undefined
+              }
+              className="border border-gold/35 px-4 py-2.5 text-xs font-brand tracking-[0.14em] text-gold hover:bg-gold/10 disabled:opacity-40 disabled:pointer-events-none"
             >
-              <Phone className="h-4 w-4 shrink-0" aria-hidden />
-              {phoneDisplay}
-            </a>
-          ) : (
-            <span className="inline-flex items-center justify-center gap-2 border border-gold/20 px-4 py-3 text-xs text-foreground/45 font-body">
-              <Phone className="h-4 w-4 shrink-0" aria-hidden />
-              Phone on request
-            </span>
-          )}
-          {whatsappE164 ? (
-            <a
-              href={`https://wa.me/${whatsappE164.replace(/\D/g, "")}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 border border-gold/35 px-4 py-3 text-xs font-brand tracking-wide text-gold hover:border-gold hover:bg-gold/10 transition-colors"
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              className="btn-outline-gold flex-1 min-w-[8rem] justify-center px-4 py-2.5 text-xs font-brand tracking-[0.14em]"
             >
-              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-              WhatsApp
-            </a>
-          ) : (
-            <span className="inline-flex items-center justify-center gap-2 border border-gold/20 px-4 py-3 text-xs text-foreground/45 font-body">
-              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />
-              Set NEXT_PUBLIC_WHATSAPP_E164 for WhatsApp
-            </span>
-          )}
-        </div>
+              {currentPhase === "contact" ? "Continue to review" : "Continue"}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={onSubmit} className="mt-6 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={goBack}
+              className="border border-gold/35 px-4 py-2.5 text-xs font-brand tracking-[0.14em] text-gold hover:bg-gold/10"
+            >
+              Back
+            </button>
+            <button
+              type="submit"
+              className="btn-outline-gold flex-1 min-w-[10rem] justify-center gap-2 font-brand disabled:opacity-60 disabled:pointer-events-none"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Sending...
+                </>
+              ) : (
+                "Submit inquiry"
+              )}
+            </button>
+          </form>
+        )}
       </div>
+
+      <ContactDatePickerModal
+        isOpen={datePickerOpen}
+        title={logisticsUsesBespokeDeadlineRule ? "Key date" : "Event date"}
+        value={data.eventDate}
+        onClose={() => setDatePickerOpen(false)}
+        onConfirm={(iso) => update("eventDate", iso)}
+      />
+      <ContactTimePickerModal
+        isOpen={timePickerWhich === "start"}
+        title="Performance start"
+        value={data.eventTimeStart}
+        onClose={() => setTimePickerWhich(null)}
+        onConfirm={(hhmm) => update("eventTimeStart", hhmm)}
+      />
+      <ContactTimePickerModal
+        isOpen={timePickerWhich === "end"}
+        title="Performance end"
+        value={data.eventTimeEnd}
+        onClose={() => setTimePickerWhich(null)}
+        onConfirm={(hhmm) => update("eventTimeEnd", hhmm)}
+      />
     </div>
   );
 }
@@ -387,21 +1457,23 @@ function Field({
   name,
   value,
   onChange,
-  onBlur,
-  error,
   type = "text",
   required,
   hint,
+  min,
+  inputMode,
+  inputClassName,
 }: {
   label: string;
   name: string;
   value: string;
   onChange: (v: string) => void;
-  onBlur: () => void;
-  error?: string;
   type?: string;
   required?: boolean;
   hint?: string;
+  min?: number;
+  inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
+  inputClassName?: string;
 }) {
   return (
     <div>
@@ -418,18 +1490,14 @@ function Field({
           name={name}
           type={type}
           value={value}
+          min={min !== undefined ? min : undefined}
+          inputMode={inputMode}
           onChange={(e) => onChange(e.target.value)}
-          onBlur={onBlur}
           required={required}
-          className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold"
+          className={`mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold ${inputClassName ?? ""}`}
         />
       </label>
       {hint ? <p className="mt-1 text-[10px] text-foreground/45 font-body">{hint}</p> : null}
-      {error ? (
-        <p className="mt-1 text-xs text-red-300" role="alert">
-          {error}
-        </p>
-      ) : null}
     </div>
   );
 }

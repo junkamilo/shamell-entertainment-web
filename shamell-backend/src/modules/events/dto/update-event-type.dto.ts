@@ -1,5 +1,18 @@
-import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
+import { CONTACT_INQUIRY_CODES, type ContactInquiryCode } from '../../../common/contact-inquiry-codes';
+import { EventTypeOccasionAssignmentDto } from './event-type-occasion-assignment.dto';
 
 export class UpdateEventTypeDto {
   @IsOptional()
@@ -14,9 +27,26 @@ export class UpdateEventTypeDto {
 
   @IsOptional()
   @Transform(({ value }) => {
+    if (value === undefined) return undefined;
+    if (value === null || value === '') return null;
+    return String(value).trim();
+  })
+  @ValidateIf((o: UpdateEventTypeDto) => o.contactInquiryCode !== null && o.contactInquiryCode !== undefined)
+  @IsString()
+  @IsIn([...CONTACT_INQUIRY_CODES])
+  contactInquiryCode?: ContactInquiryCode | null;
+
+  @IsOptional()
+  @Transform(({ value }) => {
     if (value === undefined || value === null || value === '') return undefined;
     return value === 'true' || value === true;
   })
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => EventTypeOccasionAssignmentDto)
+  occasions?: EventTypeOccasionAssignmentDto[];
 }

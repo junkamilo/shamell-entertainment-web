@@ -1,9 +1,24 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { EventTypeOccasionUsage } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
+import { CreateOccasionTypeDto } from './dto/create-occasion-type.dto';
+import { EventTypeOccasionAssignmentDto } from './dto/event-type-occasion-assignment.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateEventTypeDto } from './dto/update-event-type.dto';
+import { UpdateOccasionTypeDto } from './dto/update-occasion-type.dto';
+
+type OccasionLinkRow = {
+  usage: EventTypeOccasionUsage;
+  sortOrder: number;
+  occasionType: { id: string; name: string; isActive: boolean };
+};
 
 @Injectable()
 export class EventsService {
@@ -23,6 +38,7 @@ export class EventsService {
           eventTypeId: dto.eventTypeId,
           description: dto.description,
           items: dto.items,
+          showOnHome: dto.showOnHome ?? true,
         },
         include: { eventType: true },
       });
@@ -40,13 +56,74 @@ export class EventsService {
     }
   }
 
+  /** Home catalog: active events marked visible on home. */
   async getPublicEvents() {
     const events = await this.prisma.event.findMany({
-      where: { isActive: true },
+      where: { isActive: true, showOnHome: true },
       include: { eventType: true },
       orderBy: { createdAt: 'asc' },
     });
     return events.map((item) => this.mapEvent(item));
+  }
+
+  /** Contact wizard: active events plus active event types that do not yet have an active event row. */
+  async getContactLines() {
+    const events = await this.prisma.event.findMany({
+      where: { isActive: true },
+      include: {
+        eventType: {
+          include: {
+            occasionLinks: {
+              where: { occasionType: { isActive: true } },
+              orderBy: [{ sortOrder: 'asc' }],
+              include: { occasionType: { select: { id: true, name: true, isActive: true } } },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const fromEvents = events.filter((e) => e.eventType.isActive).map((item) => this.mapContactLine(item));
+
+    const coveredTypeIds = fromEvents.map((l) => l.eventTypeId);
+    const orphanTypes = await this.prisma.eventType.findMany({
+      where: {
+        isActive: true,
+        ...(coveredTypeIds.length > 0 ? { id: { notIn: coveredTypeIds } } : {}),
+      },
+      include: {
+        occasionLinks: {
+          where: { occasionType: { isActive: true } },
+          orderBy: [{ sortOrder: 'asc' }],
+          include: { occasionType: { select: { id: true, name: true, isActive: true } } },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const fromTypesOnly = orphanTypes.map((t) => this.mapContactLineFromEventType(t));
+
+    return [...fromEvents, ...fromTypesOnly];
+  }
+
+  /** Public snippet for contact deep-link (active event + active type only). */
+  async getPublicCatalogById(id: string) {
+    const event = await this.prisma.event.findFirst({
+      where: { id, isActive: true },
+      include: { eventType: true },
+    });
+    if (!event || !event.eventType.isActive) {
+      throw new NotFoundException('Event not found.');
+    }
+    const preview = event.description.replace(/\s+/g, ' ').trim().slice(0, 280);
+    return {
+      kind: 'event' as const,
+      id: event.id,
+      title: event.eventType.name.trim(),
+      descriptionPreview: preview || undefined,
+      contactInquiryCode: event.eventType.contactInquiryCode ?? null,
+    };
   }
 
   async getAdminEvents() {
@@ -87,6 +164,7 @@ export class EventsService {
           ...(dto.description !== undefined ? { description: dto.description } : {}),
           ...(dto.items !== undefined ? { items: dto.items } : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+          ...(dto.showOnHome !== undefined ? { showOnHome: dto.showOnHome } : {}),
         },
         include: { eventType: true },
       });
@@ -123,11 +201,26 @@ export class EventsService {
   async createEventType(dto: CreateEventTypeDto) {
     try {
       const created = await this.prisma.eventType.create({
-        data: { name: dto.name },
+        data: {
+          name: dto.name,
+          contactInquiryCode: dto.contactInquiryCode ?? null,
+        },
+      });
+      if (dto.occasions !== undefined) {
+        await this.syncOccasionAssignments(created.id, dto.occasions);
+      }
+      const full = await this.prisma.eventType.findUniqueOrThrow({
+        where: { id: created.id },
+        include: {
+          occasionLinks: {
+            orderBy: [{ sortOrder: 'asc' }],
+            include: { occasionType: true },
+          },
+        },
       });
       return {
         message: 'Event type created successfully.',
-        eventType: this.mapEventType(created),
+        eventType: this.mapEventTypeAdmin(full),
       };
     } catch (error: unknown) {
       const prismaError = error as { code?: string };
@@ -149,8 +242,14 @@ export class EventsService {
   async getAdminEventTypes() {
     const types = await this.prisma.eventType.findMany({
       orderBy: { createdAt: 'asc' },
+      include: {
+        occasionLinks: {
+          orderBy: [{ sortOrder: 'asc' }],
+          include: { occasionType: true },
+        },
+      },
     });
-    return types.map((item) => this.mapEventType(item));
+    return types.map((item) => this.mapEventTypeAdmin(item));
   }
 
   async updateEventType(id: string, dto: UpdateEventTypeDto) {
@@ -162,16 +261,35 @@ export class EventsService {
     }
 
     try {
-      const updated = await this.prisma.eventType.update({
+      const dataPayload = {
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.contactInquiryCode !== undefined ? { contactInquiryCode: dto.contactInquiryCode } : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+      };
+      if (Object.keys(dataPayload).length > 0) {
+        await this.prisma.eventType.update({
+          where: { id },
+          data: dataPayload,
+        });
+      }
+
+      if (dto.occasions !== undefined) {
+        await this.syncOccasionAssignments(id, dto.occasions);
+      }
+
+      const reloaded = await this.prisma.eventType.findUniqueOrThrow({
         where: { id },
-        data: {
-          ...(dto.name !== undefined ? { name: dto.name } : {}),
-          ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        include: {
+          occasionLinks: {
+            orderBy: [{ sortOrder: 'asc' }],
+            include: { occasionType: true },
+          },
         },
       });
+
       return {
         message: 'Event type updated successfully.',
-        eventType: this.mapEventType(updated),
+        eventType: this.mapEventTypeAdmin(reloaded),
       };
     } catch (error: unknown) {
       const prismaError = error as { code?: string };
@@ -191,11 +309,139 @@ export class EventsService {
     const updated = await this.prisma.eventType.update({
       where: { id },
       data: { isActive: false },
+      include: {
+        occasionLinks: {
+          orderBy: [{ sortOrder: 'asc' }],
+          include: { occasionType: true },
+        },
+      },
     });
     return {
       message: 'Event type disabled successfully.',
-      eventType: this.mapEventType(updated),
+      eventType: this.mapEventTypeAdmin(updated),
     };
+  }
+
+  async getAdminOccasionTypes() {
+    const rows = await this.prisma.occasionType.findMany({
+      orderBy: [{ name: 'asc' }],
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      isActive: r.isActive,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    }));
+  }
+
+  async createOccasionType(dto: CreateOccasionTypeDto) {
+    try {
+      const created = await this.prisma.occasionType.create({
+        data: {
+          name: dto.name,
+          isActive: dto.isActive ?? true,
+        },
+      });
+      return {
+        message: 'Occasion type created successfully.',
+        occasionType: {
+          id: created.id,
+          name: created.name,
+          isActive: created.isActive,
+          createdAt: created.createdAt,
+          updatedAt: created.updatedAt,
+        },
+      };
+    } catch (error: unknown) {
+      const prismaError = error as { code?: string };
+      if (prismaError?.code === 'P2002') {
+        throw new ConflictException(`Occasion "${dto.name}" already exists.`);
+      }
+      throw error;
+    }
+  }
+
+  async updateOccasionType(id: string, dto: UpdateOccasionTypeDto) {
+    const existing = await this.prisma.occasionType.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Occasion type not found.');
+    try {
+      const updated = await this.prisma.occasionType.update({
+        where: { id },
+        data: {
+          ...(dto.name !== undefined ? { name: dto.name } : {}),
+          ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        },
+      });
+      return {
+        message: 'Occasion type updated successfully.',
+        occasionType: {
+          id: updated.id,
+          name: updated.name,
+          isActive: updated.isActive,
+          createdAt: updated.createdAt,
+          updatedAt: updated.updatedAt,
+        },
+      };
+    } catch (error: unknown) {
+      const prismaError = error as { code?: string };
+      if (prismaError?.code === 'P2002' && dto.name) {
+        throw new ConflictException(`Occasion "${dto.name}" already exists.`);
+      }
+      throw error;
+    }
+  }
+
+  async deleteOccasionType(id: string) {
+    const existing = await this.prisma.occasionType.findUnique({ where: { id }, select: { id: true } });
+    if (!existing) throw new NotFoundException('Occasion type not found.');
+    const updated = await this.prisma.occasionType.update({
+      where: { id },
+      data: { isActive: false },
+    });
+    return {
+      message: 'Occasion type disabled successfully.',
+      occasionType: {
+        id: updated.id,
+        name: updated.name,
+        isActive: updated.isActive,
+        createdAt: updated.createdAt,
+        updatedAt: updated.updatedAt,
+      },
+    };
+  }
+
+  private async syncOccasionAssignments(eventTypeId: string, assignments: EventTypeOccasionAssignmentDto[]) {
+    const seen = new Set<string>();
+    for (const row of assignments) {
+      if (seen.has(row.occasionTypeId)) {
+        throw new BadRequestException('Duplicate occasion type in assignment list.');
+      }
+      seen.add(row.occasionTypeId);
+    }
+    const ids = [...seen];
+    if (ids.length === 0) {
+      await this.prisma.eventTypeOccasion.deleteMany({ where: { eventTypeId } });
+      return;
+    }
+    const occasions = await this.prisma.occasionType.findMany({
+      where: { id: { in: ids }, isActive: true },
+      select: { id: true },
+    });
+    if (occasions.length !== ids.length) {
+      throw new BadRequestException('One or more occasion types are invalid or inactive.');
+    }
+    await this.prisma.$transaction(async (tx) => {
+      await tx.eventTypeOccasion.deleteMany({ where: { eventTypeId } });
+      await tx.eventTypeOccasion.createMany({
+        data: assignments.map((a, sortOrder) => ({
+          eventTypeId,
+          occasionTypeId: a.occasionTypeId,
+          usage: a.usage,
+          sortOrder,
+        })),
+      });
+    });
   }
 
   private async ensureEventTypeCanBeDisabled(eventTypeId: string) {
@@ -207,35 +453,147 @@ export class EventsService {
     }
   }
 
-  private mapEvent(item: {
+  private mapOccasionGroups(links: OccasionLinkRow[]) {
+    const occasionSingle: { id: string; name: string }[] = [];
+    const occasionBespokeProject: { id: string; name: string }[] = [];
+    const occasionBespokeRole: { id: string; name: string }[] = [];
+    const sorted = [...links].sort((a, b) => {
+      if (a.usage !== b.usage) return a.usage.localeCompare(b.usage);
+      return a.sortOrder - b.sortOrder;
+    });
+    for (const L of sorted) {
+      const row = { id: L.occasionType.id, name: L.occasionType.name };
+      if (L.usage === EventTypeOccasionUsage.OCCASION_SINGLE) occasionSingle.push(row);
+      else if (L.usage === EventTypeOccasionUsage.BESPOKE_PROJECT) occasionBespokeProject.push(row);
+      else if (L.usage === EventTypeOccasionUsage.BESPOKE_ROLE) occasionBespokeRole.push(row);
+    }
+    return { occasionSingle, occasionBespokeProject, occasionBespokeRole };
+  }
+
+  private mapContactLine(item: {
     id: string;
-    eventType: { id: string; name: string; isActive: boolean; createdAt: Date; updatedAt: Date };
+    eventTypeId: string;
     description: string;
     items: string[];
+    isActive: boolean;
+    showOnHome: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    eventType: {
+      id: string;
+      name: string;
+      contactInquiryCode: string | null;
+      isActive: boolean;
+      occasionLinks: OccasionLinkRow[];
+    };
+  }) {
+    const groups = this.mapOccasionGroups(item.eventType.occasionLinks);
+    return {
+      id: item.id,
+      eventTypeId: item.eventType.id,
+      eventTypeName: item.eventType.name,
+      contactInquiryCode: item.eventType.contactInquiryCode,
+      description: item.description,
+      items: item.items,
+      showOnHome: item.showOnHome,
+      lineKind: 'event' as const,
+      ...groups,
+    };
+  }
+
+  /** Catalog line when only EventType exists (no Event row yet). Same shape as mapContactLine; `id` is event type id — clients must not send it as eventId. */
+  private mapContactLineFromEventType(item: {
+    id: string;
+    name: string;
+    contactInquiryCode: string | null;
+    occasionLinks: OccasionLinkRow[];
+  }) {
+    const groups = this.mapOccasionGroups(item.occasionLinks);
+    return {
+      id: item.id,
+      eventTypeId: item.id,
+      eventTypeName: item.name,
+      contactInquiryCode: item.contactInquiryCode,
+      description: '',
+      items: [] as string[],
+      showOnHome: false,
+      lineKind: 'event_type' as const,
+      ...groups,
+    };
+  }
+
+  private mapEvent(item: {
+    id: string;
+    eventTypeId: string;
+    description: string;
+    items: string[];
+    isActive: boolean;
+    showOnHome: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    eventType: {
+      id: string;
+      name: string;
+      contactInquiryCode: string | null;
+      isActive: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+    };
+  }) {
+    return {
+      id: item.id,
+      eventTypeId: item.eventType.id,
+      eventTypeName: item.eventType.name,
+      contactInquiryCode: item.eventType.contactInquiryCode,
+      eventType: this.mapEventType(item.eventType),
+      description: item.description,
+      items: item.items,
+      isActive: item.isActive,
+      showOnHome: item.showOnHome,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+    };
+  }
+
+  private mapEventType(item: {
+    id: string;
+    name: string;
+    contactInquiryCode: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
   }) {
     return {
       id: item.id,
-      eventTypeId: item.eventType.id,
-      eventTypeName: item.eventType.name,
-      eventType: this.mapEventType(item.eventType),
-      description: item.description,
-      items: item.items,
+      name: item.name,
+      contactInquiryCode: item.contactInquiryCode,
       isActive: item.isActive,
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     };
   }
 
-  private mapEventType(item: { id: string; name: string; isActive: boolean; createdAt: Date; updatedAt: Date }) {
+  private mapEventTypeAdmin(item: {
+    id: string;
+    name: string;
+    contactInquiryCode: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    occasionLinks: OccasionLinkRow[];
+  }) {
+    const base = this.mapEventType(item);
+    const groups = this.mapOccasionGroups(item.occasionLinks);
     return {
-      id: item.id,
-      name: item.name,
-      isActive: item.isActive,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
+      ...base,
+      occasionAssignments: item.occasionLinks.map((L) => ({
+        occasionTypeId: L.occasionType.id,
+        occasionName: L.occasionType.name,
+        occasionActive: L.occasionType.isActive,
+        usage: L.usage,
+        sortOrder: L.sortOrder,
+      })),
+      ...groups,
     };
   }
 }

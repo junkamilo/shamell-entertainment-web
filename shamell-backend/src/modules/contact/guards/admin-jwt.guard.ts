@@ -24,14 +24,26 @@ export class AdminJwtGuard implements CanActivate {
       throw new UnauthorizedException('Authentication token is required.');
     }
 
-    const payload = await this.jwtService.verifyAsync<{ role?: string }>(token).catch(() => null);
-    if (!payload) {
+    const payload = await this.jwtService
+      .verifyAsync<{ sub?: string; email?: string; role?: string }>(token)
+      .catch(() => null);
+    if (!payload?.sub) {
       throw new UnauthorizedException('Invalid or expired token.');
     }
 
     if (payload.role !== 'ADMIN') {
       throw new ForbiddenException('Admin role is required.');
     }
+
+    (
+      request as {
+        adminUser?: { id: string; email?: string; role?: string };
+      }
+    ).adminUser = {
+      id: payload.sub,
+      email: payload.email,
+      role: payload.role,
+    };
 
     return true;
   }
