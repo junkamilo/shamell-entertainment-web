@@ -1,291 +1,125 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Camera, X, ChevronLeft, ChevronRight } from "lucide-react";
-import gallery1 from "@/assets/gallery-1.jpg";
-import gallery2 from "@/assets/gallery-2.jpg";
-import gallery3 from "@/assets/gallery-3.jpg";
-import gallery4 from "@/assets/gallery-4.jpg";
-import gallery5 from "@/assets/gallery-5.jpg";
-import gallery6 from "@/assets/gallery-6.jpg";
-import gallery7 from "@/assets/gallery-7.jpg";
-import gallery8 from "@/assets/gallery-8.jpg";
-import experienceFire from "@/assets/experience-fire.jpg";
-import experienceVeil from "@/assets/experience-veil.jpg";
-import experienceSword from "@/assets/experience-sword.jpg";
-import type { StaticImageData } from "next/image";
+import Link from "next/link";
+import { useState } from "react";
+import { useGalleryCategories, useGalleryPhotos } from "@/hooks/use-gallery";
+import { cn } from "@/lib/utils";
 
-type GalleryCategory = "fire" | "veil-fan" | "sword-candelabra" | "general";
-
-type GalleryItem = {
-  id: string;
-  src: StaticImageData;
-  alt: string;
-  category: GalleryCategory;
-  /** Taller items read more “masonry” in column layout */
-  tall?: boolean;
-};
-
-const tabs: { id: GalleryCategory | "all"; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "fire", label: "Fire Performance" },
-  { id: "veil-fan", label: "Veil & Fan" },
-  { id: "sword-candelabra", label: "Sword & Candelabra" },
-  { id: "general", label: "General" },
-];
-
-const galleryItems: GalleryItem[] = [
-  { id: "fire-1", src: experienceFire, alt: "Fire performance — Shamell", category: "fire", tall: true },
-  { id: "fire-2", src: gallery5, alt: "Stage fire act", category: "fire" },
-  { id: "veil-1", src: experienceVeil, alt: "Veil and fan dance", category: "veil-fan", tall: true },
-  { id: "veil-2", src: gallery2, alt: "Veil movement", category: "veil-fan" },
-  { id: "veil-3", src: gallery6, alt: "Fan choreography", category: "veil-fan" },
-  { id: "sword-1", src: experienceSword, alt: "Sword and candelabra ritual", category: "sword-candelabra", tall: true },
-  { id: "sword-2", src: gallery3, alt: "Ceremonial balance", category: "sword-candelabra" },
-  { id: "sword-3", src: gallery7, alt: "Candle performance", category: "sword-candelabra" },
-  { id: "gen-1", src: gallery1, alt: "Shamell performance portrait", category: "general", tall: true },
-  { id: "gen-2", src: gallery4, alt: "Private event atmosphere", category: "general" },
-  { id: "gen-3", src: gallery8, alt: "Gala performance moment", category: "general" },
-];
-
-const INSTAGRAM_PROFILE = "https://www.instagram.com/Shamellentertainment/";
+function cellLayoutClass(index: number) {
+  if (index < 2) {
+    return "col-span-1 md:col-span-3";
+  }
+  if (index < 5) {
+    return "col-span-1 md:col-span-2";
+  }
+  return "col-span-2 flex justify-center md:col-span-6";
+}
 
 const GallerySection = () => {
-  const [filter, setFilter] = useState<GalleryCategory | "all">("all");
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
-  useEffect(() => {
-    setLightboxIndex(null);
-  }, [filter]);
-
-  const filtered = useMemo(
-    () =>
-      filter === "all" ? galleryItems : galleryItems.filter((item) => item.category === filter),
-    [filter],
-  );
-
-  const openLightbox = useCallback((index: number) => {
-    setLightboxIndex(index);
-  }, []);
-
-  const closeLightbox = useCallback(() => setLightboxIndex(null), []);
-
-  const goPrev = useCallback(() => {
-    setLightboxIndex((i) => {
-      if (i === null || filtered.length === 0) return i;
-      return (i - 1 + filtered.length) % filtered.length;
-    });
-  }, [filtered.length]);
-
-  const goNext = useCallback(() => {
-    setLightboxIndex((i) => {
-      if (i === null || filtered.length === 0) return i;
-      return (i + 1) % filtered.length;
-    });
-  }, [filtered.length]);
-
-  useEffect(() => {
-    if (lightboxIndex === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeLightbox();
-      if (e.key === "ArrowLeft") goPrev();
-      if (e.key === "ArrowRight") goNext();
-    };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [lightboxIndex, closeLightbox, goPrev, goNext]);
-
-  const embedUrl = process.env.NEXT_PUBLIC_INSTAGRAM_EMBED_URL;
-
-  useEffect(() => {
-    if (!embedUrl || typeof window === "undefined") return;
-    const existing = document.querySelector('script[src="https://www.instagram.com/embed.js"]');
-    if (existing) {
-      (window as unknown as { instgrm?: { Embeds: { process: () => void } } }).instgrm?.Embeds.process();
-      return;
-    }
-    const s = document.createElement("script");
-    s.async = true;
-    s.src = "https://www.instagram.com/embed.js";
-    s.onload = () => {
-      (window as unknown as { instgrm?: { Embeds: { process: () => void } } }).instgrm?.Embeds.process();
-    };
-    document.body.appendChild(s);
-  }, [embedUrl]);
+  const [filter, setFilter] = useState("all");
+  const { categories } = useGalleryCategories();
+  const { photos, isLoading } = useGalleryPhotos(filter, 6);
 
   return (
-    <section id="gallery" className="bg-background py-20 px-4">
-      <div className="max-w-6xl mx-auto">
-        <h2 className="font-brand text-gold text-center text-2xl md:text-3xl tracking-wider mb-3">
-          Performance Gallery
-        </h2>
-        <p className="text-foreground/60 text-sm text-center mb-8 font-body max-w-2xl mx-auto">
-          Visual portfolio organized by performance type. Tap any image for full-screen view.
-        </p>
+    <section id="gallery" className="bg-transparent px-4 py-20">
+      <div className="relative mx-auto mb-10 max-w-6xl text-center">
+        <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2">
+          <div className="h-32 w-[min(26rem,92vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.1),transparent_75%)] blur-3xl opacity-75" />
+        </div>
+        <div className="relative">
+          <h2 className="mb-3 text-center font-brand text-2xl tracking-wider text-gold md:text-3xl">
+            Performance Gallery
+          </h2>
+          <p className="mx-auto mb-2 max-w-2xl text-center font-body text-sm text-foreground/60">
+            Visual portfolio organized by performance type. Tap any image for full-screen view.
+          </p>
+        </div>
+      </div>
 
-        {/* Filter tabs */}
+      <div className="mx-auto max-w-6xl">
+
         <div
           role="tablist"
           aria-label="Gallery filters"
-          className="flex flex-wrap justify-center gap-2 mb-10"
+          className="mb-10 flex flex-wrap justify-center gap-2"
         >
-          {tabs.map((tab) => (
+          {categories.map((tab) => (
             <button
               key={tab.id}
               type="button"
               role="tab"
               aria-selected={filter === tab.id}
               onClick={() => setFilter(tab.id)}
-              className={`font-brand text-[10px] md:text-xs tracking-[0.12em] px-3 py-2 border transition-colors ${
+              className={cn(
+                "border px-3 py-2 font-brand text-[10px] tracking-[0.12em] transition-colors md:text-xs",
                 filter === tab.id
                   ? "border-gold bg-gold/15 text-gold"
-                  : "border-gold/30 text-foreground/70 hover:border-gold/50 hover:text-gold"
-              }`}
+                  : "border-gold/30 text-foreground/70 hover:border-gold/50 hover:text-gold",
+              )}
             >
               {tab.label.toUpperCase()}
             </button>
           ))}
         </div>
 
-        {/* Masonry-style columns */}
-        <div className="columns-2 md:columns-3 gap-4 [column-fill:balance]">
-          {filtered.map((item, index) => (
-            <button
+        {isLoading ? (
+          <p className="mb-6 text-center text-sm text-foreground/60">Loading gallery...</p>
+        ) : null}
+
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-6 md:gap-5">
+          {photos.slice(0, 6).map((item, index) => (
+            <div
               key={item.id}
-              type="button"
-              onClick={() => openLightbox(index)}
-              className={`group relative mb-4 block w-full break-inside-avoid overflow-hidden border border-gold/25 focus-visible:outline-2 focus-visible:outline-gold ${
-                item.tall ? "min-h-[220px] md:min-h-[280px]" : "min-h-[160px] md:min-h-[200px]"
-              }`}
+              className={cn("group relative", cellLayoutClass(index), index === 5 && "md:justify-center")}
             >
-              <Image
-                src={item.src}
-                alt={item.alt}
-                fill
-                sizes="(max-width: 768px) 50vw, 33vw"
-                loading="lazy"
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-              <span className="absolute inset-0 bg-linear-to-t from-background/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            </button>
+              <div
+                className={cn(
+                  "shamell-gallery-card-bg relative aspect-3/4 w-full overflow-hidden rounded-2xl border border-gold/15 shadow-[inset_0_1px_0_rgba(197,165,90,0.06),inset_0_0_0_1px_rgba(255,255,255,0.04),0_12px_40px_rgba(0,0,0,0.38)] transition-[border-color,box-shadow] duration-500",
+                  "group-hover:border-gold/35 group-hover:shadow-[0_20px_52px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(197,165,90,0.1),inset_0_0_0_1px_rgba(255,255,255,0.06)]",
+                  index === 5 && "mx-auto max-w-sm md:max-w-md",
+                )}
+              >
+                <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(42,32,26,0.2),transparent_38%,transparent_62%,rgba(24,18,14,0.25))] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+                {item.mediaType === "VIDEO" ? (
+                  <video
+                    src={item.src}
+                    className="h-full w-full object-contain object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : (
+                  <Image
+                    src={item.src}
+                    alt={item.alt}
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
+                    loading="lazy"
+                    className="object-contain object-center p-2 transition-transform duration-700 ease-out group-hover:scale-[1.02] sm:p-2.5 md:p-3"
+                  />
+                )}
+
+                <span
+                  className="pointer-events-none absolute left-2 top-2 h-5 w-5 border-l border-t border-gold/25 opacity-50 transition-opacity group-hover:opacity-90"
+                  aria-hidden
+                />
+                <span
+                  className="pointer-events-none absolute right-2 top-2 h-5 w-5 border-r border-t border-gold/25 opacity-50 transition-opacity group-hover:opacity-90"
+                  aria-hidden
+                />
+              </div>
+            </div>
           ))}
         </div>
 
-        {/* Instagram integration */}
-        <div className="mt-16 border border-gold/25 bg-black/20 p-6 md:p-8">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 mb-6">
-            <div>
-              <h3 className="font-brand text-gold text-xs tracking-[0.2em] mb-2">INSTAGRAM</h3>
-              <p className="text-foreground/70 text-sm font-body max-w-xl">
-                Latest reels and behind-the-scenes moments. Follow for real-time updates from
-                performances and events.
-              </p>
-            </div>
-            <a
-              href={INSTAGRAM_PROFILE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="btn-outline-gold font-brand text-xs inline-flex items-center justify-center gap-2 shrink-0"
-            >
-              <Camera className="w-4 h-4" aria-hidden />
-              @Shamellentertainment
-            </a>
-          </div>
-
-          {embedUrl ? (
-            <div className="instagram-embed-wrapper flex justify-center">
-              <blockquote
-                className="instagram-media"
-                data-instgrm-permalink={embedUrl}
-                data-instgrm-version="14"
-                style={{
-                  background: "transparent",
-                  border: 0,
-                  borderRadius: 3,
-                  margin: "1px auto",
-                  maxWidth: 540,
-                  minWidth: 326,
-                  padding: 0,
-                  width: "99.375%",
-                }}
-              />
-            </div>
-          ) : (
-            <p className="text-foreground/50 text-xs font-body text-center border border-gold/15 py-8 px-4">
-              Optional: set{" "}
-              <code className="text-gold/80">NEXT_PUBLIC_INSTAGRAM_EMBED_URL</code> to a post URL
-              (e.g. <code className="text-gold/80">https://www.instagram.com/p/XXXX/</code>) to embed
-              a featured reel or carousel here.
-            </p>
-          )}
+        <div className="mt-12 flex justify-center">
+          <Link href={`/gallery?filter=${filter}`} className="btn-outline-gold font-brand text-xs">
+            Ver más
+          </Link>
         </div>
       </div>
-
-      {/* Lightbox */}
-      {lightboxIndex !== null && filtered[lightboxIndex] ? (
-        <div
-          className="fixed inset-0 z-100 flex items-center justify-center bg-black/90 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Image lightbox"
-          onClick={closeLightbox}
-        >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeLightbox();
-            }}
-            className="absolute top-4 right-4 text-gold hover:text-gold-light p-2 z-10"
-            aria-label="Close"
-          >
-            <X className="w-8 h-8" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              goPrev();
-            }}
-            className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 text-gold hover:text-gold-light p-2 z-10"
-            aria-label="Previous image"
-          >
-            <ChevronLeft className="w-10 h-10 md:w-12 md:h-12" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              goNext();
-            }}
-            className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 text-gold hover:text-gold-light p-2 z-10"
-            aria-label="Next image"
-          >
-            <ChevronRight className="w-10 h-10 md:w-12 md:h-12" />
-          </button>
-          <div
-            className="relative h-[min(85vh,900px)] w-full max-w-5xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Image
-              src={filtered[lightboxIndex].src}
-              alt={filtered[lightboxIndex].alt}
-              fill
-              className="object-contain"
-              sizes="100vw"
-              priority
-            />
-          </div>
-          <p className="absolute bottom-4 left-0 right-0 text-center text-xs text-foreground/60 font-body px-4">
-            {filtered[lightboxIndex].alt} · Use arrow keys to navigate
-          </p>
-        </div>
-      ) : null}
     </section>
   );
 };
