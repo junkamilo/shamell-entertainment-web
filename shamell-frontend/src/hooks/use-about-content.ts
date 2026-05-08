@@ -7,6 +7,7 @@ export type AboutContentItem = {
   paragraph1: string;
   coreValues: string[];
   imageUrl: string | null;
+  heroMediaType: "IMAGE" | "VIDEO";
 };
 
 const fallbackAboutContent: AboutContentItem = {
@@ -17,7 +18,19 @@ const fallbackAboutContent: AboutContentItem = {
   ].join("\n"),
   coreValues: ["Professionalism", "Excellence", "Authenticity", "Emotional Connection", "Luxury"],
   imageUrl: null,
+  heroMediaType: "IMAGE",
 };
+
+function inferHeroMediaType(payload: {
+  heroMediaType?: unknown;
+  imageUrl?: string | null;
+}): "IMAGE" | "VIDEO" {
+  if (payload.heroMediaType === "VIDEO") return "VIDEO";
+  if (payload.heroMediaType === "IMAGE") return "IMAGE";
+  const u = typeof payload.imageUrl === "string" ? payload.imageUrl : "";
+  if (u.includes("/video/upload/")) return "VIDEO";
+  return "IMAGE";
+}
 
 export function useAboutContent() {
   const [about, setAbout] = useState<AboutContentItem>(fallbackAboutContent);
@@ -49,6 +62,7 @@ export function useAboutContent() {
           paragraph1: payload.paragraph1,
           coreValues: payload.coreValues,
           imageUrl: typeof payload.imageUrl === "string" ? payload.imageUrl : null,
+          heroMediaType: inferHeroMediaType(payload),
         });
       })
       .catch(() => {

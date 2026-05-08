@@ -10,7 +10,7 @@ export type Experience = {
   description: string;
   items: string[];
   image: StaticImageData | string;
-  /** From API: precarga del formulario /contacto */
+  /** From API: prefill for /contacto form */
   contactInquiryCode?: string | null;
 };
 

@@ -34,6 +34,8 @@ type AdminService = {
   price: number | null;
   imageUrl: string | null;
   isActive: boolean;
+  bookingCount?: number;
+  galleryPhotoCount?: number;
 };
 
 const DESCRIPTION_MIN_LENGTH = 10;
@@ -59,7 +61,7 @@ function pillClassForTypeName(name: string) {
 
 function displayServiceHeading(description: string): { title: string; subtitle: string } {
   const t = description.trim();
-  if (!t) return { title: "Sin descripción", subtitle: "" };
+  if (!t) return { title: "No description", subtitle: "" };
   const firstBlock = t.split(/\n/)[0]?.trim() ?? t;
   const title =
     firstBlock.length > 64 ? `${firstBlock.slice(0, 62).trim()}…` : firstBlock;
@@ -78,9 +80,9 @@ function displayServiceHeading(description: string): { title: string; subtitle: 
   return { title, subtitle };
 }
 
-function formatPriceEs(value: number | null | undefined): string {
+function formatPriceEn(value: number | null | undefined): string {
   if (value == null || Number.isNaN(Number(value))) return "—";
-  return new Intl.NumberFormat("es", {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(Number(value));
@@ -121,6 +123,8 @@ export default function ShamellAdminServicesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<AdminService | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
 
@@ -172,8 +176,8 @@ export default function ShamellAdminServicesPage() {
       setServiceTypes([]);
       toast({
         variant: "destructive",
-        title: "Sesion requerida",
-        description: "Debes iniciar sesion como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -194,7 +198,7 @@ export default function ShamellAdminServicesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(typesData, "No se pudo cargar la lista de tipos de servicio."),
+          description: parseErrorMessage(typesData, "Could not load service types."),
         });
         return;
       }
@@ -211,16 +215,36 @@ export default function ShamellAdminServicesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(servicesData, "No se pudo cargar la lista de servicios."),
+          description: parseErrorMessage(servicesData, "Could not load services."),
         });
         return;
       }
-      setServices(Array.isArray(servicesData) ? (servicesData as AdminService[]) : []);
+      setServices(
+        Array.isArray(servicesData)
+          ? (servicesData as Record<string, unknown>[]).map((row) => ({
+              id: String(row.id),
+              serviceTypeId: String(row.serviceTypeId ?? ""),
+              serviceTypeName: String(row.serviceTypeName ?? ""),
+              description: String(row.description ?? ""),
+              items: Array.isArray(row.items) ? (row.items as unknown[]).map((x) => String(x)) : [],
+              price:
+                row.price === null || row.price === undefined
+                  ? null
+                  : typeof row.price === "number"
+                    ? row.price
+                    : Number(row.price),
+              imageUrl: typeof row.imageUrl === "string" ? row.imageUrl : null,
+              isActive: Boolean(row.isActive),
+              bookingCount: typeof row.bookingCount === "number" ? row.bookingCount : 0,
+              galleryPhotoCount: typeof row.galleryPhotoCount === "number" ? row.galleryPhotoCount : 0,
+            }))
+          : [],
+      );
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexion",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -265,14 +289,14 @@ export default function ShamellAdminServicesPage() {
     !isSubmitting && hasValidType && hasValidDescriptionLength && hasValidItems && hasImageIfNeeded && hasChanges;
 
   const getValidationError = () => {
-    if (!hasValidType) return "Debes seleccionar un tipo de servicio.";
-    if (!parsedPrice.ok) return "El precio no es válido.";
+    if (!hasValidType) return "You must select a service type.";
+    if (!parsedPrice.ok) return "Invalid price.";
     if (!hasValidDescriptionLength) {
-      return `La descripcion debe tener entre ${DESCRIPTION_MIN_LENGTH} y ${DESCRIPTION_MAX_LENGTH} caracteres.`;
+      return `The description must be between ${DESCRIPTION_MIN_LENGTH} and ${DESCRIPTION_MAX_LENGTH} characters.`;
     }
-    if (!hasValidItems) return "Debes agregar al menos 1 item. Cada item maximo 180 caracteres.";
-    if (!hasImageIfNeeded) return "Debes seleccionar una imagen.";
-    if (!hasChanges) return "No hay cambios para guardar.";
+    if (!hasValidItems) return "Add at least one line item. Each line may be up to 180 characters.";
+    if (!hasImageIfNeeded) return "You must select an image.";
+    if (!hasChanges) return "No changes to save.";
     return null;
   };
 
@@ -283,8 +307,8 @@ export default function ShamellAdminServicesPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesion requerida",
-        description: "Debes iniciar sesion como admin para gestionar servicios.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin to manage services.",
       });
       return;
     }
@@ -293,7 +317,7 @@ export default function ShamellAdminServicesPage() {
     if (validationError) {
       toast({
         variant: "destructive",
-        title: "Revisa el formulario",
+        title: "Check the form",
         description: validationError,
       });
       return;
@@ -330,7 +354,7 @@ export default function ShamellAdminServicesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo guardar el servicio."),
+          description: parseErrorMessage(data, "Could not save the service."),
         });
         return;
       }
@@ -339,17 +363,17 @@ export default function ShamellAdminServicesPage() {
       resetForm();
       setIsModalOpen(false);
       toast({
-        title: wasEditing ? "Servicio actualizado" : "Servicio creado",
+        title: wasEditing ? "Service updated" : "Service created",
         description: wasEditing
-          ? "Los cambios del servicio se guardaron correctamente."
-          : "El nuevo servicio se creo correctamente.",
+          ? "Service changes were saved."
+          : "The new service was created successfully.",
       });
       await loadAllData();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexion",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsSubmitting(false);
@@ -375,12 +399,21 @@ export default function ShamellAdminServicesPage() {
   };
 
   const onToggleActive = async (service: AdminService) => {
+    if (service.isActive && (service.bookingCount ?? 0) > 0) {
+      toast({
+        variant: "destructive",
+        title: "Cannot deactivate",
+        description: "This service has linked bookings.",
+      });
+      return;
+    }
+
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesion requerida",
-        description: "Debes iniciar sesion como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -403,7 +436,7 @@ export default function ShamellAdminServicesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo actualizar el estado del servicio."),
+          description: parseErrorMessage(data, "Could not update service status."),
         });
         return;
       }
@@ -412,36 +445,59 @@ export default function ShamellAdminServicesPage() {
         resetForm();
       }
       toast({
-        title: service.isActive ? "Servicio desactivado" : "Servicio activado",
+        title: service.isActive ? "Service hidden" : "Service visible",
         description: service.isActive
-          ? "El servicio fue desactivado correctamente."
-          : "El servicio fue activado correctamente.",
+          ? "The service was turned off."
+          : "The service was turned on.",
       });
       await loadAllData();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexion",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setTogglingId(null);
     }
   };
 
-  const onDisable = async (serviceId: string) => {
+  const canDeleteService = (s: AdminService) =>
+    (s.bookingCount ?? 0) === 0 && (s.galleryPhotoCount ?? 0) === 0;
+
+  const cannotDeactivateWhileActive = (s: AdminService) =>
+    s.isActive && (s.bookingCount ?? 0) > 0;
+
+  const openDeleteConfirm = (service: AdminService) => {
+    if (!canDeleteService(service)) {
+      toast({
+        variant: "destructive",
+        title: "Cannot delete",
+        description:
+          (service.bookingCount ?? 0) > 0
+            ? "This service has linked bookings."
+            : "There are gallery photos linked to this service.",
+      });
+      return;
+    }
+    setPendingDelete(service);
+  };
+
+  const onConfirmDelete = async () => {
+    if (!pendingDelete) return;
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesion requerida",
-        description: "Debes iniciar sesion como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
 
+    setIsDeleting(true);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/v1/services/admin/${serviceId}`, {
+      const response = await fetch(`${apiBaseUrl}/api/v1/services/admin/${pendingDelete.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -450,23 +506,33 @@ export default function ShamellAdminServicesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo desactivar el servicio."),
+          description: parseErrorMessage(data, "Could not delete the service."),
         });
         return;
       }
 
-      if (editingId === serviceId) resetForm();
+      if (editingId === pendingDelete.id) {
+        resetForm();
+        setIsModalOpen(false);
+      }
+      if (viewService?.id === pendingDelete.id) {
+        setViewService(null);
+      }
+
       toast({
-        title: "Servicio desactivado",
-        description: "El servicio fue desactivado correctamente.",
+        title: "Service deleted",
+        description: "The service was removed from the catalog.",
       });
+      setPendingDelete(null);
       await loadAllData();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexion",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -479,7 +545,7 @@ export default function ShamellAdminServicesPage() {
       const searchable = [
         service.serviceTypeName,
         service.description,
-        formatPriceEs(service.price),
+        formatPriceEn(service.price),
         ...service.items,
         service.isActive ? "activo" : "inactivo",
       ]
@@ -550,17 +616,17 @@ export default function ShamellAdminServicesPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
-        title="Servicios"
-        actionLabel="Nuevo servicio"
+        title="Services"
+        actionLabel="New service"
         onAction={onHeroAction}
         bordered={false}
       />
 
       {serviceTypes.filter((item) => item.isActive).length === 0 ? (
         <div className="mb-8 shamell-glass-surface rounded-xl px-5 py-4 text-sm text-foreground/75">
-          No hay tipos de servicio activos.{" "}
+          No active service types.{" "}
           <Link href="/shamell-admin/service-types" className="text-gold underline underline-offset-2">
-            Ir a Tipos de servicio
+            Go to service types
           </Link>
           .
         </div>
@@ -569,10 +635,10 @@ export default function ShamellAdminServicesPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 lg:mb-8 lg:grid-cols-4 lg:gap-4">
         {(
           [
-            ["TOTAL SERVICIOS", String(stats.total)],
-            ["ACTIVOS", String(stats.active)],
-            ["ITEMS TOTALES", String(stats.itemsTotal)],
-            ["TIPO MÁS USADO", typeMostUsedLabel],
+            ["TOTAL SERVICES", String(stats.total)],
+            ["ACTIVE", String(stats.active)],
+            ["TOTAL ITEMS", String(stats.itemsTotal)],
+            ["MOST-USED TYPE", typeMostUsedLabel],
           ] as const
         ).map(([label, value]) => (
           <div
@@ -589,16 +655,16 @@ export default function ShamellAdminServicesPage() {
         <AdminSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Buscar servicio..."
+          placeholder="Search services..."
           className="shamell-glass-surface mx-0 min-h-[3rem] max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:shrink-0">
           <div className="shamell-glass-surface flex rounded-xl p-1">
             {(
               [
-                ["all", "Todos", tabCounts.all],
-                ["active", "Activos", tabCounts.active],
-                ["inactive", "Inactivos", tabCounts.inactive],
+                ["all", "All", tabCounts.all],
+                ["active", "Active", tabCounts.active],
+                ["inactive", "Inactive", tabCounts.inactive],
               ] as const
             ).map(([id, label, count]) => (
               <button
@@ -627,14 +693,14 @@ export default function ShamellAdminServicesPage() {
             )}
           >
             <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
-            Filtros
+            Filters
           </button>
         </div>
       </div>
 
       {filtersOpen ? (
         <div className="mb-6 shamell-glass-surface rounded-xl px-4 py-4 md:px-5">
-          <p className="font-brand text-[10px] tracking-[0.2em] text-gold/80">TIPO DE SERVICIO</p>
+          <p className="font-brand text-[10px] tracking-[0.2em] text-gold/80">SERVICE TYPE</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
@@ -646,7 +712,7 @@ export default function ShamellAdminServicesPage() {
                   : "border-gold/15 text-foreground/55 hover:border-gold/30",
               )}
             >
-              Todos los tipos
+              All types
             </button>
             {serviceTypes.map((t) => (
               <button
@@ -673,8 +739,8 @@ export default function ShamellAdminServicesPage() {
             <thead>
               <tr className="border-b border-gold/12">
                 <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
-                <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">SERVICIO</th>
-                <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TIPO</th>
+                <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">SERVICE</th>
+                <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TYPE</th>
                 <th className="w-20 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
                 <th className="w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRECIO</th>
                 <th className="min-w-[9rem] px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">
@@ -688,6 +754,10 @@ export default function ShamellAdminServicesPage() {
             <tbody>
               {paginatedServices.map((service) => {
                 const { title } = displayServiceHeading(service.description);
+                const bk = service.bookingCount ?? 0;
+                const gal = service.galleryPhotoCount ?? 0;
+                const deletable = canDeleteService(service);
+                const blockDeactivate = cannotDeactivateWhileActive(service);
                 return (
                   <tr key={service.id} className="border-b border-gold/8 transition hover:bg-gold/5">
                     <td className="px-2 py-3 align-middle">
@@ -706,6 +776,13 @@ export default function ShamellAdminServicesPage() {
                     </td>
                     <td className="max-w-[14rem] px-3 py-3 align-middle md:max-w-[18rem]">
                       <p className="font-brand text-sm tracking-[0.04em] text-gold">{title}</p>
+                      {bk > 0 || gal > 0 ? (
+                        <p className="mt-1 font-body text-[10px] text-foreground/45">
+                          {bk > 0 ? `${bk} booking(s)` : null}
+                          {bk > 0 && gal > 0 ? " · " : null}
+                          {gal > 0 ? `${gal} in gallery` : null}
+                        </p>
+                      ) : null}
                     </td>
                     <td className="px-3 py-3 align-middle">
                       <span
@@ -721,22 +798,28 @@ export default function ShamellAdminServicesPage() {
                       {service.items.length}
                     </td>
                     <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75">
-                      {formatPriceEs(service.price)}
+                      {formatPriceEn(service.price)}
                     </td>
                     <td className="px-3 py-3 align-middle">
                       <div className="flex items-center gap-3">
                         <button
                           type="button"
                           onClick={() => void onToggleActive(service)}
-                          disabled={togglingId === service.id}
+                          disabled={togglingId === service.id || blockDeactivate}
+                          title={
+                            blockDeactivate
+                              ? "This service has bookings and cannot be turned off."
+                              : undefined
+                          }
                           className={cn(
                             "relative h-7 w-12 shrink-0 rounded-full border transition",
                             service.isActive
                               ? "border-emerald-400/45 bg-emerald-500/22"
                               : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                             togglingId === service.id && "cursor-not-allowed opacity-60",
+                            blockDeactivate && "cursor-not-allowed opacity-45",
                           )}
-                          aria-label={`${service.isActive ? "Desactivar" : "Activar"} servicio`}
+                          aria-label={`${service.isActive ? "Hide" : "Show"} service`}
                         >
                           <span
                             className={cn(
@@ -756,7 +839,7 @@ export default function ShamellAdminServicesPage() {
                           type="button"
                           onClick={() => setViewService(service)}
                           className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
-                          aria-label="Ver servicio"
+                          aria-label="View service"
                         >
                           <Eye className="h-4 w-4" strokeWidth={1.5} />
                         </button>
@@ -764,15 +847,28 @@ export default function ShamellAdminServicesPage() {
                           type="button"
                           onClick={() => startEdit(service)}
                           className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
-                          aria-label="Editar servicio"
+                          aria-label="Edit service"
                         >
                           <Pencil className="h-4 w-4" strokeWidth={1.5} />
                         </button>
                         <button
                           type="button"
-                          onClick={() => onDisable(service.id)}
-                          className="rounded-lg border border-red-400/25 p-2 text-foreground/55 transition hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
-                          aria-label="Desactivar servicio"
+                          onClick={() => openDeleteConfirm(service)}
+                          disabled={!deletable}
+                          className={cn(
+                            "rounded-lg border p-2 transition",
+                            deletable
+                              ? "border-red-400/25 text-foreground/55 hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
+                              : "cursor-not-allowed border-gold/10 text-foreground/30",
+                          )}
+                          aria-label="Delete service permanently"
+                          title={
+                            !deletable
+                              ? bk > 0
+                                ? "Has linked bookings"
+                                : "Has linked gallery photos"
+                              : "Delete from catalog (irreversible)"
+                          }
                         >
                           <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                         </button>
@@ -784,7 +880,7 @@ export default function ShamellAdminServicesPage() {
               {!isLoading && filteredServices.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-sm text-foreground/60">
-                    No hay servicios para mostrar.
+                    No services to show.
                   </td>
                 </tr>
               ) : null}
@@ -804,7 +900,7 @@ export default function ShamellAdminServicesPage() {
               disabled={safePage <= 1}
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               className="rounded-lg border border-gold/20 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-              aria-label="Página anterior"
+              aria-label="Previous page"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -828,24 +924,24 @@ export default function ShamellAdminServicesPage() {
               disabled={safePage >= totalPages}
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               className="rounded-lg border border-gold/20 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-              aria-label="Página siguiente"
+              aria-label="Next page"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {isLoading ? <p className="mt-3 text-sm text-foreground/65">Cargando...</p> : null}
+        {isLoading ? <p className="mt-3 text-sm text-foreground/65">Loading...</p> : null}
       </section>
 
       <AdminModal
-        title={editingId ? "Editar Servicio" : "Nuevo Servicio"}
+        title={editingId ? "Edit service" : "New service"}
         isOpen={isModalOpen}
         onClose={closeModal}
       >
         <form id="service-form" noValidate onSubmit={onSubmit} className="space-y-6">
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">TIPO DE SERVICIO</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">SERVICE TYPE</span>
             <div className="relative mt-2">
               <button
                 type="button"
@@ -856,7 +952,7 @@ export default function ShamellAdminServicesPage() {
                 className="shamell-glass-trigger flex h-12 w-full items-center justify-between rounded-xl px-4 text-sm text-foreground"
               >
                 <span className={selectedTypeName ? "text-foreground" : "text-foreground/55"}>
-                  {selectedTypeName ?? "Primero crea un tipo de servicio"}
+                  {selectedTypeName ?? "Create a service type first"}
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 text-gold/80 transition ${isTypeDropdownOpen ? "rotate-180" : ""}`}
@@ -897,14 +993,14 @@ export default function ShamellAdminServicesPage() {
               onChange={(event) => setDescription(event.target.value)}
               rows={4}
               className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
-              placeholder="Describe el servicio..."
+              placeholder="Describe the service..."
             />
           </label>
 
           <label className="block">
             <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">ITEMS (UNO POR LINEA)</span>
             <p className="mt-1 text-xs text-foreground/55 font-body">
-              Lista de ejemplos en el sitio (bodas, yates…). Una línea = un bullet bajo la experiencia pública.
+              Example bullets on the site (weddings, yachts…). One line = one bullet in the public experience.
             </p>
             <textarea
               value={itemsText}
@@ -923,7 +1019,7 @@ export default function ShamellAdminServicesPage() {
               value={priceInput}
               onChange={(event) => setPriceInput(event.target.value)}
               className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
-              placeholder="Ej. 2500 o 2500.50"
+              placeholder="e.g. 2500 or 2500.50"
             />
           </label>
 
@@ -941,7 +1037,7 @@ export default function ShamellAdminServicesPage() {
             <div className="shamell-glass-surface rounded-xl p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs text-gold/85">
-                  {imagePreviewUrl ? "Vista previa de imagen seleccionada" : "Imagen actual del servicio"}
+                  {imagePreviewUrl ? "Preview of selected image" : "Current service image"}
                 </p>
                 {imagePreviewUrl ? (
                   <button
@@ -951,7 +1047,7 @@ export default function ShamellAdminServicesPage() {
                       setIsPreviewLightboxOpen(false);
                     }}
                     className="rounded-full border border-gold/30 p-1 text-gold/85 transition hover:bg-gold/10 hover:text-gold"
-                    aria-label="Quitar imagen seleccionada"
+                    aria-label="Remove selected image"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -962,7 +1058,7 @@ export default function ShamellAdminServicesPage() {
                   type="button"
                   onClick={() => setIsPreviewLightboxOpen(true)}
                   className="block w-full"
-                  aria-label="Abrir vista ampliada de imagen"
+                  aria-label="Open enlarged image view"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -981,14 +1077,14 @@ export default function ShamellAdminServicesPage() {
               onClick={closeModal}
               className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
               className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear servicio"}
+              {isSubmitting ? "Saving..." : editingId ? "Save changes" : "Create service"}
             </button>
           </div>
         </form>
@@ -1007,7 +1103,7 @@ export default function ShamellAdminServicesPage() {
               type="button"
               onClick={() => setIsPreviewLightboxOpen(false)}
               className="shamell-glass-surface absolute right-3 top-3 z-10 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
-              aria-label="Cerrar vista previa"
+              aria-label="Close preview"
             >
               <X className="h-5 w-5" />
             </button>
@@ -1034,17 +1130,17 @@ export default function ShamellAdminServicesPage() {
               type="button"
               onClick={() => setViewService(null)}
               className="shamell-glass-surface absolute right-3 top-3 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
-              aria-label="Cerrar"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
-            <p className="font-brand text-[10px] tracking-[0.2em] text-gold/75">VISTA RÁPIDA</p>
+            <p className="font-brand text-[10px] tracking-[0.2em] text-gold/75">QUICK LOOK</p>
             <h2 className="mt-2 font-brand text-xl text-gold">
               {displayServiceHeading(viewService.description).title}
             </h2>
             <p className="mt-1 font-body text-xs text-foreground/45">{viewService.serviceTypeName}</p>
             <p className="mt-2 font-brand text-[10px] tracking-[0.14em] text-gold/80">
-              PRECIO <span className="font-body text-foreground/70">{formatPriceEs(viewService.price)}</span>
+              PRECIO <span className="font-body text-foreground/70">{formatPriceEn(viewService.price)}</span>
             </p>
             {viewService.imageUrl ? (
               <div className="mt-4 overflow-hidden rounded-xl border border-gold/15">
@@ -1054,11 +1150,47 @@ export default function ShamellAdminServicesPage() {
             ) : null}
             <p className="mt-4 font-body text-sm leading-relaxed text-foreground/70">{viewService.description}</p>
             <p className="mt-3 font-body text-xs text-foreground/45">
-              {viewService.items.length} ítem(s) · {viewService.isActive ? "Activo" : "Inactivo"}
+              {viewService.items.length} item(s) · {viewService.isActive ? "Active" : "Inactive"}
             </p>
           </div>
         </div>
       ) : null}
+
+      <AdminModal
+        title="Delete service"
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (!isDeleting) setPendingDelete(null);
+        }}
+      >
+        <div className="space-y-5 font-body text-sm text-foreground/85">
+          <p>
+            Permanently delete{" "}
+            <span className="font-brand text-gold">
+              {pendingDelete ? displayServiceHeading(pendingDelete.description).title : ""}
+            </span>
+            This will remove it from the catalog and cloud storage (cannot be undone).
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              disabled={isDeleting}
+              className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void onConfirmDelete()}
+              disabled={isDeleting}
+              className="rounded-xl border border-red-400/45 bg-red-500/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-red-200 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </AdminModal>
     </div>
   );
 }

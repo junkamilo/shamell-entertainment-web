@@ -2,8 +2,10 @@
 
 import {
   type ChangeEvent,
+  type KeyboardEvent,
   FormEvent,
   type DragEvent,
+  type MouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -13,10 +15,13 @@ import {
 import Image from "next/image";
 import {
   CloudUpload,
+  Crosshair,
   Eye,
   GripVertical,
   ImagePlus,
   Loader2,
+  Monitor,
+  Smartphone,
   Trash2,
   Upload,
   X,
@@ -32,6 +37,10 @@ import { cn } from "@/lib/utils";
 type HeaderPhoto = {
   id: string;
   imageUrl: string;
+  focalX: number;
+  focalY: number;
+  focalMobileX: number;
+  focalMobileY: number;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -47,16 +56,21 @@ function fileKey(file: File): string {
   return `${file.name}-${file.size}-${file.lastModified}`;
 }
 
+function clampPercent(value: number): number {
+  if (!Number.isFinite(value)) return 50;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
 function displayNameFromImageUrl(url: string): string {
   try {
     const u = new URL(url);
     const last = u.pathname.split("/").filter(Boolean).pop();
     if (last && last.includes(".")) return decodeURIComponent(last.slice(0, 48));
-    return decodeURIComponent(last ?? "Imagen").slice(0, 48);
+    return decodeURIComponent(last ?? "Image").slice(0, 48);
   } catch {
     const trimmed = url.split("?")[0];
     const last = trimmed.split("/").pop();
-    return (last ? decodeURIComponent(last) : "Imagen").slice(0, 48);
+    return (last ? decodeURIComponent(last) : "Image").slice(0, 48);
   }
 }
 
@@ -86,6 +100,14 @@ export default function ShamellAdminHeaderMediaPage() {
   const [dragOver, setDragOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingFocusPhoto, setEditingFocusPhoto] = useState<HeaderPhoto | null>(null);
+  const [focusDraft, setFocusDraft] = useState({
+    desktopX: 50,
+    desktopY: 35,
+    mobileX: 50,
+    mobileY: 35,
+  });
+  const [isSavingFocus, setIsSavingFocus] = useState(false);
 
   const paginationMeta = useMemo(() => {
     const totalItems = photos.length;
@@ -155,14 +177,14 @@ export default function ShamellAdminHeaderMediaPage() {
       });
       const data = await response.json().catch(() => []);
       if (!response.ok) {
-        throw new Error("No se pudieron cargar las fotos del header.");
+        throw new Error("Could not load header photos.");
       }
       setPhotos(Array.isArray(data) ? (data as HeaderPhoto[]) : []);
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -227,8 +249,8 @@ export default function ShamellAdminHeaderMediaPage() {
     if (!pendingFiles.length) {
       toast({
         variant: "destructive",
-        title: "Archivo requerido",
-        description: "Selecciona al menos una imagen.",
+        title: "File required",
+        description: "Select at least one image.",
       });
       return;
     }
@@ -247,12 +269,12 @@ export default function ShamellAdminHeaderMediaPage() {
         const message =
           typeof data?.message === "string"
             ? data.message
-            : "No se pudieron subir las fotos del header.";
+            : "Could not upload header photos.";
         throw new Error(message);
       }
       toast({
-        title: "Fotos subidas",
-        description: "Las imágenes del header principal se guardaron correctamente.",
+        title: "Photos uploaded",
+        description: "Main header images were saved.",
       });
       clearPending();
       await loadData();
@@ -263,7 +285,7 @@ export default function ShamellAdminHeaderMediaPage() {
         description:
           error instanceof Error
             ? error.message
-            : "No se pudieron subir las fotos del header.",
+            : "Could not upload header photos.",
       });
     } finally {
       setIsSaving(false);
@@ -291,7 +313,7 @@ export default function ShamellAdminHeaderMediaPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo actualizar el estado de la foto.",
+        description: "Could not update the photo status.",
       });
     }
   };
@@ -309,26 +331,109 @@ export default function ShamellAdminHeaderMediaPage() {
       );
       if (!response.ok) throw new Error();
       toast({
-        title: "Foto eliminada",
-        description: "La foto se eliminó del header principal.",
+        title: "Photo removed",
+        description: "The photo was removed from the main header.",
       });
       await loadData();
     } catch {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "No se pudo eliminar la foto.",
+        description: "Could not delete the photo.",
       });
+    }
+  };
+
+  const openFocusEditor = (photo: HeaderPhoto) => {
+    setEditingFocusPhoto(photo);
+    setFocusDraft({
+      desktopX: clampPercent(photo.focalX),
+      desktopY: clampPercent(photo.focalY),
+      mobileX: clampPercent(photo.focalMobileX),
+      mobileY: clampPercent(photo.focalMobileY),
+    });
+  };
+
+  const closeFocusEditor = () => {
+    if (isSavingFocus) return;
+    setEditingFocusPhoto(null);
+  };
+
+  const setDraftFromPoint = (
+    event: MouseEvent<HTMLDivElement>,
+    target: "desktop" | "mobile",
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / rect.width) * 100;
+    const y = ((event.clientY - rect.top) / rect.height) * 100;
+    const nextX = clampPercent(x);
+    const nextY = clampPercent(y);
+    setFocusDraft((prev) =>
+      target === "desktop"
+        ? { ...prev, desktopX: nextX, desktopY: nextY }
+        : { ...prev, mobileX: nextX, mobileY: nextY },
+    );
+  };
+
+  const saveFocusEditor = async () => {
+    if (!editingFocusPhoto) return;
+    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) return;
+    setIsSavingFocus(true);
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}/api/v1/header-media/admin/photos/${editingFocusPhoto.id}/focal`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            focalX: clampPercent(focusDraft.desktopX),
+            focalY: clampPercent(focusDraft.desktopY),
+            focalMobileX: clampPercent(focusDraft.mobileX),
+            focalMobileY: clampPercent(focusDraft.mobileY),
+          }),
+        },
+      );
+      if (!response.ok) throw new Error();
+      setPhotos((prev) =>
+        prev.map((item) =>
+          item.id === editingFocusPhoto.id
+            ? {
+                ...item,
+                focalX: clampPercent(focusDraft.desktopX),
+                focalY: clampPercent(focusDraft.desktopY),
+                focalMobileX: clampPercent(focusDraft.mobileX),
+                focalMobileY: clampPercent(focusDraft.mobileY),
+              }
+            : item,
+        ),
+      );
+      toast({
+        title: "Focus updated",
+        description: "Focal point saved for desktop and mobile.",
+      });
+      setEditingFocusPhoto(null);
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Could not save the focal point.",
+      });
+    } finally {
+      setIsSavingFocus(false);
     }
   };
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <AdminBackButton href="/shamell-admin" label="Volver" className="mb-4" />
+      <AdminBackButton href="/shamell-admin" label="Back" className="mb-4" />
 
       <AdminModuleHero
-        title="Header principal"
-        actionLabel="Subir fotos"
+        title="Main header"
+        actionLabel="Upload photos"
         onAction={onPickFiles}
         bordered={false}
       />
@@ -343,10 +448,10 @@ export default function ShamellAdminHeaderMediaPage() {
       />
 
       <section className="shamell-glass-surface rounded-2xl border border-gold/15 p-5 md:p-6">
-        {/* 01 — Zona de carga */}
+        {/* 01 — Upload zone */}
         <div className="mb-2 flex items-center justify-between gap-3">
           <p className="font-brand text-[11px] tracking-[0.2em] text-gold/90">
-            01 — SUBIR IMÁGENES
+            01 — UPLOAD IMAGES
           </p>
         </div>
 
@@ -365,30 +470,30 @@ export default function ShamellAdminHeaderMediaPage() {
         >
           <CloudUpload className="h-10 w-10 text-gold/80" strokeWidth={1.25} aria-hidden />
           <p className="mt-4 font-body text-sm text-foreground">
-            Arrastra imágenes aquí o{" "}
+            Drag images here or{" "}
             <span className="font-medium text-gold underline decoration-gold/40 underline-offset-4">
-              selecciona archivos
+              choose files
             </span>
           </p>
           <p className="mt-2 max-w-md font-body text-xs text-foreground/55">
-            JPG · PNG · WebP · recomendado 1920 × 1080 · varias archivos permitidas
+            JPG · PNG · WebP · 1920 × 1080 recommended · multiple files allowed
           </p>
         </button>
 
-        {/* Biblioteca */}
+        {/* Library */}
         <div className="mt-10 mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Biblioteca</h2>
+            <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Library</h2>
             <span className="rounded-full border border-gold/35 bg-gold/10 px-2.5 py-0.5 font-brand text-[10px] tracking-widest text-gold">
               {isLoading ? "…" : `${paginationMeta.totalItems} foto${paginationMeta.totalItems === 1 ? "" : "s"}`}
             </span>
           </div>
           <span
             className="inline-flex cursor-not-allowed items-center gap-1.5 text-xs text-foreground/40"
-            title="El orden del slider requiere soporte en el servidor (próximamente)."
+            title="Slider order requires server support (coming soon)."
           >
             <GripVertical className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-            Orden manual no disponible
+            Manual order unavailable
           </span>
         </div>
 
@@ -396,7 +501,7 @@ export default function ShamellAdminHeaderMediaPage() {
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gold/20 px-6 py-12 text-center">
             <ImagePlus className="h-9 w-9 text-gold/35" />
             <p className="mt-3 text-sm text-foreground/55">
-              No hay fotos en el header principal todavía.
+              No photos in the main header yet.
             </p>
           </div>
         ) : isLoading && photos.length === 0 ? (
@@ -424,6 +529,7 @@ export default function ShamellAdminHeaderMediaPage() {
                       fill
                       unoptimized
                       className="object-cover"
+                      style={{ objectPosition: `${clampPercent(photo.focalX)}% ${clampPercent(photo.focalY)}%` }}
                     />
                     <span className="absolute left-2 top-2 rounded-md border border-gold/35 bg-black/55 px-2 py-0.5 font-brand text-[10px] tracking-widest text-gold">
                       #{globalIndex}
@@ -436,7 +542,7 @@ export default function ShamellAdminHeaderMediaPage() {
                           : "border-gold/30 bg-black/55 text-foreground/60",
                       )}
                     >
-                      {photo.isActive ? "● ACTIVA" : "● INACTIVA"}
+                      {photo.isActive ? "● ACTIVE" : "● INACTIVE"}
                     </span>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 border-t border-gold/12 bg-black/20 px-2.5 py-2">
@@ -447,9 +553,17 @@ export default function ShamellAdminHeaderMediaPage() {
                       type="button"
                       onClick={() => window.open(photo.imageUrl, "_blank", "noopener,noreferrer")}
                       className="shrink-0 rounded-lg border border-gold/25 p-1.5 text-gold transition hover:bg-gold/10"
-                      aria-label="Ver imagen en nueva pestaña"
+                      aria-label="Open image in new tab"
                     >
                       <Eye className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openFocusEditor(photo)}
+                      className="shrink-0 rounded-lg border border-gold/25 p-1.5 text-gold transition hover:bg-gold/10"
+                      aria-label="Adjust focus"
+                    >
+                      <Crosshair className="h-3.5 w-3.5" />
                     </button>
                     <button
                       type="button"
@@ -460,7 +574,7 @@ export default function ShamellAdminHeaderMediaPage() {
                           ? "border-emerald-400/45 bg-emerald-500/22"
                           : "border-gold/40 bg-gold/10",
                       )}
-                      aria-label={photo.isActive ? "Desactivar en slider" : "Activar en slider"}
+                      aria-label={photo.isActive ? "Hide from slider" : "Show in slider"}
                     >
                       <span
                         className={cn(
@@ -473,7 +587,7 @@ export default function ShamellAdminHeaderMediaPage() {
                       type="button"
                       onClick={() => onDelete(photo.id)}
                       className="ml-auto shrink-0 rounded-lg border border-red-400/30 p-1.5 text-red-200 transition hover:bg-red-500/10"
-                      aria-label="Eliminar foto"
+                      aria-label="Delete photo"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -502,23 +616,22 @@ export default function ShamellAdminHeaderMediaPage() {
             <form onSubmit={onSubmit}>
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <p className="inline-flex rounded-full border border-gold/35 px-3 py-1 font-brand text-[10px] tracking-[0.16em] text-gold">
-                  02 — LISTO PARA PUBLICAR
+                  02 — READY TO PUBLISH
                 </p>
                 <button
                   type="button"
                   onClick={onPickFiles}
                   className="rounded-full border border-gold/28 px-3 py-1.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/12"
                 >
-                  + AÑADIR
+                  + ADD MORE
                 </button>
               </div>
 
               <div className="rounded-xl border border-dashed border-gold/22 bg-black/15 px-4 py-4">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gold/10 pb-3">
                   <p className="font-body text-sm text-foreground">
-                    <span className="font-semibold text-gold/90">{pendingFiles.length}</span> archivo
-                    {pendingFiles.length === 1 ? "" : "s"} seleccionado
-                    {pendingFiles.length === 1 ? "" : "s"}
+                    <span className="font-semibold text-gold/90">{pendingFiles.length}</span> file
+                    {pendingFiles.length === 1 ? "" : "s"} selected
                     {" · "}
                     <span className="text-foreground/70">{formatFileSize(pendingTotalBytes)} total</span>
                   </p>
@@ -532,7 +645,7 @@ export default function ShamellAdminHeaderMediaPage() {
                         key={k}
                         className="flex flex-wrap items-center gap-3 rounded-lg border border-gold/12 bg-black/20 p-3"
                       >
-                        <div className="relative h-14 w-[4.5rem] shrink-0 overflow-hidden rounded-md border border-gold/15 bg-black/30">
+                        <div className="relative h-14 w-18 shrink-0 overflow-hidden rounded-md border border-gold/15 bg-black/30">
                           {previewUrl ? (
                             <Image
                               src={previewUrl}
@@ -559,7 +672,7 @@ export default function ShamellAdminHeaderMediaPage() {
                             ) : (
                               <>
                                 {" · "}
-                                <span className="text-foreground/45">En cola</span>
+                                <span className="text-foreground/45">Queued</span>
                               </>
                             )}
                           </p>
@@ -574,7 +687,7 @@ export default function ShamellAdminHeaderMediaPage() {
                           disabled={isSaving}
                           onClick={() => removePendingOne(k)}
                           className="shrink-0 rounded-lg border border-gold/25 p-1.5 text-foreground/70 transition hover:bg-gold/10 hover:text-gold disabled:opacity-40"
-                          aria-label="Quitar archivo"
+                          aria-label="Remove file"
                         >
                           <X className="h-4 w-4" />
                         </button>
@@ -586,7 +699,7 @@ export default function ShamellAdminHeaderMediaPage() {
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gold/10 pt-4">
                   <p className="flex items-center gap-2 font-body text-xs text-foreground/50">
                     <span className="inline-block h-2 w-2 rounded-full bg-gold/50" aria-hidden />
-                    Las imágenes se publican al confirmar.
+                    Images publish when you confirm.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -595,7 +708,7 @@ export default function ShamellAdminHeaderMediaPage() {
                       onClick={() => clearPending()}
                       className="rounded-xl border border-gold/28 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/80 transition hover:border-gold/45 hover:text-gold disabled:opacity-50"
                     >
-                      Cancelar
+                      Cancel
                     </button>
                     <button
                       type="submit"
@@ -607,7 +720,7 @@ export default function ShamellAdminHeaderMediaPage() {
                       ) : (
                         <Upload className="h-4 w-4" />
                       )}
-                      Publicar {pendingFiles.length} foto{pendingFiles.length === 1 ? "" : "s"}
+                      Publish {pendingFiles.length} photo{pendingFiles.length === 1 ? "" : "s"}
                     </button>
                   </div>
                 </div>
@@ -616,6 +729,216 @@ export default function ShamellAdminHeaderMediaPage() {
           </>
         ) : null}
       </section>
+
+      {editingFocusPhoto ? (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-2 backdrop-blur-sm sm:items-center sm:p-4">
+          <div className="flex max-h-[94svh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-gold/20 bg-[#0b0f14]">
+            <div className="flex items-start justify-between gap-4 border-b border-gold/10 px-4 py-3 md:px-6 md:py-4">
+              <div>
+                <h3 className="font-brand text-base tracking-[0.12em] text-gold">Adjust hero focus</h3>
+                <p className="mt-1 text-xs text-foreground/60">
+                  Click the image to move the focal point. This improves framing on laptop and mobile.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={closeFocusEditor}
+                className="rounded-lg border border-gold/30 p-1.5 text-foreground/70 transition hover:bg-gold/10 hover:text-gold"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4 md:px-6 md:py-5">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={(event) => setDraftFromPoint(event, "desktop")}
+                onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                  }
+                }}
+                className="relative aspect-video cursor-crosshair overflow-hidden rounded-xl border border-gold/20 sm:aspect-16/8"
+              >
+                <Image
+                  src={editingFocusPhoto.imageUrl}
+                  alt=""
+                  fill
+                  unoptimized
+                  className="object-cover scale-[1.12]"
+                  style={{ objectPosition: `${focusDraft.desktopX}% ${focusDraft.desktopY}%` }}
+                />
+                <span
+                  className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-gold bg-black/50"
+                  style={{ left: `${focusDraft.desktopX}%`, top: `${focusDraft.desktopY}%` }}
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_260px] md:items-start">
+                <div className="w-full">
+                  <p className="mb-2 inline-flex items-center gap-1 text-[11px] tracking-widest text-gold/75">
+                    <Monitor className="h-3.5 w-3.5" />
+                    PREVIEW DESKTOP
+                  </p>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => setDraftFromPoint(event, "desktop")}
+                    onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                      }
+                    }}
+                    className="relative aspect-video w-full cursor-crosshair overflow-hidden rounded-xl border border-gold/20"
+                  >
+                    <Image
+                      src={editingFocusPhoto.imageUrl}
+                      alt=""
+                      fill
+                      unoptimized
+                      className="object-cover scale-[1.12]"
+                      style={{ objectPosition: `${focusDraft.desktopX}% ${focusDraft.desktopY}%` }}
+                    />
+                    <span
+                      className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-gold bg-black/50"
+                      style={{ left: `${focusDraft.desktopX}%`, top: `${focusDraft.desktopY}%` }}
+                    />
+                  </div>
+                  <label className="mt-3 block">
+                    <span className="mb-1 block text-[11px] tracking-widest text-gold/80">
+                      DESKTOP X ({focusDraft.desktopX}%)
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={focusDraft.desktopX}
+                      onChange={(event) =>
+                        setFocusDraft((prev) => ({
+                          ...prev,
+                          desktopX: clampPercent(Number(event.target.value)),
+                        }))
+                      }
+                      className="w-full accent-gold"
+                    />
+                  </label>
+                  <label className="mt-3 block">
+                    <span className="mb-1 block text-[11px] tracking-widest text-gold/80">
+                      DESKTOP Y ({focusDraft.desktopY}%)
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={focusDraft.desktopY}
+                      onChange={(event) =>
+                        setFocusDraft((prev) => ({
+                          ...prev,
+                          desktopY: clampPercent(Number(event.target.value)),
+                        }))
+                      }
+                      className="w-full accent-gold"
+                    />
+                  </label>
+                </div>
+                <div className="md:justify-self-end">
+                  <p className="mb-2 inline-flex items-center gap-1 text-[11px] tracking-widest text-gold/75">
+                    <Smartphone className="h-3.5 w-3.5" />
+                    PREVIEW MOBILE
+                  </p>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(event) => setDraftFromPoint(event, "mobile")}
+                    onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                      }
+                    }}
+                    className="relative mx-auto aspect-9/16 w-full max-w-[220px] cursor-crosshair overflow-hidden rounded-xl border border-gold/20 md:mx-0"
+                  >
+                    <Image
+                      src={editingFocusPhoto.imageUrl}
+                      alt=""
+                      fill
+                      unoptimized
+                      className="object-cover scale-[1.12]"
+                      style={{ objectPosition: `${focusDraft.mobileX}% ${focusDraft.mobileY}%` }}
+                    />
+                    <span
+                      className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-gold bg-black/50"
+                      style={{ left: `${focusDraft.mobileX}%`, top: `${focusDraft.mobileY}%` }}
+                    />
+                  </div>
+                  <label className="mt-3 block">
+                    <span className="mb-1 block text-[11px] tracking-widest text-gold/80">
+                      MOBILE X ({focusDraft.mobileX}%)
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={focusDraft.mobileX}
+                      onChange={(event) =>
+                        setFocusDraft((prev) => ({
+                          ...prev,
+                          mobileX: clampPercent(Number(event.target.value)),
+                        }))
+                      }
+                      className="w-full accent-gold"
+                    />
+                  </label>
+                  <label className="mt-3 block">
+                    <span className="mb-1 block text-[11px] tracking-widest text-gold/80">
+                      MOBILE Y ({focusDraft.mobileY}%)
+                    </span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={focusDraft.mobileY}
+                      onChange={(event) =>
+                        setFocusDraft((prev) => ({
+                          ...prev,
+                          mobileY: clampPercent(Number(event.target.value)),
+                        }))
+                      }
+                      className="w-full accent-gold"
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gold/10 px-4 py-3 md:px-6 md:py-4">
+              <p className="text-xs text-foreground/55">
+                Tip: use a sharp image with the main subject centered and a little breathing room.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={closeFocusEditor}
+                  disabled={isSavingFocus}
+                  className="rounded-xl border border-gold/28 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/80 transition hover:border-gold/45 hover:text-gold disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveFocusEditor}
+                  disabled={isSavingFocus}
+                  className="inline-flex items-center gap-2 rounded-xl border border-gold/35 bg-gold/12 px-5 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/20 disabled:opacity-50"
+                >
+                  {isSavingFocus ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Save focal point
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

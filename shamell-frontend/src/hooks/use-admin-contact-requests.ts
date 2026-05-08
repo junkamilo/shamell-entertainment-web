@@ -65,7 +65,7 @@ export function useAdminContactRequests(enabled = true, query?: AdminContactRequ
           throw new Error(
             typeof (data as { message?: string }).message === "string"
               ? (data as { message: string }).message
-              : "No se pudieron cargar las solicitudes.",
+              : "Could not load contact requests.",
           );
         }
         return response.json();
@@ -90,7 +90,7 @@ export function useAdminContactRequests(enabled = true, query?: AdminContactRequ
         });
       })
       .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : "No se pudieron cargar las solicitudes.";
+        const message = err instanceof Error ? err.message : "Could not load contact requests.";
         setError(message);
       })
       .finally(() => setIsLoading(false));
@@ -116,7 +116,7 @@ export function useAdminContactRequests(enabled = true, query?: AdminContactRequ
       const msg =
         typeof (data as { message?: string }).message === "string"
           ? (data as { message: string }).message
-          : "No se pudo actualizar estado.";
+          : "Could not update status.";
       throw new Error(msg);
     }
     setRequests((prev) =>
@@ -136,7 +136,7 @@ export function useAdminContactRequests(enabled = true, query?: AdminContactRequ
       const msg =
         typeof (data as { message?: string }).message === "string"
           ? (data as { message: string }).message
-          : "No se pudo eliminar.";
+          : "Could not delete.";
       throw new Error(msg);
     }
     setRequests((prev) => prev.filter((r) => r.id !== id));

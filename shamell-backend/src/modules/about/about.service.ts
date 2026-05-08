@@ -8,6 +8,8 @@ import { v2 as cloudinary } from 'cloudinary';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpsertAboutContentDto } from './dto/upsert-about-content.dto';
 
+type AboutHeroMediaType = 'IMAGE' | 'VIDEO';
+
 @Injectable()
 export class AboutService {
   constructor(private readonly prisma: PrismaService) {
@@ -38,7 +40,7 @@ export class AboutService {
 
   async upsertAdminAboutContent(
     dto: UpsertAboutContentDto,
-    imageFile?: Express.Multer.File,
+    mediaFile?: Express.Multer.File,
   ) {
     const existing = await this.prisma.aboutContent.findFirst({
       orderBy: { updatedAt: 'desc' },
@@ -46,14 +48,18 @@ export class AboutService {
 
     const isCreating = !existing;
     if (isCreating) {
-      this.ensureRequiredForCreate(dto, imageFile);
+      this.ensureRequiredForCreate(dto, mediaFile);
     }
 
-    let newImageUpload: { secureUrl: string; publicId: string } | null = null;
-    if (imageFile) {
-      this.ensureImageFile(imageFile);
+    let newUpload: {
+      secureUrl: string;
+      publicId: string;
+      mediaType: AboutHeroMediaType;
+    } | null = null;
+    if (mediaFile) {
+      this.ensureHeroMediaFile(mediaFile);
       this.ensureCloudinaryEnv();
-      newImageUpload = await this.uploadImageToCloudinary(imageFile);
+      newUpload = await this.uploadHeroMediaToCloudinary(mediaFile);
     }
 
     try {
@@ -68,10 +74,11 @@ export class AboutService {
               ...(dto.coreValues !== undefined
                 ? { coreValues: dto.coreValues }
                 : {}),
-              ...(newImageUpload
+              ...(newUpload
                 ? {
-                    imageUrl: newImageUpload.secureUrl,
-                    imagePublicId: newImageUpload.publicId,
+                    imageUrl: newUpload.secureUrl,
+                    imagePublicId: newUpload.publicId,
+                    heroMediaType: newUpload.mediaType,
                   }
                 : {}),
             },
@@ -81,16 +88,19 @@ export class AboutService {
               title: dto.title!,
               paragraph1: dto.paragraph1!,
               coreValues: dto.coreValues!,
-              imageUrl: newImageUpload?.secureUrl ?? null,
-              imagePublicId: newImageUpload?.publicId ?? null,
+              imageUrl: newUpload?.secureUrl ?? null,
+              imagePublicId: newUpload?.publicId ?? null,
+              heroMediaType: newUpload?.mediaType ?? 'IMAGE',
               isActive: true,
             },
           });
 
-      if (newImageUpload && existing?.imagePublicId) {
-        await this.deleteImageFromCloudinary(existing.imagePublicId).catch(
-          () => null,
-        );
+      if (newUpload && existing?.imagePublicId) {
+        const prevType = this.normalizeHeroMediaType(existing.heroMediaType);
+        await this.deleteHeroFromCloudinary(
+          existing.imagePublicId,
+          prevType,
+        ).catch(() => null);
       }
 
       return {
@@ -100,10 +110,11 @@ export class AboutService {
         about: this.mapAboutContent(saved),
       };
     } catch (error) {
-      if (newImageUpload) {
-        await this.deleteImageFromCloudinary(newImageUpload.publicId).catch(
-          () => null,
-        );
+      if (newUpload) {
+        await this.deleteHeroFromCloudinary(
+          newUpload.publicId,
+          newUpload.mediaType,
+        ).catch(() => null);
       }
       throw error;
     }
@@ -111,16 +122,16 @@ export class AboutService {
 
   private ensureRequiredForCreate(
     dto: UpsertAboutContentDto,
-    imageFile?: Express.Multer.File,
+    mediaFile?: Express.Multer.File,
   ) {
     if (!dto.title || !dto.paragraph1 || !dto.coreValues?.length) {
       throw new BadRequestException(
         'Title, paragraph1, and at least one core value are required.',
       );
     }
-    if (!imageFile) {
+    if (!mediaFile) {
       throw new BadRequestException(
-        'Image file is required to create about content.',
+        'An image or video file is required to create about content.',
       );
     }
   }
@@ -137,32 +148,44 @@ export class AboutService {
     }
   }
 
-  private ensureImageFile(imageFile?: Express.Multer.File) {
-    if (!imageFile?.buffer) {
-      throw new BadRequestException('Image file is required.');
+  private ensureHeroMediaFile(mediaFile?: Express.Multer.File) {
+    if (!mediaFile?.buffer) {
+      throw new BadRequestException('Media file is required.');
     }
-    if (!imageFile.mimetype.startsWith('image/')) {
-      throw new BadRequestException('Only image files are allowed.');
+    const ok =
+      mediaFile.mimetype.startsWith('image/') ||
+      mediaFile.mimetype.startsWith('video/');
+    if (!ok) {
+      throw new BadRequestException('Only image or video files are allowed.');
     }
   }
 
-  private uploadImageToCloudinary(
+  private uploadHeroMediaToCloudinary(
     file: Express.Multer.File,
-  ): Promise<{ secureUrl: string; publicId: string }> {
+  ): Promise<{ secureUrl: string; publicId: string; mediaType: AboutHeroMediaType }> {
+    const isVideo = file.mimetype.startsWith('video/');
+    const resourceType = isVideo ? 'video' : 'image';
+    const mediaType: AboutHeroMediaType = isVideo ? 'VIDEO' : 'IMAGE';
+
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'shamell/about',
-          resource_type: 'image',
+          resource_type: resourceType,
         },
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
-            reject(new InternalServerErrorException('Image upload failed.'));
+            reject(
+              new InternalServerErrorException(
+                `${isVideo ? 'Video' : 'Image'} upload failed.`,
+              ),
+            );
             return;
           }
           resolve({
             secureUrl: result.secure_url,
             publicId: result.public_id,
+            mediaType,
           });
         },
       );
@@ -171,15 +194,23 @@ export class AboutService {
     });
   }
 
-  private async deleteImageFromCloudinary(publicId: string) {
+  private normalizeHeroMediaType(raw: string | null | undefined): AboutHeroMediaType {
+    return raw === 'VIDEO' ? 'VIDEO' : 'IMAGE';
+  }
+
+  private async deleteHeroFromCloudinary(
+    publicId: string,
+    mediaType: AboutHeroMediaType,
+  ) {
+    const resourceType = mediaType === 'VIDEO' ? 'video' : 'image';
     const destroyResult = (await cloudinary.uploader.destroy(publicId, {
-      resource_type: 'image',
+      resource_type: resourceType,
     })) as { result?: string };
     const ok =
       destroyResult.result === 'ok' || destroyResult.result === 'not found';
     if (!ok) {
       throw new InternalServerErrorException(
-        'Cloudinary image deletion failed.',
+        'Cloudinary media deletion failed.',
       );
     }
   }
@@ -190,16 +221,19 @@ export class AboutService {
     paragraph1: string;
     coreValues: string[];
     imageUrl: string | null;
+    heroMediaType?: string | null;
     isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
   }) {
+    const heroMediaType = this.normalizeHeroMediaType(content.heroMediaType);
     return {
       id: content.id,
       title: content.title,
       paragraph1: content.paragraph1,
       coreValues: content.coreValues,
       imageUrl: content.imageUrl,
+      heroMediaType,
       isActive: content.isActive,
       createdAt: content.createdAt,
       updatedAt: content.updatedAt,

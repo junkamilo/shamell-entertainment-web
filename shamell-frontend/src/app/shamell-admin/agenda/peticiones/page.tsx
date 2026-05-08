@@ -11,7 +11,7 @@ export default function AgendaPeticionesPage() {
 
   return (
     <ContactRequestsPanel
-      heroTitle="Peticiones"
+      heroTitle="Inbox"
       heroSubtitle=""
     />
   );

@@ -17,14 +17,14 @@ export type EventCatalogItem = {
 };
 
 function formatCatalogPriceAmount(value: number): string {
-  return new Intl.NumberFormat("es", {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(Number(value));
 }
 
 const inquireLinkClass = cn(
-  "relative inline-flex min-h-12 flex-1 items-center justify-center gap-2 overflow-hidden border border-gold/35 bg-black/40 px-5 py-3 font-brand text-[10px] tracking-[0.18em] text-gold uppercase",
+  "relative inline-flex min-h-12 flex-1 items-center justify-center gap-2 overflow-hidden border border-gold/35 bg-black/40 px-5 py-3 font-brand text-xs font-semibold tracking-[0.16em] text-gold uppercase md:min-h-12 md:tracking-[0.18em]",
   "transition-all duration-300",
   "before:pointer-events-none before:absolute before:inset-0 before:translate-x-[-110%] before:bg-[linear-gradient(105deg,transparent,rgba(255,255,255,0.08),transparent)] before:transition-transform before:duration-500",
   "hover:border-gold/55 hover:bg-gold/[0.07] hover:text-gold-light group-hover/card:before:translate-x-[110%]",
@@ -110,32 +110,36 @@ export function EventCatalogCard({
       {/* Body */}
       <div className="relative z-10 flex flex-1 flex-col px-6 pb-6 pt-5 md:px-7 md:pb-7 md:pt-6">
         <header className="border-b border-white/[0.07] pb-4 transition-colors duration-500 group-hover/card:border-gold/15">
-          <h3 className="font-brand text-xl tracking-[0.16em] text-gold md:text-[1.35rem] md:tracking-[0.18em]">
+          <h3 className="font-brand text-xl font-semibold tracking-[0.16em] text-gold md:text-2xl md:tracking-[0.18em]">
             {service.eventTypeName.toUpperCase()}
           </h3>
           <div className="mt-2.5 flex items-center gap-2.5" aria-hidden>
-            <span className="text-[10px] leading-none text-gold/75">✦</span>
+            <span className="text-xs leading-none text-gold/80">✦</span>
             <span className="h-px flex-1 bg-linear-to-r from-gold/35 via-gold/15 to-transparent max-sm:max-w-28" />
           </div>
 
           {hasPrice ? (
             <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="font-body text-[11px] uppercase tracking-[0.2em] text-foreground/50">Desde</span>
-              <span className="font-brand text-2xl tracking-[0.06em] text-gold md:text-[1.65rem]">
+              <span className="font-body text-sm font-medium uppercase tracking-[0.18em] text-foreground/78">
+                From
+              </span>
+              <span className="font-brand text-2xl font-semibold tracking-[0.06em] text-gold md:text-[1.75rem]">
                 ${formatCatalogPriceAmount(service.price!)}
               </span>
-              <span className="font-body text-[11px] uppercase tracking-[0.18em] text-foreground/45">{currencySuffix}</span>
+              <span className="font-body text-sm font-medium uppercase tracking-[0.16em] text-foreground/72">
+                {currencySuffix}
+              </span>
             </div>
           ) : null}
         </header>
 
-        <p className="mt-5 min-h-18 text-[17px] font-body leading-[1.68] text-foreground/78 transition-colors duration-300 group-hover/card:text-foreground/88 md:text-lg md:leading-relaxed">
+        <p className="mt-5 min-h-18 font-body text-base font-medium leading-[1.7] text-foreground/88 transition-colors duration-300 group-hover/card:text-foreground/95 md:text-lg md:leading-relaxed">
           {service.description}
         </p>
 
         <div className="mb-6 mt-6 flex-1">
           <div className="flex items-center justify-between gap-3">
-            <h4 className="relative mb-0 inline-block font-brand text-[10px] tracking-[0.24em] text-gold/95">
+            <h4 className="relative mb-0 inline-block font-brand text-sm font-semibold tracking-[0.2em] text-gold/95 md:text-base md:tracking-[0.22em]">
               EVENT TYPES
               <span
                 className="absolute -bottom-1 left-0 h-px w-0 bg-linear-to-r from-transparent via-white/35 to-transparent transition-all duration-500 ease-out group-hover/card:w-full"
@@ -145,11 +149,13 @@ export function EventCatalogCard({
             <button
               type="button"
               onClick={() => setIsTypesCollapsed((prev) => !prev)}
-              className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-black/35 px-2.5 py-1 text-[10px] text-gold/85 transition hover:border-gold/45 hover:text-gold"
+              className="inline-flex items-center gap-1 rounded-full border border-gold/30 bg-black/35 px-3 py-2 font-brand text-xs font-semibold text-gold/95 transition hover:border-gold/45 hover:text-gold md:px-3.5"
               aria-expanded={!isTypesCollapsed}
               aria-controls={eventTypesPanelId}
             >
-              <span className="font-body uppercase tracking-[0.14em]">{isTypesCollapsed ? "Abrir" : "Cerrar"}</span>
+              <span className="font-body text-xs font-semibold uppercase tracking-[0.12em]">
+                {isTypesCollapsed ? "Expand" : "Collapse"}
+              </span>
               <ChevronDown
                 className={cn("h-3.5 w-3.5 transition-transform", !isTypesCollapsed && "rotate-180")}
                 strokeWidth={2}
@@ -158,8 +164,8 @@ export function EventCatalogCard({
             </button>
           </div>
           {isTypesCollapsed ? (
-            <p className="mt-2 font-body text-xs text-foreground/55">
-              Pulsa la flecha para ver todos los items de este evento.
+            <p className="mt-2 font-body text-base font-medium leading-snug text-foreground/80">
+              Tap the arrow to see every item included in this tier.
             </p>
           ) : null}
           <div
@@ -179,11 +185,11 @@ export function EventCatalogCard({
                   key={`${service.id}-${i}`}
                   style={{ transitionDelay: `${i * 35}ms` }}
                   className={cn(
-                    "relative flex gap-2.5 border-b border-white/6 py-2.5 pl-5 font-body text-[15px] leading-snug text-foreground/72 transition-[transform,color] duration-300 first:pt-0 last:border-b-0 last:pb-0 group-hover/card:text-foreground/84 md:text-base",
+                    "relative flex gap-2.5 border-b border-white/6 py-2.5 pl-5 font-body text-base font-medium leading-snug text-foreground/85 transition-[transform,color] duration-300 first:pt-0 last:border-b-0 last:pb-0 group-hover/card:text-foreground/92 md:text-lg md:leading-snug",
                     "group-hover/card:translate-x-0.5 motion-reduce:group-hover/card:translate-x-0",
                   )}
                 >
-                  <span className="absolute left-0 top-[0.55rem] text-[9px] text-gold/85">✦</span>
+                  <span className="absolute left-0 top-[0.55rem] text-xs text-gold/85 md:top-[0.62rem]">✦</span>
                   {item}
                 </li>
               ))}

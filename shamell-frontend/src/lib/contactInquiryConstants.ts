@@ -104,9 +104,9 @@ export const EXPERIENCE_ADDON_OPTIONS: {
 
 /** Labels for admin inquiry-code select on event types. */
 export const ADMIN_INQUIRY_CODE_OPTIONS: { value: ServiceTypeCode | ""; label: string }[] = [
-  { value: "", label: "Ninguno — GENERAL en el formulario si no hay código" },
-  { value: "PRIVATE_GALA", label: "PRIVATE_GALA — Gala privada / sociales" },
-  { value: "VIP_EVENT", label: "VIP_EVENT — Eventos VIP" },
-  { value: "BESPOKE", label: "BESPOKE — Colaboraciones a medida" },
-  { value: "GENERAL", label: "GENERAL — Consulta general" },
+  { value: "", label: "None — GENERAL in the form when no code is set" },
+  { value: "PRIVATE_GALA", label: "PRIVATE_GALA — Private gala / social events" },
+  { value: "VIP_EVENT", label: "VIP_EVENT — VIP events" },
+  { value: "BESPOKE", label: "BESPOKE — Bespoke collaborations" },
+  { value: "GENERAL", label: "GENERAL — General inquiry" },
 ];

@@ -9,7 +9,7 @@ export const CONTACT_MESSAGE_SEPARATOR = "\n\n---\n\n";
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-/** Client-facing comment (below structured summary) for display and notas de reserva. */
+/** Client-facing comment (below structured summary) for display and booking notes. */
 export function contactClientCommentFromRequest(full: string, inquiryDetails: unknown): string {
   const hasStructuredDetails =
     buildInquiryDetailRows(inquiryDetails, { viewer: "technical" }).length > 0;
@@ -17,7 +17,7 @@ export function contactClientCommentFromRequest(full: string, inquiryDetails: un
   if (i === -1) return full.trim();
   if (!hasStructuredDetails) return full.trim();
   const tail = full.slice(i + CONTACT_MESSAGE_SEPARATOR.length).trim();
-  return tail.length ? tail : "Sin comentario adicional.";
+  return tail.length ? tail : "No additional comment.";
 }
 
 function trimUuid(v: unknown): string | undefined {
@@ -45,9 +45,9 @@ function isoDateFromContactEventDate(eventDate: string | null | undefined): stri
 
 /**
  * Maps inquiry codes → Service.id (GET /services/admin).
- * Optional `eventTypeContactCodeById`: admin tipos de evento → código de consulta.
- * Optional `inquiryCodeByCatalogLineId`: filas públicas GET `/events/contact-lines` (`id` = Event.id o EventType.id
- * en flujo sin evento) → código; sirve sin depender solo del JWT admin y refleja el mismo catálogo que el cliente.
+ * Optional `eventTypeContactCodeById`: admin event type → inquiry code.
+ * Optional `inquiryCodeByCatalogLineId`: public rows from GET `/events/contact-lines` (`id` = Event.id or EventType.id
+ * in flows without a standalone event) → code; works without relying only on the admin JWT and mirrors the client catalog.
  */
 export function resolveServiceIdForContactRequest(
   row: ContactRequest,
@@ -102,7 +102,7 @@ export type ContactRequestBookingBuild =
   | { ok: true; payload: CreateAdminBookingPayload }
   | { ok: false; error: string };
 
-/** Builds the admin booking API payload from a saved contact request (same rules as «Agendar»). */
+/** Builds the admin booking API payload from a saved contact request (same rules as Schedule booking). */
 export function buildAdminBookingPayloadFromContactRequest(
   row: ContactRequest,
   serviceByInquiryCode: Map<string, string>,
@@ -122,42 +122,42 @@ export function buildAdminBookingPayloadFromContactRequest(
     return {
       ok: false,
       error:
-        "No hay ningún servicio en catálogo con el mismo «código de consulta» que esta petición (o falta en el tipo de evento). En admin → Tipos de servicio del catálogo, asigna un código (p. ej. VIP_EVENT) que coincida con el tipo de evento; o usa «Abrir en Agendar» y elige el servicio a mano.",
+        "No catalog service matches this inquiry's contact code (or the event type is missing it). In admin → catalog service types, assign a code (e.g. VIP_EVENT) that matches the event type; or use Open in Schedule and pick the service manually.",
     };
   }
 
-  if (!row.fullName?.trim()) return { ok: false, error: "Falta el nombre del cliente." };
-  if (!row.email?.trim()) return { ok: false, error: "Falta el email del cliente." };
+  if (!row.fullName?.trim()) return { ok: false, error: "Client name is missing." };
+  if (!row.email?.trim()) return { ok: false, error: "Client email is missing." };
   const phone = row.phone?.trim();
-  if (!phone) return { ok: false, error: "Falta el teléfono; agrégalo en «Agendar» o pídeselo al cliente." };
-  if (!row.location?.trim()) return { ok: false, error: "Falta la ubicación del evento." };
+  if (!phone) return { ok: false, error: "Phone is missing; add it in Schedule booking or ask the client." };
+  if (!row.location?.trim()) return { ok: false, error: "Event location is missing." };
 
   const dateIso = isoDateFromContactEventDate(row.eventDate ?? undefined);
-  if (!dateIso) return { ok: false, error: "Falta una fecha de evento válida." };
+  if (!dateIso) return { ok: false, error: "A valid event date is required." };
 
   const start = safeInquiryTime(row.inquiryDetails, "eventTimeStart");
   const end = safeInquiryTime(row.inquiryDetails, "eventTimeEnd");
   if (!start || !end) {
     return {
       ok: false,
-      error: "Faltan hora inicial y hora final del evento en los datos enviados por el cliente.",
+      error: "Event start and end times are missing from the data the client submitted.",
     };
   }
 
   const startM = hhmmToMinutes(start);
   const endM = hhmmToMinutes(end);
   if (startM === null || endM === null) {
-    return { ok: false, error: "Las horas indicadas no tienen un formato válido (usa HH:mm)." };
+    return { ok: false, error: "The times are not in a valid format (use HH:mm)." };
   }
   if (endM <= startM) {
-    return { ok: false, error: "La hora final debe ser posterior a la hora inicial." };
+    return { ok: false, error: "End time must be after start time." };
   }
 
   let eventInstant: Date;
   try {
     eventInstant = utcInstantForWallClock(dateIso, startM, bookingTz);
   } catch {
-    return { ok: false, error: "No se pudo interpretar la fecha y hora en la zona de reservas." };
+    return { ok: false, error: "Could not interpret the date and time in the booking time zone." };
   }
 
   const details =
@@ -202,7 +202,7 @@ export function buildAdminBookingPayloadFromContactRequest(
   return { ok: true, payload };
 }
 
-/** Mapas de catálogo admin para prellenar servicio en «Agendar» (misma lógica que «Reservar»). */
+/** Admin catalog maps to prefill service in Schedule booking (same logic as Reserve). */
 export type AgendarPrefillCatalogMaps = {
   serviceByInquiryCode: Map<string, string>;
   eventTypeContactCodeById?: Map<string, string>;
@@ -210,7 +210,7 @@ export type AgendarPrefillCatalogMaps = {
   fallbackServiceId?: string;
 };
 
-/** Query string for «Agendar» cuando hace falta revisar datos antes de guardar. */
+/** Query string for Schedule booking when data needs review before saving. */
 export function buildAgendarPrefillHref(row: ContactRequest, catalog?: AgendarPrefillCatalogMaps): string {
   const sp = new URLSearchParams();
   if (row.fullName) sp.set("fullName", row.fullName);

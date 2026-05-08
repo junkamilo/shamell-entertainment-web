@@ -8,60 +8,64 @@ function titleCaseLoose(s: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Línea de servicio (campo `serviceType` del contacto), en español para admin. */
+/** Service line (`serviceType` on contact), labels for admin UI. */
 export function formatAdminServiceType(code: string | null | undefined): string {
   if (!code?.trim()) return "";
   const c = code.trim();
-  const ES: Record<ServiceTypeCode, string> = {
-    PRIVATE_GALA: "Gala privada / eventos sociales",
-    VIP_EVENT: "Eventos VIP",
-    BESPOKE: "Colaboraciones a medida",
-    GENERAL: "Consulta general",
+  const labels: Record<ServiceTypeCode, string> = {
+    PRIVATE_GALA: "Private gala / social events",
+    VIP_EVENT: "VIP events",
+    BESPOKE: "Bespoke collaborations",
+    GENERAL: "General inquiry",
   };
   if (SERVICE_TYPE_CODES.includes(c as ServiceTypeCode)) {
-    return ES[c as ServiceTypeCode];
+    return labels[c as ServiceTypeCode];
   }
   return titleCaseLoose(c);
 }
 
-const ENTRY_SOURCE_ES: Record<string, string> = {
-  contact_page: "Página de contacto",
-  home_service_card: "Tarjeta desde el inicio",
-  inquire_section: "Bloque de consulta en la web",
+const ENTRY_SOURCE_LABELS: Record<string, string> = {
+  contact_page: "Contact page",
+  home_service_card: "Card from home",
+  inquire_section: "Inquire block on site",
 };
 
 /** Legacy occasion codes (before UUID occasion types). */
-const OCCASION_LEGACY_ES: Record<string, string> = {
-  LUXURY_BIRTHDAY: "Cumpleaños de lujo",
-  ANNIVERSARY: "Aniversario",
-  ENGAGEMENT_PARTY: "Fiesta de compromiso",
-  PRIVATE_VILLA: "Encuentro en villa privada",
-  YACHT: "Fiesta en yate",
-  INTIMATE_DINNER: "Cena íntima",
-  HOME_EVENT: "Celebración en casa",
-  HOLIDAY: "Festividad / temporada",
-  EXCLUSIVE_SOCIAL: "Velada social exclusiva",
-  WEDDING: "Boda",
-  CORPORATE_VIP: "Corporativo VIP",
-  OTHER: "Otro (descripción aparte)",
+const OCCASION_LEGACY_LABELS: Record<string, string> = {
+  LUXURY_BIRTHDAY: "Luxury birthday",
+  ANNIVERSARY: "Anniversary",
+  ENGAGEMENT_PARTY: "Engagement party",
+  PRIVATE_VILLA: "Private villa gathering",
+  YACHT: "Yacht party",
+  INTIMATE_DINNER: "Intimate dinner",
+  HOME_EVENT: "Home celebration",
+  HOLIDAY: "Holiday / season",
+  EXCLUSIVE_SOCIAL: "Exclusive social evening",
+  WEDDING: "Wedding",
+  CORPORATE_VIP: "Corporate VIP",
+  OTHER: "Other (see description)",
 };
 
 function labelLegacyOccasion(code: string): string {
-  return OCCASION_LEGACY_ES[code] ?? titleCaseLoose(code);
+  return OCCASION_LEGACY_LABELS[code] ?? titleCaseLoose(code);
 }
 
 function labelEntrySource(code: string): string {
-  return ENTRY_SOURCE_ES[code] ?? titleCaseLoose(code);
+  return ENTRY_SOURCE_LABELS[code] ?? titleCaseLoose(code);
 }
 
-const EXPERIENCE_ADDON_ES: Record<string, string> = {
-  FIRE: "Actuación con fuego",
-  VEIL_FAN_LED: "Velo, abanico y alas LED",
-  SWORD_CANDELABRA: "Espada y candelabro (shamadan)",
+const EXPERIENCE_ADDON_LABELS: Record<string, string> = {
+  FIRE: "Fire performance",
+  VEIL_FAN_LED: "Veil, fan & LED wings",
+  SWORD_CANDELABRA: "Sword & candelabra (shamadan)",
 };
 
 function labelExperienceAddon(code: string): string {
-  return EXPERIENCE_ADDON_ES[code] ?? EXPERIENCE_ADDON_OPTIONS.find((o) => o.value === code)?.label ?? titleCaseLoose(code);
+  return (
+    EXPERIENCE_ADDON_LABELS[code] ??
+    EXPERIENCE_ADDON_OPTIONS.find((o) => o.value === code)?.label ??
+    titleCaseLoose(code)
+  );
 }
 
 function stringArrayField(raw: unknown): string[] {
@@ -105,8 +109,8 @@ const KNOWN_KEYS = new Set([
 ]);
 
 /**
- * Convierte `inquiryDetails` guardado en BD en filas etiquetadas.
- * `viewer: "admin"` (default): oculta origen, UUIDs y filas solo-id para lectura humana.
+ * Turns stored `inquiryDetails` into labeled rows.
+ * `viewer: "admin"` (default): hides raw origin, UUIDs, and id-only rows for human reading.
  */
 export function buildInquiryDetailRows(
   details: unknown,
@@ -125,7 +129,7 @@ export function buildInquiryDetailRows(
     const v =
       typeof value === "boolean"
         ? value
-          ? "Sí"
+          ? "Yes"
           : "No"
         : typeof value === "number"
           ? String(value)
@@ -135,77 +139,77 @@ export function buildInquiryDetailRows(
   };
 
   if (!admin && typeof d.entrySource === "string") {
-    push("Origen del formulario", labelEntrySource(d.entrySource));
+    push("Form entry source", labelEntrySource(d.entrySource));
   }
 
   if (d.sourceCatalogKind === "service" || d.sourceCatalogKind === "event") {
     const title = typeof d.sourceCatalogTitle === "string" ? d.sourceCatalogTitle.trim() : "";
     const label =
-      d.sourceCatalogKind === "service" ? "Servicio elegido en la web" : "Evento elegido en la web";
+      d.sourceCatalogKind === "service" ? "Service selected on site" : "Event selected on site";
     if (title) push(label, title);
   }
 
-  if (!admin && typeof d.eventId === "string") push("Evento (id)", d.eventId);
-  if (typeof d.eventTypeLabel === "string") push("Tipo de evento", d.eventTypeLabel);
-  else if (!admin && typeof d.eventTypeId === "string") push("Tipo de evento (id)", d.eventTypeId);
+  if (!admin && typeof d.eventId === "string") push("Event (id)", d.eventId);
+  if (typeof d.eventTypeLabel === "string") push("Event type", d.eventTypeLabel);
+  else if (!admin && typeof d.eventTypeId === "string") push("Event type (id)", d.eventTypeId);
 
-  if (typeof d.occasionSingleLabel === "string") push("Tipo de ocasión", d.occasionSingleLabel);
-  else if (!admin && typeof d.occasionTypeId === "string") push("Tipo de ocasión (id)", d.occasionTypeId);
+  if (typeof d.occasionSingleLabel === "string") push("Occasion type", d.occasionSingleLabel);
+  else if (!admin && typeof d.occasionTypeId === "string") push("Occasion type (id)", d.occasionTypeId);
 
   if (typeof d.occasionCode === "string") {
-    push("Tipo de ocasión (código antiguo)", labelLegacyOccasion(d.occasionCode));
+    push("Occasion type (legacy code)", labelLegacyOccasion(d.occasionCode));
   }
   if (typeof d.occasionOther === "string") {
-    push("Ocasión (detalle libre)", d.occasionOther);
+    push("Occasion (free text)", d.occasionOther);
   }
 
   const bespokeProjectLabels = stringArrayField(d.bespokeProjectLabels);
   if (bespokeProjectLabels.length) {
-    push("Proyectos bespoke", bespokeProjectLabels.join(" · "));
+    push("Bespoke projects", bespokeProjectLabels.join(" · "));
   } else {
     const projects = stringArrayField(d.bespokeProjectTypes);
-    if (projects.length) push("Tipo de proyecto (legado)", projects.map(titleCaseLoose).join(" · "));
+    if (projects.length) push("Project type (legacy)", projects.map(titleCaseLoose).join(" · "));
     if (!admin) {
       const ids = stringArrayField(d.occasionTypeIdsProject);
-      if (ids.length) push("Proyectos bespoke (ids)", ids.join(", "));
+      if (ids.length) push("Bespoke projects (ids)", ids.join(", "));
     }
   }
 
   const bespokeRoleLabels = stringArrayField(d.bespokeRoleLabels);
   if (bespokeRoleLabels.length) {
-    push("Roles / colaboración", bespokeRoleLabels.join(" · "));
+    push("Roles / collaboration", bespokeRoleLabels.join(" · "));
   } else {
     const roles = stringArrayField(d.bespokeRoles);
-    if (roles.length) push("Rol / colaboración (legado)", roles.map(titleCaseLoose).join(" · "));
+    if (roles.length) push("Role / collaboration (legacy)", roles.map(titleCaseLoose).join(" · "));
     if (!admin) {
       const ids = stringArrayField(d.occasionTypeIdsRole);
-      if (ids.length) push("Roles bespoke (ids)", ids.join(", "));
+      if (ids.length) push("Bespoke roles (ids)", ids.join(", "));
     }
   }
 
   if (typeof d.projectDeadlineNote === "string") {
-    push("Plazo o ventana indicada", d.projectDeadlineNote);
+    push("Timeline or window", d.projectDeadlineNote);
   }
 
   const addons = stringArrayField(d.experienceAddons);
   if (addons.length) {
-    push("Experiencias añadidas", addons.map(labelExperienceAddon).join(" · "));
+    push("Experience add-ons", addons.map(labelExperienceAddon).join(" · "));
   }
 
   const start = typeof d.eventTimeStart === "string" ? d.eventTimeStart.trim() : "";
   const end = typeof d.eventTimeEnd === "string" ? d.eventTimeEnd.trim() : "";
   if (start || end) {
-    push("Horario indicado", `${start || "—"} – ${end || "—"}`);
+    push("Requested time", `${start || "—"} – ${end || "—"}`);
   }
 
   if (typeof d.guestCount === "number" && Number.isFinite(d.guestCount) && d.guestCount >= 0) {
-    push("Invitados (aprox.)", String(Math.round(d.guestCount)));
+    push("Guests (approx.)", String(Math.round(d.guestCount)));
   }
 
-  if (typeof d.eventAddress === "string") push("Dirección del evento", d.eventAddress);
+  if (typeof d.eventAddress === "string") push("Event address", d.eventAddress);
 
-  if (d.venueIndoor === true) push("Espacio", "Interior");
-  else if (d.venueIndoor === false) push("Espacio", "Exterior");
+  if (d.venueIndoor === true) push("Venue", "Indoor");
+  else if (d.venueIndoor === false) push("Venue", "Outdoor");
 
   for (const key of Object.keys(d)) {
     if (KNOWN_KEYS.has(key)) continue;
@@ -239,7 +243,7 @@ export function InquiryDetailsReadable({
 
   return (
     <div className="shamell-glass-surface rounded-xl p-4">
-      <p className="mb-3 font-brand text-[10px] tracking-[0.18em] text-gold/75">DETALLE DEL FORMULARIO</p>
+      <p className="mb-3 font-brand text-[10px] tracking-[0.18em] text-gold/75">FORM DETAILS</p>
       <dl className="grid gap-3 sm:grid-cols-2">
         {rows.map(({ label, value }, idx) => (
           <div key={idx} className="min-w-0 sm:col-span-1">

@@ -177,10 +177,20 @@ export class EventsService {
           orderBy: { createdAt: 'asc' },
           select: { id: true, imageUrl: true, mediaType: true },
         },
+        _count: {
+          select: { bookings: true, galleryPhotos: true },
+        },
       },
       orderBy: { createdAt: 'asc' },
     });
-    return events.map((item) => this.mapEvent(item));
+    return events.map((item) => {
+      const { _count, ...rest } = item;
+      return {
+        ...this.mapEvent(rest),
+        bookingCount: _count.bookings,
+        galleryPhotoCount: _count.galleryPhotos,
+      };
+    });
   }
 
   async getAdminEventById(id: string) {
@@ -205,6 +215,10 @@ export class EventsService {
       select: { id: true },
     });
     if (!existing) throw new NotFoundException('Event not found.');
+
+    if (dto.isActive === false) {
+      await this.ensureEventCanBeDisabled(id);
+    }
 
     if (dto.eventTypeId) {
       const eventType = await this.prisma.eventType.findUnique({
@@ -261,22 +275,12 @@ export class EventsService {
     });
     if (!existing) throw new NotFoundException('Event not found.');
 
-    const updated = await this.prisma.event.update({
-      where: { id },
-      data: { isActive: false },
-      include: {
-        eventType: true,
-        galleryPhotos: {
-          where: { isActive: true },
-          orderBy: { createdAt: 'asc' },
-          select: { id: true, imageUrl: true, mediaType: true },
-        },
-      },
-    });
+    await this.ensureEventCanBeDeleted(id);
+
+    await this.prisma.event.delete({ where: { id } });
 
     return {
-      message: 'Event disabled successfully.',
-      event: this.mapEvent(updated),
+      message: 'Event deleted successfully.',
     };
   }
 
@@ -329,9 +333,20 @@ export class EventsService {
           orderBy: [{ sortOrder: 'asc' }],
           include: { occasionType: true },
         },
+        _count: {
+          select: { events: true, bookings: true, galleryPhotos: true },
+        },
       },
     });
-    return types.map((item) => this.mapEventTypeAdmin(item));
+    return types.map((item) => {
+      const { _count, ...rest } = item;
+      return {
+        ...this.mapEventTypeAdmin(rest),
+        eventCount: _count.events,
+        bookingCount: _count.bookings,
+        galleryPhotoCount: _count.galleryPhotos,
+      };
+    });
   }
 
   async updateEventType(id: string, dto: UpdateEventTypeDto) {
@@ -342,7 +357,7 @@ export class EventsService {
     if (!existing) throw new NotFoundException('Event type not found.');
 
     if (dto.isActive === false) {
-      await this.ensureEventTypeCanBeDisabled(id);
+      await this.ensureEventTypeHasNoBlockingUsage(id);
     }
 
     try {
@@ -394,27 +409,23 @@ export class EventsService {
     });
     if (!existing) throw new NotFoundException('Event type not found.');
 
-    await this.ensureEventTypeCanBeDisabled(id);
+    await this.ensureEventTypeHasNoBlockingUsage(id);
 
-    const updated = await this.prisma.eventType.update({
-      where: { id },
-      data: { isActive: false },
-      include: {
-        occasionLinks: {
-          orderBy: [{ sortOrder: 'asc' }],
-          include: { occasionType: true },
-        },
-      },
-    });
+    await this.prisma.eventType.delete({ where: { id } });
+
     return {
-      message: 'Event type disabled successfully.',
-      eventType: this.mapEventTypeAdmin(updated),
+      message: 'Event type deleted successfully.',
     };
   }
 
   async getAdminOccasionTypes() {
     const rows = await this.prisma.occasionType.findMany({
       orderBy: [{ name: 'asc' }],
+      include: {
+        _count: {
+          select: { bookings: true, eventLinks: true },
+        },
+      },
     });
     return rows.map((r) => ({
       id: r.id,
@@ -422,6 +433,8 @@ export class EventsService {
       isActive: r.isActive,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
+      bookingCount: r._count.bookings,
+      eventTypeLinkCount: r._count.eventLinks,
     }));
   }
 
@@ -458,6 +471,11 @@ export class EventsService {
       select: { id: true },
     });
     if (!existing) throw new NotFoundException('Occasion type not found.');
+
+    if (dto.isActive === false) {
+      await this.ensureOccasionTypeCanBeDisabled(id);
+    }
+
     try {
       const updated = await this.prisma.occasionType.update({
         where: { id },
@@ -491,20 +509,32 @@ export class EventsService {
       select: { id: true },
     });
     if (!existing) throw new NotFoundException('Occasion type not found.');
-    const updated = await this.prisma.occasionType.update({
-      where: { id },
-      data: { isActive: false },
-    });
+
+    await this.ensureOccasionTypeCanBeDeleted(id);
+
+    await this.prisma.occasionType.delete({ where: { id } });
+
     return {
-      message: 'Occasion type disabled successfully.',
-      occasionType: {
-        id: updated.id,
-        name: updated.name,
-        isActive: updated.isActive,
-        createdAt: updated.createdAt,
-        updatedAt: updated.updatedAt,
-      },
+      message: 'Occasion type deleted successfully.',
     };
+  }
+
+  private async ensureOccasionTypeCanBeDisabled(occasionTypeId: string) {
+    const n = await this.prisma.booking.count({ where: { occasionTypeId } });
+    if (n > 0) {
+      throw new ConflictException(
+        'Cannot disable this occasion type because it is associated with existing bookings.',
+      );
+    }
+  }
+
+  private async ensureOccasionTypeCanBeDeleted(occasionTypeId: string) {
+    const n = await this.prisma.booking.count({ where: { occasionTypeId } });
+    if (n > 0) {
+      throw new ConflictException(
+        'Cannot delete this occasion type because it is associated with existing bookings.',
+      );
+    }
   }
 
   private async syncOccasionAssignments(
@@ -549,11 +579,51 @@ export class EventsService {
     });
   }
 
-  private async ensureEventTypeCanBeDisabled(eventTypeId: string) {
-    const count = await this.prisma.event.count({ where: { eventTypeId } });
-    if (count > 0) {
+  private async ensureEventCanBeDisabled(eventId: string) {
+    const n = await this.prisma.booking.count({ where: { eventId } });
+    if (n > 0) {
       throw new ConflictException(
-        'Cannot disable this event type because it is associated with existing events.',
+        'Cannot disable this event because it has associated bookings.',
+      );
+    }
+  }
+
+  private async ensureEventCanBeDeleted(eventId: string) {
+    const [bookingCount, galleryCount] = await Promise.all([
+      this.prisma.booking.count({ where: { eventId } }),
+      this.prisma.galleryPhoto.count({ where: { eventId } }),
+    ]);
+    if (bookingCount > 0) {
+      throw new ConflictException(
+        'Cannot delete this event because it has associated bookings.',
+      );
+    }
+    if (galleryCount > 0) {
+      throw new ConflictException(
+        'Cannot delete this event because gallery photos are still linked to it.',
+      );
+    }
+  }
+
+  private async ensureEventTypeHasNoBlockingUsage(eventTypeId: string) {
+    const [eventCount, bookingCount, galleryCount] = await Promise.all([
+      this.prisma.event.count({ where: { eventTypeId } }),
+      this.prisma.booking.count({ where: { eventTypeId } }),
+      this.prisma.galleryPhoto.count({ where: { eventTypeId } }),
+    ]);
+    if (eventCount > 0) {
+      throw new ConflictException(
+        'Cannot perform this action because this event type is associated with existing catalog events.',
+      );
+    }
+    if (bookingCount > 0) {
+      throw new ConflictException(
+        'Cannot perform this action because this event type is associated with existing bookings.',
+      );
+    }
+    if (galleryCount > 0) {
+      throw new ConflictException(
+        'Cannot perform this action because gallery photos are still linked to this event type.',
       );
     }
   }

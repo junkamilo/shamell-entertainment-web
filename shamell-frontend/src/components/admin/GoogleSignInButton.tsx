@@ -36,7 +36,7 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
         size: "large",
         width: 384,
         text: "continue_with",
-        locale: "es",
+        locale: "en",
       });
     };
 
@@ -74,7 +74,7 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
   if (!clientId) {
     return (
       <p className="text-center text-xs text-foreground/50">
-        Configura NEXT_PUBLIC_GOOGLE_CLIENT_ID en el frontend para habilitar Google.
+        Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in the frontend to enable Google sign-in.
       </p>
     );
   }

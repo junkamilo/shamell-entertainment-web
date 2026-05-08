@@ -41,19 +41,19 @@ type GalleryPhoto = {
   };
 };
 
-function formatRelativeEs(iso: string | undefined): string {
+function formatRelativeEn(iso: string | undefined): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (sec < 45) return "Hace un momento";
+  if (sec < 45) return "Just now";
   const min = Math.floor(sec / 60);
-  if (min < 60) return `Hace ${min} min`;
+  if (min < 60) return `${min} min ago`;
   const h = Math.floor(min / 60);
-  if (h < 24) return `Hace ${h}h`;
+  if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `Hace ${d}d`;
-  return date.toLocaleDateString("es", { day: "numeric", month: "short" });
+  if (d < 7) return `${d}d ago`;
+  return date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
 }
 
 function isVideoMedia(photo: GalleryPhoto) {
@@ -70,7 +70,7 @@ export default function ShamellAdminGalleryPage() {
   const [listCategoryFilter, setListCategoryFilter] = useState<string | null>(null);
   const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
-  /** Álbumes con la cuadrícula de vista previa abierta; por defecto todos colapsados. */
+  /** Albums with the preview grid expanded; all collapsed by default. */
   const [expandedAlbumIds, setExpandedAlbumIds] = useState<Set<string>>(() => new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmittingPhoto, setIsSubmittingPhoto] = useState(false);
@@ -95,8 +95,8 @@ export default function ShamellAdminGalleryPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -117,7 +117,7 @@ export default function ShamellAdminGalleryPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(categoriesData, "No se pudieron cargar las categorías."),
+          description: parseErrorMessage(categoriesData, "Could not load categories."),
         });
         return;
       }
@@ -128,7 +128,7 @@ export default function ShamellAdminGalleryPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(photosData, "No se pudieron cargar los medios."),
+          description: parseErrorMessage(photosData, "Could not load media."),
         });
         return;
       }
@@ -136,8 +136,8 @@ export default function ShamellAdminGalleryPage() {
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -188,7 +188,7 @@ export default function ShamellAdminGalleryPage() {
         const tb = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
         return tb - ta;
       });
-      recent = formatRelativeEs(sorted[0]?.updatedAt ?? sorted[0]?.createdAt);
+      recent = formatRelativeEn(sorted[0]?.updatedAt ?? sorted[0]?.createdAt);
     }
     return { total, visible, catsWith, recent };
   }, [photos, categories, countByCategory]);
@@ -255,8 +255,8 @@ export default function ShamellAdminGalleryPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -264,8 +264,8 @@ export default function ShamellAdminGalleryPage() {
     if (!selectedCategoryId) {
       toast({
         variant: "destructive",
-        title: "Elige categoría",
-        description: "Selecciona la categoría de galería donde se guardará este medio.",
+        title: "Choose category",
+        description: "Pick the gallery category where this file will be saved.",
       });
       return;
     }
@@ -273,8 +273,8 @@ export default function ShamellAdminGalleryPage() {
     if (!editingPhotoId && !imageFile) {
       toast({
         variant: "destructive",
-        title: "Archivo requerido",
-        description: "Selecciona una imagen o video para subir.",
+        title: "File required",
+        description: "Select an image or video to upload.",
       });
       return;
     }
@@ -282,8 +282,8 @@ export default function ShamellAdminGalleryPage() {
     if (editingPhotoId && !imageFile && selectedCategoryId === (originalCategoryId ?? "")) {
       toast({
         variant: "destructive",
-        title: "Sin cambios",
-        description: "Elige otra categoría o reemplaza el archivo.",
+        title: "No changes",
+        description: "Choose another category or replace the file.",
       });
       return;
     }
@@ -310,17 +310,17 @@ export default function ShamellAdminGalleryPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo guardar el medio."),
+          description: parseErrorMessage(data, "Could not save media."),
         });
         return;
       }
 
-      const catLabel = activeCategories.find((c) => c.id === selectedCategoryId)?.name ?? "la categoría";
+      const catLabel = activeCategories.find((c) => c.id === selectedCategoryId)?.name ?? "the category";
       toast({
-        title: editingPhotoId ? "Medio actualizado" : "Subida completada",
+        title: editingPhotoId ? "Media updated" : "Upload complete",
         description: editingPhotoId
-          ? `Los cambios se aplicaron en «${catLabel}».`
-          : `El archivo quedó en la categoría «${catLabel}».`,
+          ? `Changes were applied in “${catLabel}”.`
+          : `The file was saved in category “${catLabel}”.`,
       });
       setIsPhotoModalOpen(false);
       resetPhotoForm();
@@ -328,8 +328,8 @@ export default function ShamellAdminGalleryPage() {
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsSubmittingPhoto(false);
@@ -354,20 +354,20 @@ export default function ShamellAdminGalleryPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo cambiar el estado del medio."),
+          description: parseErrorMessage(data, "Could not update media status."),
         });
         return;
       }
       toast({
-        title: photo.isActive ? "Oculto en el sitio" : "Visible en el sitio",
-        description: `Álbum: ${photo.category.name}.`,
+        title: photo.isActive ? "Hidden on site" : "Visible on site",
+        description: `Album: ${photo.category.name}.`,
       });
       await loadData();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     }
   };
@@ -386,17 +386,17 @@ export default function ShamellAdminGalleryPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo eliminar el medio."),
+          description: parseErrorMessage(data, "Could not delete media."),
         });
         return;
       }
-      toast({ title: "Medio eliminado", description: "Se quitó de la galería y del almacenamiento." });
+      toast({ title: "Media removed", description: "Removed from gallery and storage." });
       await loadData();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     }
   };
@@ -414,18 +414,18 @@ export default function ShamellAdminGalleryPage() {
   const totalForFilterAll = photos.length;
   const filterCount =
     listCategoryFilter === null ? totalForFilterAll : (countByCategory[listCategoryFilter] ?? 0);
-  const filterMedioLabel = filterCount === 1 ? "medio" : "medios";
+  const filterMedioLabel = filterCount === 1 ? "file" : "files";
 
   const filterSummaryLabel =
     listCategoryFilter === null
-      ? "Todas las categorías"
-      : (activeCategories.find((c) => c.id === listCategoryFilter)?.name ?? "Categoría");
+      ? "All categories"
+      : (activeCategories.find((c) => c.id === listCategoryFilter)?.name ?? "Category");
 
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
-        title="Galería"
-        actionLabel="Subir a categoría"
+        title="Gallery"
+        actionLabel="Upload to category"
         onAction={openPhotoCreate}
         bordered={false}
       />
@@ -436,16 +436,16 @@ export default function ShamellAdminGalleryPage() {
           className="shamell-glass-surface inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
         >
           <FolderOpen className="h-3.5 w-3.5" strokeWidth={1.5} />
-          Gestionar categorías
+          Manage categories
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
         </Link>
       </div>
 
       {activeCategories.length === 0 ? (
         <div className="mb-8 rounded-xl border border-amber-400/25 bg-amber-500/10 px-5 py-4 text-sm text-foreground/85">
-          Necesitas al menos una categoría activa para subir medios.{" "}
+          You need at least one active category to upload media.{" "}
           <Link href="/shamell-admin/gallery-categories" className="font-medium text-gold underline underline-offset-2">
-            Crear o activar categorías
+            Create or activate categories
           </Link>
           .
         </div>
@@ -456,8 +456,8 @@ export default function ShamellAdminGalleryPage() {
           [
             ["TOTAL MEDIOS", String(stats.total)],
             ["VISIBLES", String(stats.visible)],
-            ["ÁLBUMES USADOS", String(stats.catsWith)],
-            ["ÚLTIMA SUBIDA", stats.recent],
+            ["ALBUMS IN USE", String(stats.catsWith)],
+            ["LAST UPLOAD", stats.recent],
           ] as const
         ).map(([label, value]) => (
           <div
@@ -474,7 +474,7 @@ export default function ShamellAdminGalleryPage() {
         <AdminSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Buscar por nombre de categoría..."
+          placeholder="Search by category name..."
           className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div ref={filterDropdownRef} className="relative w-full shrink-0 lg:w-72">
@@ -491,7 +491,7 @@ export default function ShamellAdminGalleryPage() {
             )}
           >
             <span className="min-w-0 truncate text-left">
-              <span className="block text-[9px] tracking-[0.18em] text-gold/60">FILTRAR POR ÁLBUM</span>
+              <span className="block text-[9px] tracking-[0.18em] text-gold/60">FILTER BY ALBUM</span>
               <span className="mt-0.5 block truncate text-gold">
                 {filterSummaryLabel}
                 <span className="ml-1.5 font-body text-[11px] font-normal text-foreground/45">
@@ -522,7 +522,7 @@ export default function ShamellAdminGalleryPage() {
                   listCategoryFilter === null ? "bg-gold/12 text-gold" : "text-foreground/75 hover:bg-gold/8 hover:text-gold",
                 )}
               >
-                <span>Todas las categorías</span>
+                <span>All categories</span>
                 <span className="shamell-glass-surface rounded-full border border-gold/20 px-2 py-0.5 font-body text-[10px] text-foreground/55">
                   {totalForFilterAll}
                 </span>
@@ -561,13 +561,13 @@ export default function ShamellAdminGalleryPage() {
       <section className="shamell-glass-surface rounded-xl p-5 md:p-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Biblioteca de medios</h2>
+            <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Media library</h2>
             <p className="mt-1 max-w-2xl font-body text-xs leading-relaxed text-foreground/50">
-              Cada álbum agrupa lo que subes a esa categoría. Oculta o muestra en el sitio con el interruptor, edita para
-              cambiar de álbum o archivo, o elimina para borrarlo por completo.
+              Each album groups what you upload to that category. Hide or show on the site with the toggle, edit to
+              switch albums or files, or delete to remove it completely.
             </p>
           </div>
-          {isLoading ? <p className="text-xs text-foreground/60">Cargando...</p> : null}
+          {isLoading ? <p className="text-xs text-foreground/60">Loading...</p> : null}
         </div>
 
         <div className="space-y-6">
@@ -584,10 +584,10 @@ export default function ShamellAdminGalleryPage() {
                 <div className="shamell-glass-surface relative border-b border-gold/12 px-5 py-4 md:px-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
-                      <p className="font-brand text-[9px] tracking-[0.18em] text-gold/55">ÁLBUM</p>
+                      <p className="font-brand text-[9px] tracking-[0.18em] text-gold/55">ALBUM</p>
                       <h3 className="mt-1 font-brand text-xl tracking-[0.06em] text-gold md:text-2xl">{cat.name}</h3>
                       <p className="mt-1 font-body text-xs text-foreground/45">
-                        {n === 0 ? "Sin archivos en este álbum" : n === 1 ? "1 medio" : `${n} medios`}
+                        {n === 0 ? "No files in this album" : n === 1 ? "1 file" : `${n} files`}
                       </p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
@@ -597,7 +597,7 @@ export default function ShamellAdminGalleryPage() {
                         className="inline-flex items-center justify-center gap-2 rounded-xl border border-gold/35 bg-gold/10 px-4 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:border-gold/55 hover:bg-gold/18"
                       >
                         <Upload className="h-3.5 w-3.5" strokeWidth={1.6} />
-                        Subir aquí
+                        Upload here
                       </button>
                       <button
                         type="button"
@@ -605,8 +605,8 @@ export default function ShamellAdminGalleryPage() {
                         aria-expanded={albumExpanded}
                         aria-label={
                           albumExpanded
-                            ? `Ocultar vista previa del álbum ${cat.name}`
-                            : `Mostrar vista previa del álbum ${cat.name}`
+                            ? `Hide album preview ${cat.name}`
+                            : `Show album preview ${cat.name}`
                         }
                         className="rounded-xl border border-gold/18 p-2.5 text-gold/85 transition hover:border-gold/40 hover:bg-gold/10"
                       >
@@ -624,7 +624,7 @@ export default function ShamellAdminGalleryPage() {
                   {n === 0 ? (
                     <div className="shamell-glass-surface flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gold/20 px-6 py-12 text-center">
                       <ImageIcon className="h-9 w-9 text-gold/25" strokeWidth={1.2} />
-                      <p className="font-body text-sm text-foreground/45">No hay medios en este álbum todavía.</p>
+                      <p className="font-body text-sm text-foreground/45">No media in this album yet.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
@@ -669,14 +669,14 @@ export default function ShamellAdminGalleryPage() {
                           </div>
                           <div className="flex flex-col gap-2 border-t border-gold/10 p-2.5">
                             <p className="truncate font-body text-[10px] text-foreground/40">
-                              {formatRelativeEs(photo.updatedAt ?? photo.createdAt)}
+                              {formatRelativeEn(photo.updatedAt ?? photo.createdAt)}
                             </p>
                             <div className="flex items-center gap-1.5">
                               <button
                                 type="button"
                                 onClick={() => startPhotoEdit(photo)}
                                 className="rounded-lg border border-gold/20 p-1.5 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
-                                aria-label="Editar medio"
+                                aria-label="Edit media"
                               >
                                 <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
                               </button>
@@ -684,7 +684,7 @@ export default function ShamellAdminGalleryPage() {
                                 type="button"
                                 onClick={() => onDisablePhoto(photo.id)}
                                 className="rounded-lg border border-red-400/25 p-1.5 text-foreground/65 transition hover:bg-red-500/10 hover:text-red-300"
-                                aria-label="Eliminar medio"
+                                aria-label="Delete media"
                               >
                                 <Trash2 className="h-3.5 w-3.5" strokeWidth={1.6} />
                               </button>
@@ -697,8 +697,8 @@ export default function ShamellAdminGalleryPage() {
                                     ? "border-emerald-400/45 bg-emerald-500/22"
                                     : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                                 )}
-                                title={photo.isActive ? "Visible en el sitio" : "Oculto en el sitio"}
-                                aria-label={`${photo.isActive ? "Ocultar" : "Mostrar"} en el sitio`}
+                                title={photo.isActive ? "Visible on site" : "Hidden on site"}
+                                aria-label={`${photo.isActive ? "Hide" : "Show"} on site`}
                               >
                                 <span
                                   className={cn(
@@ -723,14 +723,14 @@ export default function ShamellAdminGalleryPage() {
         {!isLoading && filteredPhotos.length === 0 ? (
           <p className="mt-8 text-center text-sm text-foreground/60">
             {photos.length === 0
-              ? "Aún no hay medios. Pulsa «Subir a categoría» o «Subir aquí» en un álbum."
-              : "Nada coincide con el filtro o la búsqueda."}
+              ? 'No media yet. Use "Upload to category" or "Upload here" on an album.'
+              : "Nothing matches the filter or search."}
           </p>
         ) : null}
       </section>
 
       <AdminModal
-        title={editingPhotoId ? "Editar medio" : "Subir a una categoría"}
+        title={editingPhotoId ? "Edit media" : "Upload to a category"}
         isOpen={isPhotoModalOpen}
         onClose={() => {
           setIsPhotoModalOpen(false);
@@ -742,14 +742,14 @@ export default function ShamellAdminGalleryPage() {
             <p className="flex items-start gap-2 font-body text-xs leading-relaxed text-foreground/75">
               <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" strokeWidth={1.5} />
               <span>
-                <strong className="text-gold/95">Importante:</strong> el archivo se asocia a la categoría marcada
-                abajo. Puedes cambiar de álbum al editar y, si quieres, reemplazar el archivo.
+                <strong className="text-gold/95">Important:</strong> the file is linked to the category selected
+                below. You can switch albums when editing and replace the file if needed.
               </span>
             </p>
           </div>
 
           <div>
-            <p className="font-brand text-[11px] tracking-[0.2em] text-gold/95">1 · CATEGORÍA DE DESTINO</p>
+            <p className="font-brand text-[11px] tracking-[0.2em] text-gold/95">1 · DESTINATION CATEGORY</p>
             <div className="mt-3 grid max-h-52 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
               {activeCategories.map((c) => {
                 const selected = selectedCategoryId === c.id;
@@ -768,7 +768,7 @@ export default function ShamellAdminGalleryPage() {
                     <span className="font-brand text-sm tracking-[0.06em] text-gold">{c.name}</span>
                     <span className="mt-0.5 font-mono text-[10px] text-foreground/45">/{c.slug}</span>
                     <span className="mt-2 font-body text-[10px] text-foreground/40">
-                      {countByCategory[c.id] ?? 0} medio(s) en este álbum
+                      {countByCategory[c.id] ?? 0} file(s) in this album
                     </span>
                   </button>
                 );
@@ -779,16 +779,18 @@ export default function ShamellAdminGalleryPage() {
                 Destino: <span className="text-gold/90">«{selectedCategoryName}»</span>
               </p>
             ) : (
-              <p className="mt-3 text-xs text-amber-300/90">Selecciona una categoría para continuar.</p>
+              <p className="mt-3 text-xs text-amber-300/90">Select a category to continue.</p>
             )}
           </div>
 
           <label className="block">
-            <p className="font-brand text-[11px] tracking-[0.2em] text-gold/95">2 · ARCHIVO</p>
+            <p className="font-brand text-[11px] tracking-[0.2em] text-gold/95">2 · FILE</p>
             <div className="shamell-glass-surface mt-2 flex flex-col items-center justify-center rounded-xl border border-dashed border-gold/25 px-4 py-8 text-center">
               <Upload className="mx-auto h-8 w-8 text-gold/50" strokeWidth={1.3} />
               <p className="mt-2 font-body text-xs text-foreground/55">
-                {editingPhotoId ? "Opcional: nuevo archivo (reemplaza el actual)." : "Imagen o video — requerido."}
+                {editingPhotoId
+                  ? "Optional: new file (replaces the current one)."
+                  : "Image or video — required."}
               </p>
               <input
                 type="file"
@@ -811,7 +813,7 @@ export default function ShamellAdminGalleryPage() {
               }}
               className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
@@ -819,7 +821,7 @@ export default function ShamellAdminGalleryPage() {
               className="inline-flex items-center justify-center gap-2 rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <ImageIcon className="h-4 w-4" strokeWidth={1.5} />
-              {isSubmittingPhoto ? "Guardando..." : editingPhotoId ? "Guardar cambios" : "Subir a esta categoría"}
+              {isSubmittingPhoto ? "Saving..." : editingPhotoId ? "Save changes" : "Upload to this category"}
             </button>
           </div>
         </form>

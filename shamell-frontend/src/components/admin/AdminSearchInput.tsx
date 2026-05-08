@@ -13,7 +13,7 @@ type AdminSearchInputProps = {
 export default function AdminSearchInput({
   value,
   onChange,
-  placeholder = "Buscar...",
+  placeholder = "Search...",
   className = "",
 }: AdminSearchInputProps) {
   return (

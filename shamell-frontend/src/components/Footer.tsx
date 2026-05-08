@@ -5,13 +5,13 @@ import PearlDivider from "@/components/PearlDivider";
 import { cn } from "@/lib/utils";
 
 const exploreLinks = [
-  { label: "Inicio", href: "/#hero" },
-  { label: "Servicios", href: "/#services" },
-  { label: "Experiencias", href: "/#experiences" },
-  { label: "Acerca de", href: "/#about" },
-  { label: "Galería", href: "/#gallery" },
+  { label: "Home", href: "/#hero" },
+  { label: "Services", href: "/#services" },
+  { label: "Experiences", href: "/#experiences" },
+  { label: "About", href: "/#about" },
+  { label: "Gallery", href: "/#gallery" },
   { label: "Blog", href: "/blog" },
-  { label: "Contacto", href: "/contacto" },
+  { label: "Contact", href: "/contacto" },
 ] as const;
 
 function InstagramGlyph({ className }: { className?: string }) {
@@ -82,22 +82,21 @@ export default function Footer({
                   </span>
                 </span>
               </Link>
-              <p className="mt-5 max-w-sm font-body text-sm leading-relaxed text-foreground/55">
-                Arte escénico y danza oriental para eventos privados, producciones y experiencias a
-                medida.
+              <p className="mt-5 max-w-sm font-body text-base font-semibold leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
+                Stage art and oriental dance for private events, productions, and bespoke experiences.
               </p>
             </div>
 
-            <nav className="lg:col-span-4" aria-label="Enlaces del pie">
-              <h2 className="mb-5 font-brand text-[10px] tracking-[0.28em] text-gold/90 uppercase">
-                Explorar
+            <nav className="lg:col-span-4" aria-label="Footer links">
+              <h2 className="mb-5 font-brand text-xs font-semibold tracking-[0.24em] text-gold/95 uppercase md:text-sm md:tracking-[0.26em]">
+                Explore
               </h2>
               <ul className="grid grid-cols-2 gap-x-6 gap-y-2.5 sm:max-w-md">
                 {exploreLinks.map((item) => (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className="font-brand text-[11px] tracking-[0.14em] text-foreground/65 uppercase transition-colors hover:text-gold"
+                      className="font-body text-base font-semibold leading-relaxed text-foreground/88 transition-colors hover:text-gold md:text-lg md:leading-relaxed md:text-foreground/90"
                     >
                       {item.label}
                     </Link>
@@ -108,16 +107,16 @@ export default function Footer({
 
             <div className="flex flex-col gap-6 md:col-span-2 lg:col-span-4">
               <div>
-                <h2 className="mb-5 font-brand text-[10px] tracking-[0.28em] text-gold/90 uppercase">
-                  Consultas
+                <h2 className="mb-5 font-brand text-xs font-semibold tracking-[0.24em] text-gold/95 uppercase md:text-sm md:tracking-[0.26em]">
+                  Inquiries
                 </h2>
-                <p className="mb-4 max-w-xs font-body text-sm text-foreground/55">
-                  Disponibilidad, rider técnico y propuestas para tu evento.
+                <p className="mb-4 max-w-xs font-body text-base font-semibold leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
+                  Availability, technical rider, and proposals for your event.
                 </p>
                 <Link
                   href="/contacto"
                   className={cn(
-                    "inline-flex min-h-11 items-center justify-center border border-gold/55 px-6 py-2.5 font-brand text-[10px] tracking-[0.22em] text-gold uppercase transition-all duration-300",
+                    "inline-flex min-h-11 items-center justify-center border border-gold/55 px-6 py-2.5 font-brand text-xs font-semibold tracking-[0.2em] text-gold uppercase transition-all duration-300 md:tracking-[0.22em]",
                     "hover:border-gold hover:bg-gold/8 hover:text-gold-light hover:shadow-[0_0_24px_rgba(197,165,90,0.15)]",
                   )}
                 >
@@ -126,8 +125,8 @@ export default function Footer({
               </div>
 
               <div>
-                <h2 className="mb-3 font-brand text-[10px] tracking-[0.28em] text-gold/90 uppercase">
-                  Redes
+                <h2 className="mb-3 font-brand text-xs font-semibold tracking-[0.24em] text-gold/95 uppercase md:text-sm md:tracking-[0.26em]">
+                  Social
                 </h2>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <a
@@ -142,14 +141,14 @@ export default function Footer({
                   <a
                     href="/contacto"
                     className={socialLinkClass}
-                    aria-label="Enviar consulta por correo"
+                    aria-label="Send inquiry by email"
                   >
                     <Mail className="h-4.5 w-4.5" strokeWidth={1.75} />
                   </a>
                   <span
                     className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-lg border border-white/8 text-foreground/35"
-                    aria-label="Canal de video — próximamente"
-                    title="Próximamente"
+                    aria-label="Video channel — coming soon"
+                    title="Coming soon"
                   >
                     <Video className="h-4.5 w-4.5" strokeWidth={1.75} />
                   </span>
@@ -164,11 +163,11 @@ export default function Footer({
           />
 
           <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
-            <p className="font-body text-xs tracking-wide text-foreground/50">
-              © {year} Shamell. Todos los derechos reservados.
+            <p className="font-body text-sm font-medium tracking-wide text-foreground/75 md:text-base md:text-foreground/82">
+              © {year} Shamell. All rights reserved.
             </p>
-            <p className="font-brand text-[10px] tracking-[0.35em] text-foreground/40 uppercase">
-              Performance · Arte · Eventos
+            <p className="font-brand text-xs font-semibold tracking-[0.28em] text-foreground/70 uppercase md:text-sm md:tracking-[0.32em] md:text-foreground/78">
+              Performance · Art · Events
             </p>
           </div>
         </div>

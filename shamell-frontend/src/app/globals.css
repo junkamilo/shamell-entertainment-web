@@ -187,7 +187,7 @@
 
 @layer components {
   .btn-outline-gold {
-    @apply inline-flex items-center justify-center border border-gold/60 px-8 py-3 text-xs tracking-[0.2em] uppercase text-gold transition-all duration-300 hover:border-gold hover:text-gold-light hover:shadow-[0_0_18px_rgba(197,165,90,0.28)];
+    @apply inline-flex items-center justify-center border border-gold/60 px-8 py-3 text-sm tracking-[0.2em] uppercase text-gold transition-all duration-300 hover:border-gold hover:text-gold-light hover:shadow-[0_0_18px_rgba(197,165,90,0.28)] md:text-xs;
   }
 
   /**
@@ -306,9 +306,6 @@
   }
   .shamell-hero-enter--d4 {
     animation-delay: 0.56s;
-  }
-  .shamell-hero-enter--d5 {
-    animation-delay: 0.72s;
   }
 
   .shamell-hero-ken {
@@ -657,4 +654,25 @@
 
 .admin-theme .admin-text-subtle {
   color: var(--foreground-subtle);
+}
+
+/* Admin modal body: larger base + bump very small Tailwind utilities for readability */
+.admin-theme .admin-modal-scroll {
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+.admin-theme .admin-modal-scroll :where(.text-\[10px\]) {
+  font-size: 0.8125rem !important;
+  line-height: 1.45 !important;
+}
+
+.admin-theme .admin-modal-scroll :where(.text-\[11px\]) {
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+
+.admin-theme .admin-modal-scroll :where(.text-xs) {
+  font-size: 0.9375rem !important;
+  line-height: 1.5 !important;
 }

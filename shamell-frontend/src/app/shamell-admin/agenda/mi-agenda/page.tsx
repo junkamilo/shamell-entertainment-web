@@ -13,10 +13,10 @@ import { utcInstantForWallClock } from "@/lib/bookingAvailability";
 type ViewMode = "day" | "week" | "month";
 type EnrichedBooking = AdminBookingRow & { dateIso: string; start: string; end: string; startM: number; durationM: number };
 
-const WEEKDAY_SHORT = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"];
-const RANGE_LABEL = new Intl.DateTimeFormat("es", { dateStyle: "medium" });
-const MONTH_LABEL = new Intl.DateTimeFormat("es", { month: "long", year: "numeric" });
-const DAY_NUMBER_LABEL = new Intl.DateTimeFormat("es", { day: "numeric" });
+const WEEKDAY_SHORT = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const RANGE_LABEL = new Intl.DateTimeFormat("en-US", { dateStyle: "medium" });
+const MONTH_LABEL = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" });
+const DAY_NUMBER_LABEL = new Intl.DateTimeFormat("en-US", { day: "numeric" });
 
 function bookingTimeZone() {
   return process.env.NEXT_PUBLIC_BOOKING_TZ ?? "America/New_York";
@@ -80,7 +80,7 @@ function hhmmFromEventDate(eventDate: string, timeZone: string): string {
 }
 
 function displayName(row: AdminBookingRow): string {
-  return row.user?.fullName?.trim() || row.guestFullName?.trim() || "Cliente sin nombre";
+  return row.user?.fullName?.trim() || row.guestFullName?.trim() || "Unnamed guest";
 }
 
 function readBookingTime(row: AdminBookingRow, timeZone: string): { start: string; end: string } {
@@ -99,12 +99,12 @@ function readBookingTime(row: AdminBookingRow, timeZone: string): { start: strin
 }
 
 function eventTypeLabel(row: AdminBookingRow): string {
-  return row.event?.name || row.eventType?.name || row.service?.serviceType?.name || "Evento";
+  return row.event?.name || row.eventType?.name || row.service?.serviceType?.name || "Event";
 }
 
 function eventChipLabel(row: AdminBookingRow): string {
   if (row.service?.serviceType?.name) return row.service.serviceType.name.toUpperCase();
-  return "RESERVA";
+  return "BOOKING";
 }
 
 function durationLabel(minutes: number): string {
@@ -214,8 +214,8 @@ export default function MiAgendaPage() {
     const endM = hhmmToMinutes(editEnd);
     if (startM === null || endM === null || endM <= startM) {
       toast({
-        title: "Horario inválido",
-        description: "La hora final debe ser mayor que la inicial.",
+        title: "Invalid time range",
+        description: "End time must be after start time.",
         variant: "destructive",
       });
       return;
@@ -236,11 +236,11 @@ export default function MiAgendaPage() {
         bookingDetails: details,
       });
       setIsEditing(false);
-      toast({ title: "Evento actualizado" });
+      toast({ title: "Booking updated" });
     } catch (err) {
       toast({
-        title: "No se pudo actualizar",
-        description: err instanceof Error ? err.message : "Intenta nuevamente.",
+        title: "Could not update",
+        description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -255,11 +255,11 @@ export default function MiAgendaPage() {
       await patchBooking(selected.id, { status: "CANCELLED" });
       setSelectedId(null);
       setIsEditing(false);
-      toast({ title: "Evento cancelado" });
+      toast({ title: "Booking canceled" });
     } catch (err) {
       toast({
-        title: "No se pudo cancelar",
-        description: err instanceof Error ? err.message : "Intenta nuevamente.",
+        title: "Could not cancel",
+        description: err instanceof Error ? err.message : "Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -269,9 +269,9 @@ export default function MiAgendaPage() {
 
   return (
     <div className="mx-auto w-full max-w-7xl">
-      <AdminBackButton href="/shamell-admin/agenda" label="Volver" className="mb-4" />
+      <AdminBackButton href="/shamell-admin/agenda" label="Back" className="mb-4" />
       <AdminModuleHero
-        title="Mi Agenda"
+        title="My calendar"
         bordered={false}
       />
 
@@ -282,7 +282,7 @@ export default function MiAgendaPage() {
               type="button"
               onClick={() => setAnchorIso((cur) => shiftAnchor(cur, viewMode, -1))}
               className="rounded-full border border-gold/25 p-2 text-gold transition hover:bg-gold/10"
-              aria-label="Anterior"
+              aria-label="Previous"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -291,13 +291,13 @@ export default function MiAgendaPage() {
               onClick={() => setAnchorIso(todayIso)}
               className="rounded-full border border-gold/25 px-3 py-1.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10"
             >
-              HOY
+              TODAY
             </button>
             <button
               type="button"
               onClick={() => setAnchorIso((cur) => shiftAnchor(cur, viewMode, 1))}
               className="rounded-full border border-gold/25 p-2 text-gold transition hover:bg-gold/10"
-              aria-label="Siguiente"
+              aria-label="Next"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
@@ -315,7 +315,7 @@ export default function MiAgendaPage() {
                   viewMode === mode ? "border border-gold/40 bg-gold/12 text-gold" : "text-foreground/55 hover:text-gold"
                 }`}
               >
-                {mode === "day" ? "DÍA" : mode === "week" ? "SEMANA" : "MES"}
+                {mode === "day" ? "DAY" : mode === "week" ? "WEEK" : "MONTH"}
               </button>
             ))}
           </div>
@@ -331,7 +331,7 @@ export default function MiAgendaPage() {
             <div className="space-y-2">
               {(byDate.get(anchorIso) ?? []).length === 0 ? (
                 <p className="rounded-lg border border-dashed border-gold/20 px-3 py-6 text-center text-sm text-foreground/45">
-                  Sin eventos
+                  No events
                 </p>
               ) : null}
               {(byDate.get(anchorIso) ?? []).map((row) => (
@@ -366,7 +366,7 @@ export default function MiAgendaPage() {
                   <div className="mt-3 space-y-2">
                     {rows.length === 0 ? (
                       <p className="rounded-lg border border-dashed border-gold/20 px-2 py-3 text-center text-xs text-foreground/40">
-                        Sin eventos
+                        No events
                       </p>
                     ) : null}
                     {rows.map((row) => (
@@ -415,7 +415,7 @@ export default function MiAgendaPage() {
                   <div className="mt-2 space-y-1.5">
                     {rows.length === 0 ? (
                       <p className="rounded border border-dashed border-gold/15 px-2 py-1.5 text-center text-[11px] text-foreground/40">
-                        Sin eventos
+                        No events
                       </p>
                     ) : null}
                     {visibleRows.map((row) => (
@@ -436,7 +436,7 @@ export default function MiAgendaPage() {
                       </button>
                     ))}
                     {hiddenCount > 0 ? (
-                      <p className="px-1 text-[11px] text-foreground/55">+{hiddenCount} más...</p>
+                      <p className="px-1 text-[11px] text-foreground/55">+{hiddenCount} more…</p>
                     ) : null}
                   </div>
                 </article>
@@ -447,7 +447,7 @@ export default function MiAgendaPage() {
 
         <div className="mt-5 border-t border-gold/12 pt-4">
           <div className="mb-3 flex items-center justify-between gap-2">
-            <h2 className="font-brand text-[11px] tracking-[0.18em] text-gold">DETALLE DEL EVENTO</h2>
+            <h2 className="font-brand text-[11px] tracking-[0.18em] text-gold">EVENT DETAILS</h2>
             {selected ? (
               <div className="flex items-center gap-2">
                 <button
@@ -456,7 +456,7 @@ export default function MiAgendaPage() {
                   disabled={savingEdit || savingCancel}
                   className="rounded-md border border-gold/35 px-3 py-1.5 font-brand text-[10px] tracking-[0.14em] text-gold hover:bg-gold/10 disabled:opacity-50"
                 >
-                  {isEditing ? "CERRAR" : "EDITAR"}
+                  {isEditing ? "CLOSE" : "EDIT"}
                 </button>
                 <button
                   type="button"
@@ -464,7 +464,7 @@ export default function MiAgendaPage() {
                   disabled={savingEdit || savingCancel}
                   className="rounded-md border border-red-300/45 px-3 py-1.5 font-brand text-[10px] tracking-[0.14em] text-red-200 hover:bg-red-500/10 disabled:opacity-50"
                 >
-                  {savingCancel ? "CANCELANDO..." : "CANCELAR"}
+                  {savingCancel ? "CANCELING..." : "CANCEL"}
                 </button>
               </div>
             ) : null}
@@ -472,7 +472,7 @@ export default function MiAgendaPage() {
 
           {!selected ? (
             <p className="shamell-glass-surface rounded-xl p-4 text-sm text-foreground/55">
-              Selecciona un evento de la agenda para ver su detalle.
+              Select an event on the calendar to see its details.
             </p>
           ) : (
             <div className="shamell-glass-surface rounded-xl border border-gold/12 p-4">
@@ -495,7 +495,7 @@ export default function MiAgendaPage() {
                     </p>
                     <p className="flex items-center gap-2 text-sm text-foreground/75">
                       <MapPin className="h-4 w-4 text-gold/80" />
-                      {selected.location || "Ubicación pendiente"}
+                      {selected.location || "Location TBD"}
                     </p>
                     <p className="flex items-center gap-2 text-sm text-foreground/75">
                       <Clock3 className="h-4 w-4 text-gold/80" />
@@ -508,7 +508,7 @@ export default function MiAgendaPage() {
                   </div>
                   {selected.notes ? (
                     <div className="mt-4 border-t border-gold/10 pt-3">
-                      <p className="mb-1 font-brand text-[10px] tracking-widest text-gold/70">NOTAS</p>
+                      <p className="mb-1 font-brand text-[10px] tracking-widest text-gold/70">NOTES</p>
                       <p className="whitespace-pre-wrap text-sm text-foreground/70">{selected.notes}</p>
                     </div>
                   ) : null}
@@ -516,7 +516,7 @@ export default function MiAgendaPage() {
               ) : (
                 <div className="grid gap-3 md:grid-cols-2">
                   <label className="block">
-                    <span className="font-brand text-[10px] tracking-widest text-gold/70">FECHA</span>
+                    <span className="font-brand text-[10px] tracking-widest text-gold/70">DATE</span>
                     <input
                       type="date"
                       value={editDateIso}
@@ -525,7 +525,7 @@ export default function MiAgendaPage() {
                     />
                   </label>
                   <label className="block">
-                    <span className="font-brand text-[10px] tracking-widest text-gold/70">UBICACIÓN</span>
+                    <span className="font-brand text-[10px] tracking-widest text-gold/70">LOCATION</span>
                     <input
                       type="text"
                       value={editLocation}
@@ -534,7 +534,7 @@ export default function MiAgendaPage() {
                     />
                   </label>
                   <label className="block">
-                    <span className="font-brand text-[10px] tracking-widest text-gold/70">HORA INICIAL</span>
+                    <span className="font-brand text-[10px] tracking-widest text-gold/70">START TIME</span>
                     <input
                       type="time"
                       value={editStart}
@@ -543,7 +543,7 @@ export default function MiAgendaPage() {
                     />
                   </label>
                   <label className="block">
-                    <span className="font-brand text-[10px] tracking-widest text-gold/70">HORA FINAL</span>
+                    <span className="font-brand text-[10px] tracking-widest text-gold/70">END TIME</span>
                     <input
                       type="time"
                       value={editEnd}
@@ -552,7 +552,7 @@ export default function MiAgendaPage() {
                     />
                   </label>
                   <label className="block md:col-span-2">
-                    <span className="font-brand text-[10px] tracking-widest text-gold/70">NOTAS</span>
+                    <span className="font-brand text-[10px] tracking-widest text-gold/70">NOTES</span>
                     <textarea
                       value={editNotes}
                       onChange={(e) => setEditNotes(e.target.value)}
@@ -567,7 +567,7 @@ export default function MiAgendaPage() {
                       disabled={savingEdit || savingCancel}
                       className="rounded-md border border-gold/35 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold hover:bg-gold/10 disabled:opacity-50"
                     >
-                      {savingEdit ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
+                      {savingEdit ? "SAVING..." : "SAVE CHANGES"}
                     </button>
                   </div>
                 </div>
@@ -576,13 +576,13 @@ export default function MiAgendaPage() {
           )}
         </div>
 
-        {isLoading ? <p className="mt-4 text-sm text-foreground/55">Cargando agenda...</p> : null}
+        {isLoading ? <p className="mt-4 text-sm text-foreground/55">Loading calendar...</p> : null}
       </section>
 
-      <AdminModal title="Cancelar evento" isOpen={cancelModalOpen} onClose={() => setCancelModalOpen(false)}>
+      <AdminModal title="Cancel booking" isOpen={cancelModalOpen} onClose={() => setCancelModalOpen(false)}>
         <div className="space-y-4">
           <p className="text-sm text-foreground/75">
-            Esta acción cambiará el estado del evento a <span className="text-red-200">CANCELLED</span>.
+            This will set the booking status to <span className="text-red-200">CANCELLED</span>.
           </p>
           <div className="flex items-center justify-end gap-2">
             <button
@@ -590,7 +590,7 @@ export default function MiAgendaPage() {
               onClick={() => setCancelModalOpen(false)}
               className="rounded-md border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/70 hover:border-gold/35 hover:text-gold"
             >
-              CERRAR
+              CLOSE
             </button>
             <button
               type="button"
@@ -600,7 +600,7 @@ export default function MiAgendaPage() {
               }}
               className="rounded-md border border-red-400/45 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-red-200 hover:bg-red-500/10"
             >
-              CONFIRMAR CANCELACIÓN
+              CONFIRM CANCELLATION
             </button>
           </div>
         </div>

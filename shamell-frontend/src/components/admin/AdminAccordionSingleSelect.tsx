@@ -13,7 +13,7 @@ type Props = {
   onChange: (id: string) => void;
   /** Summary and first-row label when value is empty (only if showNoneOption) */
   emptyDisplay?: string;
-  /** Include first row to clear selection (optional fields). Set false for required enums like estado. */
+  /** Include first row to clear selection (optional fields). Set false for required enums like status. */
   showNoneOption?: boolean;
   ariaLabel?: string;
   /** Reflect HTML required for accessibility */
@@ -26,7 +26,7 @@ export default function AdminAccordionSingleSelect({
   options,
   value,
   onChange,
-  emptyDisplay = "Selecciona una opción",
+  emptyDisplay = "Select an option",
   showNoneOption = true,
   ariaLabel,
   required = false,

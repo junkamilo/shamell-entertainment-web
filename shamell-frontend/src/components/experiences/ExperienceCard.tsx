@@ -88,14 +88,14 @@ export default function ExperienceCard({ experience, index = 0 }: ExperienceCard
           )}
 
           <div className="absolute bottom-0 left-0 right-0 z-30 flex items-end justify-between gap-3 border-t border-white/10 bg-[linear-gradient(180deg,rgba(10,8,12,0.35),rgba(6,5,8,0.92))] px-4 py-3 backdrop-blur-[3px] md:px-5 md:py-3.5">
-            <h3 className="min-w-0 font-brand text-sm tracking-[0.22em] text-gold drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)] transition-[letter-spacing,color] duration-500 group-hover:tracking-[0.26em] group-hover:text-gold-light md:text-base">
+            <h3 className="min-w-0 font-brand text-base font-semibold tracking-[0.2em] text-gold drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)] transition-[letter-spacing,color] duration-500 group-hover:tracking-[0.24em] group-hover:text-gold-light md:text-lg md:tracking-[0.22em]">
               {experience.title.toUpperCase()}
             </h3>
             <Link
               href={inquireHref}
               prefetch={false}
               className={cn(
-                "relative shrink-0 overflow-hidden border border-white/20 bg-black/60 px-3.5 py-2 font-brand text-[10px] tracking-[0.18em] text-gold",
+                "relative shrink-0 overflow-hidden border border-white/20 bg-black/60 px-3.5 py-2.5 font-brand text-xs font-semibold tracking-[0.16em] text-gold md:px-4 md:py-2.5 md:tracking-[0.18em]",
                 "transition-all duration-300",
                 "before:pointer-events-none before:absolute before:inset-0 before:-translate-y-full before:bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.12),transparent)] before:transition-transform before:duration-500",
                 "hover:border-white/35 hover:text-gold-light group-hover:before:translate-y-full",
@@ -107,12 +107,12 @@ export default function ExperienceCard({ experience, index = 0 }: ExperienceCard
         </div>
 
         <div className="relative z-10 flex flex-1 flex-col gap-5 border-t border-white/[0.07] bg-[linear-gradient(188deg,rgba(14,11,18,0.72),rgba(5,4,6,0.96))] p-5 md:p-6">
-          <p className="font-body text-base leading-relaxed text-foreground/80 transition-colors duration-300 group-hover:text-foreground/92">
+          <p className="font-body text-base font-medium leading-relaxed text-foreground/88 transition-colors duration-300 group-hover:text-foreground/95 md:text-lg md:leading-relaxed">
             {experience.description}
           </p>
 
           <div>
-            <h4 className="relative mb-3 inline-block w-full text-center font-brand text-xs tracking-[0.26em] text-gold">
+            <h4 className="relative mb-3 inline-block w-full text-center font-brand text-sm font-semibold tracking-[0.22em] text-gold md:text-base md:tracking-[0.24em]">
               <span className="relative z-10">ITEMS</span>
               <span
                 className="absolute -bottom-1 left-1/2 h-px w-[85%] max-w-xs -translate-x-1/2 origin-center scale-x-0 bg-linear-to-r from-transparent via-white/35 to-transparent transition-transform duration-500 ease-out group-hover:scale-x-100"
@@ -129,9 +129,9 @@ export default function ExperienceCard({ experience, index = 0 }: ExperienceCard
                   <li
                     key={`${experience.id}-${i}`}
                     style={{ transitionDelay: `${i * 40}ms` }}
-                    className="relative flex gap-2.5 pl-5 text-sm leading-snug text-foreground/68 transition-[transform,color] duration-300 group-hover:-translate-x-0.5 group-hover:text-foreground/88 motion-reduce:group-hover:translate-x-0"
+                    className="relative flex gap-2.5 pl-5 text-base font-medium leading-snug text-foreground/85 transition-[transform,color] duration-300 group-hover:-translate-x-0.5 group-hover:text-foreground/92 motion-reduce:group-hover:translate-x-0 md:text-lg md:leading-snug"
                   >
-                    <span className="absolute left-0 top-[0.35rem] text-[9px] text-gold/75 transition-transform duration-300 group-hover:-rotate-12 group-hover:text-gold/95">
+                    <span className="absolute left-0 top-[0.45rem] text-xs text-gold/80 transition-transform duration-300 group-hover:-rotate-12 group-hover:text-gold/95 md:top-[0.5rem]">
                       ✦
                     </span>
                     {item}

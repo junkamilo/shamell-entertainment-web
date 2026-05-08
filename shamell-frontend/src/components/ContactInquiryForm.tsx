@@ -1207,13 +1207,6 @@ export default function ContactInquiryForm({
       ) : null}
       {linesError ? <p className="mb-6 text-center text-xs text-amber-200/85">{linesError}</p> : null}
 
-      <InquirySelectionSummary
-        eventCard={selectedEventSummary}
-        occasionCard={selectedOccasionSummary}
-        serviceCard={selectedServiceSummary}
-        loadingService={serviceSummaryLoading}
-      />
-
       <nav aria-label="Form progress" className="mb-8">
         <ol className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
           {flow.map((p, i) => {
@@ -1789,7 +1782,7 @@ export default function ContactInquiryForm({
               </li>
             </ul>
             <p className="text-xs text-foreground/50">
-              Use the step tabs above to edit any section, or Back below.
+              Use the step tabs above to edit any section, or Back below. Your selection preview is below the form.
             </p>
           </div>
         ) : null}
@@ -1864,6 +1857,15 @@ export default function ContactInquiryForm({
             </button>
           </form>
         )}
+      </div>
+
+      <div className="mt-8">
+        <InquirySelectionSummary
+          eventCard={selectedEventSummary}
+          occasionCard={selectedOccasionSummary}
+          serviceCard={selectedServiceSummary}
+          loadingService={serviceSummaryLoading}
+        />
       </div>
 
       <ContactDatePickerModal

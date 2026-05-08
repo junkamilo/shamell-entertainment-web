@@ -40,7 +40,7 @@ export type CreateAdminBookingPayload = {
   guestCount?: number;
   notes?: string;
   status?: string;
-  /** Origen en BD: teléfono manual vs petición de contacto. */
+  /** DB origin: manual phone vs contact request. */
   source?: "ADMIN_PHONE" | "ADMIN_FROM_CONTACT";
   bookingDetails?: Record<string, unknown>;
   userId?: string;
@@ -100,7 +100,7 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
       .then(async (res) => {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(nestApiErrorMessage(data, "No se pudieron cargar reservas."));
+          throw new Error(nestApiErrorMessage(data, "Could not load bookings."));
         }
         return res.json();
       })
@@ -143,7 +143,7 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(nestApiErrorMessage(data, "No se pudo crear la reserva."));
+        throw new Error(nestApiErrorMessage(data, "Could not create booking."));
       }
       reload();
       return data;
@@ -160,7 +160,7 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(nestApiErrorMessage(data, "No se pudo actualizar."));
+        throw new Error(nestApiErrorMessage(data, "Could not update."));
       }
       reload();
       return data;
@@ -176,7 +176,7 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(nestApiErrorMessage(data, "No se pudo eliminar."));
+        throw new Error(nestApiErrorMessage(data, "Could not delete."));
       }
       reload();
     },

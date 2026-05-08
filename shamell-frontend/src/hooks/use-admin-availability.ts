@@ -44,7 +44,7 @@ export function useAdminAvailability(enabled = true) {
           throw new Error(
             typeof (data as { message?: string }).message === "string"
               ? (data as { message: string }).message
-              : "No se pudo cargar disponibilidad.",
+              : "Could not load availability.",
           );
         }
         return res.json();
@@ -64,7 +64,7 @@ export function useAdminAvailability(enabled = true) {
   const putWeekly = useCallback(
     async (slots: PublicWeeklySlot[]) => {
       const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
-      if (!token) throw new Error("Sin sesión.");
+      if (!token) throw new Error("Not signed in.");
       const res = await fetch(`${apiBase()}/api/v1/availability/admin/weekly`, {
         method: "PUT",
         headers: authHeaders(),
@@ -75,7 +75,7 @@ export function useAdminAvailability(enabled = true) {
         throw new Error(
           typeof (data as { message?: string }).message === "string"
             ? (data as { message: string }).message
-            : "No se pudo guardar.",
+            : "Could not save.",
         );
       }
       setSnapshot(data as AdminAvailabilitySnapshot);
@@ -103,7 +103,7 @@ export function useAdminAvailability(enabled = true) {
         throw new Error(
           typeof (data as { message?: string }).message === "string"
             ? (data as { message: string }).message
-            : "No se pudo crear el cierre.",
+            : "Could not create closure.",
         );
       }
       reload();
@@ -123,7 +123,7 @@ export function useAdminAvailability(enabled = true) {
         throw new Error(
           typeof (data as { message?: string }).message === "string"
             ? (data as { message: string }).message
-            : "No se pudo eliminar.",
+            : "Could not delete.",
         );
       }
       reload();

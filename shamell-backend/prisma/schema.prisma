@@ -196,6 +196,10 @@ model GalleryPhoto {
   categoryId    String
   imageUrl      String
   imagePublicId String
+  focalX        Int               @default(50)
+  focalY        Int               @default(35)
+  focalMobileX  Int               @default(50)
+  focalMobileY  Int               @default(35)
   mediaType     GalleryMediaType  @default(IMAGE)
   isActive      Boolean           @default(true)
   serviceId     String?
@@ -322,6 +326,8 @@ model AboutContent {
   coreValues  String[]
   imageUrl    String?
   imagePublicId String?
+  /// IMAGE or VIDEO — Cloudinary resource type for `imagePublicId` deletion and public rendering.
+  heroMediaType String @default("IMAGE")
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

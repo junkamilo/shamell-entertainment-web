@@ -12,7 +12,7 @@ type AdminBackButtonProps = {
 
 export default function AdminBackButton({
   href,
-  label = "Volver",
+  label = "Back",
   variant = "default",
   className,
 }: AdminBackButtonProps) {
