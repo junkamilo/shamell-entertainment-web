@@ -158,10 +158,20 @@ export class ServicesService {
       orderBy: { createdAt: 'asc' },
       include: {
         serviceType: true,
+        _count: {
+          select: { bookings: true, galleryPhotos: true },
+        },
       },
     });
 
-    return services.map((service) => this.mapService(service));
+    return services.map((service) => {
+      const { _count, ...rest } = service;
+      return {
+        ...this.mapService(rest),
+        bookingCount: _count.bookings,
+        galleryPhotoCount: _count.galleryPhotos,
+      };
+    });
   }
 
   async getAdminServiceById(id: string) {
@@ -189,6 +199,10 @@ export class ServicesService {
     });
     if (!existing) {
       throw new NotFoundException('Service not found.');
+    }
+
+    if (dto.isActive === false) {
+      await this.ensureServiceCanBeDisabled(id);
     }
 
     let imageUrl: string | undefined;
@@ -258,23 +272,24 @@ export class ServicesService {
   async deleteService(id: string) {
     const existing = await this.prisma.service.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, imageUrl: true },
     });
     if (!existing) {
       throw new NotFoundException('Service not found.');
     }
 
-    const deleted = await this.prisma.service.update({
-      where: { id },
-      data: { isActive: false },
-      include: {
-        serviceType: true,
-      },
-    });
+    await this.ensureServiceCanBeDeleted(id);
+
+    if (existing.imageUrl) {
+      await this.deleteImageFromCloudinaryByUrl(existing.imageUrl).catch(
+        () => null,
+      );
+    }
+
+    await this.prisma.service.delete({ where: { id } });
 
     return {
-      message: 'Service disabled successfully.',
-      service: this.mapService(deleted),
+      message: 'Service deleted successfully.',
     };
   }
 
@@ -313,8 +328,20 @@ export class ServicesService {
   async getAdminServiceTypes() {
     const types = await this.prisma.serviceType.findMany({
       orderBy: { createdAt: 'asc' },
+      include: {
+        _count: {
+          select: { services: true, galleryPhotos: true },
+        },
+      },
     });
-    return types.map((item) => this.mapServiceType(item));
+    return types.map((item) => {
+      const { _count, ...rest } = item;
+      return {
+        ...this.mapServiceType(rest),
+        serviceCount: _count.services,
+        galleryPhotoCount: _count.galleryPhotos,
+      };
+    });
   }
 
   async updateServiceType(id: string, dto: UpdateServiceTypeDto) {
@@ -363,17 +390,41 @@ export class ServicesService {
       throw new NotFoundException('Service type not found.');
     }
 
-    await this.ensureServiceTypeCanBeDisabled(id);
+    await this.ensureServiceTypeCanBeDeleted(id);
 
-    const updated = await this.prisma.serviceType.update({
-      where: { id },
-      data: { isActive: false },
-    });
+    await this.prisma.serviceType.delete({ where: { id } });
 
     return {
-      message: 'Service type disabled successfully.',
-      serviceType: this.mapServiceType(updated),
+      message: 'Service type deleted successfully.',
     };
+  }
+
+  private async ensureServiceCanBeDisabled(serviceId: string) {
+    const bookingCount = await this.prisma.booking.count({
+      where: { serviceId },
+    });
+    if (bookingCount > 0) {
+      throw new ConflictException(
+        'Cannot disable this service because it has associated bookings.',
+      );
+    }
+  }
+
+  private async ensureServiceCanBeDeleted(serviceId: string) {
+    const [bookingCount, galleryCount] = await Promise.all([
+      this.prisma.booking.count({ where: { serviceId } }),
+      this.prisma.galleryPhoto.count({ where: { serviceId } }),
+    ]);
+    if (bookingCount > 0) {
+      throw new ConflictException(
+        'Cannot delete this service because it has associated bookings.',
+      );
+    }
+    if (galleryCount > 0) {
+      throw new ConflictException(
+        'Cannot delete this service because gallery photos are still linked to it.',
+      );
+    }
   }
 
   private mapService(service: {
@@ -436,6 +487,24 @@ export class ServicesService {
     if (associatedServices > 0) {
       throw new ConflictException(
         'Cannot disable this service type because it is associated with existing services.',
+      );
+    }
+  }
+
+  private async ensureServiceTypeCanBeDeleted(serviceTypeId: string) {
+    const [serviceCount, galleryCount] = await Promise.all([
+      this.prisma.service.count({ where: { serviceTypeId } }),
+      this.prisma.galleryPhoto.count({ where: { serviceTypeId } }),
+    ]);
+
+    if (serviceCount > 0) {
+      throw new ConflictException(
+        'Cannot delete this service type because it is associated with existing services.',
+      );
+    }
+    if (galleryCount > 0) {
+      throw new ConflictException(
+        'Cannot delete this service type because gallery photos are still linked to it.',
       );
     }
   }

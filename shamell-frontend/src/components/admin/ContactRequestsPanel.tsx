@@ -31,7 +31,7 @@ import { cn } from "@/lib/utils";
 
 function formatRequestDate(iso: string) {
   try {
-    return new Intl.DateTimeFormat("es", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
+    return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(iso));
   } catch {
     return iso;
   }
@@ -47,12 +47,12 @@ function formatEventCalendarDate(raw: string) {
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return formatRequestDate(raw);
   // Use UTC noon to keep the chosen calendar day stable across time zones.
   const stable = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-  return new Intl.DateTimeFormat("es", { dateStyle: "medium" }).format(stable);
+  return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(stable);
 }
 
 function formatBookingCalendarDate(raw: string, tz: string) {
   try {
-    return new Intl.DateTimeFormat("es", { dateStyle: "medium", timeZone: tz }).format(new Date(raw));
+    return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: tz }).format(new Date(raw));
   } catch {
     return formatEventCalendarDate(raw);
   }
@@ -187,7 +187,7 @@ function RequestCard({
     [contact],
   );
   const clientComment = useMemo(() => {
-    if (!contact) return booking?.notes?.trim() || "Sin notas.";
+    if (!contact) return booking?.notes?.trim() || "No notes.";
     return contactClientCommentFromRequest(contact.message, contact.inquiryDetails);
   }, [booking?.notes, contact]);
   const manualAgendarHref = useMemo(
@@ -235,19 +235,19 @@ function RequestCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="font-brand text-sm tracking-wide text-gold">
-              {contact?.fullName || booking?.guestFullName || booking?.user?.fullName || "Cliente"}
+              {contact?.fullName || booking?.guestFullName || booking?.user?.fullName || "Client"}
             </span>
             {isReserved ? (
               <span className="rounded border border-emerald-400/45 px-1.5 py-0.5 font-brand text-[9px] tracking-widest text-emerald-200">
-                RESERVADA
+                RESERVED
               </span>
             ) : isCancelled ? (
               <span className="rounded border border-red-400/45 px-1.5 py-0.5 font-brand text-[9px] tracking-widest text-red-200">
-                CANCELADA
+                CANCELED
               </span>
             ) : (
               <span className="rounded border border-gold/40 px-1.5 py-0.5 font-brand text-[9px] tracking-widest text-gold">
-                NUEVA
+                NEW
               </span>
             )}
           </div>
@@ -255,7 +255,7 @@ function RequestCard({
           <p className="mt-1 line-clamp-2 font-body text-xs text-foreground/65">
             {contact
               ? formatContactSubjectForAdmin(contact.subject)
-              : booking?.event?.name || booking?.eventType?.name || booking?.service?.serviceType?.name || "Reserva admin"}
+              : booking?.event?.name || booking?.eventType?.name || booking?.service?.serviceType?.name || "Admin booking"}
           </p>
           <p className="mt-1 font-brand text-[10px] tracking-widest text-foreground/40">
             {formatRequestDate(row.createdAt)}
@@ -273,13 +273,13 @@ function RequestCard({
           <dl className="grid gap-2 text-xs sm:grid-cols-2">
             {(contact?.phone || booking?.guestPhone) ? (
               <>
-                <dt className="font-brand text-[10px] tracking-widest text-gold/60">TELÉFONO</dt>
+                <dt className="font-brand text-[10px] tracking-widest text-gold/60">PHONE</dt>
                 <dd className="text-foreground/80">{contact?.phone || booking?.guestPhone}</dd>
               </>
             ) : null}
             {(contact?.eventDate || booking?.eventDate) ? (
               <>
-                <dt className="font-brand text-[10px] tracking-widest text-gold/60">FECHA EVENTO</dt>
+                <dt className="font-brand text-[10px] tracking-widest text-gold/60">EVENT DATE</dt>
                 <dd className="text-foreground/80">
                   {contact
                     ? formatEventCalendarDate(contact.eventDate || "")
@@ -289,7 +289,7 @@ function RequestCard({
             ) : null}
             {(contact?.location || booking?.location) ? (
               <>
-                <dt className="font-brand text-[10px] tracking-widest text-gold/60">UBICACIÓN</dt>
+                <dt className="font-brand text-[10px] tracking-widest text-gold/60">LOCATION</dt>
                 <dd className="text-foreground/80">{contact?.location || booking?.location}</dd>
               </>
             ) : null}
@@ -297,7 +297,7 @@ function RequestCard({
           {contact ? <InquiryDetailsReadable rows={inquiryRows} /> : null}
           <div>
             <p className="mb-1 font-brand text-[10px] tracking-widest text-gold/60">
-              {inquiryRows.length > 0 ? "COMENTARIO DEL CLIENTE" : "MENSAJE / NOTAS"}
+              {inquiryRows.length > 0 ? "CLIENT COMMENT" : "MESSAGE / NOTES"}
             </p>
             <p className="shamell-glass-surface whitespace-pre-wrap rounded-lg p-3 font-body text-sm leading-relaxed text-foreground/80">
               {clientComment}
@@ -320,14 +320,14 @@ function RequestCard({
                 )}
               >
                 {reserving ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} /> : null}
-                {contactRow.state === "RESERVED" ? "Reservada" : "Reservar"}
+                {contactRow.state === "RESERVED" ? "Reserved" : "Reserve"}
               </button>
             ) : null}
             <Link
               href={manualAgendarHref}
               className="rounded-md border border-gold/20 px-3 py-2 font-brand text-[10px] tracking-widest text-foreground/65 transition hover:border-gold/35 hover:text-gold"
             >
-              Editar
+              Edit
             </Link>
             <button
               type="button"
@@ -340,7 +340,7 @@ function RequestCard({
               className="inline-flex items-center gap-1.5 rounded-md border border-red-300/35 px-3 py-2 font-brand text-[10px] tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50"
             >
               <XCircle className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Cancelar
+              Cancel
             </button>
             <button
               type="button"
@@ -353,13 +353,13 @@ function RequestCard({
               className="inline-flex items-center gap-1.5 rounded-md border border-red-400/35 px-3 py-2 font-brand text-[10px] tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50"
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Eliminar
+              Delete
             </button>
           </div>
           <p className="font-body text-[10px] leading-relaxed text-foreground/40">
             {contact && contactIsBookingInquiry(contact)
-              ? "Esta petición viene de BOOKING INQUIRY: la reserva debe confirmarse manualmente tras contactar al cliente."
-              : "Las reservas creadas desde Agendar aparecen aquí como reservadas (verde)."}
+              ? "This request is a BOOKING INQUIRY: confirm the booking manually after you contact the client."
+              : "Bookings created from Book appear here as reserved (green)."}
           </p>
         </div>
       ) : null}
@@ -377,7 +377,7 @@ function apiBase() {
 }
 
 export default function ContactRequestsPanel({
-  heroTitle = "Bandeja de entrada",
+  heroTitle = "Inbox",
   heroSubtitle = "",
 }: ContactRequestsPanelProps) {
   const [page, setPage] = useState(1);
@@ -428,7 +428,7 @@ export default function ContactRequestsPanel({
     return () => window.clearTimeout(timer);
   }, [page, unifiedMeta.totalPages]);
 
-  /** Misma fuente que el formulario público: id de línea → código de consulta (no requiere JWT). */
+  /** Same source as public form: catalog line id → inquiry code (no JWT). */
   useEffect(() => {
     let cancelled = false;
     fetch(`${apiBase()}/api/v1/events/contact-lines`)
@@ -483,7 +483,7 @@ export default function ContactRequestsPanel({
           if (id && code && !map.has(code)) map.set(code, id);
         }
         setServiceByInquiryCode(map);
-        // Fallback operativo: si no hay mapeo por código/evento, usar el primer servicio activo.
+        // Operational fallback: if no code/event mapping, use first active service.
         setFallbackServiceId(activeServiceIds.length > 0 ? activeServiceIds[0] : undefined);
       })
       .catch(() => {
@@ -530,7 +530,7 @@ export default function ContactRequestsPanel({
       );
       if (!built.ok) {
         toast({
-          title: "No se puede crear la reserva automática",
+          title: "Cannot create booking automatically",
           description: built.error,
           variant: "destructive",
         });
@@ -541,16 +541,16 @@ export default function ContactRequestsPanel({
         await createBooking({ ...built.payload, contactRequestId: row.id });
         await setStatus(row.id, "RESERVED");
         toast({
-          title: "Reserva creada",
-          description: "Se guardó la reserva con los datos de esta petición (origen: contacto).",
+          title: "Booking created",
+          description: "The booking was saved from this request (source: contact).",
         });
         reloadContacts();
         reloadBookings();
         reloadPeticiones();
       } catch (e) {
         toast({
-          title: "Error al crear la reserva",
-          description: e instanceof Error ? e.message : "Intenta de nuevo o usa «Abrir en Agendar».",
+          title: "Could not create booking",
+          description: e instanceof Error ? e.message : "Try again or open Book to enter it manually.",
           variant: "destructive",
         });
       } finally {
@@ -565,13 +565,13 @@ export default function ContactRequestsPanel({
       setBusyId(id);
       try {
         await setStatus(id, "CANCELLED");
-        toast({ title: "Petición cancelada" });
+        toast({ title: "Request canceled" });
         reloadContacts();
         reloadPeticiones();
       } catch (e) {
         toast({
           title: "Error",
-          description: e instanceof Error ? e.message : "Intenta de nuevo.",
+          description: e instanceof Error ? e.message : "Try again.",
           variant: "destructive",
         });
       } finally {
@@ -587,8 +587,8 @@ export default function ContactRequestsPanel({
       const state = row?.origin === "CONTACT" ? row.state : "PENDING";
       if (state !== "CANCELLED") {
         toast({
-          title: "Acción no permitida",
-          description: "Solo puedes eliminar una petición cuando esté cancelada.",
+          title: "Action not allowed",
+          description: "You can only delete a request after it has been canceled.",
           variant: "destructive",
         });
         return;
@@ -596,8 +596,8 @@ export default function ContactRequestsPanel({
       setConfirmDelete({
         kind: "CONTACT",
         id,
-        title: "Eliminar solicitud",
-        description: "Esta acción eliminará la solicitud de forma permanente.",
+        title: "Delete request",
+        description: "This will permanently delete the request.",
       });
     },
     [unifiedRows],
@@ -609,13 +609,13 @@ export default function ContactRequestsPanel({
       try {
         await remove(id);
         setExpandedId((cur) => (cur === id ? null : cur));
-        toast({ title: "Solicitud eliminada" });
+        toast({ title: "Request deleted" });
         reloadContacts();
         reloadPeticiones();
       } catch (e) {
         toast({
           title: "Error",
-          description: e instanceof Error ? e.message : "Intenta de nuevo.",
+          description: e instanceof Error ? e.message : "Try again.",
           variant: "destructive",
         });
       } finally {
@@ -631,13 +631,13 @@ export default function ContactRequestsPanel({
       setBusyId(row.id);
       try {
         await patchBooking(row.id, { status: "CANCELLED" });
-        toast({ title: "Reserva cancelada" });
+        toast({ title: "Booking canceled" });
         reloadBookings();
         reloadPeticiones();
       } catch (e) {
         toast({
           title: "Error",
-          description: e instanceof Error ? e.message : "Intenta de nuevo.",
+          description: e instanceof Error ? e.message : "Try again.",
           variant: "destructive",
         });
       } finally {
@@ -651,8 +651,8 @@ export default function ContactRequestsPanel({
     async (row: AdminBookingRow) => {
       if (row.status !== "CANCELLED") {
         toast({
-          title: "Acción no permitida",
-          description: "Solo puedes eliminar una reserva cuando esté cancelada.",
+          title: "Action not allowed",
+          description: "You can only delete a booking after it has been canceled.",
           variant: "destructive",
         });
         return;
@@ -660,8 +660,8 @@ export default function ContactRequestsPanel({
       setConfirmDelete({
         kind: "BOOKING",
         id: row.id,
-        title: "Eliminar reserva cancelada",
-        description: "Esta acción eliminará la reserva cancelada de forma permanente.",
+        title: "Delete canceled booking",
+        description: "This will permanently delete the canceled booking.",
       });
     },
     [],
@@ -673,13 +673,13 @@ export default function ContactRequestsPanel({
       try {
         await removeBooking(id);
         setExpandedId((cur) => (cur === id ? null : cur));
-        toast({ title: "Reserva eliminada" });
+        toast({ title: "Booking deleted" });
         reloadBookings();
         reloadPeticiones();
       } catch (e) {
         toast({
           title: "Error",
-          description: e instanceof Error ? e.message : "Intenta de nuevo.",
+          description: e instanceof Error ? e.message : "Try again.",
           variant: "destructive",
         });
       } finally {
@@ -691,11 +691,11 @@ export default function ContactRequestsPanel({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <AdminBackButton href="/shamell-admin/agenda" label="Volver" className="mb-4" />
+      <AdminBackButton href="/shamell-admin/agenda" label="Back" className="mb-4" />
       <AdminModuleHero
         title={heroTitle}
         subtitle={heroSubtitle}
-        actionLabel="Ver agenda"
+        actionLabel="View calendar"
         actionHref="/shamell-admin/agenda/mi-agenda"
         bordered={false}
       />
@@ -707,7 +707,7 @@ export default function ContactRequestsPanel({
           </span>
           <span className="text-gold/30">|</span>
           <span>
-            Pendientes: <strong className="text-gold/90">{isLoading ? "…" : pendingCount}</strong>
+            Pending: <strong className="text-gold/90">{isLoading ? "…" : pendingCount}</strong>
           </span>
           {error ? (
             <>
@@ -726,7 +726,7 @@ export default function ContactRequestsPanel({
             className="inline-flex items-center gap-2 rounded-full border border-gold/30 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50"
           >
             {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />}
-            ACTUALIZAR
+            REFRESH
           </button>
         </div>
       </div>
@@ -736,13 +736,13 @@ export default function ContactRequestsPanel({
           {isLoading && unifiedRows.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-foreground/50">
               <Loader2 className="h-5 w-5 animate-spin text-gold" />
-              Cargando…
+              Loading…
             </div>
           ) : null}
 
           {!isLoading && unifiedRows.length === 0 && !error ? (
             <p className="shamell-glass-surface rounded-xl py-12 text-center font-body text-sm text-foreground/50">
-              Aún no hay peticiones ni reservas para listar.
+              No requests or bookings to show yet.
             </p>
           ) : null}
 
@@ -779,20 +779,20 @@ export default function ContactRequestsPanel({
       </section>
 
       <AdminModal
-        title={confirmDelete?.title ?? "Confirmar acción"}
+        title={confirmDelete?.title ?? "Confirm action"}
         isOpen={Boolean(confirmDelete)}
         onClose={() => setConfirmDelete(null)}
       >
         <div className="space-y-4">
           <p className="text-sm text-foreground/75">{confirmDelete?.description}</p>
-          <p className="text-xs text-foreground/50">No podrás deshacer esta acción.</p>
+          <p className="text-xs text-foreground/50">You cannot undo this action.</p>
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
             <button
               type="button"
               onClick={() => setConfirmDelete(null)}
               className="rounded-md border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/70 hover:border-gold/35 hover:text-gold"
             >
-              CANCELAR
+              CANCEL
             </button>
             <button
               type="button"
@@ -808,7 +808,7 @@ export default function ContactRequestsPanel({
               }}
               className="rounded-md border border-red-400/45 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-red-200 hover:bg-red-500/10"
             >
-              ELIMINAR
+              DELETE
             </button>
           </div>
         </div>

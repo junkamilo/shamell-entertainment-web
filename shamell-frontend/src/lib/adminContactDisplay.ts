@@ -4,7 +4,7 @@ function isServiceTypeCode(s: string): s is ServiceTypeCode {
   return SERVICE_TYPE_CODES.includes(s as ServiceTypeCode);
 }
 
-/** Asunto mostrado en admin: sin sufijo técnico y copy neutro en español cuando aplica. */
+/** Subject shown in admin: no technical suffix and neutral copy when applicable. */
 export function formatContactSubjectForAdmin(subject: string | null | undefined): string {
   if (!subject?.trim()) return "Consulta de reserva";
   let s = subject.trim();

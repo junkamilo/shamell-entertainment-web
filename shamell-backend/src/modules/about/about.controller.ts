@@ -39,7 +39,7 @@ export class AboutController {
   @UseInterceptors(
     FileInterceptor('image', {
       storage: memoryStorage(),
-      limits: { fileSize: 8 * 1024 * 1024 },
+      limits: { fileSize: 100 * 1024 * 1024 },
     }),
   )
   upsertAdminAboutContent(
@@ -49,7 +49,7 @@ export class AboutController {
     const hasBodyFields = Object.keys(dto).length > 0;
     if (!hasBodyFields && !imageFile) {
       throw new BadRequestException(
-        'Provide at least one field or image to update.',
+        'Provide at least one field or media file (image/video) to update.',
       );
     }
     return this.aboutService.upsertAdminAboutContent(dto, imageFile);

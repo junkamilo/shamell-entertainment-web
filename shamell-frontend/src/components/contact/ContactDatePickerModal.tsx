@@ -20,12 +20,12 @@ function cellIso(viewYear: number, viewMonth0: number, day: number): string {
   return `${viewYear}-${String(viewMonth0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-/** One consistent label for blocked-day tooltips (avoids duplicating «Motivo:»). */
-function formatBlockedDayMotivo(body: string): string {
+/** One consistent label for blocked-day tooltips (avoids duplicating “Reason:”). */
+function formatBlockedDayReason(body: string): string {
   const t = body.trim();
-  if (!t) return "Motivo:";
-  if (/^motivo\s*:/i.test(t)) return t;
-  return `Motivo: ${t}`;
+  if (!t) return "Reason:";
+  if (/^reason\s*:/i.test(t)) return t;
+  return `Reason: ${t}`;
 }
 
 type Props = {
@@ -52,7 +52,7 @@ export default function ContactDatePickerModal({
   onConfirm,
   blockedIsoDates,
   blockedReasonByIso,
-  blockedFallbackReason = "Esta fecha no está disponible para reservas.",
+  blockedFallbackReason = "This date is not available for booking.",
   minSelectableIso,
 }: Props) {
   const minDate = useMemo(() => {
@@ -223,7 +223,7 @@ export default function ContactDatePickerModal({
                 const availBlocked = isAvailabilityBlocked(day);
                 const pastOnly = isPastOrBeforeMin(day) && !availBlocked;
                 const reasonRaw = availBlocked ? blockedReasonFor(day) : "";
-                const reasonDisplay = availBlocked ? formatBlockedDayMotivo(reasonRaw) : "";
+                const reasonDisplay = availBlocked ? formatBlockedDayReason(reasonRaw) : "";
 
                 if (pastOnly) {
                   return (
@@ -255,7 +255,7 @@ export default function ContactDatePickerModal({
                           "cursor-pointer transition-colors hover:bg-gold/10 hover:text-foreground/55 md:cursor-help",
                           tipPinned && "bg-gold/12 text-foreground/50",
                         )}
-                        aria-label={`Día ${day}. ${reasonDisplay}`}
+                        aria-label={`Day ${day}. ${reasonDisplay}`}
                         aria-describedby={tipPinned ? `blocked-tip-${iso}` : undefined}
                         onClick={(e) => {
                           e.stopPropagation();

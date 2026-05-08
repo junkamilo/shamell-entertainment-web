@@ -135,7 +135,7 @@ export function expandBlockedDateReasonsMap(
 
     const specificMsgs = closures
       .filter((c) => c.kind === "SPECIFIC_DATE" && c.date === iso)
-      .map((c) => (c.note?.trim() ? c.note.trim() : "Este día no está disponible."));
+      .map((c) => (c.note?.trim() ? c.note.trim() : "This date is not available."));
     if (specificMsgs.length) {
       pushUnique(iso, [...new Set(specificMsgs)].join(" · "));
       continue;
@@ -144,7 +144,7 @@ export function expandBlockedDateReasonsMap(
     const recurringMsgs = closures
       .filter((c) => c.kind === "RECURRING_WEEKDAY" && c.weekday === wd)
       .map((c) =>
-        c.note?.trim() ? c.note.trim() : "Este día de la semana no está disponible.",
+        c.note?.trim() ? c.note.trim() : "This weekday is not available.",
       );
     if (recurringMsgs.length) {
       pushUnique(iso, [...new Set(recurringMsgs)].join(" · "));
@@ -160,7 +160,7 @@ export function expandBlockedDateReasonsMap(
           iso >= c.startDate &&
           iso <= c.endDate,
       )
-      .map((c) => (c.note?.trim() ? c.note.trim() : "No disponible en este periodo."));
+      .map((c) => (c.note?.trim() ? c.note.trim() : "Not available in this period."));
     if (rangeMsgs.length) {
       pushUnique(iso, [...new Set(rangeMsgs)].join(" · "));
       continue;
@@ -168,7 +168,7 @@ export function expandBlockedDateReasonsMap(
 
     const slot = weekly.find((w) => w.weekday === wd);
     if (slot?.isClosed) {
-      map.set(iso, "Sin horario de reserva este día.");
+      map.set(iso, "No booking hours on this day.");
     }
   }
 

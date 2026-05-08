@@ -25,7 +25,7 @@ export type GalleryItem = {
 export const galleryTabs: { id: GalleryFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "fire", label: "Fire Performance" },
-  { id: "sword-candelabra", label: "Sword y Candelabra" },
+  { id: "sword-candelabra", label: "Sword & Candelabra" },
   { id: "veil", label: "Veil" },
   { id: "clients", label: "Clients" },
 ];

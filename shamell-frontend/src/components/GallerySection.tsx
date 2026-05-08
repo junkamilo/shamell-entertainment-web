@@ -28,10 +28,10 @@ const GallerySection = () => {
           <div className="h-32 w-[min(26rem,92vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.1),transparent_75%)] blur-3xl opacity-75" />
         </div>
         <div className="relative">
-          <h2 className="mb-3 text-center font-brand text-2xl tracking-wider text-gold md:text-3xl">
+          <h2 className="mb-3 text-center font-brand text-2xl font-semibold tracking-wider text-gold md:text-3xl">
             Performance Gallery
           </h2>
-          <p className="mx-auto mb-2 max-w-2xl text-center font-body text-sm text-foreground/60">
+          <p className="mx-auto mb-2 max-w-2xl text-center font-body text-base font-medium leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
             Visual portfolio organized by performance type. Tap any image for full-screen view.
           </p>
         </div>
@@ -52,7 +52,7 @@ const GallerySection = () => {
               aria-selected={filter === tab.id}
               onClick={() => setFilter(tab.id)}
               className={cn(
-                "border px-3 py-2 font-brand text-[10px] tracking-[0.12em] transition-colors md:text-xs",
+                "border px-3 py-2 font-brand text-xs font-semibold tracking-[0.12em] transition-colors",
                 filter === tab.id
                   ? "border-gold bg-gold/15 text-gold"
                   : "border-gold/30 text-foreground/70 hover:border-gold/50 hover:text-gold",
@@ -64,7 +64,7 @@ const GallerySection = () => {
         </div>
 
         {isLoading ? (
-          <p className="mb-6 text-center text-sm text-foreground/60">Loading gallery...</p>
+          <p className="mb-6 text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">Loading gallery...</p>
         ) : null}
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-6 md:gap-5">
@@ -115,8 +115,8 @@ const GallerySection = () => {
         </div>
 
         <div className="mt-12 flex justify-center">
-          <Link href={`/gallery?filter=${filter}`} className="btn-outline-gold font-brand text-xs">
-            Ver más
+          <Link href={`/gallery?filter=${filter}`} className="btn-outline-gold font-brand md:text-xs">
+            View more
           </Link>
         </div>
       </div>

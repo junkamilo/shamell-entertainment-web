@@ -10,29 +10,29 @@ import { readPeticionesLastSeenAt } from "@/lib/peticionesNotifications";
 const cards = [
   {
     href: "/shamell-admin/agenda/agendar",
-    title: "Agendar",
-    subtitle: "Nueva reserva por teléfono o presencial: servicio, tipo de evento, fecha y cliente.",
+    title: "Book",
+    subtitle: "New booking by phone or in person: service, event type, date, and client.",
     icon: CalendarDays,
     fire: false,
   },
   {
     href: "/shamell-admin/agenda/disponibilidad",
-    title: "Disponibilidad",
-    subtitle: "Horario semanal y días cerrados (fechas puntuales o cada semana, por ejemplo domingos).",
+    title: "Availability",
+    subtitle: "Weekly hours and closed days (one-off dates or recurring, e.g. every Sunday).",
     icon: CalendarClock,
     fire: false,
   },
   {
     href: "/shamell-admin/agenda/peticiones",
-    title: "Peticiones",
-    subtitle: "Mensajes enviados desde el formulario público; revisar datos y marcar como leídas.",
+    title: "Inbox",
+    subtitle: "Messages from the public contact form; review details and mark as read.",
     icon: Inbox,
     fire: true,
   },
   {
     href: "/shamell-admin/agenda/mi-agenda",
-    title: "Mi Agenda",
-    subtitle: "Calendario semanal con reservas confirmadas, horarios y eventos programados.",
+    title: "My calendar",
+    subtitle: "Week view of confirmed bookings, times, and scheduled events.",
     icon: LayoutDashboard,
     fire: false,
   },
@@ -102,9 +102,9 @@ export default function AgendaHubPage() {
   return (
     <div className="mx-auto w-full max-w-5xl">
       <AdminModuleHero
-        title="Agenda"
-        subtitle="Centraliza reservas manuales, horarios de trabajo y solicitudes de contacto."
-        actionLabel="Ver peticiones"
+        title="Schedule"
+        subtitle="Manage manual bookings, working hours, and contact requests in one place."
+        actionLabel="Open inbox"
         actionHref="/shamell-admin/agenda/peticiones"
         bordered={false}
       />
@@ -116,7 +116,7 @@ export default function AgendaHubPage() {
             href={href}
             className={`group shamell-glass-card relative ${fire ? "shamell-glass-card--fire" : ""}`}
           >
-            {title === "Peticiones" && peticionesBadge > 0 ? (
+            {title === "Inbox" && peticionesBadge > 0 ? (
               <span className="absolute right-3 top-3 inline-flex min-h-6 min-w-6 items-center justify-center rounded-full border border-gold/45 bg-gold/20 px-1.5 font-brand text-[10px] tracking-widest text-gold">
                 {peticionesBadge > 99 ? "99+" : peticionesBadge}
               </span>
@@ -127,7 +127,7 @@ export default function AgendaHubPage() {
             <p className="mt-5 font-brand text-xs tracking-[0.18em] text-gold">{title.toUpperCase()}</p>
             <p className="mt-2 font-body text-sm leading-relaxed text-foreground/65">{subtitle}</p>
             <span className="mt-4 font-brand text-[10px] tracking-[0.14em] text-gold/70 group-hover:text-gold">
-              ABRIR →
+              OPEN →
             </span>
           </Link>
         ))}

@@ -36,6 +36,8 @@ type AdminEvent = {
   showOnHome: boolean;
   createdAt?: string;
   updatedAt?: string;
+  bookingCount?: number;
+  galleryPhotoCount?: number;
 };
 
 const DESCRIPTION_MIN_LENGTH = 10;
@@ -51,14 +53,14 @@ function parseOptionalPrice(
   const t = raw.trim();
   if (!t) return { ok: true, value: mode === "edit" ? null : undefined };
   const n = Number(t.replace(",", "."));
-  if (!Number.isFinite(n) || n < 0) return { ok: false, message: "El precio no es válido." };
-  if (n > 99_999_999.99) return { ok: false, message: "El precio es demasiado alto." };
+  if (!Number.isFinite(n) || n < 0) return { ok: false, message: "Invalid price." };
+  if (n > 99_999_999.99) return { ok: false, message: "Price is too high." };
   return { ok: true, value: Math.round(n * 100) / 100 };
 }
 
-function formatPriceEs(value: number | null | undefined): string {
+function formatPriceEn(value: number | null | undefined): string {
   if (value == null || Number.isNaN(Number(value))) return "—";
-  return new Intl.NumberFormat("es", {
+  return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(Number(value));
@@ -86,7 +88,7 @@ function pillClassForTypeName(name: string) {
 
 function displayEventHeading(description: string): { title: string; subtitle: string } {
   const t = description.trim();
-  if (!t) return { title: "Sin descripción", subtitle: "" };
+  if (!t) return { title: "No description", subtitle: "" };
   const firstBlock = t.split(/\n/)[0]?.trim() ?? t;
   const title = firstBlock.length > 64 ? `${firstBlock.slice(0, 62).trim()}…` : firstBlock;
   let subtitle = "";
@@ -104,11 +106,11 @@ function displayEventHeading(description: string): { title: string; subtitle: st
   return { title, subtitle };
 }
 
-function formatShortDateEs(iso: string | undefined): string {
+function formatShortDateUs(iso: string | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleDateString("es", { day: "numeric", month: "short" }).replace(".", "");
+  return d.toLocaleDateString("en-US", { day: "numeric", month: "short" }).replace(".", "");
 }
 
 type FilterTab = "all" | "upcoming" | "completed";
@@ -140,6 +142,9 @@ export default function ShamellAdminEventsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<AdminEvent | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const parseErrorMessage = useCallback((data: unknown, fallback: string) => {
     if (typeof data !== "object" || data === null) return fallback;
@@ -182,8 +187,8 @@ export default function ShamellAdminEventsPage() {
       setEventTypes([]);
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -204,7 +209,7 @@ export default function ShamellAdminEventsPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(typesData, "No se pudo cargar la lista de tipos de evento."),
+          description: parseErrorMessage(typesData, "Could not load event types."),
         });
         return;
       }
@@ -227,7 +232,7 @@ export default function ShamellAdminEventsPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(eventsData, "No se pudo cargar la lista de eventos."),
+          description: parseErrorMessage(eventsData, "Could not load events."),
         });
         return;
       }
@@ -261,6 +266,8 @@ export default function ShamellAdminEventsPage() {
                 showOnHome: ev.showOnHome !== undefined ? Boolean(ev.showOnHome) : true,
                 createdAt: typeof ev.createdAt === "string" ? ev.createdAt : undefined,
                 updatedAt: typeof ev.updatedAt === "string" ? ev.updatedAt : undefined,
+                bookingCount: typeof ev.bookingCount === "number" ? ev.bookingCount : 0,
+                galleryPhotoCount: typeof ev.galleryPhotoCount === "number" ? ev.galleryPhotoCount : 0,
               };
             })
           : [],
@@ -268,8 +275,8 @@ export default function ShamellAdminEventsPage() {
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -315,13 +322,13 @@ export default function ShamellAdminEventsPage() {
     !isSubmitting && hasValidType && hasValidDescriptionLength && hasValidItems && priceOk && hasChanges;
 
   const getValidationError = () => {
-    if (!hasValidType) return "Debes seleccionar un tipo de evento.";
+    if (!hasValidType) return "You must select an event type.";
     if (!priceOk) return priceResult.message;
     if (!hasValidDescriptionLength) {
-      return `La descripción debe tener entre ${DESCRIPTION_MIN_LENGTH} y ${DESCRIPTION_MAX_LENGTH} caracteres.`;
+      return `The description must be between ${DESCRIPTION_MIN_LENGTH} and ${DESCRIPTION_MAX_LENGTH} characters.`;
     }
-    if (!hasValidItems) return "Debes agregar al menos 1 ítem. Cada ítem máximo 180 caracteres.";
-    if (!hasChanges) return "No hay cambios para guardar.";
+    if (!hasValidItems) return "Add at least one line item. Each line may be up to 180 characters.";
+    if (!hasChanges) return "No changes to save.";
     return null;
   };
 
@@ -331,15 +338,15 @@ export default function ShamellAdminEventsPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin para gestionar eventos.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin to manage events.",
       });
       return;
     }
 
     const validationError = getValidationError();
     if (validationError) {
-      toast({ variant: "destructive", title: "Revisa el formulario", description: validationError });
+      toast({ variant: "destructive", title: "Check the form", description: validationError });
       return;
     }
 
@@ -372,7 +379,7 @@ export default function ShamellAdminEventsPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo guardar el evento."),
+          description: parseErrorMessage(data, "Could not save the event."),
         });
         return;
       }
@@ -391,8 +398,8 @@ export default function ShamellAdminEventsPage() {
         if (!imgRes.ok) {
           toast({
             variant: "destructive",
-            title: "Imágenes no guardadas",
-            description: parseErrorMessage(imgData, "El evento se guardó pero falló la subida de imágenes."),
+            title: "Images not saved",
+            description: parseErrorMessage(imgData, "The event was saved but image upload failed."),
           });
         }
       }
@@ -400,14 +407,14 @@ export default function ShamellAdminEventsPage() {
       const wasEditing = Boolean(editingId);
       closeModal();
       toast({
-        title: wasEditing ? "Evento actualizado" : "Evento creado",
+        title: wasEditing ? "Event updated" : "Event created",
         description: wasEditing
-          ? "Los cambios del evento se guardaron correctamente."
-          : "El nuevo evento se creó correctamente.",
+          ? "Event changes were saved successfully."
+          : "The new event was created successfully.",
       });
       await loadAllData();
     } catch {
-      toast({ variant: "destructive", title: "Sin conexión", description: "No se pudo conectar con el backend." });
+      toast({ variant: "destructive", title: "Offline", description: "Could not reach the server." });
     } finally {
       setIsSubmitting(false);
     }
@@ -453,8 +460,8 @@ export default function ShamellAdminEventsPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -468,30 +475,109 @@ export default function ShamellAdminEventsPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(delData, "No se pudo eliminar la imagen."),
+          description: parseErrorMessage(delData, "Could not delete the image."),
         });
         return;
       }
       setExistingImages((prev) => prev.filter((p) => p.id !== photoId));
-      toast({ title: "Imagen eliminada" });
+      toast({ title: "Image removed" });
       await loadAllData();
     } catch {
-      toast({ variant: "destructive", title: "Sin conexión", description: "No se pudo conectar con el backend." });
+      toast({ variant: "destructive", title: "Offline", description: "Could not reach the server." });
     }
   };
 
-  const onDisable = async (eventId: string) => {
+  const onToggleActive = async (item: AdminEvent) => {
+    if (item.isActive && (item.bookingCount ?? 0) > 0) {
+      toast({
+        variant: "destructive",
+        title: "Cannot deactivate",
+        description: "This event has linked bookings.",
+      });
+      return;
+    }
+
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
+
+    setTogglingId(item.id);
     try {
-      const response = await fetch(`${apiBaseUrl}/api/v1/events/admin/${eventId}`, {
+      const response = await fetch(`${apiBaseUrl}/api/v1/events/admin/${item.id}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !item.isActive }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: parseErrorMessage(data, "Could not update the event status."),
+        });
+        return;
+      }
+
+      if (editingId === item.id) {
+        resetForm();
+      }
+
+      toast({
+        title: item.isActive ? "Event hidden" : "Event visible",
+        description: item.isActive
+          ? "The event is hidden from the catalog."
+          : "The event is visible again in the catalog.",
+      });
+      await loadAllData();
+    } catch {
+      toast({ variant: "destructive", title: "Offline", description: "Could not reach the server." });
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const canDeleteEvent = (item: AdminEvent) =>
+    (item.bookingCount ?? 0) === 0 && (item.galleryPhotoCount ?? 0) === 0;
+
+  const cannotDeactivateWhileActive = (item: AdminEvent) =>
+    item.isActive && (item.bookingCount ?? 0) > 0;
+
+  const openDeleteConfirm = (item: AdminEvent) => {
+    if (!canDeleteEvent(item)) {
+      toast({
+        variant: "destructive",
+        title: "Cannot delete",
+        description:
+          (item.bookingCount ?? 0) > 0
+            ? "This event has linked bookings."
+            : "Remove linked catalog images before deleting this event.",
+      });
+      return;
+    }
+    setPendingDelete(item);
+  };
+
+  const onConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/events/admin/${pendingDelete.id}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -500,14 +586,33 @@ export default function ShamellAdminEventsPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo desactivar el evento."),
+          description: parseErrorMessage(data, "Could not delete the event."),
         });
         return;
       }
-      toast({ title: "Evento desactivado", description: "El evento fue desactivado correctamente." });
+
+      if (editingId === pendingDelete.id) {
+        resetForm();
+        setIsModalOpen(false);
+      }
+      if (viewEvent?.id === pendingDelete.id) {
+        setViewEvent(null);
+      }
+
+      toast({
+        title: "Event deleted",
+        description: "The event was removed from the catalog.",
+      });
+      setPendingDelete(null);
       await loadAllData();
     } catch {
-      toast({ variant: "destructive", title: "Sin conexión", description: "No se pudo conectar con el backend." });
+      toast({
+        variant: "destructive",
+        title: "Offline",
+        description: "Could not reach the server.",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -519,11 +624,13 @@ export default function ShamellAdminEventsPage() {
         item.eventTypeName,
         item.description,
         ...item.items,
-        formatPriceEs(item.price),
-        item.isActive ? "activo" : "inactivo",
-        "próximo",
+        formatPriceEn(item.price),
+        item.isActive ? "active" : "inactive",
+        "upcoming",
         "proximo",
-        "completado",
+        "completed",
+        String(item.bookingCount ?? 0),
+        "booking",
       ]
         .join(" ")
         .toLowerCase();
@@ -570,7 +677,7 @@ export default function ShamellAdminEventsPage() {
         const tb = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
         return tb - ta;
       });
-      nearestLabel = formatShortDateEs(sorted[0]?.updatedAt ?? sorted[0]?.createdAt);
+      nearestLabel = formatShortDateUs(sorted[0]?.updatedAt ?? sorted[0]?.createdAt);
     }
     return { total, upcoming, completed: total - upcoming, itemsTotal, nearestLabel };
   }, [events]);
@@ -581,8 +688,8 @@ export default function ShamellAdminEventsPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
-        title="Eventos"
-        actionLabel="Nuevo evento"
+        title="Events"
+        actionLabel="New event"
         onAction={openCreateModal}
         bordered={false}
       />
@@ -590,11 +697,11 @@ export default function ShamellAdminEventsPage() {
       {eventTypes.filter((item) => item.isActive).length === 0 ? (
         <section className="mb-8 shamell-glass-surface rounded-xl p-5 md:p-7">
           <AdminCatalogEmptyState
-            title="No hay tipos de evento activos"
-            description="Crea o activa categorías en Tipos de eventos antes de registrar presentaciones aquí."
+            title="No active event types"
+            description="Create or activate categories under Event types before you add performances here."
             tone="primary"
             icon={Tags}
-            action={{ label: "Ir a Tipos de eventos", href: "/shamell-admin/event-types" }}
+            action={{ label: "Go to event types", href: "/shamell-admin/event-types" }}
           />
         </section>
       ) : null}
@@ -602,10 +709,10 @@ export default function ShamellAdminEventsPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 lg:mb-8 lg:grid-cols-4 lg:gap-4">
         {(
           [
-            ["TOTAL EVENTOS", String(stats.total)],
-            ["PRÓXIMOS", String(stats.upcoming)],
-            ["ITEMS TOTALES", String(stats.itemsTotal)],
-            ["MÁS CERCANO", stats.nearestLabel],
+            ["TOTAL EVENTS", String(stats.total)],
+            ["UPCOMING", String(stats.upcoming)],
+            ["ITEMS TOTAL", String(stats.itemsTotal)],
+            ["MOST RECENT", stats.nearestLabel],
           ] as const
         ).map(([label, value]) => (
           <div
@@ -622,16 +729,16 @@ export default function ShamellAdminEventsPage() {
         <AdminSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Buscar evento..."
+          placeholder="Search events..."
           className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end lg:shrink-0">
           <div className="shamell-glass-surface flex flex-wrap rounded-xl p-1">
             {(
               [
-                ["all", "Todos", tabCounts.all],
-                ["upcoming", "Próximos", tabCounts.upcoming],
-                ["completed", "Completados", tabCounts.completed],
+                ["all", "All", tabCounts.all],
+                ["upcoming", "Upcoming", tabCounts.upcoming],
+                ["completed", "Completed", tabCounts.completed],
               ] as const
             ).map(([id, label, count]) => (
               <button
@@ -654,18 +761,20 @@ export default function ShamellAdminEventsPage() {
 
       <section className="shamell-glass-surface rounded-xl p-4 md:p-5">
         <div className="overflow-x-auto rounded-xl border border-gold/14">
-              <table className="w-full min-w-[1040px] border-collapse text-left">
+              <table className="w-full min-w-[1080px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-gold/12">
                     <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
-                    <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">EVENTO</th>
-                    <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TIPO</th>
+                    <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">EVENT</th>
+                    <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TYPE</th>
                     <th className="w-16 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
-                    <th className="min-w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRECIO</th>
-                    <th className="min-w-36 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">FECHA</th>
-                    <th className="min-w-32 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">CLIENTE</th>
+                    <th className="min-w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRICE</th>
+                    <th className="min-w-36 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">DATE</th>
+                    <th className="min-w-36 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">
+                      STATUS
+                    </th>
                     <th className="w-32 px-3 py-3 text-right font-brand text-[10px] tracking-[0.14em] text-gold/80">
-                      ACCIONES
+                      ACTIONS
                     </th>
                   </tr>
                 </thead>
@@ -673,6 +782,10 @@ export default function ShamellAdminEventsPage() {
                   {paginatedEvents.map((item) => {
                     const { title, subtitle } = displayEventHeading(item.description);
                     const dateIso = item.updatedAt ?? item.createdAt;
+                    const bk = item.bookingCount ?? 0;
+                    const gal = item.galleryPhotoCount ?? 0;
+                    const deletable = canDeleteEvent(item);
+                    const blockDeactivate = cannotDeactivateWhileActive(item);
                     return (
                       <tr
                         key={item.id}
@@ -691,6 +804,13 @@ export default function ShamellAdminEventsPage() {
                           {subtitle ? (
                             <p className="mt-0.5 font-body text-xs leading-snug text-foreground/45">{subtitle}</p>
                           ) : null}
+                          {bk > 0 || gal > 0 ? (
+                            <p className="mt-1 font-body text-[10px] text-foreground/45">
+                              {bk > 0 ? `${bk} booking(s)` : null}
+                              {bk > 0 && gal > 0 ? " · " : null}
+                              {gal > 0 ? `${gal} in gallery` : null}
+                            </p>
+                          ) : null}
                         </td>
                         <td className="px-3 py-3 align-middle">
                           <span
@@ -706,7 +826,7 @@ export default function ShamellAdminEventsPage() {
                           {item.items.length}
                         </td>
                         <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75 whitespace-nowrap">
-                          {formatPriceEs(item.price)}
+                          {formatPriceEn(item.price)}
                         </td>
                         <td className="px-3 py-3 align-middle">
                           <div className="flex items-center gap-2 font-body text-xs text-foreground/65">
@@ -715,18 +835,50 @@ export default function ShamellAdminEventsPage() {
                             ) : (
                               <Calendar className="h-3.5 w-3.5 shrink-0 text-gold/60" strokeWidth={1.5} />
                             )}
-                            <span>{formatShortDateEs(dateIso)}</span>
+                            <span>{formatShortDateUs(dateIso)}</span>
                           </div>
-                          <p className="mt-0.5 font-body text-[10px] text-foreground/35">Última gestión</p>
+                          <p className="mt-0.5 font-body text-[10px] text-foreground/35">Last updated</p>
                         </td>
-                        <td className="px-3 py-3 align-middle font-body text-xs text-foreground/45">Sin asignar</td>
+                        <td className="px-3 py-3 align-middle">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => void onToggleActive(item)}
+                              disabled={togglingId === item.id || blockDeactivate}
+                              title={
+                                blockDeactivate
+                                  ? "This event has bookings and cannot be turned off."
+                                  : undefined
+                              }
+                              className={cn(
+                                "relative h-7 w-12 shrink-0 rounded-full border transition",
+                                item.isActive
+                                  ? "border-emerald-400/45 bg-emerald-500/22"
+                                  : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
+                                togglingId === item.id && "cursor-not-allowed opacity-60",
+                                blockDeactivate && "cursor-not-allowed opacity-45",
+                              )}
+                              aria-label={`${item.isActive ? "Hide" : "Show"} event`}
+                            >
+                              <span
+                                className={cn(
+                                  "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
+                                  item.isActive ? "left-6" : "left-1",
+                                )}
+                              />
+                            </button>
+                            <span className="font-body text-xs text-foreground/55">
+                              {item.isActive ? "Active" : "Hidden"}
+                            </span>
+                          </div>
+                        </td>
                         <td className="px-3 py-3 align-middle">
                           <div className="flex justify-end gap-1">
                             <button
                               type="button"
                               onClick={() => setViewEvent(item)}
                               className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
-                              aria-label="Ver evento"
+                              aria-label="View event"
                             >
                               <Eye className="h-4 w-4" strokeWidth={1.5} />
                             </button>
@@ -734,15 +886,28 @@ export default function ShamellAdminEventsPage() {
                               type="button"
                               onClick={() => startEdit(item)}
                               className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
-                              aria-label="Editar evento"
+                              aria-label="Edit event"
                             >
                               <Pencil className="h-4 w-4" strokeWidth={1.5} />
                             </button>
                             <button
                               type="button"
-                              onClick={() => onDisable(item.id)}
-                              className="rounded-lg border border-red-400/25 p-2 text-foreground/55 transition hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
-                              aria-label="Desactivar evento"
+                              onClick={() => openDeleteConfirm(item)}
+                              disabled={!deletable}
+                              className={cn(
+                                "rounded-lg border p-2 transition",
+                                deletable
+                                  ? "border-red-400/25 text-foreground/55 hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
+                                  : "cursor-not-allowed border-gold/10 text-foreground/30",
+                              )}
+                              aria-label="Delete event permanently"
+                              title={
+                                !deletable
+                                  ? bk > 0
+                                    ? "Has linked bookings"
+                                    : "Has linked gallery photos"
+                                  : "Delete from catalog (cannot undo)"
+                              }
                             >
                               <Trash2 className="h-4 w-4" strokeWidth={1.5} />
                             </button>
@@ -756,17 +921,17 @@ export default function ShamellAdminEventsPage() {
                       <td colSpan={8} className="border-b border-gold/8 p-0 align-middle">
                         {events.length === 0 ? (
                           <AdminCatalogEmptyState
-                            title="Aún no hay eventos"
-                            description="Registra una presentación con tipo, descripción y detalle para el equipo."
+                            title="No events yet"
+                            description="Add a performance with type, description, and line items for the team."
                             tone="primary"
                             variant="embedded"
                             icon={Calendar}
-                            action={{ label: "Nuevo evento", onClick: openCreateModal }}
+                            action={{ label: "New event", onClick: openCreateModal }}
                           />
                         ) : (
                           <AdminCatalogEmptyState
-                            title="Nada coincide con tu búsqueda"
-                            description="Prueba otras palabras o cambia la pestaña de filtro (Todos, Próximos, Completados)."
+                            title="No matches for your search"
+                            description="Try other words or switch the filter tab (All, Upcoming, Completed)."
                             tone="muted"
                             variant="embedded"
                             icon={Calendar}
@@ -782,8 +947,8 @@ export default function ShamellAdminEventsPage() {
         <div className="mt-4 flex flex-col gap-3 border-t border-gold/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="font-body text-xs text-foreground/50">
                 {filteredEvents.length === 0
-                  ? "Mostrando 0 de 0"
-                  : `Mostrando ${pageOffset + 1}-${pageOffset + paginatedEvents.length} de ${filteredEvents.length}`}
+                  ? "Showing 0 of 0"
+                  : `Showing ${pageOffset + 1}-${pageOffset + paginatedEvents.length} of ${filteredEvents.length}`}
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -791,7 +956,7 @@ export default function ShamellAdminEventsPage() {
                   disabled={safePage <= 1}
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   className="rounded-lg border border-gold/20 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                  aria-label="Página anterior"
+                  aria-label="Previous page"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -815,20 +980,20 @@ export default function ShamellAdminEventsPage() {
                   disabled={safePage >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   className="rounded-lg border border-gold/20 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                  aria-label="Página siguiente"
+                  aria-label="Next page"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
         </div>
 
-        {isLoading ? <p className="mt-4 text-sm text-foreground/65">Cargando...</p> : null}
+        {isLoading ? <p className="mt-4 text-sm text-foreground/65">Loading...</p> : null}
       </section>
 
-      <AdminModal title={editingId ? "Editar evento" : "Nuevo evento"} isOpen={isModalOpen} onClose={closeModal}>
+      <AdminModal title={editingId ? "Edit event" : "New event"} isOpen={isModalOpen} onClose={closeModal}>
         <form id="event-form" noValidate onSubmit={onSubmit} className="space-y-6">
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">TIPO DE EVENTO</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">EVENT TYPE</span>
             <div className="relative mt-2">
               <button
                 type="button"
@@ -839,7 +1004,7 @@ export default function ShamellAdminEventsPage() {
                 className="shamell-glass-trigger flex h-12 w-full items-center justify-between rounded-xl px-4 text-sm text-foreground"
               >
                 <span className={selectedTypeName ? "text-foreground" : "text-foreground/55"}>
-                  {selectedTypeName ?? "Primero crea un tipo de evento"}
+                  {selectedTypeName ?? "Create an event type first"}
                 </span>
                 <ChevronDown
                   className={`h-4 w-4 text-gold/80 transition ${isTypeDropdownOpen ? "rotate-180" : ""}`}
@@ -874,35 +1039,35 @@ export default function ShamellAdminEventsPage() {
           </label>
 
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">DESCRIPCIÓN</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">DESCRIPTION</span>
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows={4}
               className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
-              placeholder="Describe el evento..."
+              placeholder="Describe this event..."
             />
           </label>
 
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">ÍTEMS (UNO POR LÍNEA)</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">LINE ITEMS (ONE PER LINE)</span>
             <p className="mt-1 text-xs text-foreground/55 font-body">
-              Lista de ejemplos que aparece en el sitio (bodas, yates, villas…). Una línea = un bullet en el
-              catálogo público.
+              Example bullets shown on the public site (weddings, yachts, villas…). One line = one bullet in the public
+              catalog.
             </p>
             <textarea
               value={itemsText}
               onChange={(event) => setItemsText(event.target.value)}
               rows={5}
               className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
-              placeholder={"Ítem 1\nÍtem 2\nÍtem 3"}
+              placeholder={"Line 1\nLine 2\nLine 3"}
             />
           </label>
 
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PRECIO (OPCIONAL)</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PRICE (OPTIONAL)</span>
             <p className="mt-1 font-body text-xs text-foreground/55">
-              Monto de referencia para el catálogo público (usa coma o punto decimal).
+              Reference amount for the public catalog (comma or decimal point allowed).
             </p>
             <input
               type="text"
@@ -910,16 +1075,16 @@ export default function ShamellAdminEventsPage() {
               value={priceInput}
               onChange={(event) => setPriceInput(event.target.value)}
               className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
-              placeholder="Ej. 2500 o 2500.50"
+              placeholder="e.g. 2500 or 2500.50"
               autoComplete="off"
             />
           </label>
 
           <div className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">IMÁGENES DEL CATÁLOGO</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">CATALOG IMAGES</span>
             <p className="mt-1 font-body text-xs text-foreground/55">
-              Se suben a la galería y se enlazan a este evento. Máximo {MAX_CATALOG_IMAGES} imágenes. Las nuevas se envían
-              al guardar el formulario.
+              Uploaded to the gallery and linked to this event. Up to {MAX_CATALOG_IMAGES} images. New files upload when
+              you save the form.
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {existingImages.map((img) => (
@@ -933,7 +1098,7 @@ export default function ShamellAdminEventsPage() {
                     type="button"
                     onClick={() => void removeExistingCatalogImage(img.id)}
                     className="absolute right-1 top-1 rounded-md border border-white/25 bg-black/70 p-1 text-white transition hover:bg-red-500/80"
-                    aria-label="Quitar imagen"
+                    aria-label="Remove image"
                   >
                     <X className="h-3.5 w-3.5" strokeWidth={2} />
                   </button>
@@ -950,7 +1115,7 @@ export default function ShamellAdminEventsPage() {
                     type="button"
                     onClick={() => removePendingAt(idx)}
                     className="absolute right-1 top-1 rounded-md border border-white/25 bg-black/70 p-1 text-white transition hover:bg-red-500/80"
-                    aria-label="Quitar imagen pendiente"
+                    aria-label="Remove pending image"
                   >
                     <X className="h-3.5 w-3.5" strokeWidth={2} />
                   </button>
@@ -969,7 +1134,7 @@ export default function ShamellAdminEventsPage() {
                       event.target.value = "";
                     }}
                   />
-                  <span className="sr-only">Agregar imagen</span>
+                  <span className="sr-only">Add image</span>
                 </label>
               ) : null}
             </div>
@@ -981,17 +1146,53 @@ export default function ShamellAdminEventsPage() {
               onClick={closeModal}
               className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
               className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear evento"}
+              {isSubmitting ? "Saving..." : editingId ? "Save changes" : "Create event"}
             </button>
           </div>
         </form>
+      </AdminModal>
+
+      <AdminModal
+        title="Delete event"
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (!isDeleting) setPendingDelete(null);
+        }}
+      >
+        <div className="space-y-5 font-body text-sm text-foreground/85">
+          <p>
+            Permanently delete{" "}
+            <span className="font-brand text-gold">
+              {pendingDelete ? displayEventHeading(pendingDelete.description).title : ""}
+            </span>
+            ? This is only allowed when there are no bookings or linked gallery photos. You cannot undo it.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              disabled={isDeleting}
+              className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void onConfirmDelete()}
+              disabled={isDeleting}
+              className="rounded-xl border border-red-400/45 bg-red-500/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-red-200 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
       </AdminModal>
 
       {viewEvent ? (
@@ -1007,15 +1208,15 @@ export default function ShamellAdminEventsPage() {
               type="button"
               onClick={() => setViewEvent(null)}
               className="absolute right-3 top-3 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
-              aria-label="Cerrar"
+              aria-label="Close"
             >
               <X className="h-4 w-4" />
             </button>
-            <p className="font-brand text-[10px] tracking-[0.2em] text-gold/75">VISTA RÁPIDA</p>
+            <p className="font-brand text-[10px] tracking-[0.2em] text-gold/75">QUICK LOOK</p>
             <h2 className="mt-2 font-brand text-xl text-gold">{displayEventHeading(viewEvent.description).title}</h2>
             <p className="mt-1 font-body text-xs text-foreground/45">{viewEvent.eventTypeName}</p>
             <p className="mt-3 font-brand text-xs tracking-[0.14em] text-gold/85">
-              PRECIO <span className="font-body text-foreground/75">{formatPriceEs(viewEvent.price)}</span>
+              PRECIO <span className="font-body text-foreground/75">{formatPriceEn(viewEvent.price)}</span>
             </p>
             {viewEvent.catalogImages.length > 0 ? (
               <div className="mt-4 flex flex-wrap gap-2">
@@ -1029,8 +1230,11 @@ export default function ShamellAdminEventsPage() {
             ) : null}
             <p className="mt-4 font-body text-sm leading-relaxed text-foreground/70">{viewEvent.description}</p>
             <p className="mt-3 font-body text-xs text-foreground/45">
-              {viewEvent.items.length} ítem(s) · {formatShortDateEs(viewEvent.updatedAt ?? viewEvent.createdAt)} ·{" "}
-              {viewEvent.isActive ? "Próximo" : "Completado"} · Cliente: sin asignar
+              {viewEvent.items.length} item(s) · {formatShortDateUs(viewEvent.updatedAt ?? viewEvent.createdAt)} ·{" "}
+              {viewEvent.isActive ? "Upcoming" : "Completed"}
+              {(viewEvent.bookingCount ?? 0) > 0
+                ? ` · ${viewEvent.bookingCount} booking(s)`
+                : ""}
             </p>
           </div>
         </div>

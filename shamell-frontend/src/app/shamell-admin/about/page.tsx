@@ -23,8 +23,20 @@ type AdminAboutRow = {
   paragraph1: string;
   coreValues: string[];
   imageUrl: string | null;
+  heroMediaType?: "IMAGE" | "VIDEO";
   updatedAt?: string;
 };
+
+function isAboutHeroVideo(
+  heroMediaType: string | null | undefined,
+  url: string | null | undefined,
+  file: File | null,
+): boolean {
+  if (file?.type.startsWith("video/")) return true;
+  if (heroMediaType === "VIDEO") return true;
+  const u = url ?? "";
+  return u.includes("/video/upload/");
+}
 
 function excerptBody(text: string, max = 220): string {
   const firstLine = text.split(/\r?\n/).find((line) => line.trim()) ?? "";
@@ -33,19 +45,19 @@ function excerptBody(text: string, max = 220): string {
   return oneLine.length > max ? `${oneLine.slice(0, max)}…` : oneLine;
 }
 
-function formatRelativeEs(iso: string | undefined): string {
+function formatRelativeEn(iso: string | undefined): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (sec < 45) return "Hace un momento";
+  if (sec < 45) return "Just now";
   const min = Math.floor(sec / 60);
-  if (min < 60) return `Hace ${min} min`;
+  if (min < 60) return `${min} min ago`;
   const h = Math.floor(min / 60);
-  if (h < 24) return `Hace ${h}h`;
+  if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `Hace ${d}d`;
-  return date.toLocaleDateString("es", { day: "numeric", month: "short", year: "numeric" });
+  if (d < 7) return `${d}d ago`;
+  return date.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function ShamellAdminAboutPage() {
@@ -62,6 +74,7 @@ export default function ShamellAdminAboutPage() {
   const [paragraph1, setParagraph1] = useState("");
   const [coreValuesText, setCoreValuesText] = useState("");
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
+  const [existingHeroMediaType, setExistingHeroMediaType] = useState<"IMAGE" | "VIDEO">("IMAGE");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
@@ -88,8 +101,8 @@ export default function ShamellAdminAboutPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -104,21 +117,25 @@ export default function ShamellAdminAboutPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo cargar About Shamell."),
+          description: parseErrorMessage(data, "Could not load About Shamell."),
         });
         return;
       }
 
       if (data && typeof data === "object" && "id" in data && typeof (data as AdminAboutRow).title === "string") {
-        setRecord(data as AdminAboutRow);
+        const row = data as AdminAboutRow;
+        setRecord({
+          ...row,
+          heroMediaType: row.heroMediaType === "VIDEO" ? "VIDEO" : "IMAGE",
+        });
       } else {
         setRecord(null);
       }
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -133,17 +150,22 @@ export default function ShamellAdminAboutPage() {
   const stats = useMemo(() => {
     if (!record) {
       return {
-        state: "Sin publicar",
+        state: "Not published",
         values: "—",
-        image: "—",
+        media: "—",
         updated: "—",
       };
     }
     return {
-      state: "Publicado",
+      state: "Published",
       values: String(record.coreValues?.length ?? 0),
-      image: record.imageUrl ? "Sí" : "No",
-      updated: formatRelativeEs(record.updatedAt),
+      media:
+        record.imageUrl == null
+          ? "No"
+          : record.heroMediaType === "VIDEO" || isAboutHeroVideo(record.heroMediaType, record.imageUrl, null)
+            ? "Video"
+            : "Photo",
+      updated: formatRelativeEn(record.updatedAt),
     };
   }, [record]);
 
@@ -153,11 +175,13 @@ export default function ShamellAdminAboutPage() {
       setParagraph1(row.paragraph1 ?? "");
       setCoreValuesText(Array.isArray(row.coreValues) ? row.coreValues.join("\n") : "");
       setExistingImageUrl(row.imageUrl ?? null);
+      setExistingHeroMediaType(row.heroMediaType === "VIDEO" ? "VIDEO" : "IMAGE");
     } else {
       setTitle("ABOUT SHAMELL");
       setParagraph1("");
       setCoreValuesText("");
       setExistingImageUrl(null);
+      setExistingHeroMediaType("IMAGE");
     }
     setImageFile(null);
     if (imageFileInputRef.current) imageFileInputRef.current.value = "";
@@ -182,8 +206,8 @@ export default function ShamellAdminAboutPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -196,8 +220,8 @@ export default function ShamellAdminAboutPage() {
     if (!title.trim() || !paragraph1.trim() || values.length === 0) {
       toast({
         variant: "destructive",
-        title: "Revisa el formulario",
-        description: "Completa los campos obligatorios del formulario.",
+        title: "Check the form",
+        description: "Fill in all required fields.",
       });
       return;
     }
@@ -220,33 +244,41 @@ export default function ShamellAdminAboutPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo guardar About Shamell."),
+          description: parseErrorMessage(data, "Could not save About Shamell."),
         });
         return;
       }
 
       toast({
-        title: record ? "About actualizado" : "About creado",
-        description: "El contenido de About Shamell se guardó correctamente.",
+        title: record ? "About updated" : "About created",
+        description: "About Shamell content was saved successfully.",
       });
       closeAboutModal();
       await loadAboutContent();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const lightboxSrc = imagePreviewUrl ?? existingImageUrl ?? record?.imageUrl ?? "";
+  const lightboxHeroType = imageFile
+    ? undefined
+    : existingImageUrl
+      ? existingHeroMediaType
+      : record?.heroMediaType;
+  const lightboxIsVideo = isAboutHeroVideo(lightboxHeroType, lightboxSrc, imageFile);
+
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
         title="About Shamell"
-        actionLabel={record ? "Editar contenido" : "Crear contenido"}
+        actionLabel={record ? "Edit content" : "Create content"}
         onAction={openAboutModal}
         bordered={false}
       />
@@ -256,7 +288,7 @@ export default function ShamellAdminAboutPage() {
           href="/#about"
           className="shamell-glass-surface inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
         >
-          Ver en el sitio
+          View on site
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
         </Link>
       </div>
@@ -266,8 +298,8 @@ export default function ShamellAdminAboutPage() {
           [
             ["ESTADO", stats.state],
             ["VALORES", stats.values],
-            ["IMAGEN", stats.image],
-            ["ACTUALIZADO", stats.updated],
+            ["PHOTO / VIDEO", stats.media],
+            ["LAST UPDATED", stats.updated],
           ] as const
         ).map(([label, value]) => (
           <div
@@ -285,9 +317,9 @@ export default function ShamellAdminAboutPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-gold/80" strokeWidth={1.4} />
-              <h2 className="font-brand text-sm tracking-[0.16em] text-gold">Vista previa editorial</h2>
+              <h2 className="font-brand text-sm tracking-[0.16em] text-gold">Editorial preview</h2>
             </div>
-            {isLoading ? <p className="text-xs text-foreground/55">Cargando…</p> : null}
+            {isLoading ? <p className="text-xs text-foreground/55">Loading…</p> : null}
           </div>
         </div>
 
@@ -297,9 +329,9 @@ export default function ShamellAdminAboutPage() {
               <FileText className="h-8 w-8 text-gold/75" strokeWidth={1.2} />
             </div>
             <div className="max-w-md">
-              <p className="font-brand text-lg tracking-[0.08em] text-gold">Aún no hay bloque About</p>
+              <p className="font-brand text-lg tracking-[0.08em] text-gold">No About block yet</p>
               <p className="mt-2 font-body text-sm leading-relaxed text-foreground/55">
-                Usa «Crear About Shamell» para publicar el bloque en la página de inicio.
+                Use “Create About Shamell” to publish the block on the home page.
               </p>
             </div>
             <button
@@ -307,7 +339,7 @@ export default function ShamellAdminAboutPage() {
               onClick={openAboutModal}
               className="rounded-xl border border-gold/40 bg-gold/15 px-8 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25"
             >
-              Crear About Shamell
+              Create About Shamell
             </button>
           </div>
         ) : null}
@@ -321,32 +353,45 @@ export default function ShamellAdminAboutPage() {
                   type="button"
                   onClick={() => setIsPreviewLightboxOpen(true)}
                   className="group relative z-10 w-full max-w-sm overflow-hidden rounded-2xl border border-gold/25 shadow-2xl"
-                  aria-label="Ver imagen ampliada"
+                  aria-label="View enlarged photo or video"
                 >
                   <div className="relative aspect-4/5 w-full">
-                    <Image
-                      src={record.imageUrl}
-                      alt=""
-                      fill
-                      unoptimized
-                      className="object-cover transition duration-500 group-hover:scale-[1.03]"
-                      sizes="(max-width: 1024px) 100vw, 40vw"
-                    />
+                    {isAboutHeroVideo(record.heroMediaType, record.imageUrl, null) ? (
+                      <video
+                        src={record.imageUrl}
+                        className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                        muted
+                        playsInline
+                        loop
+                        autoPlay
+                        preload="metadata"
+                        aria-hidden
+                      />
+                    ) : (
+                      <Image
+                        src={record.imageUrl}
+                        alt=""
+                        fill
+                        unoptimized
+                        className="object-cover transition duration-500 group-hover:scale-[1.03]"
+                        sizes="(max-width: 1024px) 100vw, 40vw"
+                      />
+                    )}
                   </div>
                   <span className="shamell-glass-surface absolute bottom-3 left-3 rounded-full border border-gold/30 px-3 py-1 font-body text-[10px] text-gold/90">
-                    Imagen About
+                    {isAboutHeroVideo(record.heroMediaType, record.imageUrl, null) ? "About video" : "About image"}
                   </span>
                 </button>
               ) : (
                 <div className="shamell-glass-surface relative z-10 flex w-full max-w-sm flex-col items-center justify-center rounded-2xl border border-dashed border-gold/25 px-8 py-16 text-center">
                   <ImageIcon className="h-10 w-10 text-gold/30" strokeWidth={1.2} />
-                  <p className="mt-3 font-body text-sm text-foreground/45">Sin imagen en este bloque</p>
+                  <p className="mt-3 font-body text-sm text-foreground/45">No photo or video in this block</p>
                 </div>
               )}
             </div>
 
             <div className="flex flex-col justify-center border-t border-gold/10 p-6 md:p-8 lg:col-span-7 lg:border-l lg:border-t-0 lg:border-gold/10">
-              <p className="font-brand text-[10px] tracking-[0.28em] text-gold/70">TÍTULO EN SITIO</p>
+              <p className="font-brand text-[10px] tracking-[0.28em] text-gold/70">ON-SITE TITLE</p>
               <h3 className="mt-2 font-brand text-2xl tracking-[0.06em] text-gold md:text-3xl">{record.title}</h3>
 
               <div className="shamell-glass-surface mt-6 flex items-start gap-3 rounded-xl p-4">
@@ -363,9 +408,9 @@ export default function ShamellAdminAboutPage() {
                     VALORES
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {coreValuesList.map((v) => (
+                    {coreValuesList.map((v, index) => (
                       <span
-                        key={v}
+                        key={`${index}-${v}`}
                         className="rounded-full border border-gold/20 bg-gold/10 px-3 py-1 font-body text-xs text-gold/90"
                       >
                         {v}
@@ -377,7 +422,7 @@ export default function ShamellAdminAboutPage() {
 
               <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-gold/10 pt-6">
                 <p className="font-body text-xs text-foreground/45">
-                  Última edición: {formatRelativeEs(record.updatedAt)}
+                  Last edited: {formatRelativeEn(record.updatedAt)}
                 </p>
                 <button
                   type="button"
@@ -385,7 +430,7 @@ export default function ShamellAdminAboutPage() {
                   className="ml-auto inline-flex items-center gap-2 rounded-xl border border-gold/35 bg-gold/12 px-5 py-2.5 font-brand text-xs tracking-[0.12em] text-gold transition hover:bg-gold/20"
                 >
                   <Pencil className="h-4 w-4" strokeWidth={1.5} />
-                  Editar bloque
+                  Edit block
                 </button>
               </div>
             </div>
@@ -394,13 +439,13 @@ export default function ShamellAdminAboutPage() {
       </section>
 
       <AdminModal
-        title={record ? "Editar About Shamell" : "Crear About Shamell"}
+        title={record ? "Edit About Shamell" : "Create About Shamell"}
         isOpen={isModalOpen}
         onClose={closeAboutModal}
       >
         <form id="about-shamell-form" onSubmit={onSubmit} className="space-y-5">
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">TÍTULO</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">TITLE</span>
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
@@ -419,7 +464,7 @@ export default function ShamellAdminAboutPage() {
           </label>
 
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">VALORES (UNO POR LÍNEA)</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">VALUES (ONE PER LINE)</span>
             <textarea
               value={coreValuesText}
               onChange={(event) => setCoreValuesText(event.target.value)}
@@ -430,20 +475,22 @@ export default function ShamellAdminAboutPage() {
           </label>
 
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">IMAGEN ABOUT</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">ABOUT PHOTO OR VIDEO</span>
             <input
               ref={imageFileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/mp4,video/webm,video/quicktime"
               onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
               className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none file:mr-3 file:border-0 file:bg-gold/20 file:px-3 file:py-1 file:text-gold"
             />
             {!record ? (
               <p className="mt-2 font-body text-[11px] text-foreground/45">
-                La primera publicación requiere imagen (requisito del servidor).
+                The first publish requires an image or video (MP4, WebM, or MOV recommended; max 100&nbsp;MB).
               </p>
             ) : (
-              <p className="mt-2 font-body text-[11px] text-foreground/45">Opcional: reemplaza la imagen actual.</p>
+              <p className="mt-2 font-body text-[11px] text-foreground/45">
+                Optional: replace the current About block photo or video.
+              </p>
             )}
           </label>
 
@@ -451,7 +498,13 @@ export default function ShamellAdminAboutPage() {
             <div className="shamell-glass-surface rounded-xl p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs text-gold/85">
-                  {imagePreviewUrl ? "Vista previa de imagen seleccionada" : "Imagen actual de About"}
+                  {imagePreviewUrl
+                    ? isAboutHeroVideo(undefined, null, imageFile)
+                      ? "Preview of selected video"
+                      : "Preview of selected image"
+                    : isAboutHeroVideo(existingHeroMediaType, existingImageUrl, null)
+                      ? "Current About video"
+                      : "Current About image"}
                 </p>
                 {imagePreviewUrl ? (
                   <button
@@ -462,7 +515,7 @@ export default function ShamellAdminAboutPage() {
                       if (imageFileInputRef.current) imageFileInputRef.current.value = "";
                     }}
                     className="rounded-full border border-gold/30 p-1 text-gold/85 transition hover:bg-gold/10 hover:text-gold"
-                    aria-label="Quitar imagen seleccionada"
+                    aria-label="Remove selected file"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -473,14 +526,31 @@ export default function ShamellAdminAboutPage() {
                   type="button"
                   onClick={() => setIsPreviewLightboxOpen(true)}
                   className="block w-full"
-                  aria-label="Abrir vista ampliada de imagen"
+                  aria-label="Open enlarged preview"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imagePreviewUrl ?? existingImageUrl ?? ""}
-                    alt="Vista previa About"
-                    className="h-44 w-full rounded-md object-cover transition hover:opacity-90"
-                  />
+                  {isAboutHeroVideo(
+                    imageFile ? undefined : existingHeroMediaType,
+                    imagePreviewUrl ?? existingImageUrl,
+                    imageFile,
+                  ) ? (
+                    <video
+                      src={imagePreviewUrl ?? existingImageUrl ?? ""}
+                      className="h-44 w-full rounded-md object-cover transition hover:opacity-90"
+                      muted
+                      playsInline
+                      loop
+                      autoPlay
+                      preload="metadata"
+                      aria-label="About preview"
+                    />
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={imagePreviewUrl ?? existingImageUrl ?? ""}
+                      alt="About preview"
+                      className="h-44 w-full rounded-md object-cover transition hover:opacity-90"
+                    />
+                  )}
                 </button>
               </div>
             </div>
@@ -492,20 +562,20 @@ export default function ShamellAdminAboutPage() {
               onClick={closeAboutModal}
               className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
               className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Guardando..." : "Guardar"}
+              {isSubmitting ? "Saving..." : "Save"}
             </button>
           </div>
         </form>
       </AdminModal>
 
-      {isPreviewLightboxOpen && (imagePreviewUrl || existingImageUrl) ? (
+      {isPreviewLightboxOpen && lightboxSrc ? (
         <div
           className="fixed inset-0 z-95 flex items-center justify-center bg-black/85 px-4 py-8"
           onClick={() => setIsPreviewLightboxOpen(false)}
@@ -518,16 +588,27 @@ export default function ShamellAdminAboutPage() {
               type="button"
               onClick={() => setIsPreviewLightboxOpen(false)}
               className="shamell-glass-surface absolute right-3 top-3 z-10 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
-              aria-label="Cerrar vista previa"
+              aria-label="Close preview"
             >
               <X className="h-5 w-5" />
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imagePreviewUrl ?? existingImageUrl ?? ""}
-              alt="Vista ampliada About"
-              className="max-h-[82vh] w-full rounded-xl object-contain"
-            />
+            {lightboxIsVideo ? (
+              <video
+                src={lightboxSrc}
+                className="max-h-[82vh] w-full rounded-xl object-contain"
+                controls
+                playsInline
+                preload="metadata"
+                aria-label="Expanded About view"
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={lightboxSrc}
+                alt="Expanded About view"
+                className="max-h-[82vh] w-full rounded-xl object-contain"
+              />
+            )}
           </div>
         </div>
       ) : null}

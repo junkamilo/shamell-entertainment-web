@@ -53,8 +53,8 @@ export default function ShamellAdminAgregarAdminPage() {
       if (!token) {
         toast({
           variant: "destructive",
-          title: "Sesión requerida",
-          description: "Debes iniciar sesión como administrador.",
+          title: "Sign-in required",
+          description: "You must sign in as an administrator.",
         });
         return;
       }
@@ -64,8 +64,8 @@ export default function ShamellAdminAgregarAdminPage() {
       if (!trimmedEmail || !trimmedName) {
         toast({
           variant: "destructive",
-          title: "Formulario incompleto",
-          description: "Indica el correo y el nombre completo del nuevo administrador.",
+          title: "Incomplete form",
+          description: "Enter the new administrator's email and full name.",
         });
         return;
       }
@@ -84,15 +84,15 @@ export default function ShamellAdminAgregarAdminPage() {
         if (!response.ok) {
           toast({
             variant: "destructive",
-            title: "No se pudo enviar el código",
-            description: parseErrorMessage(data, "Revisa los datos o la configuración del servidor."),
+            title: "Could not send code",
+            description: parseErrorMessage(data, "Check the details or server configuration."),
           });
           return;
         }
 
         toast({
-          title: isResend ? "Código reenviado" : "Código enviado",
-          description: `Revisa la bandeja de ${trimmedEmail} (Resend).`,
+          title: isResend ? "Code resent" : "Code sent",
+          description: `Check the inbox for ${trimmedEmail} (Resend).`,
         });
         setPhase(2);
         setCode("");
@@ -100,8 +100,8 @@ export default function ShamellAdminAgregarAdminPage() {
       } catch {
         toast({
           variant: "destructive",
-          title: "Sin conexión",
-          description: "No se pudo conectar con el backend.",
+          title: "Offline",
+          description: "Could not reach the server.",
         });
       } finally {
         setIsSending(false);
@@ -122,16 +122,16 @@ export default function ShamellAdminAgregarAdminPage() {
     if (!/^\d{6}$/.test(trimmedCode)) {
       toast({
         variant: "destructive",
-        title: "Código inválido",
-        description: "El código debe tener exactamente 6 dígitos.",
+        title: "Invalid code",
+        description: "The code must be exactly 6 digits.",
       });
       return;
     }
     if (password.length < 8) {
       toast({
         variant: "destructive",
-        title: "Contraseña corta",
-        description: "La contraseña debe tener al menos 8 caracteres.",
+        title: "Password too short",
+        description: "Password must be at least 8 characters.",
       });
       return;
     }
@@ -151,22 +151,22 @@ export default function ShamellAdminAgregarAdminPage() {
       if (!response.ok) {
         toast({
           variant: "destructive",
-          title: "No se pudo crear el administrador",
-          description: parseErrorMessage(data, "Código incorrecto, expirado o correo ya registrado."),
+          title: "Could not create administrator",
+          description: parseErrorMessage(data, "Wrong or expired code, or email already registered."),
         });
         return;
       }
 
       toast({
-        title: "Administrador creado",
-        description: `${trimmedEmail} ya puede iniciar sesión en el panel con su contraseña.`,
+        title: "Administrator created",
+        description: `${trimmedEmail} can now sign in to the admin panel with that password.`,
       });
       resetFlow();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsVerifying(false);
@@ -178,9 +178,9 @@ export default function ShamellAdminAgregarAdminPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
-        title="Agregar administrador"
-        subtitle="Envía el código por correo (Resend) y termina el alta del nuevo administrador en esta misma pantalla."
-        actionLabel="Empezar de nuevo"
+        title="Add administrator"
+        subtitle="Send the verification code by email (Resend) and finish onboarding the new administrator on this screen."
+        actionLabel="Start over"
         onAction={resetFlow}
         bordered={false}
       />
@@ -200,10 +200,10 @@ export default function ShamellAdminAgregarAdminPage() {
       <div className="mb-6 grid grid-cols-2 gap-3 lg:mb-8 lg:grid-cols-4 lg:gap-4">
         {(
           [
-            ["PASO 1", "Nuevo administrador"],
-            ["PASO 2", "Código por correo"],
-            ["PASO 3", "Contraseña"],
-            ["PASO 4", "Alta final"],
+            ["STEP 1", "New administrator"],
+            ["STEP 2", "Email code"],
+            ["STEP 3", "Password"],
+            ["STEP 4", "Finish"],
           ] as const
         ).map(([label, value], i) => (
           <div
@@ -229,12 +229,12 @@ export default function ShamellAdminAgregarAdminPage() {
         <div className="border-b border-gold/12 bg-linear-to-r from-gold/10 via-transparent to-transparent px-5 py-4 md:px-8 md:py-5">
           <div className="flex flex-wrap items-center gap-2">
             <UserPlus className="h-5 w-5 text-gold/80" strokeWidth={1.4} />
-            <h2 className="font-brand text-sm tracking-[0.16em] text-gold">Alta de administrador</h2>
+            <h2 className="font-brand text-sm tracking-[0.16em] text-gold">Administrator onboarding</h2>
           </div>
         </div>
 
         <div className="grid gap-6 p-5 md:gap-8 md:p-8 lg:grid-cols-2 lg:items-stretch">
-          {/* Columna: datos del nuevo administrador */}
+          {/* Column: new admin details */}
           <div
             className={cn(
               "shamell-glass-surface flex h-full min-h-0 flex-col rounded-2xl border p-5 md:p-6",
@@ -246,8 +246,8 @@ export default function ShamellAdminAgregarAdminPage() {
                 1
               </span>
               <div>
-                <p className="font-brand text-[10px] tracking-[0.2em] text-gold/65">NUEVO ADMIN</p>
-                <p className="font-brand text-sm tracking-[0.12em] text-gold">Correo y nombre</p>
+                <p className="font-brand text-[10px] tracking-[0.2em] text-gold/65">NEW ADMIN</p>
+                <p className="font-brand text-sm tracking-[0.12em] text-gold">Email and name</p>
               </div>
             </div>
 
@@ -255,7 +255,7 @@ export default function ShamellAdminAgregarAdminPage() {
               <label className="block">
                 <span className="flex items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
                   <Mail className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} />
-                  CORREO ELECTRÓNICO
+                  EMAIL
                 </span>
                 <input
                   type="email"
@@ -263,26 +263,26 @@ export default function ShamellAdminAgregarAdminPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={phase === 2}
                   autoComplete="off"
-                  placeholder="nuevo.admin@ejemplo.com"
+                  placeholder="new.admin@example.com"
                   className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-55"
                   required
                 />
                 <p className="mt-1.5 font-body text-[11px] text-foreground/45">
-                  Aquí llegará el código de verificación (Resend).
+                  The verification code will arrive here (Resend).
                 </p>
               </label>
 
               <label className="block">
                 <span className="flex items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
                   <User className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} />
-                  NOMBRE COMPLETO
+                  FULL NAME
                 </span>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   disabled={phase === 2}
-                  placeholder="Como figurará en el panel"
+                  placeholder="As shown in the admin panel"
                   className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-55"
                   required
                   minLength={2}
@@ -299,7 +299,7 @@ export default function ShamellAdminAgregarAdminPage() {
                   )}
                 >
                   <Send className="h-4 w-4 shrink-0" strokeWidth={1.6} />
-                  {isSending ? "Enviando…" : "Enviar verificación"}
+                  {isSending ? "Sending…" : "Send verification"}
                 </button>
                 {phase === 2 ? (
                   <button
@@ -312,14 +312,14 @@ export default function ShamellAdminAgregarAdminPage() {
                     className="shamell-glass-surface inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gold/22 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold"
                   >
                     <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    Editar correo o nombre
+                    Edit email or name
                   </button>
                 ) : null}
               </div>
             </form>
           </div>
 
-          {/* Columna: código y contraseña */}
+          {/* Column: code and password */}
           <div
             className={cn(
               "relative flex h-full min-h-0 flex-col rounded-2xl border p-5 md:p-6",
@@ -340,8 +340,8 @@ export default function ShamellAdminAgregarAdminPage() {
                 2
               </span>
               <div>
-                <p className="font-brand text-[10px] tracking-[0.2em] text-gold/65">VERIFICACIÓN</p>
-                <p className="font-brand text-sm tracking-[0.12em] text-gold">Código y contraseña</p>
+                <p className="font-brand text-[10px] tracking-[0.2em] text-gold/65">VERIFICATION</p>
+                <p className="font-brand text-sm tracking-[0.12em] text-gold">Code and password</p>
               </div>
             </div>
 
@@ -349,8 +349,8 @@ export default function ShamellAdminAgregarAdminPage() {
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-2 py-6 text-center md:py-10">
                 <KeyRound className="h-10 w-10 text-gold/25" strokeWidth={1.2} />
                 <p className="max-w-xs font-body text-sm leading-relaxed text-foreground/50">
-                  Cuando pulses <span className="text-gold/85">Enviar verificación</span>, aquí podrás escribir el
-                  código de 6 dígitos y la contraseña del nuevo administrador.
+                  After you tap <span className="text-gold/85">Send verification</span>, you can enter the 6-digit
+                  code and the new administrator's password here.
                 </p>
               </div>
             ) : (
@@ -358,13 +358,13 @@ export default function ShamellAdminAgregarAdminPage() {
                 <div className="mb-5 flex gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 shadow-[inset_0_1px_0_rgba(52,211,153,0.08)]">
                   <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300/95" strokeWidth={1.75} />
                   <div className="min-w-0 text-left">
-                    <p className="font-brand text-[10px] tracking-[0.14em] text-emerald-200/95">Código válido</p>
+                    <p className="font-brand text-[10px] tracking-[0.14em] text-emerald-200/95">Valid code format</p>
                     <p className="mt-1 font-body text-xs leading-relaxed text-foreground/75">
-                      Solo aceptamos el <strong className="text-gold/90">código numérico de exactamente 6 dígitos</strong>{" "}
-                      del <strong className="text-gold/90">último correo</strong> que envió el sistema a{" "}
-                      <span className="font-mono text-[11px] text-gold/85">{emailDisplay}</span>. Si reenvías el
-                      código, usa siempre el más reciente. El servidor comprueba que coincida con el generado al
-                      enviar.
+                      We only accept the <strong className="text-gold/90">6-digit numeric code</strong> from the{" "}
+                      <strong className="text-gold/90">latest email</strong> the system sent to{" "}
+                      <span className="font-mono text-[11px] text-gold/85">{emailDisplay}</span>. If you resend the
+                      code, always use the newest one. The server checks it against the code generated when it was
+                      sent.
                     </p>
                   </div>
                 </div>
@@ -373,7 +373,7 @@ export default function ShamellAdminAgregarAdminPage() {
                   <label className="block">
                     <span className="flex items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
                       <KeyRound className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} />
-                      CÓDIGO DE VERIFICACIÓN
+                      VERIFICATION CODE
                     </span>
                     <input
                       inputMode="numeric"
@@ -386,21 +386,21 @@ export default function ShamellAdminAgregarAdminPage() {
                       required
                     />
                     <p className="mt-1.5 font-body text-[11px] text-foreground/45">
-                      {code.length}/6 dígitos — debe coincidir con el correo recibido.
+                      {code.length}/6 digits — must match the email you received.
                     </p>
                   </label>
 
                   <label className="block">
                     <span className="flex items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
                       <Lock className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} />
-                      CONTRASEÑA DEL NUEVO ADMIN
+                      NEW ADMIN PASSWORD
                     </span>
                     <input
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       autoComplete="new-password"
-                      placeholder="Mínimo 8 caracteres"
+                      placeholder="At least 8 characters"
                       minLength={8}
                       className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20"
                       required
@@ -416,7 +416,7 @@ export default function ShamellAdminAgregarAdminPage() {
                         "disabled:cursor-not-allowed disabled:opacity-50",
                       )}
                     >
-                      {isVerifying ? "Creando…" : "Agregar administrador"}
+                      {isVerifying ? "Creating…" : "Add administrator"}
                     </button>
                     <button
                       type="button"
@@ -424,7 +424,7 @@ export default function ShamellAdminAgregarAdminPage() {
                       disabled={isSending}
                       className="shamell-glass-surface inline-flex min-h-11 items-center justify-center rounded-xl border border-gold/22 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold disabled:opacity-50"
                     >
-                      Reenviar código
+                      Resend code
                     </button>
                   </div>
                 </form>

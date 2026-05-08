@@ -63,7 +63,7 @@ export function useAdminPeticiones(enabled = true, query?: AdminPeticionesQuery)
           throw new Error(
             typeof (data as { message?: string }).message === "string"
               ? (data as { message: string }).message
-              : "No se pudieron cargar las peticiones.",
+              : "Could not load inbox items.",
           );
         }
         return response.json();
@@ -83,7 +83,7 @@ export function useAdminPeticiones(enabled = true, query?: AdminPeticionesQuery)
         });
       })
       .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : "No se pudieron cargar las peticiones.";
+        const message = err instanceof Error ? err.message : "Could not load inbox items.";
         setError(message);
       })
       .finally(() => setIsLoading(false));

@@ -16,10 +16,10 @@ const ExperiencesSection = () => {
           <div className="h-28 w-[min(22rem,90vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.14),transparent_72%)] blur-3xl opacity-70" />
         </div>
         <div className="relative">
-          <h2 className="mb-3 font-brand text-sm tracking-[0.3em] text-gold md:text-base">
+          <h2 className="mb-3 font-brand text-base font-semibold tracking-[0.26em] text-gold md:text-lg md:tracking-[0.28em]">
             SERVICE CATALOG
           </h2>
-          <p className="mx-auto max-w-3xl text-center font-body text-sm text-foreground/60">
+          <p className="mx-auto max-w-3xl text-center font-body text-base font-medium leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
             Signature experiences crafted to elevate the atmosphere with visual impact, refined
             staging, and expressive artistry.
           </p>
@@ -29,7 +29,9 @@ const ExperiencesSection = () => {
       <div className="mx-auto max-w-6xl">
 
         {isLoading ? (
-          <p className="text-center text-foreground/60 text-sm font-body">Loading special experiences...</p>
+          <p className="text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">
+            Loading special experiences...
+          </p>
         ) : (
           <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
             {experiences.map((experience, index) => (

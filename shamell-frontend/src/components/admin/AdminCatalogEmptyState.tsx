@@ -12,9 +12,9 @@ const actionClass =
 export type AdminCatalogEmptyStateProps = {
   title: string;
   description?: ReactNode;
-  /** Catálogo vacío vs solo sin coincidencias de búsqueda/filtro. */
+  /** Empty catalog vs no search/filter matches. */
   tone?: "primary" | "muted";
-  /** Vista dentro de tabla u otros contenedores bajos. */
+  /** Embedded in tables or short containers. */
   variant?: "default" | "embedded";
   icon?: LucideIcon;
   action?: {

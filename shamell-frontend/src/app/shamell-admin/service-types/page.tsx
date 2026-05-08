@@ -12,6 +12,7 @@ import {
   Pencil,
   Sparkles,
   Star,
+  Trash2,
 } from "lucide-react";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
@@ -28,6 +29,10 @@ type ServiceTypeItem = {
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
+  /** Admin catalog: services using this type (blocks deactivate / delete). */
+  serviceCount?: number;
+  /** Gallery photos linked directly to the type (blocks delete). */
+  galleryPhotoCount?: number;
 };
 
 const NAME_MIN_LENGTH = 2;
@@ -62,6 +67,8 @@ export default function ShamellAdminServiceTypesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<ServiceTypeItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
 
@@ -100,8 +107,8 @@ export default function ShamellAdminServiceTypesPage() {
       setTypes([]);
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -117,16 +124,28 @@ export default function ShamellAdminServiceTypesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(typesData, "No se pudieron cargar los tipos de servicio."),
+          description: parseErrorMessage(typesData, "Could not load service types."),
         });
         return;
       }
-      setTypes(Array.isArray(typesData) ? (typesData as ServiceTypeItem[]) : []);
+      setTypes(
+        Array.isArray(typesData)
+          ? (typesData as Record<string, unknown>[]).map((t) => ({
+              id: String(t.id),
+              name: String(t.name),
+              isActive: Boolean(t.isActive),
+              createdAt: typeof t.createdAt === "string" ? t.createdAt : undefined,
+              updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : undefined,
+              serviceCount: typeof t.serviceCount === "number" ? t.serviceCount : 0,
+              galleryPhotoCount: typeof t.galleryPhotoCount === "number" ? t.galleryPhotoCount : 0,
+            }))
+          : [],
+      );
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -148,15 +167,15 @@ export default function ShamellAdminServiceTypesPage() {
   const canSubmit = !isSubmitting && isNameValid && hasChanges;
 
   const getNameValidationError = () => {
-    if (!trimmedName) return "Debes ingresar un nombre para el tipo de servicio.";
+    if (!trimmedName) return "Enter a name for the service type.";
     if (!hasValidLength) {
-      return `El nombre debe tener entre ${NAME_MIN_LENGTH} y ${NAME_MAX_LENGTH} caracteres.`;
+      return `Name must be between ${NAME_MIN_LENGTH} and ${NAME_MAX_LENGTH} characters.`;
     }
     if (!hasValidChars) {
-      return "Solo se permiten letras, espacios, guiones y '&'. No se permiten números.";
+      return "Only letters, spaces, hyphens, and '&' are allowed. Numbers are not allowed.";
     }
     if (!hasChanges) {
-      return "No hay cambios para guardar.";
+      return "Nothing to save.";
     }
     return null;
   };
@@ -168,8 +187,8 @@ export default function ShamellAdminServiceTypesPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -178,7 +197,7 @@ export default function ShamellAdminServiceTypesPage() {
     if (validationError) {
       toast({
         variant: "destructive",
-        title: "Revisa el formulario",
+        title: "Check the form",
         description: validationError,
       });
       return;
@@ -205,16 +224,16 @@ export default function ShamellAdminServiceTypesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo guardar el tipo de servicio."),
+          description: parseErrorMessage(data, "Could not save service type."),
         });
         return;
       }
 
       toast({
-        title: editingId ? "Tipo actualizado" : "Tipo creado",
+        title: editingId ? "Type updated" : "Type created",
         description: editingId
-          ? "Los cambios del tipo se guardaron correctamente."
-          : "El nuevo tipo de servicio se creó correctamente.",
+          ? "Service type changes were saved."
+          : "The new service type was created successfully.",
       });
       resetForm();
       setIsModalOpen(false);
@@ -222,8 +241,8 @@ export default function ShamellAdminServiceTypesPage() {
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsSubmitting(false);
@@ -238,12 +257,21 @@ export default function ShamellAdminServiceTypesPage() {
   };
 
   const onToggleActive = async (item: ServiceTypeItem) => {
+    if (item.isActive && (item.serviceCount ?? 0) > 0) {
+      toast({
+        variant: "destructive",
+        title: "Cannot turn off",
+        description: "This type has linked services. Reassign or remove them first.",
+      });
+      return;
+    }
+
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -264,7 +292,7 @@ export default function ShamellAdminServiceTypesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo actualizar el estado del tipo de servicio."),
+          description: parseErrorMessage(data, "Could not update service type status."),
         });
         return;
       }
@@ -274,20 +302,92 @@ export default function ShamellAdminServiceTypesPage() {
       }
 
       toast({
-        title: item.isActive ? "Tipo desactivado" : "Tipo activado",
+        title: item.isActive ? "Type hidden" : "Type visible",
         description: item.isActive
-          ? "El tipo de servicio fue desactivado correctamente."
-          : "El tipo de servicio fue activado correctamente.",
+          ? "The service type was turned off."
+          : "The service type was turned on.",
       });
       await loadTypes();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const canDeleteServiceType = (item: ServiceTypeItem) =>
+    (item.serviceCount ?? 0) === 0 && (item.galleryPhotoCount ?? 0) === 0;
+
+  const cannotDeactivateWhileActive = (item: ServiceTypeItem) =>
+    item.isActive && (item.serviceCount ?? 0) > 0;
+
+  const openDeleteConfirm = (item: ServiceTypeItem) => {
+    if (!canDeleteServiceType(item)) {
+      toast({
+        variant: "destructive",
+        title: "Cannot delete",
+        description:
+          (item.serviceCount ?? 0) > 0
+            ? "Remove or reassign services that use this type before deleting it."
+            : "Remove gallery links or reassign photos that use this type before deleting it.",
+      });
+      return;
+    }
+    setMenuOpenId(null);
+    setPendingDelete(item);
+  };
+
+  const onConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/services/types/admin/${pendingDelete.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: parseErrorMessage(data, "Could not delete service type."),
+        });
+        return;
+      }
+
+      if (editingId === pendingDelete.id) {
+        resetForm();
+        setIsModalOpen(false);
+      }
+
+      toast({
+        title: "Type deleted",
+        description: "The service type was removed from the catalog.",
+      });
+      setPendingDelete(null);
+      await loadTypes();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Offline",
+        description: "Could not reach the server.",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -360,8 +460,8 @@ export default function ShamellAdminServiceTypesPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
-        title="Tipos de servicio"
-        actionLabel="Nuevo tipo"
+        title="Service types"
+        actionLabel="New type"
         onAction={onHeroAction}
         bordered={false}
       />
@@ -370,9 +470,9 @@ export default function ShamellAdminServiceTypesPage() {
         {(
           [
             ["TOTAL", String(stats.total)],
-            ["ACTIVOS", String(stats.active)],
-            ["INACTIVOS", String(stats.inactive)],
-            ["ACTUALIZADO", stats.recentLabel],
+            ["ACTIVE", String(stats.active)],
+            ["INACTIVE", String(stats.inactive)],
+            ["LAST UPDATED", stats.recentLabel],
           ] as const
         ).map(([label, value]) => (
           <div
@@ -389,27 +489,37 @@ export default function ShamellAdminServiceTypesPage() {
         <AdminSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Buscar tipo de servicio..."
+          placeholder="Search service type..."
           className="mx-0 min-h-[3rem] max-w-none flex-1"
         />
         <div className="flex flex-wrap gap-2 lg:shrink-0">
-          {filterPill("all", "Todos")}
-          {filterPill("active", "Activos")}
-          {filterPill("inactive", "Inactivos")}
+          {filterPill("all", "All")}
+          {filterPill("active", "Active")}
+          {filterPill("inactive", "Inactive")}
         </div>
       </div>
 
       <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
-        {isLoading ? <p className="text-sm text-foreground/65">Cargando...</p> : null}
+        {isLoading ? <p className="text-sm text-foreground/65">Loading...</p> : null}
         {!isLoading && filteredTypes.length === 0 ? (
           <p className="text-sm text-foreground/65">
-            {types.length === 0 ? "Aún no hay tipos de servicio." : "Nada coincide con tu búsqueda o filtro."}
+            {types.length === 0 ? "No service types yet." : "Nothing matches your search or filter."}
           </p>
         ) : null}
 
         <div className="mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {pagedTypes.map((item) => {
             const Icon = iconForTypeName(item.name);
+            const svc = item.serviceCount ?? 0;
+            const gal = item.galleryPhotoCount ?? 0;
+            const deletable = canDeleteServiceType(item);
+            const blockDeactivate = cannotDeactivateWhileActive(item);
+            const subtitle =
+              svc > 0
+                ? `${svc === 1 ? "1 service" : `${svc} services`} linked. Cannot hide or delete until those links are gone.`
+                : gal > 0
+                  ? `${gal} linked gallery photo(s). Remove them or unlink before deleting this type.`
+                  : "No linked services. You can hide or delete if you do not need it.";
             return (
               <article
                 key={item.id}
@@ -423,7 +533,7 @@ export default function ShamellAdminServiceTypesPage() {
                     )}
                   >
                     <span className="text-gold/90">•</span>
-                    {item.isActive ? "ACTIVA" : "INACTIVA"}
+                    {item.isActive ? "ACTIVE" : "INACTIVE"}
                   </p>
                   <div className="relative">
                     <button
@@ -434,7 +544,7 @@ export default function ShamellAdminServiceTypesPage() {
                         setMenuOpenId((prev) => (prev === item.id ? null : item.id));
                       }}
                       className="rounded-lg border border-transparent p-1.5 text-foreground/55 transition hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
-                      aria-label={`Más opciones: ${item.name}`}
+                      aria-label={`More options: ${item.name}`}
                     >
                       <MoreHorizontal className="h-4 w-4" strokeWidth={1.6} />
                     </button>
@@ -450,16 +560,37 @@ export default function ShamellAdminServiceTypesPage() {
                           className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold"
                           onClick={() => startEdit(item)}
                         >
-                          Editar
+                          Edit
                         </button>
                         <button
                           type="button"
                           role="menuitem"
-                          className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold"
+                          className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent disabled:hover:text-foreground/85"
                           onClick={() => void onToggleActive(item)}
-                          disabled={togglingId === item.id}
+                          disabled={togglingId === item.id || blockDeactivate}
+                          title={
+                            blockDeactivate
+                              ? "Services use this type; cannot turn off."
+                              : undefined
+                          }
                         >
-                          {item.isActive ? "Desactivar" : "Activar"}
+                          {item.isActive ? "Hide" : "Show"}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full px-3 py-2 text-left text-xs text-red-300/95 hover:bg-red-500/15 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent disabled:hover:text-red-300/95"
+                          onClick={() => openDeleteConfirm(item)}
+                          disabled={!deletable}
+                          title={
+                            !deletable
+                              ? svc > 0
+                                ? "Cannot delete: linked services exist."
+                                : "Cannot delete: linked gallery photos exist."
+                              : "Delete permanently from catalog"
+                          }
+                        >
+                          Delete
                         </button>
                       </div>
                     ) : null}
@@ -472,9 +603,7 @@ export default function ShamellAdminServiceTypesPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h2 className="font-brand text-lg tracking-[0.06em] text-gold md:text-xl">{item.name}</h2>
-                    <p className="mt-1 font-body text-xs leading-relaxed text-foreground/50">
-                      Servicios y paquetes agrupados bajo esta categoría.
-                    </p>
+                    <p className="mt-1 font-body text-xs leading-relaxed text-foreground/50">{subtitle}</p>
                   </div>
                 </div>
 
@@ -483,22 +612,47 @@ export default function ShamellAdminServiceTypesPage() {
                     type="button"
                     onClick={() => startEdit(item)}
                     className="rounded-lg border border-gold/22 p-2 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
-                    aria-label={`Editar ${item.name}`}
+                    aria-label={`Edit ${item.name}`}
                   >
                     <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
                   </button>
                   <button
                     type="button"
+                    onClick={() => openDeleteConfirm(item)}
+                    disabled={!deletable}
+                    className={cn(
+                      "rounded-lg border p-2 transition",
+                      deletable
+                        ? "border-red-400/30 text-red-300/90 hover:border-red-400/50 hover:bg-red-500/10"
+                        : "cursor-not-allowed border-gold/10 text-foreground/30",
+                    )}
+                    aria-label={`Delete ${item.name}`}
+                    title={
+                      !deletable
+                        ? svc > 0
+                          ? "Linked services exist"
+                          : "Linked gallery photos exist"
+                        : "Delete permanently"
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.6} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => void onToggleActive(item)}
-                    disabled={togglingId === item.id}
+                    disabled={togglingId === item.id || blockDeactivate}
+                    title={
+                      blockDeactivate ? "Linked services exist; cannot turn off." : undefined
+                    }
                     className={cn(
                       "relative h-7 w-12 shrink-0 rounded-full border transition",
                       item.isActive
                         ? "border-emerald-400/45 bg-emerald-500/22"
                         : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                       togglingId === item.id && "cursor-not-allowed opacity-60",
+                      blockDeactivate && "cursor-not-allowed opacity-45",
                     )}
-                    aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
+                    aria-label={`${item.isActive ? "Hide" : "Show"} ${item.name}`}
                   >
                     <span
                       className={cn(
@@ -527,20 +681,20 @@ export default function ShamellAdminServiceTypesPage() {
       </section>
 
       <AdminModal
-        title={editingId ? "Editar tipo de servicio" : "Nuevo tipo de servicio"}
+        title={editingId ? "Edit service type" : "New service type"}
         isOpen={isModalOpen}
         onClose={closeModal}
       >
         <form id="service-type-form" noValidate onSubmit={onSubmit} className="space-y-6">
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">NOMBRE DEL TIPO</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">TYPE NAME</span>
             <input
               type="text"
               value={name}
               required
               onChange={(event) => setName(event.target.value)}
               className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-base text-foreground outline-none focus:border-gold"
-              placeholder="Ej. Bodas"
+              placeholder="e.g. Weddings"
             />
           </label>
 
@@ -550,17 +704,50 @@ export default function ShamellAdminServiceTypesPage() {
               onClick={closeModal}
               className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
               className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear tipo"}
+              {isSubmitting ? "Saving..." : editingId ? "Save changes" : "Create service type"}
             </button>
           </div>
         </form>
+      </AdminModal>
+
+      <AdminModal
+        title="Delete service type"
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (!isDeleting) setPendingDelete(null);
+        }}
+      >
+        <div className="space-y-5 font-body text-sm text-foreground/85">
+          <p>
+            Permanently delete{" "}
+            <span className="font-brand text-gold">{pendingDelete?.name}</span>? You will not be able to recover it.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              disabled={isDeleting}
+              className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void onConfirmDelete()}
+              disabled={isDeleting}
+              className="rounded-xl border border-red-400/45 bg-red-500/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-red-200 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
       </AdminModal>
     </div>
   );

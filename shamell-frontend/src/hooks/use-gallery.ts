@@ -126,7 +126,7 @@ export function useGalleryPhotos(filter: string, limit?: number) {
           payload.items.map((item) => ({
             id: item.id,
             src: item.imageUrl,
-            alt: `Foto de ${item.category.name}`,
+            alt: `${item.category.name} — gallery`,
             categorySlug: item.category.slug,
             mediaType: item.mediaType,
           })),

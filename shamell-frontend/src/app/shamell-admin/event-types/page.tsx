@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Briefcase,
   Cake,
@@ -12,6 +12,7 @@ import {
   Pencil,
   Sparkles,
   Star,
+  Trash2,
 } from "lucide-react";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
@@ -35,24 +36,59 @@ type EventTypeItem = {
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
-  occasionAssignments?: { occasionTypeId: string; usage: OccasionUsage; sortOrder?: number }[];
+  eventCount?: number;
+  bookingCount?: number;
+  galleryPhotoCount?: number;
+  occasionAssignments?: {
+    occasionTypeId: string;
+    usage: OccasionUsage;
+    sortOrder?: number;
+    occasionName?: string;
+  }[];
 };
 
-type AdminEventRow = {
-  eventTypeId: string;
-};
-
-function packOccasionAssignments(singleIds: string[], projectIds: string[], roleIds: string[]) {
-  return [
-    ...singleIds.map((occasionTypeId) => ({ occasionTypeId, usage: "OCCASION_SINGLE" as const })),
-    ...projectIds.map((occasionTypeId) => ({ occasionTypeId, usage: "BESPOKE_PROJECT" as const })),
-    ...roleIds.map((occasionTypeId) => ({ occasionTypeId, usage: "BESPOKE_ROLE" as const })),
-  ];
+/** All selected occasions are stored as `OCCASION_SINGLE` (contact list). */
+function packLinkedOccasionsForApi(linkedIds: string[], catalog: OccasionCatalogItem[]) {
+  const order = new Map(catalog.map((c, i) => [c.id, i]));
+  const sorted = [...linkedIds].sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999));
+  return sorted.map((occasionTypeId) => ({ occasionTypeId, usage: "OCCASION_SINGLE" as const }));
 }
 
-/** Order matters: matches backend `EventTypeOccasion.sortOrder` sequence within each usage block. */
-function occasionAssignmentsOrderedSignature(rows: { occasionTypeId: string; usage: OccasionUsage }[]) {
-  return JSON.stringify(rows.map((r) => ({ occasionTypeId: r.occasionTypeId, usage: r.usage })));
+function linkedOccasionIdsSignature(ids: string[]) {
+  return JSON.stringify([...ids].sort());
+}
+
+/** Merge all already-linked occasions (any prior use) for editing in one list. */
+function flattenLinkedOccasionIdsFromAssignments(
+  assignments: NonNullable<EventTypeItem["occasionAssignments"]> | undefined,
+): string[] {
+  if (!assignments?.length) return [];
+  const sorted = [...assignments].sort((a, b) => {
+    if (a.usage !== b.usage) return a.usage.localeCompare(b.usage);
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+  });
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const a of sorted) {
+    if (seen.has(a.occasionTypeId)) continue;
+    seen.add(a.occasionTypeId);
+    out.push(a.occasionTypeId);
+  }
+  return out;
+}
+
+function formatLinkedOccasionLine(
+  assignments: NonNullable<EventTypeItem["occasionAssignments"]> | undefined,
+): string | null {
+  if (!assignments?.length) return null;
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const a of assignments) {
+    if (seen.has(a.occasionTypeId)) continue;
+    seen.add(a.occasionTypeId);
+    names.push(a.occasionName?.trim() || "…");
+  }
+  return names.length ? names.join(", ") : null;
 }
 
 const NAME_MIN_LENGTH = 2;
@@ -69,21 +105,19 @@ function iconForTypeName(name: string) {
   return TYPE_ICONS[Math.abs(hash) % TYPE_ICONS.length];
 }
 
-function formatRelativeEs(iso: string | undefined): string {
+function formatRelativeEn(iso: string | undefined): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (sec < 45) return "Hace un momento";
+  if (sec < 45) return "Just now";
   const min = Math.floor(sec / 60);
-  if (min < 60) return `Hace ${min} min`;
+  if (min < 60) return `${min} min ago`;
   const h = Math.floor(min / 60);
-  if (h < 24) return `Hace ${h}h`;
+  if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `Hace ${d}d`;
-  const w = Math.floor(d / 7);
-  if (w < 8) return `Hace ${w} sem`;
-  return date.toLocaleDateString("es", { day: "numeric", month: "short" });
+  if (d < 7) return `${d}d ago`;
+  return date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
 }
 
 type FilterTab = "all" | "active" | "inactive";
@@ -99,18 +133,16 @@ export default function ShamellAdminEventTypesPage() {
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [types, setTypes] = useState<EventTypeItem[]>([]);
-  const [eventCountByTypeId, setEventCountByTypeId] = useState<Record<string, number>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<EventTypeItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [occasionCatalog, setOccasionCatalog] = useState<OccasionCatalogItem[]>([]);
-  const [singleIds, setSingleIds] = useState<string[]>([]);
-  const [projectIds, setProjectIds] = useState<string[]>([]);
-  const [roleIds, setRoleIds] = useState<string[]>([]);
-  const [occasionPickerOpen, setOccasionPickerOpen] = useState(false);
-  const occasionPickerRef = useRef<HTMLDivElement>(null);
+  /** Active occasion ids (and optionally inherited inactive links) checked for this type. */
+  const [linkedOccasionIds, setLinkedOccasionIds] = useState<string[]>([]);
 
   const parseErrorMessage = useCallback((data: unknown, fallback: string) => {
     if (typeof data !== "object" || data === null) return fallback;
@@ -126,27 +158,10 @@ export default function ShamellAdminEventTypesPage() {
     return () => document.removeEventListener("click", close);
   }, [menuOpenId]);
 
-  useEffect(() => {
-    if (!occasionPickerOpen) return;
-    const onDocMouseDown = (e: MouseEvent) => {
-      const el = occasionPickerRef.current;
-      if (el && !el.contains(e.target as Node)) setOccasionPickerOpen(false);
-    };
-    document.addEventListener("mousedown", onDocMouseDown);
-    return () => document.removeEventListener("mousedown", onDocMouseDown);
-  }, [occasionPickerOpen]);
-
-  useEffect(() => {
-    if (!isModalOpen) setOccasionPickerOpen(false);
-  }, [isModalOpen]);
-
   const resetForm = () => {
     setName("");
-    setSingleIds([]);
-    setProjectIds([]);
-    setRoleIds([]);
+    setLinkedOccasionIds([]);
     setEditingId(null);
-    setOccasionPickerOpen(false);
   };
 
   useEffect(() => {
@@ -190,32 +205,26 @@ export default function ShamellAdminEventTypesPage() {
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) {
       setTypes([]);
-      setEventCountByTypeId({});
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
 
     setIsLoading(true);
     try {
-      const [typesResponse, eventsResponse] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/events/types/admin`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${apiBaseUrl}/api/v1/events/admin`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+      const typesResponse = await fetch(`${apiBaseUrl}/api/v1/events/types/admin`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       const typesData = await typesResponse.json().catch(() => []);
       if (!typesResponse.ok) {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(typesData, "No se pudieron cargar los tipos de evento."),
+          description: parseErrorMessage(typesData, "Could not load event types."),
         });
         return;
       }
@@ -228,6 +237,7 @@ export default function ShamellAdminEventTypesPage() {
                     occasionTypeId: String(a.occasionTypeId),
                     usage: String(a.usage) as OccasionUsage,
                     sortOrder: typeof a.sortOrder === "number" ? a.sortOrder : 0,
+                    occasionName: typeof a.occasionName === "string" ? a.occasionName : undefined,
                   }))
                 : undefined;
               return {
@@ -236,28 +246,19 @@ export default function ShamellAdminEventTypesPage() {
                 isActive: Boolean(t.isActive),
                 createdAt: typeof t.createdAt === "string" ? t.createdAt : undefined,
                 updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : undefined,
+                eventCount: typeof t.eventCount === "number" ? t.eventCount : 0,
+                bookingCount: typeof t.bookingCount === "number" ? t.bookingCount : 0,
+                galleryPhotoCount: typeof t.galleryPhotoCount === "number" ? t.galleryPhotoCount : 0,
                 occasionAssignments,
               };
             })
           : [],
       );
-
-      const eventsData = await eventsResponse.json().catch(() => []);
-      if (eventsResponse.ok && Array.isArray(eventsData)) {
-        const counts: Record<string, number> = {};
-        for (const row of eventsData as AdminEventRow[]) {
-          const tid = row.eventTypeId;
-          if (tid) counts[tid] = (counts[tid] ?? 0) + 1;
-        }
-        setEventCountByTypeId(counts);
-      } else {
-        setEventCountByTypeId({});
-      }
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -273,31 +274,57 @@ export default function ShamellAdminEventTypesPage() {
   const hasValidLength = trimmedName.length >= NAME_MIN_LENGTH && trimmedName.length <= NAME_MAX_LENGTH;
   const isNameValid = hasValidChars && hasValidLength;
 
-  useEffect(() => {
-    if (!editingId && !isNameValid) setOccasionPickerOpen(false);
-  }, [editingId, isNameValid]);
-
   const editingRow = editingId ? types.find((item) => item.id === editingId) : undefined;
   const originalName = editingRow?.name.trim() ?? "";
   const nameChanged = !editingId || trimmedName !== originalName;
-  const packedNow = packOccasionAssignments(singleIds, projectIds, roleIds);
-  const originalPacked = editingRow?.occasionAssignments ?? [];
+
+  const activeOccasionsCatalog = useMemo(
+    () => occasionCatalog.filter((c) => c.isActive),
+    [occasionCatalog],
+  );
+
+  const activeOccasionIdSet = useMemo(
+    () => new Set(activeOccasionsCatalog.map((c) => c.id)),
+    [activeOccasionsCatalog],
+  );
+
+  const originalIdsFlat = flattenLinkedOccasionIdsFromAssignments(editingRow?.occasionAssignments);
+  const idsForSave = linkedOccasionIds.filter((id) => activeOccasionIdSet.has(id));
+  const baselineIdsForSave = originalIdsFlat.filter((id) => activeOccasionIdSet.has(id));
+  const willSendOccasions = packLinkedOccasionsForApi(idsForSave, occasionCatalog);
+  const baselineOccasions = packLinkedOccasionsForApi(baselineIdsForSave, occasionCatalog);
+  const hadNonSingleUsage = (editingRow?.occasionAssignments ?? []).some((a) => a.usage !== "OCCASION_SINGLE");
+  const hadInactiveLinksOnly =
+    originalIdsFlat.length > 0 && baselineIdsForSave.length === 0 && idsForSave.length === 0;
   const assignmentsChanged =
-    !editingId ||
-    occasionAssignmentsOrderedSignature(packedNow) !== occasionAssignmentsOrderedSignature(originalPacked);
+    hadNonSingleUsage ||
+    hadInactiveLinksOnly ||
+    JSON.stringify(willSendOccasions) !== JSON.stringify(baselineOccasions) ||
+    linkedOccasionIdsSignature(linkedOccasionIds) !== linkedOccasionIdsSignature(originalIdsFlat);
   const hasChanges = editingId ? nameChanged || assignmentsChanged : trimmedName.length > 0;
   const canSubmit = !isSubmitting && isNameValid && hasChanges;
 
+  const linkedOrphanIds = useMemo(
+    () => linkedOccasionIds.filter((id) => !activeOccasionIdSet.has(id)),
+    [linkedOccasionIds, activeOccasionIdSet],
+  );
+
+  const toggleLinkedOccasion = (id: string) => {
+    setLinkedOccasionIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
   const getNameValidationError = () => {
-    if (!trimmedName) return "Debes ingresar un nombre para el tipo de evento.";
+    if (!trimmedName) return "Enter a name for the event type.";
     if (!hasValidLength) {
-      return `El nombre debe tener entre ${NAME_MIN_LENGTH} y ${NAME_MAX_LENGTH} caracteres.`;
+      return `Name must be between ${NAME_MIN_LENGTH} and ${NAME_MAX_LENGTH} characters.`;
     }
     if (!hasValidChars) {
-      return "Solo se permiten letras, espacios, guiones y '&'. No se permiten números.";
+      return "Only letters, spaces, hyphens, and '&' are allowed. Numbers are not allowed.";
     }
     if (!hasChanges) {
-      return "No hay cambios para guardar.";
+      return "Nothing to save.";
     }
     return null;
   };
@@ -309,8 +336,8 @@ export default function ShamellAdminEventTypesPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -319,7 +346,7 @@ export default function ShamellAdminEventTypesPage() {
     if (validationError) {
       toast({
         variant: "destructive",
-        title: "Revisa el formulario",
+        title: "Check the form",
         description: validationError,
       });
       return;
@@ -331,7 +358,8 @@ export default function ShamellAdminEventTypesPage() {
         ? `${apiBaseUrl}/api/v1/events/types/admin/${editingId}`
         : `${apiBaseUrl}/api/v1/events/types/admin`;
       const method = editingId ? "PATCH" : "POST";
-      const occasions = packOccasionAssignments(singleIds, projectIds, roleIds);
+      const idsForApi = linkedOccasionIds.filter((id) => activeOccasionIdSet.has(id));
+      const occasions = packLinkedOccasionsForApi(idsForApi, occasionCatalog);
       const body = JSON.stringify({
         name: trimmedName,
         occasions,
@@ -350,16 +378,16 @@ export default function ShamellAdminEventTypesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo guardar el tipo de evento."),
+          description: parseErrorMessage(data, "Could not save event type."),
         });
         return;
       }
 
       toast({
-        title: editingId ? "Tipo actualizado" : "Tipo creado",
+        title: editingId ? "Type updated" : "Type created",
         description: editingId
-          ? "Los cambios del tipo se guardaron correctamente."
-          : "El nuevo tipo de evento se creó correctamente.",
+          ? "Event type changes were saved."
+          : "The new event type was created successfully.",
       });
       resetForm();
       setIsModalOpen(false);
@@ -367,8 +395,8 @@ export default function ShamellAdminEventTypesPage() {
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsSubmitting(false);
@@ -376,29 +404,37 @@ export default function ShamellAdminEventTypesPage() {
   };
 
   const startEdit = (item: EventTypeItem) => {
-    setOccasionPickerOpen(false);
     setEditingId(item.id);
     setName(item.name);
-    const a = item.occasionAssignments ?? [];
-    const sortWithin = (u: OccasionUsage) =>
-      a
-        .filter((x) => x.usage === u)
-        .sort((x, y) => (x.sortOrder ?? 0) - (y.sortOrder ?? 0))
-        .map((x) => x.occasionTypeId);
-    setSingleIds(sortWithin("OCCASION_SINGLE"));
-    setProjectIds(sortWithin("BESPOKE_PROJECT"));
-    setRoleIds(sortWithin("BESPOKE_ROLE"));
+    setLinkedOccasionIds(flattenLinkedOccasionIdsFromAssignments(item.occasionAssignments));
     setIsModalOpen(true);
     setMenuOpenId(null);
   };
 
+  const hasBlockingUsage = (item: EventTypeItem) =>
+    (item.eventCount ?? 0) > 0 || (item.bookingCount ?? 0) > 0 || (item.galleryPhotoCount ?? 0) > 0;
+
+  const canDeleteEventType = (item: EventTypeItem) => !hasBlockingUsage(item);
+
+  const cannotDeactivateWhileActive = (item: EventTypeItem) => item.isActive && hasBlockingUsage(item);
+
   const onToggleActive = async (item: EventTypeItem) => {
+    if (item.isActive && hasBlockingUsage(item)) {
+      toast({
+        variant: "destructive",
+        title: "Cannot turn off",
+        description:
+          "This type has catalog events, bookings, or gallery photos linked. Remove or reassign that data first.",
+      });
+      return;
+    }
+
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -419,7 +455,7 @@ export default function ShamellAdminEventTypesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo actualizar el estado del tipo de evento."),
+          description: parseErrorMessage(data, "Could not update event type status."),
         });
         return;
       }
@@ -429,20 +465,84 @@ export default function ShamellAdminEventTypesPage() {
       }
 
       toast({
-        title: item.isActive ? "Tipo desactivado" : "Tipo activado",
+        title: item.isActive ? "Type hidden" : "Type visible",
         description: item.isActive
-          ? "El tipo de evento fue desactivado correctamente."
-          : "El tipo de evento fue activado correctamente.",
+          ? "The event type was turned off."
+          : "The event type was turned on.",
       });
       await loadTypes();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const openDeleteConfirm = (item: EventTypeItem) => {
+    if (!canDeleteEventType(item)) {
+      toast({
+        variant: "destructive",
+        title: "Cannot delete",
+        description:
+          "There are catalog events, bookings, or gallery photos linked to this type. Remove or reassign them first.",
+      });
+      return;
+    }
+    setMenuOpenId(null);
+    setPendingDelete(item);
+  };
+
+  const onConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/events/types/admin/${pendingDelete.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: parseErrorMessage(data, "Could not delete event type."),
+        });
+        return;
+      }
+
+      if (editingId === pendingDelete.id) {
+        resetForm();
+        setIsModalOpen(false);
+      }
+
+      toast({
+        title: "Type deleted",
+        description: "The event type was removed from the catalog.",
+      });
+      setPendingDelete(null);
+      await loadTypes();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Offline",
+        description: "Could not reach the server.",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -492,9 +592,9 @@ export default function ShamellAdminEventTypesPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
-        title="Tipos de eventos"
-        subtitle="Categorías que organizan tus experiencias en vivo."
-        actionLabel="Nuevo tipo"
+        title="Event types"
+        subtitle="Categories that organize your live experiences."
+        actionLabel="New type"
         onAction={onHeroAction}
         bordered={false}
       />
@@ -503,9 +603,9 @@ export default function ShamellAdminEventTypesPage() {
         {(
           [
             ["TOTAL", String(stats.total)],
-            ["ACTIVOS", String(stats.active)],
-            ["INACTIVOS", String(stats.inactive)],
-            ["ACTUALIZADO", stats.recentLabel],
+            ["ACTIVE", String(stats.active)],
+            ["INACTIVE", String(stats.inactive)],
+            ["LAST UPDATED", stats.recentLabel],
           ] as const
         ).map(([label, value]) => (
           <div
@@ -522,31 +622,31 @@ export default function ShamellAdminEventTypesPage() {
         <AdminSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Buscar tipo de evento..."
+          placeholder="Search event types..."
           className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-wrap gap-2 lg:shrink-0">
-          {filterPill("all", "Todos")}
-          {filterPill("active", "Activos")}
-          {filterPill("inactive", "Inactivos")}
+          {filterPill("all", "All")}
+          {filterPill("active", "Active")}
+          {filterPill("inactive", "Inactive")}
         </div>
       </div>
 
       <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
         {isLoading ? (
-          <p className="py-16 text-center font-body text-sm text-foreground/65">Cargando...</p>
+          <p className="py-16 text-center font-body text-sm text-foreground/65">Loading...</p>
         ) : filteredTypes.length === 0 ? (
           types.length === 0 ? (
             <AdminCatalogEmptyState
-              title="Aún no hay tipos de eventos"
-              description="Las categorías organizan tus experiencias y enlazan las ocasiones que verá el cliente en el contacto."
+              title="No event types yet"
+              description="Categories organize your experiences and link the occasions the client sees in contact."
               tone="primary"
-              action={{ label: "Crear tipo de evento", onClick: openCreateModal }}
+              action={{ label: "Create event type", onClick: openCreateModal }}
             />
           ) : (
             <AdminCatalogEmptyState
-              title="Nada coincide con tu búsqueda"
-              description="Prueba otras palabras o cambia el filtro entre Todos, Activos e Inactivos."
+              title="No matches for your search"
+              description="Try different words or switch the filter between All, Active, and Inactive."
               tone="muted"
             />
           )
@@ -554,8 +654,17 @@ export default function ShamellAdminEventTypesPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filteredTypes.map((item) => {
             const Icon = iconForTypeName(item.name);
-            const nEvents = eventCountByTypeId[item.id] ?? 0;
-            const eventLabel = nEvents === 1 ? "1 evento" : `${nEvents} eventos`;
+            const nEvents = item.eventCount ?? 0;
+            const nBk = item.bookingCount ?? 0;
+            const nGal = item.galleryPhotoCount ?? 0;
+            const catalogLabel = nEvents === 1 ? "1 catalog event" : `${nEvents} catalog events`;
+            const extraParts: string[] = [];
+            if (nBk > 0) extraParts.push(nBk === 1 ? "1 booking" : `${nBk} bookings`);
+            if (nGal > 0) extraParts.push(nGal === 1 ? "1 gallery photo" : `${nGal} gallery photos`);
+            const usageLine = extraParts.length ? `${catalogLabel} · ${extraParts.join(" · ")}` : catalogLabel;
+            const occasionSummary = formatLinkedOccasionLine(item.occasionAssignments);
+            const deletable = canDeleteEventType(item);
+            const blockDeactivate = cannotDeactivateWhileActive(item);
             return (
               <article
                 key={item.id}
@@ -569,7 +678,7 @@ export default function ShamellAdminEventTypesPage() {
                     )}
                   >
                     <span className="text-gold/90">•</span>
-                    {item.isActive ? "ACTIVA" : "INACTIVA"}
+                    {item.isActive ? "ACTIVE" : "INACTIVE"}
                   </p>
                   <div className="relative">
                     <button
@@ -580,7 +689,7 @@ export default function ShamellAdminEventTypesPage() {
                         setMenuOpenId((prev) => (prev === item.id ? null : item.id));
                       }}
                       className="rounded-lg border border-transparent p-1.5 text-foreground/55 transition hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
-                      aria-label={`Más opciones: ${item.name}`}
+                      aria-label={`More options: ${item.name}`}
                     >
                       <MoreHorizontal className="h-4 w-4" strokeWidth={1.6} />
                     </button>
@@ -596,16 +705,30 @@ export default function ShamellAdminEventTypesPage() {
                           className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold"
                           onClick={() => startEdit(item)}
                         >
-                          Editar
+                          Edit
                         </button>
                         <button
                           type="button"
                           role="menuitem"
                           className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold"
                           onClick={() => void onToggleActive(item)}
-                          disabled={togglingId === item.id}
+                          disabled={togglingId === item.id || blockDeactivate}
+                          title={
+                            blockDeactivate
+                              ? "Catalog, bookings, or photos are linked; cannot turn off."
+                              : undefined
+                          }
                         >
-                          {item.isActive ? "Desactivar" : "Activar"}
+                          {item.isActive ? "Hide" : "Show"}
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="flex w-full px-3 py-2 text-left text-xs text-red-200/90 hover:bg-red-500/10"
+                          onClick={() => openDeleteConfirm(item)}
+                          disabled={!deletable}
+                        >
+                          Delete
                         </button>
                       </div>
                     ) : null}
@@ -619,36 +742,62 @@ export default function ShamellAdminEventTypesPage() {
                   <div className="min-w-0 flex-1">
                     <h2 className="font-brand text-lg tracking-[0.06em] text-gold md:text-xl">{item.name}</h2>
                     <p className="mt-1 font-body text-xs leading-relaxed text-foreground/50">
-                      Eventos y propuestas agrupados bajo esta categoría.
+                      {occasionSummary ??
+                        "No linked occasions: the contact form will not show lists for this type until you edit and assign occasions."}
                     </p>
                   </div>
                 </div>
 
                 <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-gold/12 pt-4 font-body text-[11px] text-foreground/45">
-                  <span>{eventLabel}</span>
-                  <span className="text-gold/25">·</span>
-                  <span>{formatRelativeEs(item.updatedAt ?? item.createdAt)}</span>
+                  <span className="min-w-0 flex-1 basis-full sm:basis-auto">{usageLine}</span>
+                  <span className="hidden text-gold/25 sm:inline">·</span>
+                  <span>{formatRelativeEn(item.updatedAt ?? item.createdAt)}</span>
                   <div className="ml-auto flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => startEdit(item)}
                       className="rounded-lg border border-gold/22 p-2 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
-                      aria-label={`Editar ${item.name}`}
+                      aria-label={`Edit ${item.name}`}
                     >
                       <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
                     </button>
                     <button
                       type="button"
+                      onClick={() => openDeleteConfirm(item)}
+                      disabled={!deletable}
+                      className={cn(
+                        "rounded-lg border p-2 transition",
+                        deletable
+                          ? "border-red-400/30 text-red-300/90 hover:border-red-400/50 hover:bg-red-500/10"
+                          : "cursor-not-allowed border-gold/10 text-foreground/30",
+                      )}
+                      aria-label={`Delete ${item.name}`}
+                      title={
+                        !deletable
+                          ? "Has catalog events, bookings, or gallery photos linked"
+                          : "Delete from catalog (occasion links are removed)"
+                      }
+                    >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.6} />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void onToggleActive(item)}
-                      disabled={togglingId === item.id}
+                      disabled={togglingId === item.id || blockDeactivate}
+                      title={
+                        blockDeactivate
+                          ? "Catalog, bookings, or photos are linked; cannot turn off."
+                          : undefined
+                      }
                       className={cn(
                         "relative h-7 w-12 shrink-0 rounded-full border transition",
                         item.isActive
                           ? "border-emerald-400/45 bg-emerald-500/22"
                           : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                         togglingId === item.id && "cursor-not-allowed opacity-60",
+                        blockDeactivate && "cursor-not-allowed opacity-45",
                       )}
-                      aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
+                      aria-label={`${item.isActive ? "Hide" : "Show"} ${item.name}`}
                     >
                       <span
                         className={cn(
@@ -667,22 +816,81 @@ export default function ShamellAdminEventTypesPage() {
       </section>
 
       <AdminModal
-        title={editingId ? "Editar tipo de evento" : "Nuevo tipo de evento"}
+        title={editingId ? "Edit event type" : "New event type"}
         isOpen={isModalOpen}
         onClose={closeModal}
       >
         <form id="event-type-form" noValidate onSubmit={onSubmit} className="space-y-6">
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">NOMBRE DEL TIPO</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">TYPE NAME</span>
             <input
               type="text"
               value={name}
               required
               onChange={(event) => setName(event.target.value)}
               className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-base text-foreground outline-none focus:border-gold"
-              placeholder="Ej. Bodas privadas"
+              placeholder="e.g. Private weddings"
             />
           </label>
+
+          <div className="rounded-xl border border-gold/16 p-4">
+            <p className="font-brand text-[11px] tracking-[0.2em] text-gold/95">OCCASION TYPES</p>
+            <p className="mt-1 font-body text-xs leading-relaxed text-foreground/55">
+              Only active occasions are shown. Check those that apply to this event type.
+            </p>
+            {occasionCatalog.length === 0 ? (
+              <p className="mt-3 font-body text-xs text-foreground/45">Loading occasions…</p>
+            ) : activeOccasionsCatalog.length === 0 ? (
+              <p className="mt-3 font-body text-xs text-foreground/45">
+                No active occasions. Create or reactivate occasion types in their module.
+              </p>
+            ) : (
+              <ul className="mt-4 space-y-2 border-t border-gold/10 pt-4">
+                {activeOccasionsCatalog.map((c) => (
+                  <li key={c.id}>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-gold/12 px-3 py-2.5 font-body text-sm text-foreground/90 transition hover:border-gold/25 hover:bg-gold/5">
+                      <input
+                        type="checkbox"
+                        checked={linkedOccasionIds.includes(c.id)}
+                        onChange={() => toggleLinkedOccasion(c.id)}
+                        className="h-4 w-4 shrink-0 rounded border-gold/40 text-gold focus:ring-gold"
+                      />
+                      <span>{c.name}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {linkedOrphanIds.length > 0 ? (
+              <div className="mt-4 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-3">
+                <p className="font-brand text-[10px] tracking-[0.14em] text-amber-200/90">INACTIVE LINKS</p>
+                <p className="mt-1 font-body text-[11px] text-foreground/55">
+                  These occasions are no longer active in the catalog. Uncheck to remove them or reactivate them in
+                  Occasions.
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {linkedOrphanIds.map((id) => {
+                    const label =
+                      editingRow?.occasionAssignments?.find((a) => a.occasionTypeId === id)?.occasionName ?? id;
+                    return (
+                      <li key={id}>
+                        <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-amber-500/20 px-3 py-2 font-body text-sm text-foreground/80">
+                          <input
+                            type="checkbox"
+                            checked={linkedOccasionIds.includes(id)}
+                            onChange={() => toggleLinkedOccasion(id)}
+                            className="h-4 w-4 shrink-0 rounded border-amber-400/50 text-amber-400 focus:ring-amber-400"
+                          />
+                          <span>{label}</span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
+          </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button
@@ -690,17 +898,51 @@ export default function ShamellAdminEventTypesPage() {
               onClick={closeModal}
               className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
               className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear tipo"}
+              {isSubmitting ? "Saving..." : editingId ? "Save changes" : "Create event type"}
             </button>
           </div>
         </form>
+      </AdminModal>
+
+      <AdminModal
+        title="Delete event type"
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (!isDeleting) setPendingDelete(null);
+        }}
+      >
+        <div className="space-y-5 font-body text-sm text-foreground/85">
+          <p>
+            Permanently delete{" "}
+            <span className="font-brand text-gold">{pendingDelete?.name}</span>? Occasion-type links on this type will
+            also be removed. You can only delete it when there are no catalog events, bookings, or linked gallery photos.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => setPendingDelete(null)}
+              className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isDeleting}
+              onClick={() => void onConfirmDelete()}
+              className="rounded-xl border border-red-400/40 bg-red-500/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-red-200 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
       </AdminModal>
     </div>
   );

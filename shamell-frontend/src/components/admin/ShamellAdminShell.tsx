@@ -37,36 +37,36 @@ type AdminNavItem = {
 
 const navItems: AdminNavItem[] = [
   { href: "/shamell-admin/agenda", label: "Agenda", icon: CalendarDays },
-  { href: "/shamell-admin/header-media", label: "Header principal", icon: ImageIcon },
-  { href: "/shamell-admin/service-types", label: "Tipos de servicio", icon: Shapes },
-  { href: "/shamell-admin/services", label: "Servicios", icon: Package },
-  { href: "/shamell-admin/occasion-types", label: "Tipos de ocasión", icon: ClipboardList },
-  { href: "/shamell-admin/event-types", label: "Tipos de eventos", icon: Tags },
-  { href: "/shamell-admin/events", label: "Eventos", icon: CalendarRange },
-  { href: "/shamell-admin/gallery-categories", label: "Categorias galeria", icon: PanelsTopLeft },
-  { href: "/shamell-admin/gallery", label: "Galería", icon: ImageIcon },
+  { href: "/shamell-admin/header-media", label: "Header media", icon: ImageIcon },
+  { href: "/shamell-admin/service-types", label: "Service types", icon: Shapes },
+  { href: "/shamell-admin/services", label: "Services", icon: Package },
+  { href: "/shamell-admin/occasion-types", label: "Occasion types", icon: ClipboardList },
+  { href: "/shamell-admin/event-types", label: "Event types", icon: Tags },
+  { href: "/shamell-admin/events", label: "Events", icon: CalendarRange },
+  { href: "/shamell-admin/gallery-categories", label: "Gallery categories", icon: PanelsTopLeft },
+  { href: "/shamell-admin/gallery", label: "Gallery", icon: ImageIcon },
   { href: "/shamell-admin/about", label: "About Shamell", icon: Info },
-  { href: "/shamell-admin/agregar-admin", label: "Agregar admin", icon: UserPlus },
+  { href: "/shamell-admin/agregar-admin", label: "Add admin", icon: UserPlus },
 ];
 
 const breadcrumbLabel: Record<string, string> = {
   "shamell-admin": "Admin",
   agenda: "Agenda",
-  "header-media": "Header principal",
-  agendar: "Agendar",
-  disponibilidad: "Disponibilidad",
-  peticiones: "Peticiones",
-  "mi-agenda": "Mi Agenda",
-  "service-types": "Tipos de servicio",
-  services: "Servicios",
-  "event-types": "Tipos de eventos",
-  "occasion-types": "Tipos de ocasión",
-  events: "Eventos",
-  "gallery-categories": "Categorias galeria",
-  gallery: "Galería",
+  "header-media": "Header media",
+  agendar: "Book",
+  disponibilidad: "Availability",
+  peticiones: "Requests",
+  "mi-agenda": "My agenda",
+  "service-types": "Service types",
+  services: "Services",
+  "event-types": "Event types",
+  "occasion-types": "Occasion types",
+  events: "Events",
+  "gallery-categories": "Gallery categories",
+  gallery: "Gallery",
   about: "About Shamell",
-  "agregar-admin": "Agregar admin",
-  "invite-admin": "Agregar admin",
+  "agregar-admin": "Add admin",
+  "invite-admin": "Add admin",
 };
 
 function breadcrumbFromPath(pathname: string): string[] {
@@ -91,7 +91,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [adminName, setAdminName] = useState<string>("Administrador");
+  const [adminName, setAdminName] = useState<string>("Administrator");
   const [adminEmail, setAdminEmail] = useState<string>("");
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
     if (raw) {
       try {
         const u = JSON.parse(raw) as { fullName?: string; email?: string };
-        setAdminName(u.fullName ?? "Administrador");
+        setAdminName(u.fullName ?? "Administrator");
         setAdminEmail(u.email ?? "");
       } catch {
         /* ignore */
@@ -146,7 +146,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
           <button
             type="button"
             className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gold/30 text-gold transition hover:bg-gold/10 lg:hidden"
-            aria-label="Cerrar menu lateral"
+            aria-label="Close sidebar"
             onClick={() => setSidebarOpen(false)}
           >
             <X className="h-4 w-4" strokeWidth={1.5} />
@@ -154,7 +154,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
           <button
             type="button"
             className="hidden h-9 w-9 items-center justify-center rounded-lg border border-gold/30 text-gold transition hover:bg-gold/10 lg:inline-flex"
-            aria-label={sidebarCollapsed ? "Expandir sidebar" : "Colapsar sidebar"}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => setSidebarCollapsed((prev) => !prev)}
           >
             {sidebarCollapsed ? (
@@ -203,7 +203,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
               {adminEmail ? (
                 <p className="truncate text-[10px] text-foreground/50">{adminEmail}</p>
               ) : null}
-              <p className="text-[10px] text-gold/70">Administrador</p>
+              <p className="text-[10px] text-gold/70">Administrator</p>
             </div>
           </div>
         ) : (
@@ -218,18 +218,18 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
           className={`mb-2 flex w-full items-center justify-center rounded-md border border-gold/30 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition-colors hover:bg-gold/10 ${
             sidebarCollapsed ? "" : "gap-2"
           }`}
-          title="Ir al sitio"
+          title="Go to public site"
         >
           <Store className="h-3.5 w-3.5" strokeWidth={1.5} />
-          {!sidebarCollapsed ? "IR AL SITIO" : null}
+          {!sidebarCollapsed ? "VIEW SITE" : null}
         </Link>
         <button
           type="button"
           onClick={onLogout}
-          title="Cerrar sesion"
+          title="Sign out"
           className="w-full rounded-md border border-gold/20 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/70 hover:border-gold/40 hover:text-gold"
         >
-          {sidebarCollapsed ? "X" : "CERRAR SESIÓN"}
+          {sidebarCollapsed ? "X" : "SIGN OUT"}
         </button>
       </div>
     </>
@@ -241,7 +241,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
         <button
           type="button"
           className="admin-overlay fixed inset-0 z-40 lg:hidden"
-          aria-label="Cerrar menú"
+          aria-label="Close menu"
           onClick={() => setSidebarOpen(false)}
         />
       ) : null}
@@ -259,7 +259,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
           <button
             type="button"
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold/30 text-gold transition hover:bg-gold/10 lg:hidden"
-            aria-label="Abrir menu lateral"
+            aria-label="Open sidebar"
             onClick={() => setSidebarOpen(true)}
           >
             <Menu className="h-4 w-4" strokeWidth={1.5} />
@@ -278,7 +278,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
               className="flex items-center gap-1.5 font-brand text-[10px] tracking-[0.12em] text-gold hover:text-gold-light"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              VER SITIO
+              VIEW SITE
             </Link>
           </div>
         </header>

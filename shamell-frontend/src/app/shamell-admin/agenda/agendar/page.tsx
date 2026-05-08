@@ -205,7 +205,7 @@ function AgendaAgendarPageContent() {
         const svcList = Array.isArray(svcJson)
           ? svcJson.map((x: Record<string, unknown>) => ({
               id: String(x.id ?? ""),
-              serviceTypeName: String(x.serviceTypeName ?? x.description ?? "Servicio"),
+              serviceTypeName: String(x.serviceTypeName ?? x.description ?? "Service"),
             }))
           : [];
         setServices(svcList.filter((s: { id: string }) => s.id));
@@ -231,7 +231,7 @@ function AgendaAgendarPageContent() {
         );
       })
       .catch(() => {
-        if (!cancelled) toast({ title: "No se pudo cargar el catálogo", variant: "destructive" });
+        if (!cancelled) toast({ title: "Could not load catalog", variant: "destructive" });
       })
       .finally(() => {
         if (!cancelled) setCatalogLoading(false);
@@ -258,30 +258,30 @@ function AgendaAgendarPageContent() {
       notes,
     });
     if (validated.error || !validated.normalized) {
-      toast({ title: validated.error ?? "Formulario inválido", variant: "destructive" });
+      toast({ title: validated.error ?? "Invalid form", variant: "destructive" });
       return;
     }
     const data = validated.normalized;
 
     const minuteOfDay = hhmmToMinutes(data.eventTimeStart);
     if (minuteOfDay === null) {
-      toast({ title: "Hora inicial inválida", variant: "destructive" });
+      toast({ title: "Invalid start time", variant: "destructive" });
       return;
     }
     const endM = hhmmToMinutes(data.eventTimeEnd);
     if (endM === null) {
-      toast({ title: "Hora final inválida", variant: "destructive" });
+      toast({ title: "Invalid end time", variant: "destructive" });
       return;
     }
     if (endM <= minuteOfDay) {
-      toast({ title: "La hora final debe ser posterior a la inicial", variant: "destructive" });
+      toast({ title: "End time must be after start time", variant: "destructive" });
       return;
     }
     let parsed: Date;
     try {
       parsed = utcInstantForWallClock(data.eventDateIso, minuteOfDay, bookingTz);
     } catch {
-      toast({ title: "Fecha u hora inválida", variant: "destructive" });
+      toast({ title: "Invalid date or time", variant: "destructive" });
       return;
     }
     setSubmitting(true);
@@ -305,10 +305,10 @@ function AgendaAgendarPageContent() {
       };
       if (isEditMode) {
         await patchBooking(bookingId, payload);
-        toast({ title: "Reserva actualizada" });
+        toast({ title: "Booking updated" });
       } else {
         await createBooking(payload);
-        toast({ title: "Reserva creada" });
+        toast({ title: "Booking created" });
       }
       setNotes("");
       setGuestCount("");
@@ -329,11 +329,11 @@ function AgendaAgendarPageContent() {
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      <AdminBackButton href="/shamell-admin/agenda" label="Volver" className="mb-4" />
+      <AdminBackButton href="/shamell-admin/agenda" label="Back" className="mb-4" />
 
       <AdminModuleHero
-        title={isEditMode ? "Editar reserva" : "Agendar"}
-        actionLabel="Disponibilidad"
+        title={isEditMode ? "Edit booking" : "Book"}
+        actionLabel="Availability"
         actionHref="/shamell-admin/agenda/disponibilidad"
         bordered={false}
       />
@@ -345,14 +345,14 @@ function AgendaAgendarPageContent() {
       ) : (
         <form onSubmit={onSubmit} className="shamell-glass-surface space-y-6 rounded-2xl p-5 md:p-8">
           <div className="block">
-            <span className={fieldLabelClass}>TIPO DE EVENTO</span>
+            <span className={fieldLabelClass}>EVENT TYPE</span>
             <div className="mt-2">
               <AdminAccordionSingleSelect
                 options={eventTypes.map((t) => ({ id: t.id, label: t.name }))}
                 value={eventTypeId}
                 onChange={setEventTypeId}
-                emptyDisplay="Selecciona un tipo de evento"
-                ariaLabel="Seleccionar tipo de evento"
+                emptyDisplay="Select an event type"
+                ariaLabel="Select event type"
                 required
                 showNoneOption={false}
               />
@@ -360,14 +360,14 @@ function AgendaAgendarPageContent() {
           </div>
 
           <div className="block">
-            <span className={fieldLabelClass}>OCASIÓN</span>
+            <span className={fieldLabelClass}>OCCASION</span>
             <div className="mt-2">
               <AdminAccordionSingleSelect
                 options={occasions.map((o) => ({ id: o.id, label: o.name }))}
                 value={occasionTypeId}
                 onChange={setOccasionTypeId}
-                emptyDisplay="Selecciona una ocasión"
-                ariaLabel="Seleccionar ocasión"
+                emptyDisplay="Select an occasion"
+                ariaLabel="Select occasion"
                 required
                 showNoneOption={false}
               />
@@ -375,7 +375,7 @@ function AgendaAgendarPageContent() {
           </div>
 
           <div className="block">
-            <span className={fieldLabelClass}>SERVICIO</span>
+            <span className={fieldLabelClass}>SERVICE</span>
             <div className="mt-2">
               <AdminAccordionSingleSelect
                 options={services.map((s) => ({
@@ -384,8 +384,8 @@ function AgendaAgendarPageContent() {
                 }))}
                 value={serviceId}
                 onChange={setServiceId}
-                emptyDisplay="Selecciona un servicio"
-                ariaLabel="Seleccionar servicio"
+                emptyDisplay="Select a service"
+                ariaLabel="Select service"
                 required
                 showNoneOption={false}
               />
@@ -393,43 +393,43 @@ function AgendaAgendarPageContent() {
           </div>
 
           <div className="block">
-            <span className={`${fieldLabelClass} block text-center`}>FECHA Y HORA DEL EVENTO</span>
+            <span className={`${fieldLabelClass} block text-center`}>EVENT DATE & TIME</span>
             <div className="mx-auto mt-3 grid w-full max-w-5xl grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-5 md:gap-8">
               <div className="flex min-w-0 flex-col gap-1">
-                <span className={`${fieldLabelClass} block text-center sm:text-left`}>FECHA</span>
+                <span className={`${fieldLabelClass} block text-center sm:text-left`}>DATE</span>
                 <button
                   type="button"
                   onClick={() => setDatePickerOpen(true)}
                   className={logisticsPickerTriggerClass}
                 >
                   <span className={eventDateIso ? "font-body text-foreground" : "font-body text-foreground"}>
-                    {eventDateIso ? formatDateDisplayUs(eventDateIso) : "Elegir fecha"}
+                    {eventDateIso ? formatDateDisplayUs(eventDateIso) : "Choose date"}
                   </span>
                   <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">CALENDAR</span>
                 </button>
               </div>
               <div className="flex min-w-0 flex-col gap-1">
-                <span className={`${fieldLabelClass} block text-center sm:text-left`}>HORA INICIAL</span>
+                <span className={`${fieldLabelClass} block text-center sm:text-left`}>START TIME</span>
                 <button
                   type="button"
                   onClick={() => setTimePickerWhich("start")}
                   className={logisticsPickerTriggerClass}
                 >
                   <span className={eventTimeStart ? "font-body text-foreground" : "font-body text-foreground"}>
-                    {eventTimeStart ? formatTimeDisplayUs(eventTimeStart) : "Elegir hora"}
+                    {eventTimeStart ? formatTimeDisplayUs(eventTimeStart) : "Choose time"}
                   </span>
                   <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">TIME</span>
                 </button>
               </div>
               <div className="flex min-w-0 flex-col gap-1">
-                <span className={`${fieldLabelClass} block text-center sm:text-left`}>HORA FINAL</span>
+                <span className={`${fieldLabelClass} block text-center sm:text-left`}>END TIME</span>
                 <button
                   type="button"
                   onClick={() => setTimePickerWhich("end")}
                   className={logisticsPickerTriggerClass}
                 >
                   <span className={eventTimeEnd ? "font-body text-foreground" : "font-body text-foreground"}>
-                    {eventTimeEnd ? formatTimeDisplayUs(eventTimeEnd) : "Elegir hora"}
+                    {eventTimeEnd ? formatTimeDisplayUs(eventTimeEnd) : "Choose time"}
                   </span>
                   <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">TIME</span>
                 </button>
@@ -438,7 +438,7 @@ function AgendaAgendarPageContent() {
           </div>
 
           <label className="block">
-            <span className={fieldLabelClass}>UBICACIÓN</span>
+            <span className={fieldLabelClass}>LOCATION</span>
             <input
               required
               value={location}
@@ -446,13 +446,13 @@ function AgendaAgendarPageContent() {
               minLength={3}
               maxLength={120}
               className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-              placeholder="Ciudad o venue"
+              placeholder="City or venue"
             />
           </label>
 
           <div className="grid gap-4 md:grid-cols-3">
             <label className="block">
-              <span className={fieldLabelClass}>CLIENTE — NOMBRE</span>
+              <span className={fieldLabelClass}>CLIENT — NAME</span>
               <input
                 required
                 value={guestFullName}
@@ -460,7 +460,7 @@ function AgendaAgendarPageContent() {
                 minLength={3}
                 maxLength={90}
                 className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-                placeholder="Nombre completo del cliente"
+                placeholder="Client full name"
               />
             </label>
             <label className="block">
@@ -472,11 +472,11 @@ function AgendaAgendarPageContent() {
                 onChange={(e) => setGuestEmail(e.target.value)}
                 maxLength={120}
                 className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-                placeholder="correo@ejemplo.com"
+                placeholder="name@example.com"
               />
             </label>
             <label className="block">
-              <span className={fieldLabelClass}>TELÉFONO</span>
+              <span className={fieldLabelClass}>PHONE</span>
               <input
                 required
                 value={guestPhone}
@@ -490,7 +490,7 @@ function AgendaAgendarPageContent() {
           </div>
 
           <label className="block">
-            <span className={fieldLabelClass}>INVITADOS (aprox.)</span>
+            <span className={fieldLabelClass}>GUESTS (APPROX.)</span>
             <input
               required
               type="number"
@@ -499,19 +499,19 @@ function AgendaAgendarPageContent() {
               value={guestCount}
               onChange={(e) => setGuestCount(sanitizeIntegerInput(e.target.value))}
               className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-              placeholder="Ej. 120"
+              placeholder="e.g. 120"
             />
           </label>
 
           <label className="block">
-            <span className={fieldLabelClass}>NOTAS INTERNAS</span>
+            <span className={fieldLabelClass}>INTERNAL NOTES</span>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               maxLength={1000}
               className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-              placeholder="Detalles adicionales de la reserva..."
+              placeholder="Extra details for this booking..."
             />
           </label>
 
@@ -521,14 +521,14 @@ function AgendaAgendarPageContent() {
             className="rounded-full border border-gold/40 bg-gold/12 px-7 py-3 font-brand text-xs tracking-[0.16em] text-gold transition hover:bg-gold/22 disabled:opacity-50"
           >
             {submitting ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
-            CREAR RESERVA
+            {isEditMode ? "SAVE BOOKING" : "CREATE BOOKING"}
           </button>
         </form>
       )}
 
       <ContactDatePickerModal
         isOpen={datePickerOpen}
-        title="Fecha del evento"
+        title="Event date"
         value={eventDateIso}
         onClose={() => setDatePickerOpen(false)}
         onConfirm={(iso) => setEventDateIso(iso)}
@@ -538,7 +538,7 @@ function AgendaAgendarPageContent() {
       />
       <ContactTimePickerModal
         isOpen={timePickerWhich === "start"}
-        title="Hora inicial del evento"
+        title="Event start time"
         value={eventTimeStart}
         onClose={() => setTimePickerWhich(null)}
         onConfirm={(hhmm) => setEventTimeStart(hhmm)}
@@ -547,7 +547,7 @@ function AgendaAgendarPageContent() {
       />
       <ContactTimePickerModal
         isOpen={timePickerWhich === "end"}
-        title="Hora final del evento"
+        title="Event end time"
         value={eventTimeEnd}
         onClose={() => setTimePickerWhich(null)}
         onConfirm={(hhmm) => setEventTimeEnd(hhmm)}

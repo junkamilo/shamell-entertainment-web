@@ -53,47 +53,46 @@ export function validateAgendarForm(values: AgendarFormValues): {
   const guestCountRaw = values.guestCount.trim();
   const notes = values.notes.trim();
 
-  if (!eventTypeId) return { error: "Falta el campo obligatorio: Tipo de evento.", normalized: null };
-  if (!occasionTypeId) return { error: "Falta el campo obligatorio: Ocasión.", normalized: null };
-  if (!serviceId) return { error: "Falta el campo obligatorio: Servicio.", normalized: null };
-  if (!eventDateIso) return { error: "Falta el campo obligatorio: Fecha del evento.", normalized: null };
-  if (!ISO_DATE_RE.test(eventDateIso)) return { error: "La fecha del evento no es válida.", normalized: null };
-  if (!eventTimeStart) return { error: "Falta el campo obligatorio: Hora inicial.", normalized: null };
-  if (!eventTimeEnd) return { error: "Falta el campo obligatorio: Hora final.", normalized: null };
+  if (!eventTypeId) return { error: "Required field missing: Event type.", normalized: null };
+  if (!occasionTypeId) return { error: "Required field missing: Occasion.", normalized: null };
+  if (!serviceId) return { error: "Required field missing: Service.", normalized: null };
+  if (!eventDateIso) return { error: "Required field missing: Event date.", normalized: null };
+  if (!ISO_DATE_RE.test(eventDateIso)) return { error: "Event date is not valid.", normalized: null };
+  if (!eventTimeStart) return { error: "Required field missing: Start time.", normalized: null };
+  if (!eventTimeEnd) return { error: "Required field missing: End time.", normalized: null };
 
-  if (!location) return { error: "Falta el campo obligatorio: Ubicación.", normalized: null };
+  if (!location) return { error: "Required field missing: Location.", normalized: null };
   if (location.length < 3 || location.length > 120) {
-    return { error: "Ubicación debe tener entre 3 y 120 caracteres.", normalized: null };
+    return { error: "Location must be between 3 and 120 characters.", normalized: null };
   }
 
-  if (!guestFullName) return { error: "Falta el campo obligatorio: Cliente — Nombre.", normalized: null };
+  if (!guestFullName) return { error: "Required field missing: Client — Name.", normalized: null };
   if (guestFullName.length < 3 || guestFullName.length > 90) {
-    return { error: "Nombre del cliente debe tener entre 3 y 90 caracteres.", normalized: null };
+    return { error: "Client name must be between 3 and 90 characters.", normalized: null };
   }
   if (/\d/.test(guestFullName)) {
-    return { error: "El nombre del cliente no debe incluir números.", normalized: null };
+    return { error: "Client name must not include numbers.", normalized: null };
   }
 
-  if (!guestEmail) return { error: "Falta el campo obligatorio: Email.", normalized: null };
+  if (!guestEmail) return { error: "Required field missing: Email.", normalized: null };
   if (guestEmail.length > 120 || !EMAIL_RE.test(guestEmail)) {
-    return { error: "Email inválido. Ejemplo: correo@ejemplo.com", normalized: null };
+    return { error: "Invalid email. Example: name@example.com", normalized: null };
   }
 
-  if (!guestPhone) return { error: "Falta el campo obligatorio: Teléfono.", normalized: null };
+  if (!guestPhone) return { error: "Required field missing: Phone.", normalized: null };
   const phoneDigits = guestPhone.replace(/\D/g, "");
-  // Alineado con el formulario público de contacto (7+ dígitos).
   if (phoneDigits.length < 7 || phoneDigits.length > 15) {
-    return { error: "Teléfono inválido. Debe tener entre 7 y 15 dígitos.", normalized: null };
+    return { error: "Invalid phone. It must have between 7 and 15 digits.", normalized: null };
   }
 
-  if (!guestCountRaw) return { error: "Falta el campo obligatorio: Invitados.", normalized: null };
+  if (!guestCountRaw) return { error: "Required field missing: Guest count.", normalized: null };
   const guestCount = Number(guestCountRaw);
   if (!Number.isInteger(guestCount) || guestCount < 1 || guestCount > 20000) {
-    return { error: "Invitados debe ser un número entero entre 1 y 20000.", normalized: null };
+    return { error: "Guest count must be a whole number between 1 and 20,000.", normalized: null };
   }
 
   if (notes.length > 1000) {
-    return { error: "Notas internas no puede superar 1000 caracteres.", normalized: null };
+    return { error: "Internal notes cannot exceed 1,000 characters.", normalized: null };
   }
 
   return {

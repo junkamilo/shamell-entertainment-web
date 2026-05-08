@@ -19,7 +19,7 @@ const AboutSection = () => {
             <div className="h-36 w-[min(28rem,94vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.08),transparent_72%)] blur-3xl opacity-80" />
           </div>
           <div className="relative">
-            <h2 className="font-brand text-2xl tracking-[0.14em] text-gold md:text-4xl md:tracking-[0.16em]">
+            <h2 className="font-brand text-2xl font-semibold tracking-[0.14em] text-gold md:text-4xl md:tracking-[0.16em]">
               {about.title}
             </h2>
             <div
@@ -40,14 +40,27 @@ const AboutSection = () => {
             >
               {!isLoading ? (
                 <>
-                  <Image
-                    src={about.imageUrl ?? portrait}
-                    alt="Professional portrait of Shamell"
-                    fill
-                    className="object-contain object-center p-3 transition-transform duration-700 ease-out group-hover/portrait:scale-[1.02] sm:p-4"
-                    sizes="(max-width: 1024px) 100vw, 40vw"
-                    priority={false}
-                  />
+                  {about.imageUrl && about.heroMediaType === "VIDEO" ? (
+                    <video
+                      src={about.imageUrl}
+                      className="absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-700 ease-out group-hover/portrait:opacity-95 sm:p-4"
+                      muted
+                      playsInline
+                      loop
+                      autoPlay
+                      preload="metadata"
+                      aria-label="Video about Shamell"
+                    />
+                  ) : (
+                    <Image
+                      src={about.imageUrl ?? portrait}
+                      alt="Professional portrait of Shamell"
+                      fill
+                      className="object-contain object-center p-3 transition-transform duration-700 ease-out group-hover/portrait:scale-[1.02] sm:p-4"
+                      sizes="(max-width: 1024px) 100vw, 40vw"
+                      priority={false}
+                    />
+                  )}
                   <span
                     className="pointer-events-none absolute left-3 top-3 h-6 w-6 border-l border-t border-white/18 opacity-70"
                     aria-hidden
@@ -74,8 +87,8 @@ const AboutSection = () => {
                   className={cn(
                     "font-body leading-relaxed transition-colors duration-300",
                     index === 0
-                      ? "text-base text-foreground/88 md:text-lg md:leading-[1.75]"
-                      : "text-sm text-foreground/72 md:text-base md:leading-relaxed",
+                      ? "text-base font-semibold text-foreground/90 md:text-lg md:leading-[1.75]"
+                      : "text-base font-semibold leading-relaxed text-foreground/85 md:text-lg md:leading-relaxed md:text-foreground/88",
                   )}
                 >
                   {block}
@@ -84,17 +97,19 @@ const AboutSection = () => {
             </div>
 
             <div>
-              <h3 className="mb-2 font-brand text-xs tracking-[0.22em] text-gold">CORE VALUES</h3>
+              <h3 className="mb-2 font-brand text-sm font-semibold tracking-[0.2em] text-gold md:text-base md:tracking-[0.22em]">
+                CORE VALUES
+              </h3>
               <div
                 className="mb-6 h-px w-14 bg-linear-to-r from-white/40 to-transparent md:w-16"
                 aria-hidden
               />
               <div className="flex flex-wrap gap-2.5 md:gap-3">
-                {about.coreValues.map((value) => (
+                {about.coreValues.map((value, index) => (
                   <span
-                    key={value}
+                    key={`${value}-${index}`}
                     className={cn(
-                      "group/chip relative overflow-hidden rounded-xl border border-white/12 bg-black/35 px-3.5 py-2 font-brand text-[10px] tracking-[0.14em] text-gold uppercase backdrop-blur-[2px] transition-all duration-300 md:px-4 md:text-[11px] md:tracking-[0.16em]",
+                      "group/chip relative overflow-hidden rounded-xl border border-white/12 bg-black/35 px-3.5 py-2 font-brand text-xs font-semibold tracking-[0.14em] text-gold uppercase backdrop-blur-[2px] transition-all duration-300 md:px-4 md:text-sm md:tracking-[0.16em]",
                       "before:pointer-events-none before:absolute before:inset-0 before:-translate-x-full before:bg-[linear-gradient(105deg,transparent,rgba(255,255,255,0.08),transparent)] before:transition-transform before:duration-500",
                       "hover:-translate-y-0.5 hover:border-white/22 hover:text-gold-light motion-reduce:hover:translate-y-0",
                       "hover:before:translate-x-full",

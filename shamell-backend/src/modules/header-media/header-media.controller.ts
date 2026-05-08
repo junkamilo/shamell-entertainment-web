@@ -65,6 +65,50 @@ export class HeaderMediaController {
     return this.headerMediaService.toggleAdminHeaderPhoto(id, dto.isActive);
   }
 
+  @Patch('admin/photos/:id/focal')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  updateAdminHeaderPhotoFocalPoint(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body()
+    dto: {
+      focalX?: number;
+      focalY?: number;
+      focalMobileX?: number;
+      focalMobileY?: number;
+    },
+  ) {
+    if (
+      typeof dto.focalX !== 'number' ||
+      !Number.isFinite(dto.focalX) ||
+      dto.focalX < 0 ||
+      dto.focalX > 100 ||
+      typeof dto.focalY !== 'number' ||
+      !Number.isFinite(dto.focalY) ||
+      dto.focalY < 0 ||
+      dto.focalY > 100 ||
+      typeof dto.focalMobileX !== 'number' ||
+      !Number.isFinite(dto.focalMobileX) ||
+      dto.focalMobileX < 0 ||
+      dto.focalMobileX > 100 ||
+      typeof dto.focalMobileY !== 'number' ||
+      !Number.isFinite(dto.focalMobileY) ||
+      dto.focalMobileY < 0 ||
+      dto.focalMobileY > 100
+    ) {
+      throw new BadRequestException(
+        'focalX, focalY, focalMobileX and focalMobileY are required numbers between 0 and 100.',
+      );
+    }
+    return this.headerMediaService.updateAdminHeaderPhotoFocalPoint(
+      id,
+      Math.round(dto.focalX),
+      Math.round(dto.focalY),
+      Math.round(dto.focalMobileX),
+      Math.round(dto.focalMobileY),
+    );
+  }
+
   @Delete('admin/photos/:id')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)

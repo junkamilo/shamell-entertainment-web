@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { Pencil, Sparkles } from "lucide-react";
+import { Pencil, Sparkles, Trash2 } from "lucide-react";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
@@ -16,11 +16,13 @@ type OccasionRow = {
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
+  bookingCount?: number;
+  eventTypeLinkCount?: number;
 };
 
 const NAME_MIN_LENGTH = 2;
 const NAME_MAX_LENGTH = 120;
-const NAME_REGEX = /^[A-Za-zÀ-ÿ0-9\s&,.()'¿?¡!/-]+$/;
+const NAME_REGEX = /^[A-Za-zÀ-ÿ0-9\s&,.()'\-/_]+$/;
 
 type FilterTab = "all" | "active" | "inactive";
 
@@ -36,6 +38,8 @@ export default function ShamellAdminOccasionTypesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<OccasionRow | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const parseErrorMessage = useCallback((data: unknown, fallback: string) => {
     if (typeof data !== "object" || data === null) return fallback;
@@ -55,8 +59,8 @@ export default function ShamellAdminOccasionTypesPage() {
       setRows([]);
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -70,16 +74,29 @@ export default function ShamellAdminOccasionTypesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudieron cargar los tipos de ocasión."),
+          description: parseErrorMessage(data, "Could not load occasion types."),
         });
         return;
       }
-      setRows(Array.isArray(data) ? (data as OccasionRow[]) : []);
+      setRows(
+        Array.isArray(data)
+          ? (data as Record<string, unknown>[]).map((row) => ({
+              id: String(row.id),
+              name: String(row.name ?? ""),
+              isActive: Boolean(row.isActive),
+              createdAt: typeof row.createdAt === "string" ? row.createdAt : undefined,
+              updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : undefined,
+              bookingCount: typeof row.bookingCount === "number" ? row.bookingCount : 0,
+              eventTypeLinkCount:
+                typeof row.eventTypeLinkCount === "number" ? row.eventTypeLinkCount : 0,
+            }))
+          : [],
+      );
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -106,13 +123,13 @@ export default function ShamellAdminOccasionTypesPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
     if (!canSubmit) {
-      toast({ variant: "destructive", title: "Revisa el formulario", description: "Nombre inválido o sin cambios." });
+      toast({ variant: "destructive", title: "Check the form", description: "Invalid name or no changes." });
       return;
     }
     setIsSubmitting(true);
@@ -132,19 +149,19 @@ export default function ShamellAdminOccasionTypesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo guardar."),
+          description: parseErrorMessage(data, "Could not save."),
         });
         return;
       }
       toast({
-        title: editingId ? "Actualizado" : "Creado",
-        description: editingId ? "El tipo de ocasión se actualizó." : "Se creó el tipo de ocasión.",
+        title: editingId ? "Updated" : "Created",
+        description: editingId ? "Occasion type updated." : "Occasion type created.",
       });
       setIsModalOpen(false);
       resetForm();
       await loadRows();
     } catch {
-      toast({ variant: "destructive", title: "Sin conexión", description: "No se pudo conectar con el backend." });
+      toast({ variant: "destructive", title: "Offline", description: "Could not reach the server." });
     } finally {
       setIsSubmitting(false);
     }
@@ -157,6 +174,15 @@ export default function ShamellAdminOccasionTypesPage() {
   };
 
   const onToggleActive = async (item: OccasionRow) => {
+    if (item.isActive && (item.bookingCount ?? 0) > 0) {
+      toast({
+        variant: "destructive",
+        title: "Cannot turn off",
+        description: "This occasion type has linked bookings.",
+      });
+      return;
+    }
+
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) return;
     setTogglingId(item.id);
@@ -171,16 +197,83 @@ export default function ShamellAdminOccasionTypesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo actualizar."),
+          description: parseErrorMessage(data, "Could not update."),
         });
         return;
       }
-      toast({ title: item.isActive ? "Desactivado" : "Activado" });
+      toast({ title: item.isActive ? "Hidden" : "Visible" });
       await loadRows();
     } catch {
-      toast({ variant: "destructive", title: "Sin conexión" });
+      toast({ variant: "destructive", title: "Offline" });
     } finally {
       setTogglingId(null);
+    }
+  };
+
+  const canDeleteOccasion = (item: OccasionRow) => (item.bookingCount ?? 0) === 0;
+
+  const cannotDeactivateWhileActive = (item: OccasionRow) =>
+    item.isActive && (item.bookingCount ?? 0) > 0;
+
+  const openDeleteConfirm = (item: OccasionRow) => {
+    if (!canDeleteOccasion(item)) {
+      toast({
+        variant: "destructive",
+        title: "Cannot delete",
+        description: "There are bookings linked to this occasion type.",
+      });
+      return;
+    }
+    setPendingDelete(item);
+  };
+
+  const onConfirmDelete = async () => {
+    if (!pendingDelete) return;
+    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/events/occasions/admin/${pendingDelete.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: parseErrorMessage(data, "Could not delete the occasion type."),
+        });
+        return;
+      }
+
+      if (editingId === pendingDelete.id) {
+        resetForm();
+        setIsModalOpen(false);
+      }
+
+      toast({
+        title: "Type deleted",
+        description: "The occasion type was removed from the catalog.",
+      });
+      setPendingDelete(null);
+      await loadRows();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Offline",
+        description: "Could not reach the server.",
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -212,8 +305,8 @@ export default function ShamellAdminOccasionTypesPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
-        title="Tipos de ocasión"
-        actionLabel="Nuevo tipo"
+        title="Occasion types"
+        actionLabel="New type"
         onAction={() => {
           resetForm();
           setIsModalOpen(true);
@@ -225,27 +318,27 @@ export default function ShamellAdminOccasionTypesPage() {
         <AdminSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Buscar ocasión..."
+          placeholder="Search occasions..."
           className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-wrap gap-2 lg:shrink-0">
-          {filterPill("all", "Todos")}
-          {filterPill("active", "Activos")}
-          {filterPill("inactive", "Inactivos")}
+          {filterPill("all", "All")}
+          {filterPill("active", "Active")}
+          {filterPill("inactive", "Inactive")}
         </div>
       </div>
 
       <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
         {isLoading ? (
-          <p className="py-16 text-center font-body text-sm text-foreground/65">Cargando...</p>
+          <p className="py-16 text-center font-body text-sm text-foreground/65">Loading...</p>
         ) : filtered.length === 0 ? (
           rows.length === 0 ? (
             <AdminCatalogEmptyState
-              title="Aún no hay tipos de ocasión"
-              description="Son las opciones que verán tus clientes según cada tipo de evento."
+              title="No occasion types yet"
+              description="These are the options clients see for each event type."
               tone="primary"
               action={{
-                label: "Crear tipo de ocasión",
+                label: "Create occasion type",
                 onClick: () => {
                   resetForm();
                   setIsModalOpen(true);
@@ -254,14 +347,27 @@ export default function ShamellAdminOccasionTypesPage() {
             />
           ) : (
             <AdminCatalogEmptyState
-              title="Nada coincide con tu búsqueda"
-              description="Prueba otras palabras en el buscador o cambia el filtro entre Todos, Activos e Inactivos."
+              title="No matches for your search"
+              description="Try different search words or switch the filter between All, Active, and Inactive."
               tone="muted"
             />
           )
         ) : (
           <div className="grid gap-3">
-            {filtered.map((item) => (
+            {filtered.map((item) => {
+              const bk = item.bookingCount ?? 0;
+              const links = item.eventTypeLinkCount ?? 0;
+              const deletable = canDeleteOccasion(item);
+              const blockDeactivate = cannotDeactivateWhileActive(item);
+              const meta =
+                bk > 0
+                  ? links > 0
+                    ? `${bk} booking(s) · ${links} event type(s)`
+                    : `${bk} booking(s)`
+                  : links > 0
+                    ? `In ${links} event type(s) · no bookings`
+                    : "No bookings linked; you can hide or delete if you do not need it.";
+              return (
               <div
                 key={item.id}
                 className="shamell-glass-surface flex items-center gap-3 rounded-xl border border-gold/14 px-4 py-3"
@@ -272,7 +378,7 @@ export default function ShamellAdminOccasionTypesPage() {
                 <div className="min-w-0 flex-1">
                   <p className="font-brand text-sm tracking-wide text-gold">{item.name}</p>
                   <p className="font-body text-[11px] text-foreground/45">
-                    {item.isActive ? "Activo" : "Inactivo"}
+                    {item.isActive ? "Active" : "Inactive"} · {meta}
                   </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -280,22 +386,47 @@ export default function ShamellAdminOccasionTypesPage() {
                     type="button"
                     onClick={() => startEdit(item)}
                     className="rounded-lg border border-gold/22 p-2 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
-                    aria-label={`Editar ${item.name}`}
+                    aria-label={`Edit ${item.name}`}
                   >
                     <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
                   </button>
                   <button
                     type="button"
+                    onClick={() => openDeleteConfirm(item)}
+                    disabled={!deletable}
+                    className={cn(
+                      "rounded-lg border p-2 transition",
+                      deletable
+                        ? "border-red-400/30 text-red-300/90 hover:border-red-400/50 hover:bg-red-500/10"
+                        : "cursor-not-allowed border-gold/10 text-foreground/30",
+                    )}
+                    aria-label={`Delete ${item.name}`}
+                    title={
+                      !deletable
+                        ? "Bookings are linked"
+                        : "Delete from catalog (also removes links on event types)"
+                    }
+                  >
+                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.6} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => void onToggleActive(item)}
-                    disabled={togglingId === item.id}
+                    disabled={togglingId === item.id || blockDeactivate}
+                    title={
+                      blockDeactivate
+                        ? "Bookings are linked; cannot turn off."
+                        : undefined
+                    }
                     className={cn(
                       "relative h-7 w-12 shrink-0 rounded-full border transition",
                       item.isActive
                         ? "border-emerald-400/45 bg-emerald-500/22"
                         : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                       togglingId === item.id && "cursor-not-allowed opacity-60",
+                      blockDeactivate && "cursor-not-allowed opacity-45",
                     )}
-                    aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
+                    aria-label={`${item.isActive ? "Hide" : "Show"} ${item.name}`}
                   >
                     <span
                       className={cn(
@@ -306,13 +437,14 @@ export default function ShamellAdminOccasionTypesPage() {
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </section>
 
       <AdminModal
-        title={editingId ? "Editar tipo de ocasión" : "Nuevo tipo de ocasión"}
+        title={editingId ? "Edit occasion type" : "New occasion type"}
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
@@ -321,14 +453,14 @@ export default function ShamellAdminOccasionTypesPage() {
       >
         <form noValidate onSubmit={onSubmit} className="space-y-6">
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">NOMBRE</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">NAME</span>
             <input
               type="text"
               value={name}
               required
               onChange={(e) => setName(e.target.value)}
               className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-base text-foreground outline-none focus:border-gold"
-              placeholder="Ej. Cumpleaños de lujo"
+              placeholder="e.g. Luxury birthday"
             />
           </label>
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
@@ -340,17 +472,51 @@ export default function ShamellAdminOccasionTypesPage() {
               }}
               className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
               disabled={!canSubmit}
               className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Guardando..." : editingId ? "Guardar" : "Crear"}
+              {isSubmitting ? "Saving..." : editingId ? "Save" : "Create"}
             </button>
           </div>
         </form>
+      </AdminModal>
+
+      <AdminModal
+        title="Delete occasion type"
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (!isDeleting) setPendingDelete(null);
+        }}
+      >
+        <div className="space-y-5 font-body text-sm text-foreground/85">
+          <p>
+            Permanently delete{" "}
+            <span className="font-brand text-gold">{pendingDelete?.name}</span>? It will also be removed from
+            event types where it is linked (when there are no bookings).
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              disabled={isDeleting}
+              className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void onConfirmDelete()}
+              disabled={isDeleting}
+              className="rounded-xl border border-red-400/45 bg-red-500/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-red-200 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
       </AdminModal>
     </div>
   );

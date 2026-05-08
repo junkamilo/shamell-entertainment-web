@@ -31,21 +31,19 @@ type AdminGalleryPhoto = {
   imageUrl: string;
 };
 
-function formatRelativeEs(iso: string | undefined): string {
+function formatRelativeEn(iso: string | undefined): string {
   if (!iso) return "—";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (sec < 45) return "Hace un momento";
+  if (sec < 45) return "Just now";
   const min = Math.floor(sec / 60);
-  if (min < 60) return `Hace ${min} min`;
+  if (min < 60) return `${min} min ago`;
   const h = Math.floor(min / 60);
-  if (h < 24) return `Hace ${h}h`;
+  if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
-  if (d < 7) return `Hace ${d}d`;
-  const w = Math.floor(d / 7);
-  if (w < 8) return `Hace ${w} sem`;
-  return date.toLocaleDateString("es", { day: "numeric", month: "short" });
+  if (d < 7) return `${d}d ago`;
+  return date.toLocaleDateString("en-US", { day: "numeric", month: "short" });
 }
 
 function slugifyDisplay(s: string) {
@@ -75,7 +73,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
   const [categoryName, setCategoryName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
-  /** Categorías con el detalle (descripción + vista previa) expandido; por defecto todas colapsadas. */
+  /** Category ids with detail (description + preview) expanded; all collapsed by default. */
   const [expandedCategoryIds, setExpandedCategoryIds] = useState<Set<string>>(() => new Set());
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -93,8 +91,8 @@ export default function ShamellAdminGalleryCategoriesPage() {
       setPhotos([]);
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -115,7 +113,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(catData, "No se pudieron cargar las categorías."),
+          description: parseErrorMessage(catData, "Could not load categories."),
         });
         return;
       }
@@ -134,8 +132,8 @@ export default function ShamellAdminGalleryCategoriesPage() {
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsLoading(false);
@@ -204,7 +202,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
         if (a.id === spotlightCategoryId) return -1;
         if (b.id === spotlightCategoryId) return 1;
       }
-      return a.name.localeCompare(b.name, "es");
+      return a.name.localeCompare(b.name, "en");
     });
   }, [categories, searchQuery, filterTab, spotlightCategoryId]);
 
@@ -239,8 +237,8 @@ export default function ShamellAdminGalleryCategoriesPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -249,8 +247,8 @@ export default function ShamellAdminGalleryCategoriesPage() {
     if (!name) {
       toast({
         variant: "destructive",
-        title: "Revisa el formulario",
-        description: "El nombre es obligatorio.",
+        title: "Check the form",
+        description: "Name is required.",
       });
       return;
     }
@@ -276,14 +274,14 @@ export default function ShamellAdminGalleryCategoriesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo guardar la categoría."),
+          description: parseErrorMessage(data, "Could not save the category."),
         });
         return;
       }
 
       toast({
-        title: editingCategoryId ? "Categoría actualizada" : "Categoría creada",
-        description: "La categoría de galería se guardó correctamente.",
+        title: editingCategoryId ? "Category updated" : "Category created",
+        description: "The gallery category was saved.",
       });
       setIsCategoryModalOpen(false);
       resetCategoryForm();
@@ -291,8 +289,8 @@ export default function ShamellAdminGalleryCategoriesPage() {
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setIsSubmittingCategory(false);
@@ -304,8 +302,8 @@ export default function ShamellAdminGalleryCategoriesPage() {
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión requerida",
-        description: "Debes iniciar sesión como admin.",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
       });
       return;
     }
@@ -325,22 +323,22 @@ export default function ShamellAdminGalleryCategoriesPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(data, "No se pudo cambiar el estado de la categoría."),
+          description: parseErrorMessage(data, "Could not change the category status."),
         });
         return;
       }
       toast({
-        title: category.isActive ? "Categoría oculta" : "Categoría visible",
+        title: category.isActive ? "Category hidden" : "Category visible",
         description: category.isActive
-          ? "La categoría dejó de mostrarse en la galería pública."
-          : "La categoría volvió a estar activa.",
+          ? "The category is no longer shown on the public gallery."
+          : "The category is active again.",
       });
       await loadCategories();
     } catch {
       toast({
         variant: "destructive",
-        title: "Sin conexión",
-        description: "No se pudo conectar con el backend.",
+        title: "Offline",
+        description: "Could not reach the server.",
       });
     } finally {
       setTogglingId(null);
@@ -366,9 +364,9 @@ export default function ShamellAdminGalleryCategoriesPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
-        title="Categorías de galería"
-        subtitle="Álbumes curados para tu vitrina visual."
-        actionLabel="Nueva categoría"
+        title="Gallery categories"
+        subtitle="Curated albums for your public gallery."
+        actionLabel="New category"
         onAction={openCategoryCreate}
         bordered={false}
       />
@@ -379,7 +377,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
           className="shamell-glass-surface inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
         >
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-          Ir a galería
+          Go to gallery
         </Link>
       </div>
 
@@ -387,9 +385,9 @@ export default function ShamellAdminGalleryCategoriesPage() {
         {(
           [
             ["TOTAL", String(stats.total)],
-            ["ACTIVAS", String(stats.active)],
-            ["CON MEDIOS", String(stats.withMedia)],
-            ["DESTACADA", stats.star],
+            ["ACTIVE", String(stats.active)],
+            ["WITH MEDIA", String(stats.withMedia)],
+            ["SPOTLIGHT", stats.star],
           ] as const
         ).map(([label, value]) => (
           <div
@@ -407,21 +405,21 @@ export default function ShamellAdminGalleryCategoriesPage() {
         <AdminSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
-          placeholder="Buscar por nombre o slug..."
+          placeholder="Search by name or slug..."
           className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-wrap gap-2 lg:shrink-0">
-          {filterPill("all", "Todas")}
-          {filterPill("active", "Activas")}
-          {filterPill("inactive", "Inactivas")}
+          {filterPill("all", "All")}
+          {filterPill("active", "Active")}
+          {filterPill("inactive", "Inactive")}
         </div>
       </div>
 
       <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
-        {isLoading ? <p className="text-sm text-foreground/65">Cargando...</p> : null}
+        {isLoading ? <p className="text-sm text-foreground/65">Loading...</p> : null}
         {!isLoading && filteredCategories.length === 0 ? (
           <p className="text-sm text-foreground/65">
-            {categories.length === 0 ? "Aún no hay categorías." : "Nada coincide con tu búsqueda o filtro."}
+            {categories.length === 0 ? "No categories yet." : "Nothing matches your search or filter."}
           </p>
         ) : null}
 
@@ -430,7 +428,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
             const count = photoCountByCategory[category.id] ?? 0;
             const previews = previewUrlsByCategory[category.id] ?? [];
             const isSpotlight = Boolean(spotlightCategoryId && category.id === spotlightCategoryId);
-            const mediaLabel = count === 1 ? "1 medio" : `${count} medios`;
+            const mediaLabel = count === 1 ? "1 item" : `${count} items`;
             const isExpanded = expandedCategoryIds.has(category.id);
 
             return (
@@ -461,14 +459,16 @@ export default function ShamellAdminGalleryCategoriesPage() {
                       )}
                     >
                       <span className="text-gold/90">•</span>
-                      {category.isActive ? "ACTIVA" : "INACTIVA"}
+                      {category.isActive ? "ACTIVE" : "INACTIVE"}
                     </p>
                     <button
                       type="button"
                       onClick={() => toggleCategoryExpanded(category.id)}
                       aria-expanded={isExpanded}
                       aria-label={
-                        isExpanded ? `Ocultar vista previa de ${category.name}` : `Mostrar vista previa de ${category.name}`
+                        isExpanded
+                          ? `Hide preview for ${category.name}`
+                          : `Show preview for ${category.name}`
                       }
                       className="shrink-0 rounded-lg border border-gold/18 p-1.5 text-gold/85 transition hover:border-gold/40 hover:bg-gold/10"
                     >
@@ -485,13 +485,13 @@ export default function ShamellAdminGalleryCategoriesPage() {
                     <>
                       <p className="flex items-start gap-2 font-body text-xs leading-relaxed text-foreground/50">
                         <Layers className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gold/40" strokeWidth={1.5} />
-                        Colección para agrupar fotos y videos en la galería pública.
+                        Collection to group photos and videos in the public gallery.
                       </p>
 
                       <div className="shamell-glass-surface relative overflow-hidden rounded-xl border border-gold/14 p-3">
                         <div className="mb-2 flex items-center gap-2">
                           <Aperture className="h-3.5 w-3.5 text-gold/45" strokeWidth={1.5} />
-                          <p className="font-brand text-[9px] tracking-[0.14em] text-gold/55">VISTA PREVIA</p>
+                          <p className="font-brand text-[9px] tracking-[0.14em] text-gold/55">PREVIEW</p>
                         </div>
                         {previews.length > 0 ? (
                           <div
@@ -515,7 +515,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
                         ) : (
                           <div className="shamell-glass-surface flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gold/20 px-4 py-10 text-center">
                             <ImageIcon className="h-8 w-8 text-gold/30" strokeWidth={1.2} />
-                            <p className="font-body text-[11px] text-foreground/40">Sin vista previa aún</p>
+                            <p className="font-body text-[11px] text-foreground/40">No preview yet</p>
                           </div>
                         )}
                       </div>
@@ -525,13 +525,13 @@ export default function ShamellAdminGalleryCategoriesPage() {
                   <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-gold/12 pt-4 font-body text-[11px] text-foreground/45">
                     <span className="text-gold/70">{mediaLabel}</span>
                     <span className="text-gold/25">·</span>
-                    <span>{formatRelativeEs(category.updatedAt ?? category.createdAt)}</span>
+                    <span>{formatRelativeEn(category.updatedAt ?? category.createdAt)}</span>
                     <div className="ml-auto flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() => startCategoryEdit(category)}
                         className="rounded-lg border border-gold/22 p-2 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
-                        aria-label={`Editar ${category.name}`}
+                        aria-label={`Edit ${category.name}`}
                       >
                         <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
                       </button>
@@ -546,7 +546,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
                             : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                           togglingId === category.id && "cursor-not-allowed opacity-60",
                         )}
-                        aria-label={`${category.isActive ? "Desactivar" : "Activar"} ${category.name}`}
+                        aria-label={`${category.isActive ? "Hide" : "Show"} ${category.name}`}
                       >
                         <span
                           className={cn(
@@ -565,7 +565,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
       </section>
 
       <AdminModal
-        title={editingCategoryId ? "Editar categoría" : "Nueva categoría"}
+        title={editingCategoryId ? "Edit category" : "New category"}
         isOpen={isCategoryModalOpen}
         onClose={() => {
           setIsCategoryModalOpen(false);
@@ -574,29 +574,29 @@ export default function ShamellAdminGalleryCategoriesPage() {
       >
         <form id="gallery-category-form" onSubmit={onSubmitCategory} className="space-y-5">
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">NOMBRE</span>
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">NAME</span>
             <input
               value={categoryName}
               onChange={(event) => setCategoryName(event.target.value)}
               className="mt-2 h-11 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none focus:border-gold"
-              placeholder="Ej. Performance en vivo"
+              placeholder="e.g. Live performance"
             />
             {!editingCategoryId ? (
               <p className="mt-2 font-body text-[11px] text-foreground/50">
-                Vista previa del slug:{" "}
+                Slug preview:{" "}
                 <code className="shamell-glass-surface rounded border border-gold/15 px-1.5 py-0.5 font-mono text-gold/80">
                   {slugifyDisplay(categoryName) || "…"}
                 </code>{" "}
-                (se confirma al guardar; el backend garantiza que sea único).
+                (confirmed on save; the backend enforces uniqueness).
               </p>
             ) : (
               <p className="mt-2 font-body text-[11px] text-foreground/50">
-                Slug publicado:{" "}
+                Published slug:{" "}
                 <code className="shamell-glass-surface rounded border border-gold/15 px-1.5 py-0.5 font-mono text-gold/80">
                   /
                   {categories.find((c) => c.id === editingCategoryId)?.slug ?? "…"}
                 </code>
-                . Si cambias el nombre, el slug se actualizará con la misma regla (único en el sistema).
+                . If you change the name, the slug updates with the same rules (unique in the system).
               </p>
             )}
           </label>
@@ -610,14 +610,14 @@ export default function ShamellAdminGalleryCategoriesPage() {
               }}
               className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
             >
-              Cancelar
+              Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmittingCategory || !categoryName.trim()}
               className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmittingCategory ? "Guardando..." : editingCategoryId ? "Guardar cambios" : "Crear categoría"}
+              {isSubmittingCategory ? "Saving..." : editingCategoryId ? "Save changes" : "Create category"}
             </button>
           </div>
         </form>

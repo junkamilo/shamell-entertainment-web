@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { imageSize } from 'image-size';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GalleryService } from '../gallery/gallery.service';
 
@@ -10,6 +11,10 @@ type HeaderPhoto = {
   id: string;
   imageUrl: string;
   imagePublicId: string;
+  focalX: number;
+  focalY: number;
+  focalMobileX: number;
+  focalMobileY: number;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -19,6 +24,8 @@ type HeaderPhoto = {
 export class HeaderMediaService {
   private readonly fallbackCategoryName = 'Header Principal';
   private readonly fallbackCategorySlug = 'home-header';
+  private readonly minHeroImageWidth = 1200;
+  private readonly minHeroImageHeight = 1200;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -39,6 +46,10 @@ export class HeaderMediaService {
         id: true,
         imageUrl: true,
         imagePublicId: true,
+        focalX: true,
+        focalY: true,
+        focalMobileX: true,
+        focalMobileY: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -56,6 +67,10 @@ export class HeaderMediaService {
         id: true,
         imageUrl: true,
         imagePublicId: true,
+        focalX: true,
+        focalY: true,
+        focalMobileX: true,
+        focalMobileY: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -72,6 +87,9 @@ export class HeaderMediaService {
     if (invalid) {
       throw new BadRequestException('Only image files are allowed.');
     }
+    for (const file of files) {
+      this.validateHeroImageDimensions(file);
+    }
 
     const category = await this.ensureHeaderCategory();
     const created = await this.galleryService.createPhoto(
@@ -85,6 +103,10 @@ export class HeaderMediaService {
           id: item.id,
           imageUrl: item.imageUrl,
           imagePublicId: item.imagePublicId,
+          focalX: 50,
+          focalY: 35,
+          focalMobileX: 50,
+          focalMobileY: 35,
           isActive: item.isActive,
           createdAt: item.createdAt,
           updatedAt: item.updatedAt,
@@ -110,6 +132,10 @@ export class HeaderMediaService {
         id: true,
         imageUrl: true,
         imagePublicId: true,
+        focalX: true,
+        focalY: true,
+        focalMobileX: true,
+        focalMobileY: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -133,15 +159,73 @@ export class HeaderMediaService {
     return this.galleryService.deletePhoto(photoId);
   }
 
+  async updateAdminHeaderPhotoFocalPoint(
+    photoId: string,
+    focalX: number,
+    focalY: number,
+    focalMobileX: number,
+    focalMobileY: number,
+  ) {
+    const category = await this.ensureHeaderCategory();
+    const existing = await this.prisma.galleryPhoto.findFirst({
+      where: { id: photoId, categoryId: category.id },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new NotFoundException('Header photo not found.');
+    }
+
+    const updated = await this.prisma.galleryPhoto.update({
+      where: { id: photoId },
+      data: {
+        focalX,
+        focalY,
+        focalMobileX,
+        focalMobileY,
+      },
+      select: {
+        id: true,
+        imageUrl: true,
+        imagePublicId: true,
+        focalX: true,
+        focalY: true,
+        focalMobileX: true,
+        focalMobileY: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return {
+      message: 'Header photo focus updated successfully.',
+      item: this.mapHeaderPhoto(updated),
+    };
+  }
+
   private mapHeaderPhoto(photo: HeaderPhoto) {
     return {
       id: photo.id,
       imageUrl: photo.imageUrl,
       imagePublicId: photo.imagePublicId,
+      focalX: photo.focalX,
+      focalY: photo.focalY,
+      focalMobileX: photo.focalMobileX,
+      focalMobileY: photo.focalMobileY,
       isActive: photo.isActive,
       createdAt: photo.createdAt,
       updatedAt: photo.updatedAt,
     };
+  }
+
+  private validateHeroImageDimensions(file: Express.Multer.File) {
+    const dimensions = imageSize(file.buffer);
+    const width = dimensions.width ?? 0;
+    const height = dimensions.height ?? 0;
+    if (width < this.minHeroImageWidth || height < this.minHeroImageHeight) {
+      throw new BadRequestException(
+        `Image "${file.originalname}" is too small (${width}x${height}). Minimum recommended size is ${this.minHeroImageWidth}x${this.minHeroImageHeight}.`,
+      );
+    }
   }
 
   private async ensureHeaderCategory() {

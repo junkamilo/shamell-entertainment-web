@@ -15,11 +15,11 @@ import { toast } from "@/hooks/use-toast";
 import { useAdminAvailability } from "@/hooks/use-admin-availability";
 import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
 
-const WEEKDAY_LABEL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const WEEKDAY_LABEL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const CLOSURE_KIND_OPTIONS: AdminAccordionSingleOption[] = [
-  { id: "SPECIFIC_DATE", label: "Fecha puntual" },
-  { id: "DATE_RANGE", label: "Rango de fechas (desde / hasta)" },
-  { id: "RECURRING_WEEKDAY", label: "Cada semana (ej. todos los domingos)" },
+  { id: "SPECIFIC_DATE", label: "Single date" },
+  { id: "DATE_RANGE", label: "Date range (from / through)" },
+  { id: "RECURRING_WEEKDAY", label: "Weekly (e.g. every Sunday)" },
 ];
 
 function defaultWeekly(): PublicWeeklySlot[] {
@@ -68,10 +68,10 @@ export default function AgendaDisponibilidadPage() {
       setSavingWeekly(true);
       try {
         await putWeekly(weeklyDraft);
-        toast({ title: "Horario guardado" });
+        toast({ title: "Hours saved" });
       } catch (err) {
         toast({
-          title: "No se pudo guardar",
+          title: "Could not save",
           description: err instanceof Error ? err.message : "",
           variant: "destructive",
         });
@@ -88,10 +88,10 @@ export default function AgendaDisponibilidadPage() {
       setAddingClosure(true);
       try {
         if (closureKind === "SPECIFIC_DATE") {
-          if (!closureDate) throw new Error("Selecciona una fecha para el cierre puntual.");
+          if (!closureDate) throw new Error("Pick a date for this one-day closure.");
           await createClosure({ kind: "SPECIFIC_DATE", date: closureDate, note: closureNote || undefined });
         } else if (closureKind === "DATE_RANGE") {
-          if (!closureStartDate || !closureEndDate) throw new Error("Selecciona fecha inicial y final.");
+          if (!closureStartDate || !closureEndDate) throw new Error("Pick start and end dates.");
           await createClosure({
             kind: "DATE_RANGE",
             startDate: closureStartDate,
@@ -109,7 +109,7 @@ export default function AgendaDisponibilidadPage() {
         setClosureStartDate("");
         setClosureEndDate("");
         setClosureNote("");
-        toast({ title: "Cierre añadido" });
+        toast({ title: "Closure added" });
       } catch (err) {
         toast({
           title: "Error",
@@ -133,8 +133,8 @@ export default function AgendaDisponibilidadPage() {
 
   return (
     <div className="mx-auto w-full max-w-4xl">
-      <AdminBackButton href="/shamell-admin/agenda" label="Volver" className="mb-4" />
-      <AdminModuleHero title="Disponibilidad" bordered={false} />
+      <AdminBackButton href="/shamell-admin/agenda" label="Back" className="mb-4" />
+      <AdminModuleHero title="Availability" bordered={false} />
 
       <div className="mb-6 flex flex-wrap items-center gap-3">
         <button
@@ -146,7 +146,7 @@ export default function AgendaDisponibilidadPage() {
               : "rounded-full border border-gold/18 px-4 py-1.5 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold"
           }
         >
-          HORARIO SEMANAL
+          WEEKLY HOURS
         </button>
         <button
           type="button"
@@ -157,14 +157,14 @@ export default function AgendaDisponibilidadPage() {
               : "rounded-full border border-gold/18 px-4 py-1.5 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold"
           }
         >
-          CIERRES
+          CLOSURES
         </button>
       </div>
 
       {activePanel === "weekly" ? (
         <section className="shamell-glass-surface mb-10 rounded-2xl p-5 md:p-7">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gold/10 pb-4">
-          <h2 className="font-brand text-[11px] tracking-[0.18em] text-gold">HORARIO SEMANAL</h2>
+          <h2 className="font-brand text-[11px] tracking-[0.18em] text-gold">WEEKLY HOURS</h2>
           {error ? <span className="text-xs text-red-300">{error}</span> : null}
         </div>
 
@@ -202,7 +202,7 @@ export default function AgendaDisponibilidadPage() {
                       )
                     }
                   />
-                  Cerrado
+                  Closed
                 </label>
                 {!row.isClosed ? (
                   <div className="flex flex-wrap items-center gap-2 md:flex-1">
@@ -211,7 +211,7 @@ export default function AgendaDisponibilidadPage() {
                       onClick={() => setTimePickerTarget({ weekday: row.weekday, field: "start" })}
                       className="shamell-glass-trigger min-w-[110px] rounded-lg border border-gold/25 px-3 py-1.5 text-left font-body text-xs text-foreground"
                     >
-                      {row.startTime ? formatTimeDisplayUs(row.startTime) : "Elegir hora"}
+                      {row.startTime ? formatTimeDisplayUs(row.startTime) : "Choose time"}
                     </button>
                     <span className="text-foreground/40">—</span>
                     <button
@@ -219,7 +219,7 @@ export default function AgendaDisponibilidadPage() {
                       onClick={() => setTimePickerTarget({ weekday: row.weekday, field: "end" })}
                       className="shamell-glass-trigger min-w-[110px] rounded-lg border border-gold/25 px-3 py-1.5 text-left font-body text-xs text-foreground"
                     >
-                      {row.endTime ? formatTimeDisplayUs(row.endTime) : "Elegir hora"}
+                      {row.endTime ? formatTimeDisplayUs(row.endTime) : "Choose time"}
                     </button>
                   </div>
                 ) : null}
@@ -232,14 +232,14 @@ export default function AgendaDisponibilidadPage() {
                 className="rounded-full border border-gold/35 px-5 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50"
               >
                 {savingWeekly ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
-                GUARDAR HORARIO
+                SAVE HOURS
               </button>
               <button
                 type="button"
                 onClick={() => reload()}
                 className="rounded-full border border-gold/15 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/30 hover:text-gold"
               >
-                RECARGAR
+                RELOAD
               </button>
             </div>
           </form>
@@ -250,12 +250,12 @@ export default function AgendaDisponibilidadPage() {
       {activePanel === "closures" ? (
         <section className="shamell-glass-surface rounded-2xl p-5 md:p-7">
         <h2 className="border-b border-gold/10 pb-4 font-brand text-[11px] tracking-[0.18em] text-gold">
-          CIERRES (vacaciones / día puntual / cada semana)
+          CLOSURES (time off / single day / weekly recurring)
         </h2>
 
         <form onSubmit={onAddClosure} className="mt-6 grid gap-4 md:grid-cols-2">
           <label className="block md:col-span-2">
-            <span className="font-brand text-[10px] tracking-widest text-gold/65">TIPO</span>
+            <span className="font-brand text-[10px] tracking-widest text-gold/65">TYPE</span>
             <AdminAccordionSingleSelect
               options={CLOSURE_KIND_OPTIONS}
               value={closureKind}
@@ -265,49 +265,49 @@ export default function AgendaDisponibilidadPage() {
               }}
               className="mt-2"
               showNoneOption={false}
-              ariaLabel="Seleccionar tipo de cierre"
+              ariaLabel="Select closure type"
             />
           </label>
           {closureKind === "SPECIFIC_DATE" ? (
             <label className="block">
-              <span className="font-brand text-[10px] tracking-widest text-gold/65">FECHA</span>
+              <span className="font-brand text-[10px] tracking-widest text-gold/65">DATE</span>
               <input type="hidden" required value={closureDate} readOnly />
               <button
                 type="button"
                 onClick={() => setClosureDatePickerTarget("single")}
                 className="shamell-glass-trigger mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 text-left font-body text-sm text-foreground"
               >
-                {closureDate || "Elegir fecha"}
+                {closureDate || "Choose date"}
               </button>
             </label>
           ) : closureKind === "DATE_RANGE" ? (
             <>
               <label className="block">
-                <span className="font-brand text-[10px] tracking-widest text-gold/65">DESDE</span>
+                <span className="font-brand text-[10px] tracking-widest text-gold/65">FROM</span>
                 <input type="hidden" required value={closureStartDate} readOnly />
                 <button
                   type="button"
                   onClick={() => setClosureDatePickerTarget("start")}
                   className="shamell-glass-trigger mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 text-left font-body text-sm text-foreground"
                 >
-                  {closureStartDate || "Elegir fecha inicial"}
+                  {closureStartDate || "Choose start date"}
                 </button>
               </label>
               <label className="block">
-                <span className="font-brand text-[10px] tracking-widest text-gold/65">HASTA</span>
+                <span className="font-brand text-[10px] tracking-widest text-gold/65">THROUGH</span>
                 <input type="hidden" required value={closureEndDate} readOnly />
                 <button
                   type="button"
                   onClick={() => setClosureDatePickerTarget("end")}
                   className="shamell-glass-trigger mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 text-left font-body text-sm text-foreground"
                 >
-                  {closureEndDate || "Elegir fecha final"}
+                  {closureEndDate || "Choose end date"}
                 </button>
               </label>
             </>
           ) : (
             <label className="block">
-              <span className="font-brand text-[10px] tracking-widest text-gold/65">DÍA DE LA SEMANA</span>
+              <span className="font-brand text-[10px] tracking-widest text-gold/65">DAY OF WEEK</span>
               <select
                 value={closureWeekday}
                 onChange={(e) => setClosureWeekday(Number(e.target.value))}
@@ -322,13 +322,13 @@ export default function AgendaDisponibilidadPage() {
             </label>
           )}
           <label className="block md:col-span-2">
-            <span className="font-brand text-[10px] tracking-widest text-gold/65">NOTA (OPCIONAL)</span>
+            <span className="font-brand text-[10px] tracking-widest text-gold/65">NOTE (OPTIONAL)</span>
             <input
               type="text"
               value={closureNote}
               onChange={(e) => setClosureNote(e.target.value)}
               className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 font-body text-sm text-foreground outline-none focus:border-gold"
-              placeholder="Ej. Viaje, feriado"
+              placeholder="e.g. Travel, holiday"
             />
           </label>
           <div className="md:col-span-2">
@@ -338,7 +338,7 @@ export default function AgendaDisponibilidadPage() {
               className="rounded-full border border-gold/35 px-5 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50"
             >
               {addingClosure ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
-              AÑADIR CIERRE
+              ADD CLOSURE
             </button>
           </div>
         </form>
@@ -346,7 +346,7 @@ export default function AgendaDisponibilidadPage() {
         <ul className="mt-8 space-y-2">
           {(snapshot?.closures ?? []).length === 0 ? (
             <li className="shamell-glass-surface rounded-lg py-8 text-center font-body text-sm text-foreground/45">
-              No hay cierres extra configurados.
+              No extra closures configured.
             </li>
           ) : null}
           {(snapshot?.closures ?? []).map((c) => (
@@ -357,10 +357,10 @@ export default function AgendaDisponibilidadPage() {
               <div>
                 <p className="font-brand text-xs tracking-wide text-gold">
                   {c.kind === "SPECIFIC_DATE"
-                    ? `Fecha: ${c.date ?? "—"}`
+                    ? `Date: ${c.date ?? "—"}`
                     : c.kind === "DATE_RANGE"
-                      ? `Rango: ${c.startDate ?? "—"} a ${c.endDate ?? "—"}`
-                      : `Cada ${WEEKDAY_LABEL[c.weekday ?? 0] ?? "—"}`}
+                      ? `Range: ${c.startDate ?? "—"} through ${c.endDate ?? "—"}`
+                      : `Every ${WEEKDAY_LABEL[c.weekday ?? 0] ?? "—"}`}
                 </p>
                 {c.note ? <p className="mt-1 font-body text-xs text-foreground/55">{c.note}</p> : null}
               </div>
@@ -372,7 +372,7 @@ export default function AgendaDisponibilidadPage() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/35 px-3 py-2 font-brand text-[10px] tracking-widest text-red-200/90 hover:bg-red-500/10"
               >
                 <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                QUITAR
+                REMOVE
               </button>
             </li>
           ))}
@@ -383,7 +383,7 @@ export default function AgendaDisponibilidadPage() {
 
       <ContactTimePickerModal
         isOpen={Boolean(timePickerTarget)}
-        title={timePickerTarget?.field === "end" ? "Hora final" : "Hora inicial"}
+        title={timePickerTarget?.field === "end" ? "End time" : "Start time"}
         value={pickerValue}
         onClose={() => setTimePickerTarget(null)}
         onConfirm={(hhmm) => {
@@ -401,10 +401,10 @@ export default function AgendaDisponibilidadPage() {
         isOpen={closureDatePickerTarget !== null}
         title={
           closureDatePickerTarget === "start"
-            ? "Fecha inicial"
+            ? "Start date"
             : closureDatePickerTarget === "end"
-              ? "Fecha final"
-              : "Fecha de cierre"
+              ? "End date"
+              : "Closure date"
         }
         value={
           closureDatePickerTarget === "start"
@@ -420,16 +420,16 @@ export default function AgendaDisponibilidadPage() {
           else setClosureDate(iso);
         }}
       />
-      <AdminModal title="Eliminar cierre" isOpen={Boolean(confirmClosureId)} onClose={() => setConfirmClosureId(null)}>
+      <AdminModal title="Delete closure" isOpen={Boolean(confirmClosureId)} onClose={() => setConfirmClosureId(null)}>
         <div className="space-y-4">
-          <p className="text-sm text-foreground/75">Este cierre se eliminará de forma permanente.</p>
+          <p className="text-sm text-foreground/75">This closure will be removed permanently.</p>
           <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setConfirmClosureId(null)}
               className="rounded-md border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/70 hover:border-gold/35 hover:text-gold"
             >
-              CERRAR
+              CLOSE
             </button>
             <button
               type="button"
@@ -447,7 +447,7 @@ export default function AgendaDisponibilidadPage() {
               }}
               className="rounded-md border border-red-400/45 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-red-200 hover:bg-red-500/10"
             >
-              ELIMINAR
+              DELETE
             </button>
           </div>
         </div>

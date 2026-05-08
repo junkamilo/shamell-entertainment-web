@@ -116,7 +116,7 @@ export default function ContactTimePickerModal({
         ) : null}
         {!clampError && isBlockedByBooking ? (
           <p className="px-5 pb-0 pt-2 font-body text-xs text-foreground/65">
-            Esta hora ya está reservada. Elige otra disponible.
+            This time is already booked. Choose another available slot.
           </p>
         ) : null}
 
@@ -191,7 +191,7 @@ export default function ContactTimePickerModal({
                 m !== null &&
                 (blockedRanges ?? []).some((r) => m >= r.startMinutes && m <= r.endMinutes)
               ) {
-                setClampError("Ese horario ya está reservado. Elige otra hora.");
+                setClampError("That time is already booked. Choose another time.");
                 return;
               }
               setClampError(null);

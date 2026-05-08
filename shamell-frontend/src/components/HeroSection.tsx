@@ -1,7 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { buildHeroWaveClipPathD } from "@/lib/heroPearlWave";
 import HeroFallbackBackground from "./HeroFallbackBackground";
@@ -11,12 +10,26 @@ import PearlDivider from "./PearlDivider";
 const heroWaveClipPathId = "shamell-hero-wave-clip";
 const heroClipPath = `url(#${heroWaveClipPathId})`;
 
+type HeaderHeroPhoto = {
+  id: string;
+  imageUrl: string;
+  focalX?: number;
+  focalY?: number;
+  focalMobileX?: number;
+  focalMobileY?: number;
+};
+
+function clampPercent(value: number | undefined, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
 const HeroSection = () => {
   const apiBaseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
     [],
   );
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<HeaderHeroPhoto[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -27,12 +40,23 @@ const HeroSection = () => {
         });
         const data = await response.json().catch(() => []);
         if (!response.ok || !Array.isArray(data)) return;
-        const urls = data
-          .map((item) =>
-            typeof item?.imageUrl === "string" ? item.imageUrl.trim() : "",
-          )
-          .filter(Boolean);
-        setPhotos(urls);
+        const items = data
+          .map((item) => {
+            const imageUrl = typeof item?.imageUrl === "string" ? item.imageUrl.trim() : "";
+            if (!imageUrl) return null;
+            return {
+              id: typeof item?.id === "string" ? item.id : imageUrl,
+              imageUrl,
+              focalX: typeof item?.focalX === "number" ? item.focalX : undefined,
+              focalY: typeof item?.focalY === "number" ? item.focalY : undefined,
+              focalMobileX:
+                typeof item?.focalMobileX === "number" ? item.focalMobileX : undefined,
+              focalMobileY:
+                typeof item?.focalMobileY === "number" ? item.focalMobileY : undefined,
+            } as HeaderHeroPhoto;
+          })
+          .filter((item) => item !== null) as HeaderHeroPhoto[];
+        setPhotos(items);
       } catch {
         // Keep fallback background when API is unavailable.
       }
@@ -49,17 +73,6 @@ const HeroSection = () => {
   }, [photos.length]);
 
   const hasRemotePhotos = photos.length > 0;
-  const canSlide = photos.length > 1;
-
-  const onPrev = () => {
-    if (!canSlide) return;
-    setActiveIndex((prev) => (prev - 1 + photos.length) % photos.length);
-  };
-
-  const onNext = () => {
-    if (!canSlide) return;
-    setActiveIndex((prev) => (prev + 1) % photos.length);
-  };
 
   return (
     <section
@@ -89,15 +102,30 @@ const HeroSection = () => {
         <div className="shamell-hero-ken absolute inset-0 min-h-full min-w-full">
           {hasRemotePhotos ? (
             <div className="relative h-full w-full">
-              {photos.map((url, index) => (
-                <img
-                  key={`${url}-${index}`}
-                  src={url}
-                  alt=""
-                  className={`hero-zoom absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+              {photos.map((photo, index) => (
+                <div
+                  key={`${photo.id}-${index}`}
+                  className={`absolute inset-0 transition-opacity duration-700 ${
                     index === activeIndex ? "opacity-100" : "opacity-0"
                   }`}
-                />
+                >
+                  <img
+                    src={photo.imageUrl}
+                    alt=""
+                    className="hero-zoom absolute inset-0 hidden h-full w-full scale-[1.12] object-cover md:block"
+                    style={{
+                      objectPosition: `${clampPercent(photo.focalX, 50)}% ${clampPercent(photo.focalY, 35)}%`,
+                    }}
+                  />
+                  <img
+                    src={photo.imageUrl}
+                    alt=""
+                    className="hero-zoom absolute inset-0 h-full w-full scale-[1.12] object-cover md:hidden"
+                    style={{
+                      objectPosition: `${clampPercent(photo.focalMobileX, clampPercent(photo.focalX, 50))}% ${clampPercent(photo.focalMobileY, clampPercent(photo.focalY, 35))}%`,
+                    }}
+                  />
+                </div>
               ))}
             </div>
           ) : (
@@ -114,27 +142,6 @@ const HeroSection = () => {
           aria-hidden
         />
       </div>
-
-      {canSlide ? (
-        <div className="absolute inset-x-0 bottom-24 z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-4 sm:px-6 md:bottom-28">
-          <button
-            type="button"
-            onClick={onPrev}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold/45 bg-black/35 text-gold transition hover:border-gold hover:bg-gold/10"
-            aria-label="Foto anterior"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            onClick={onNext}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold/45 bg-black/35 text-gold transition hover:border-gold hover:bg-gold/10"
-            aria-label="Foto siguiente"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-        </div>
-      ) : null}
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 pb-36 pt-24 sm:px-8 sm:pb-40 sm:pt-28 md:px-10">
         <div className="relative w-full max-w-xl text-center md:max-w-3xl lg:max-w-4xl">
@@ -166,7 +173,7 @@ const HeroSection = () => {
               SHAMELL
             </h1>
 
-            <p className="shamell-hero-enter shamell-hero-enter--d3 mx-auto mb-10 max-w-md font-elegant text-base italic leading-relaxed tracking-wide text-gold-light/95 sm:mb-12 sm:text-lg md:max-w-lg md:text-xl">
+            <p className="shamell-hero-enter shamell-hero-enter--d3 mx-auto mb-10 max-w-md font-elegant text-lg font-medium italic leading-relaxed tracking-wide text-gold-light/95 sm:mb-12 sm:text-xl md:max-w-lg md:text-xl">
               Exclusive Performance Artistry
             </p>
 
@@ -184,7 +191,7 @@ const HeroSection = () => {
                   />
                   <a
                     href="/contacto"
-                    className="group relative inline-flex min-h-11 items-center justify-center gap-2 self-center border border-gold/55 px-8 py-2.5 font-brand text-[10px] tracking-[0.26em] text-gold uppercase transition-all duration-300 hover:border-gold hover:bg-gold/8 hover:text-gold-light hover:shadow-[0_0_28px_rgba(197,165,90,0.2)] sm:min-h-12 sm:px-10 sm:text-xs sm:tracking-[0.28em]"
+                    className="group relative inline-flex min-h-11 items-center justify-center gap-2 self-center border border-gold/55 px-8 py-2.5 font-brand text-xs font-semibold tracking-[0.22em] text-gold uppercase transition-all duration-300 hover:border-gold hover:bg-gold/8 hover:text-gold-light hover:shadow-[0_0_28px_rgba(197,165,90,0.2)] sm:min-h-12 sm:px-10 sm:tracking-[0.26em] md:tracking-[0.28em]"
                   >
                     <span className="absolute inset-0 -z-10 bg-linear-to-r from-transparent via-white/6 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" aria-hidden />
                     Inquire
@@ -196,10 +203,6 @@ const HeroSection = () => {
                 </div>
               </div>
             </div>
-
-            <p className="shamell-hero-enter shamell-hero-enter--d5 mt-5 text-center font-brand text-[9px] tracking-[0.35em] text-foreground/40 uppercase sm:mt-6 sm:text-[10px]">
-              Private events · International
-            </p>
           </div>
         </div>
       </div>

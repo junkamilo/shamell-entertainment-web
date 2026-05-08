@@ -26,12 +26,12 @@ export default function AdminPagination({ meta, onPageChange, onPerPageChange, c
   return (
     <div className={`flex flex-wrap items-center justify-between gap-3 ${className ?? ""}`}>
       <p className="text-xs text-foreground/55">
-        Mostrando {rangeStart(meta)}-{rangeEnd(meta)} de {meta.totalItems}
+        Showing {rangeStart(meta)}–{rangeEnd(meta)} of {meta.totalItems}
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="inline-flex items-center gap-1 rounded-full border border-gold/20 bg-black/20 px-1 py-1">
-          <span className="px-2 text-[9px] font-brand tracking-[0.14em] text-foreground/60">POR PÁGINA</span>
+          <span className="px-2 text-[9px] font-brand tracking-[0.14em] text-foreground/60">PER PAGE</span>
           {PAGINATION_PER_PAGE_OPTIONS.map((n) => (
             <button
               key={n}
@@ -52,7 +52,7 @@ export default function AdminPagination({ meta, onPageChange, onPerPageChange, c
           type="button"
           disabled={!meta.hasPrev}
           onClick={() => onPageChange(Math.max(1, meta.page - 1))}
-          aria-label="Página anterior"
+          aria-label="Previous page"
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gold/25 text-gold disabled:opacity-40"
         >
           <ChevronLeft className="h-4 w-4" strokeWidth={1.7} />
@@ -79,7 +79,7 @@ export default function AdminPagination({ meta, onPageChange, onPerPageChange, c
           type="button"
           disabled={!meta.hasNext}
           onClick={() => onPageChange(Math.min(meta.totalPages, meta.page + 1))}
-          aria-label="Página siguiente"
+          aria-label="Next page"
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gold/25 text-gold disabled:opacity-40"
         >
           <ChevronRight className="h-4 w-4" strokeWidth={1.7} />

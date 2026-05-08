@@ -88,10 +88,10 @@ const ServicesSection = () => {
           <div className="h-24 w-[min(20rem,88vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(120,90,160,0.12),transparent_70%)] blur-3xl opacity-80" />
         </div>
         <div className="relative">
-          <h2 className="mb-2 font-brand text-sm tracking-[0.28em] text-gold md:text-base">
+          <h2 className="mb-2 font-brand text-base font-semibold tracking-[0.24em] text-gold md:text-lg md:tracking-[0.26em]">
             SPECIAL EXPERIENCES
           </h2>
-          <p className="mx-auto mb-10 max-w-2xl text-center font-body text-base text-foreground/60">
+          <p className="mx-auto mb-10 max-w-2xl text-center font-body text-base font-medium leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
             Three tiers of experience—from intimate galas to fully bespoke productions. Each level
             includes different scope, production depth, and pricing transparency.
           </p>
@@ -100,11 +100,15 @@ const ServicesSection = () => {
 
       <div className="mx-auto max-w-6xl">
         {isLoading ? (
-          <p className="text-center text-base font-body text-foreground/60">Loading event catalog...</p>
+          <p className="text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">
+            Loading event catalog...
+          </p>
         ) : null}
 
         {!isLoading && services.length === 0 ? (
-          <p className="text-center text-base font-body text-foreground/60">Event catalog coming soon.</p>
+          <p className="text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">
+            Event catalog coming soon.
+          </p>
         ) : null}
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:gap-10">
