@@ -5,6 +5,8 @@ type PearlDividerProps = {
   className?: string;
   /** Hero: bottom-edge wave + pearls aligned with clip (no floating band). */
   variant?: "hero" | "inline";
+  /** Inline strand can stretch beyond the default max width. */
+  fullWidth?: boolean;
 };
 
 const HeroPearlStrand = ({ className = "" }: { className?: string }) => {
@@ -144,7 +146,13 @@ const HeroPearlStrand = ({ className = "" }: { className?: string }) => {
   );
 };
 
-const InlinePearlStrand = ({ className = "" }: { className?: string }) => {
+const InlinePearlStrand = ({
+  className = "",
+  fullWidth = false,
+}: {
+  className?: string;
+  fullWidth?: boolean;
+}) => {
   const uid = useId().replace(/:/g, "");
   const faceId = `pearl-face-${uid}`;
   const faceAccentId = `pearl-face-accent-${uid}`;
@@ -175,7 +183,7 @@ const InlinePearlStrand = ({ className = "" }: { className?: string }) => {
     >
       <svg
         viewBox={`0 0 ${viewW} ${viewH}`}
-        className="h-auto w-full max-w-4xl text-gold-light"
+        className={`h-auto w-full text-gold-light ${fullWidth ? "max-w-none" : "max-w-4xl"}`}
         style={{ aspectRatio: `${viewW} / ${viewH}` }}
         preserveAspectRatio="xMidYMid meet"
         role="presentation"
@@ -254,11 +262,12 @@ const InlinePearlStrand = ({ className = "" }: { className?: string }) => {
 const PearlDivider = ({
   className = "",
   variant = "inline",
+  fullWidth = false,
 }: PearlDividerProps) => {
   if (variant === "hero") {
     return <HeroPearlStrand className={className} />;
   }
-  return <InlinePearlStrand className={className} />;
+  return <InlinePearlStrand className={className} fullWidth={fullWidth} />;
 };
 
 export default PearlDivider;

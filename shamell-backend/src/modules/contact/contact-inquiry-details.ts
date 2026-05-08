@@ -1,6 +1,10 @@
 import { BadRequestException } from '@nestjs/common';
 
-export const EXPERIENCE_ADDONS = ['FIRE', 'VEIL_FAN_LED', 'SWORD_CANDELABRA'] as const;
+export const EXPERIENCE_ADDONS = [
+  'FIRE',
+  'VEIL_FAN_LED',
+  'SWORD_CANDELABRA',
+] as const;
 export type ExperienceAddonCode = (typeof EXPERIENCE_ADDONS)[number];
 
 export const INQUIRY_ENTRY_SOURCES = [
@@ -65,7 +69,11 @@ function trimString(v: unknown, max: number): string | undefined {
   return t.length > max ? t.slice(0, max) : t;
 }
 
-function trimStringArray(v: unknown, maxItems: number, maxItemLen: number): string[] | undefined {
+function trimStringArray(
+  v: unknown,
+  maxItems: number,
+  maxItemLen: number,
+): string[] | undefined {
   if (!Array.isArray(v)) return undefined;
   const out: string[] = [];
   for (const item of v.slice(0, maxItems)) {
@@ -98,7 +106,9 @@ function trimUuidArray(v: unknown, maxItems: number): string[] | undefined {
 }
 
 /** Validates and shrinks client-provided inquiryDetails; returns undefined if absent or empty after trim. */
-export function sanitizeInquiryDetails(raw: unknown): SanitizedInquiryDetails | undefined {
+export function sanitizeInquiryDetails(
+  raw: unknown,
+): SanitizedInquiryDetails | undefined {
   if (raw === undefined || raw === null) return undefined;
   if (!isPlainObject(raw)) {
     throw new BadRequestException('inquiryDetails must be an object.');
@@ -134,16 +144,31 @@ export function sanitizeInquiryDetails(raw: unknown): SanitizedInquiryDetails | 
   const occasionTypeId = trimUuid(raw.occasionTypeId);
   if (occasionTypeId) out.occasionTypeId = occasionTypeId;
 
-  const occasionTypeIdsProject = trimUuidArray(raw.occasionTypeIdsProject, MAX_UUID_ARRAY);
-  if (occasionTypeIdsProject) out.occasionTypeIdsProject = occasionTypeIdsProject;
+  const occasionTypeIdsProject = trimUuidArray(
+    raw.occasionTypeIdsProject,
+    MAX_UUID_ARRAY,
+  );
+  if (occasionTypeIdsProject)
+    out.occasionTypeIdsProject = occasionTypeIdsProject;
 
-  const occasionTypeIdsRole = trimUuidArray(raw.occasionTypeIdsRole, MAX_UUID_ARRAY);
+  const occasionTypeIdsRole = trimUuidArray(
+    raw.occasionTypeIdsRole,
+    MAX_UUID_ARRAY,
+  );
   if (occasionTypeIdsRole) out.occasionTypeIdsRole = occasionTypeIdsRole;
 
-  const bespokeProjectTypes = trimStringArray(raw.bespokeProjectTypes, MAX_ARRAY_LEN, MAX_ITEM_LEN);
+  const bespokeProjectTypes = trimStringArray(
+    raw.bespokeProjectTypes,
+    MAX_ARRAY_LEN,
+    MAX_ITEM_LEN,
+  );
   if (bespokeProjectTypes) out.bespokeProjectTypes = bespokeProjectTypes;
 
-  const bespokeRoles = trimStringArray(raw.bespokeRoles, MAX_ARRAY_LEN, MAX_ITEM_LEN);
+  const bespokeRoles = trimStringArray(
+    raw.bespokeRoles,
+    MAX_ARRAY_LEN,
+    MAX_ITEM_LEN,
+  );
   if (bespokeRoles) out.bespokeRoles = bespokeRoles;
 
   const projectDeadlineNote = trimString(raw.projectDeadlineNote, MAX_NOTE);
@@ -151,14 +176,20 @@ export function sanitizeInquiryDetails(raw: unknown): SanitizedInquiryDetails | 
 
   if (raw.experienceAddons !== undefined) {
     if (!Array.isArray(raw.experienceAddons)) {
-      throw new BadRequestException('inquiryDetails.experienceAddons must be an array.');
+      throw new BadRequestException(
+        'inquiryDetails.experienceAddons must be an array.',
+      );
     }
     const addons: ExperienceAddonCode[] = [];
     for (const a of raw.experienceAddons.slice(0, 8)) {
-      if (typeof a !== 'string' || !EXPERIENCE_ADDONS.includes(a as ExperienceAddonCode)) {
+      if (
+        typeof a !== 'string' ||
+        !EXPERIENCE_ADDONS.includes(a as ExperienceAddonCode)
+      ) {
         throw new BadRequestException('Invalid experienceAddons value.');
       }
-      if (!addons.includes(a as ExperienceAddonCode)) addons.push(a as ExperienceAddonCode);
+      if (!addons.includes(a as ExperienceAddonCode))
+        addons.push(a as ExperienceAddonCode);
     }
     if (addons.length) out.experienceAddons = addons;
   }
@@ -182,7 +213,9 @@ export function sanitizeInquiryDetails(raw: unknown): SanitizedInquiryDetails | 
 
   if (raw.venueIndoor !== undefined && raw.venueIndoor !== null) {
     if (typeof raw.venueIndoor !== 'boolean') {
-      throw new BadRequestException('inquiryDetails.venueIndoor must be a boolean.');
+      throw new BadRequestException(
+        'inquiryDetails.venueIndoor must be a boolean.',
+      );
     }
     out.venueIndoor = raw.venueIndoor;
   }
@@ -196,9 +229,14 @@ export function sanitizeInquiryDetails(raw: unknown): SanitizedInquiryDetails | 
       typeof raw.sourceCatalogKind !== 'string' ||
       !SOURCE_CATALOG_KINDS.includes(raw.sourceCatalogKind as SourceCatalogKind)
     ) {
-      throw new BadRequestException('Invalid inquiryDetails.sourceCatalogKind.');
+      throw new BadRequestException(
+        'Invalid inquiryDetails.sourceCatalogKind.',
+      );
     }
-    if (typeof raw.sourceCatalogId !== 'string' || !UUID_REGEX.test(raw.sourceCatalogId.trim())) {
+    if (
+      typeof raw.sourceCatalogId !== 'string' ||
+      !UUID_REGEX.test(raw.sourceCatalogId.trim())
+    ) {
       throw new BadRequestException('Invalid inquiryDetails.sourceCatalogId.');
     }
     const title = trimString(raw.sourceCatalogTitle, MAX_CATALOG_TITLE);
@@ -223,17 +261,27 @@ export function formatInquiryDetailsSummary(
   const lines: string[] = [];
   if (serviceType) lines.push(`Service line: ${serviceType}`);
   if (details.sourceCatalogKind && details.sourceCatalogId) {
-    const t = details.sourceCatalogTitle ? ` — ${details.sourceCatalogTitle}` : '';
-    lines.push(`Catalog: ${details.sourceCatalogKind} ${details.sourceCatalogId}${t}`);
+    const t = details.sourceCatalogTitle
+      ? ` — ${details.sourceCatalogTitle}`
+      : '';
+    lines.push(
+      `Catalog: ${details.sourceCatalogKind} ${details.sourceCatalogId}${t}`,
+    );
   }
   if (details.entrySource) lines.push(`Entry: ${details.entrySource}`);
   if (details.eventId) lines.push(`Event: ${details.eventId}`);
-  if (details.eventTypeLabel) lines.push(`Event type: ${details.eventTypeLabel}`);
-  else if (details.eventTypeId) lines.push(`Event type id: ${details.eventTypeId}`);
-  if (details.occasionCode) lines.push(`Occasion (legacy code): ${details.occasionCode}`);
-  if (details.occasionSingleLabel) lines.push(`Occasion: ${details.occasionSingleLabel}`);
-  else if (details.occasionTypeId) lines.push(`Occasion type id: ${details.occasionTypeId}`);
-  if (details.occasionOther) lines.push(`Occasion (other): ${details.occasionOther}`);
+  if (details.eventTypeLabel)
+    lines.push(`Event type: ${details.eventTypeLabel}`);
+  else if (details.eventTypeId)
+    lines.push(`Event type id: ${details.eventTypeId}`);
+  if (details.occasionCode)
+    lines.push(`Occasion (legacy code): ${details.occasionCode}`);
+  if (details.occasionSingleLabel)
+    lines.push(`Occasion: ${details.occasionSingleLabel}`);
+  else if (details.occasionTypeId)
+    lines.push(`Occasion type id: ${details.occasionTypeId}`);
+  if (details.occasionOther)
+    lines.push(`Occasion (other): ${details.occasionOther}`);
   if (details.bespokeProjectTypes?.length) {
     lines.push(`Project types: ${details.bespokeProjectTypes.join(', ')}`);
   }
@@ -243,22 +291,31 @@ export function formatInquiryDetailsSummary(
   if (details.bespokeProjectLabels?.length) {
     lines.push(`Bespoke projects: ${details.bespokeProjectLabels.join(', ')}`);
   } else if (details.occasionTypeIdsProject?.length) {
-    lines.push(`Bespoke projects (ids): ${details.occasionTypeIdsProject.join(', ')}`);
+    lines.push(
+      `Bespoke projects (ids): ${details.occasionTypeIdsProject.join(', ')}`,
+    );
   }
   if (details.bespokeRoleLabels?.length) {
     lines.push(`Bespoke roles: ${details.bespokeRoleLabels.join(', ')}`);
   } else if (details.occasionTypeIdsRole?.length) {
-    lines.push(`Bespoke roles (ids): ${details.occasionTypeIdsRole.join(', ')}`);
+    lines.push(
+      `Bespoke roles (ids): ${details.occasionTypeIdsRole.join(', ')}`,
+    );
   }
-  if (details.projectDeadlineNote) lines.push(`Deadline / window: ${details.projectDeadlineNote}`);
+  if (details.projectDeadlineNote)
+    lines.push(`Deadline / window: ${details.projectDeadlineNote}`);
   if (details.experienceAddons?.length) {
     lines.push(`Experience add-ons: ${details.experienceAddons.join(', ')}`);
   }
   if (details.eventTimeStart || details.eventTimeEnd) {
-    lines.push(`Time: ${details.eventTimeStart ?? '?'} – ${details.eventTimeEnd ?? '?'}`);
+    lines.push(
+      `Time: ${details.eventTimeStart ?? '?'} – ${details.eventTimeEnd ?? '?'}`,
+    );
   }
-  if (details.guestCount != null) lines.push(`Guests (approx.): ${details.guestCount}`);
-  if (details.eventAddress) lines.push(`Event address: ${details.eventAddress}`);
+  if (details.guestCount != null)
+    lines.push(`Guests (approx.): ${details.guestCount}`);
+  if (details.eventAddress)
+    lines.push(`Event address: ${details.eventAddress}`);
   if (details.venueIndoor === true) lines.push('Venue: indoor');
   if (details.venueIndoor === false) lines.push('Venue: outdoor');
   return lines.join('\n');

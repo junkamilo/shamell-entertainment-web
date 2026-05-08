@@ -1,12 +1,21 @@
 import { Transform } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
 export class UpsertAboutContentDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
   @MaxLength(120)
-  @Transform(({ value }) => (value === undefined ? undefined : String(value).trim()))
+  @Transform(({ value }) =>
+    value === undefined ? undefined : String(value).trim(),
+  )
   title?: string;
 
   @IsOptional()
@@ -14,7 +23,7 @@ export class UpsertAboutContentDto {
   @IsNotEmpty()
   @MaxLength(16000)
   @Transform(({ value }) =>
-    value === undefined ? undefined : String(value).replace(/^\s+|\s+$/g, ""),
+    value === undefined ? undefined : String(value).replace(/^\s+|\s+$/g, ''),
   )
   paragraph1?: string;
 

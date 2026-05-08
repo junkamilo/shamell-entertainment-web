@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/shamell-admin/inquiries",
-        destination: "/shamell-admin",
+        destination: "/shamell-admin/agenda/peticiones",
         permanent: true,
       },
     ];

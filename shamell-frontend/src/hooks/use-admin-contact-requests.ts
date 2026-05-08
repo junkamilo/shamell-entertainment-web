@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { DEFAULT_PAGINATION_META, type PaginatedResponse, type PaginationMeta } from "@/lib/pagination";
 
 export type ContactRequest = {
   id: string;
@@ -16,15 +17,23 @@ export type ContactRequest = {
   message: string;
   inquiryDetails?: unknown | null;
   isRead: boolean;
+  status?: "PENDING" | "RESERVED" | "CANCELLED";
   createdAt: string;
+};
+
+type AdminContactRequestsQuery = {
+  page?: number;
+  perPage?: number;
+  status?: "PENDING" | "RESERVED" | "CANCELLED";
 };
 
 function apiBase() {
   return process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001";
 }
 
-export function useAdminContactRequests(enabled = true) {
+export function useAdminContactRequests(enabled = true, query?: AdminContactRequestsQuery) {
   const [requests, setRequests] = useState<ContactRequest[]>([]);
+  const [meta, setMeta] = useState<PaginationMeta>(DEFAULT_PAGINATION_META);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +50,13 @@ export function useAdminContactRequests(enabled = true) {
     setIsLoading(true);
     setError(null);
 
-    fetch(`${apiBase()}/api/v1/contact`, {
+    const sp = new URLSearchParams();
+    if (query?.page) sp.set("page", String(query.page));
+    if (query?.perPage) sp.set("perPage", String(query.perPage));
+    if (query?.status) sp.set("status", query.status);
+    const qs = sp.size ? `?${sp.toString()}` : "";
+
+    fetch(`${apiBase()}/api/v1/contact${qs}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then(async (response) => {
@@ -55,36 +70,58 @@ export function useAdminContactRequests(enabled = true) {
         }
         return response.json();
       })
-      .then((data: ContactRequest[]) => {
-        setRequests(Array.isArray(data) ? data : []);
+      .then((data: unknown) => {
+        if (Array.isArray(data)) {
+          setRequests(data as ContactRequest[]);
+          setMeta((m) => ({ ...m, totalItems: data.length, totalPages: 1, page: 1, hasPrev: false, hasNext: false }));
+          return;
+        }
+        const payload = data as Partial<PaginatedResponse<ContactRequest>>;
+        const items = Array.isArray(payload.items) ? payload.items : [];
+        const nextMeta = payload.meta ?? DEFAULT_PAGINATION_META;
+        setRequests(items);
+        setMeta({
+          page: Number(nextMeta.page ?? 1),
+          perPage: Number(nextMeta.perPage ?? query?.perPage ?? 10),
+          totalItems: Number(nextMeta.totalItems ?? items.length),
+          totalPages: Number(nextMeta.totalPages ?? 1),
+          hasPrev: Boolean(nextMeta.hasPrev),
+          hasNext: Boolean(nextMeta.hasNext),
+        });
       })
       .catch((err: unknown) => {
         const message = err instanceof Error ? err.message : "No se pudieron cargar las solicitudes.";
         setError(message);
       })
       .finally(() => setIsLoading(false));
-  }, [enabled]);
+  }, [enabled, query?.page, query?.perPage, query?.status]);
 
   useEffect(() => {
     reload();
   }, [reload]);
 
-  const markAsRead = useCallback(async (id: string) => {
+  const setStatus = useCallback(async (id: string, status: "PENDING" | "RESERVED" | "CANCELLED") => {
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) return;
-    const res = await fetch(`${apiBase()}/api/v1/contact/${id}/read`, {
+    const res = await fetch(`${apiBase()}/api/v1/contact/${id}/status`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       const msg =
         typeof (data as { message?: string }).message === "string"
           ? (data as { message: string }).message
-          : "No se pudo marcar como leída.";
+          : "No se pudo actualizar estado.";
       throw new Error(msg);
     }
-    setRequests((prev) => prev.map((r) => (r.id === id ? { ...r, isRead: true } : r)));
+    setRequests((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, status, isRead: status === "PENDING" ? false : true } : r)),
+    );
   }, []);
 
   const remove = useCallback(async (id: string) => {
@@ -105,5 +142,5 @@ export function useAdminContactRequests(enabled = true) {
     setRequests((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
-  return { requests, isLoading, error, reload, markAsRead, remove };
+  return { requests, meta, isLoading, error, reload, setStatus, remove };
 }

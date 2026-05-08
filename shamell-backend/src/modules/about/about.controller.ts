@@ -48,7 +48,9 @@ export class AboutController {
   ) {
     const hasBodyFields = Object.keys(dto).length > 0;
     if (!hasBodyFields && !imageFile) {
-      throw new BadRequestException('Provide at least one field or image to update.');
+      throw new BadRequestException(
+        'Provide at least one field or image to update.',
+      );
     }
     return this.aboutService.upsertAdminAboutContent(dto, imageFile);
   }

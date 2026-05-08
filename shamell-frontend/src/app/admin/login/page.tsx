@@ -104,8 +104,8 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="bg-background min-h-screen pt-20 pb-16 px-4">
-      <section className="max-w-2xl mx-auto border border-gold/30 bg-background/80 p-8 md:p-10">
+    <main className="shamell-admin-bg min-h-screen px-4 pb-16 pt-20">
+      <section className="admin-panel mx-auto max-w-2xl border-shamell-line-strong p-8 md:p-10">
         <div className="flex flex-col items-center text-center mb-8">
           <FlameIcon className="w-10 h-14 mb-4" />
           <h1 className="font-brand text-gold text-2xl md:text-4xl tracking-[0.16em] mb-2">
@@ -138,7 +138,7 @@ export default function AdminLoginPage() {
             />
           ) : null}
 
-          {error ? <p className="text-red-300 text-sm">{error}</p> : null}
+          {error ? <p className="text-sm text-shamell-danger">{error}</p> : null}
           {message ? <p className="text-gold-light text-sm">{message}</p> : null}
 
           <button type="submit" className="btn-outline-gold w-full font-brand" disabled={isSubmitting}>
@@ -185,7 +185,7 @@ function Field({
         placeholder={placeholder}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold"
+        className="mt-2 w-full rounded-shamell-md border-shamell-line px-4 py-3 text-foreground outline-none focus:border-shamell-line-strong"
       />
     </label>
   );

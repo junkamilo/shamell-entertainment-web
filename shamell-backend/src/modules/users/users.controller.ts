@@ -1,4 +1,11 @@
-import { Body, Controller, ForbiddenException, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  HttpCode,
+  HttpStatus,
+  Post,
+} from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 
 @Controller('users')

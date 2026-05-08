@@ -1,12 +1,20 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateGalleryCategoryDto {
   @IsOptional()
   @IsString()
   @MinLength(2)
   @MaxLength(100)
-  @Transform(({ value }) => (value === undefined ? undefined : String(value).trim()))
+  @Transform(({ value }) =>
+    value === undefined ? undefined : String(value).trim(),
+  )
   name?: string;
 
   @IsOptional()

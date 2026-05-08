@@ -4,6 +4,7 @@ import type { HTMLAttributes } from "react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import InquirySelectionSummary from "@/components/contact/InquirySelectionSummary";
 import ContactDatePickerModal from "@/components/contact/ContactDatePickerModal";
 import ContactTimePickerModal from "@/components/contact/ContactTimePickerModal";
 import {
@@ -15,12 +16,20 @@ import {
 } from "@/components/contact/contactLogisticsUtils";
 import {
   EXPERIENCE_ADDON_OPTIONS,
+  SERVICE_TYPE_CODES,
   isValidInquiryCode,
   resolveServiceLineFromCatalog,
   type ContactCatalogKind,
   type InquiryEntrySource,
   type ServiceTypeCode,
 } from "@/lib/contactInquiryConstants";
+import { usePublicAvailability } from "@/hooks/use-public-availability";
+import {
+  expandBlockedDateReasonsMap,
+  expandBlockedDates,
+  isoDateInTzNow,
+  timeBoundsForDateISO,
+} from "@/lib/bookingAvailability";
 
 export type ContactInquiryFormProps = {
   initialServiceType?: ServiceTypeCode;
@@ -37,7 +46,10 @@ type CatalogSnapshot = {
   id: string;
   title: string;
   contactInquiryCode: string | null;
+  description?: string;
   descriptionPreview?: string;
+  items: string[];
+  imageUrl?: string | null;
 };
 
 export type ContactLine = {
@@ -46,6 +58,9 @@ export type ContactLine = {
   eventTypeName: string;
   contactInquiryCode: string | null;
   description: string;
+  items: string[];
+  images: string[];
+  heroImageUrl?: string | null;
   /** `event_type` = solo existe tipo de evento (sin fila Event); no enviar `eventId` al crear contacto. */
   lineKind?: "event" | "event_type";
   occasionSingle: { id: string; name: string }[];
@@ -56,6 +71,7 @@ export type ContactLine = {
 type Phase =
   | "service"
   | "detail"
+  | "serviceType"
   | "experiences"
   | "logistics"
   | "expectations"
@@ -69,6 +85,7 @@ type WizardData = {
   contactLineKind: "event" | "event_type";
   eventTypeId: string;
   inquiryCode: ServiceTypeCode | "";
+  serviceOptionId: string;
   occasionTypeId: string;
   occasionTypeIdsProject: string[];
   occasionTypeIdsRole: string[];
@@ -82,11 +99,29 @@ type WizardData = {
   eventAddress: string;
   guestCount: string;
   venueIndoor: "" | "indoor" | "outdoor";
-  preferences: string;
   message: string;
   fullName: string;
   email: string;
   phone: string;
+};
+
+type ServiceSummarySnapshot = {
+  id: string;
+  title: string;
+  contactInquiryCode: string | null;
+  description?: string;
+  descriptionPreview?: string;
+  items: string[];
+  imageUrl?: string | null;
+};
+
+type PublicServiceOption = {
+  id: string;
+  title: string;
+  inquiryCode: ServiceTypeCode;
+  description?: string;
+  items: string[];
+  imageUrl?: string | null;
 };
 
 function emptyWizard(initialServiceType?: ServiceTypeCode): WizardData {
@@ -95,6 +130,7 @@ function emptyWizard(initialServiceType?: ServiceTypeCode): WizardData {
     contactLineKind: "event",
     eventTypeId: "",
     inquiryCode: initialServiceType ?? "",
+    serviceOptionId: "",
     occasionTypeId: "",
     occasionTypeIdsProject: [],
     occasionTypeIdsRole: [],
@@ -108,7 +144,6 @@ function emptyWizard(initialServiceType?: ServiceTypeCode): WizardData {
     eventAddress: "",
     guestCount: "",
     venueIndoor: "",
-    preferences: "",
     message: "",
     fullName: "",
     email: "",
@@ -117,7 +152,7 @@ function emptyWizard(initialServiceType?: ServiceTypeCode): WizardData {
 }
 
 function phaseFlow(inquiryCode: string): Phase[] {
-  const flow: Phase[] = ["service", "detail"];
+  const flow: Phase[] = ["service", "detail", "serviceType"];
   if (inquiryCode === "PRIVATE_GALA" || inquiryCode === "VIP_EVENT") {
     flow.push("experiences");
   }
@@ -149,17 +184,7 @@ function validatePhase(
 
   switch (phase) {
     case "service": {
-      if (serviceCatalogActive) {
-        if (!isValidInquiryCode(d.inquiryCode)) {
-          return "Please select an offering that matches what you are planning.";
-        }
-        return null;
-      }
-      if (opts.hadServiceTypeInUrl && isValidInquiryCode(d.inquiryCode)) return null;
       if (contactLines.length === 0) {
-        if (!isValidInquiryCode(d.inquiryCode)) {
-          return "Please select an offering that matches what you are planning.";
-        }
         return null;
       }
       if (!d.contactLineId) return "Please select one of the catalog offerings below.";
@@ -178,6 +203,16 @@ function validatePhase(
       }
       if (roles.length > 0 && d.occasionTypeIdsRole.length === 0) {
         return "Select at least one collaboration role.";
+      }
+      return null;
+    }
+    case "serviceType": {
+      if (serviceCatalogActive && isValidInquiryCode(d.inquiryCode)) return null;
+      if (!serviceCatalogActive && d.serviceOptionId.trim().length === 0) {
+        return "Please select a specific service option.";
+      }
+      if (!isValidInquiryCode(d.inquiryCode)) {
+        return "Please select the service type that best matches your request.";
       }
       return null;
     }
@@ -204,7 +239,6 @@ function validatePhase(
     case "expectations": {
       if (d.message.trim().length < 10) return "Please share at least 10 characters about your vision.";
       if (d.message.length > 4000) return "Description must be at most 4000 characters.";
-      if (d.preferences.length > 2000) return "Preferences must be at most 2000 characters.";
       return null;
     }
     case "contact": {
@@ -303,6 +337,29 @@ function lineDescriptionPreview(description: string, max = 140): string {
   return oneLine.length > max ? `${oneLine.slice(0, max - 1)}…` : oneLine;
 }
 
+function readableInquiryCode(code: string): string {
+  return code.replace(/_/g, " ").trim();
+}
+
+function inquiryCodeDescription(code: ServiceTypeCode): string {
+  if (code === "VIP_EVENT") return "For premium social and private events.";
+  if (code === "PRIVATE_GALA") return "For gala-style and formal private occasions.";
+  if (code === "BESPOKE") return "For custom collaborations and tailored productions.";
+  return "General inquiries and flexible event requests.";
+}
+
+function inferInquiryCodeFromService(
+  contactInquiryCode: string | null | undefined,
+  title: string,
+): ServiceTypeCode {
+  if (contactInquiryCode && isValidInquiryCode(contactInquiryCode)) return contactInquiryCode;
+  const n = title.toLowerCase();
+  if (n.includes("vip")) return "VIP_EVENT";
+  if (n.includes("gala")) return "PRIVATE_GALA";
+  if (n.includes("bespoke")) return "BESPOKE";
+  return "GENERAL";
+}
+
 export default function ContactInquiryForm({
   initialServiceType,
   hadServiceTypeInUrl = false,
@@ -323,11 +380,15 @@ export default function ContactInquiryForm({
   const [apiError, setApiError] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [timePickerWhich, setTimePickerWhich] = useState<null | "start" | "end">(null);
+  const [occupiedRanges, setOccupiedRanges] = useState<Array<{ startMinutes: number; endMinutes: number }>>([]);
 
   const [catalogSnapshot, setCatalogSnapshot] = useState<CatalogSnapshot | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogFetchError, setCatalogFetchError] = useState<string | null>(null);
   const [catalogDismissed, setCatalogDismissed] = useState(false);
+  const [serviceSummary, setServiceSummary] = useState<ServiceSummarySnapshot | null>(null);
+  const [serviceSummaryLoading, setServiceSummaryLoading] = useState(false);
+  const [serviceTypeOptions, setServiceTypeOptions] = useState<PublicServiceOption[]>([]);
 
   const [contactLines, setContactLines] = useState<ContactLine[]>([]);
   const [linesLoading, setLinesLoading] = useState(true);
@@ -347,6 +408,127 @@ export default function ContactInquiryForm({
     () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
     [],
   );
+
+  const bookingTz = useMemo(() => process.env.NEXT_PUBLIC_BOOKING_TZ ?? "America/New_York", []);
+  const { rules: availabilityRules } = usePublicAvailability(true);
+  const blockedIsoDates = useMemo(() => {
+    if (!availabilityRules?.weekly) return new Set<string>();
+    return expandBlockedDates(bookingTz, availabilityRules.weekly, availabilityRules.closures, 420);
+  }, [availabilityRules, bookingTz]);
+
+  const blockedReasonByIso = useMemo(() => {
+    if (!availabilityRules?.weekly) return new Map<string, string>();
+    return expandBlockedDateReasonsMap(bookingTz, availabilityRules.weekly, availabilityRules.closures, 420);
+  }, [availabilityRules, bookingTz]);
+
+  const startTimeClamp = useMemo(() => {
+    if (!availabilityRules?.weekly || !data.eventDate) return undefined;
+    return timeBoundsForDateISO(data.eventDate, bookingTz, availabilityRules.weekly);
+  }, [availabilityRules, data.eventDate, bookingTz]);
+
+  const minSelectableIso = availabilityRules ? isoDateInTzNow(bookingTz) : undefined;
+
+  useEffect(() => {
+    if (!data.eventDate) {
+      setOccupiedRanges([]);
+      return;
+    }
+    let cancelled = false;
+    const loadOccupied = () => {
+      fetch(`${apiBaseUrl}/api/v1/bookings/public/occupied?date=${encodeURIComponent(data.eventDate)}`, {
+        cache: "no-store",
+      })
+        .then(async (res) => {
+          if (!res.ok) throw new Error("occupied");
+          return res.json();
+        })
+        .then((json: unknown) => {
+          if (cancelled || !json || typeof json !== "object") return;
+          const occupied = (json as { occupied?: unknown }).occupied;
+          if (!Array.isArray(occupied)) {
+            setOccupiedRanges([]);
+            return;
+          }
+          const parsed = occupied
+            .map((row) => {
+              const o = row as { startMinutes?: unknown; endMinutes?: unknown };
+              const startMinutes = Number(o.startMinutes);
+              const endMinutes = Number(o.endMinutes);
+              if (!Number.isFinite(startMinutes) || !Number.isFinite(endMinutes)) return null;
+              return { startMinutes, endMinutes };
+            })
+            .filter(Boolean) as Array<{ startMinutes: number; endMinutes: number }>;
+          setOccupiedRanges(parsed);
+        })
+        .catch(() => {
+          if (!cancelled) setOccupiedRanges([]);
+        });
+    };
+
+    loadOccupied();
+    const interval = window.setInterval(loadOccupied, 45000);
+    const onFocus = () => loadOccupied();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") loadOccupied();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [apiBaseUrl, data.eventDate]);
+
+  useEffect(() => {
+    if (!data.eventDate) return;
+
+    if (blockedIsoDates.has(data.eventDate)) {
+      setData((prev) =>
+        prev.eventDate
+          ? {
+              ...prev,
+              eventDate: "",
+              eventTimeStart: "",
+              eventTimeEnd: "",
+            }
+          : prev,
+      );
+      setStepError("That date just became unavailable. Please choose another date.");
+      return;
+    }
+
+    if (!startTimeClamp) return;
+    const min = startTimeClamp.minMinutes;
+    const max = startTimeClamp.maxMinutes;
+    const startMin = data.eventTimeStart ? hhmmToMinutes(data.eventTimeStart) : null;
+    const endMin = data.eventTimeEnd ? hhmmToMinutes(data.eventTimeEnd) : null;
+
+    if ((startMin !== null && (startMin < min || startMin > max)) || (endMin !== null && (endMin < min || endMin > max))) {
+      setData((prev) => ({
+        ...prev,
+        eventTimeStart: "",
+        eventTimeEnd: "",
+      }));
+      setStepError("The time window changed for that date. Please select times again.");
+    }
+  }, [blockedIsoDates, data.eventDate, data.eventTimeStart, data.eventTimeEnd, startTimeClamp]);
+
+  useEffect(() => {
+    const startMin = data.eventTimeStart ? hhmmToMinutes(data.eventTimeStart) : null;
+    const endMin = data.eventTimeEnd ? hhmmToMinutes(data.eventTimeEnd) : null;
+    const intersectsBlocked = (m: number | null) =>
+      m !== null && occupiedRanges.some((r) => m >= r.startMinutes && m <= r.endMinutes);
+    if (!intersectsBlocked(startMin) && !intersectsBlocked(endMin)) return;
+    setData((prev) => ({
+      ...prev,
+      eventTimeStart: "",
+      eventTimeEnd: "",
+    }));
+    setStepError("That schedule is no longer available. Please choose another time.");
+  }, [data.eventTimeStart, data.eventTimeEnd, occupiedRanges]);
+
   useEffect(() => {
     let cancelled = false;
     setLinesLoading(true);
@@ -381,6 +563,20 @@ export default function ContactInquiryForm({
             eventTypeName,
             contactInquiryCode: typeof row.contactInquiryCode === "string" ? row.contactInquiryCode : null,
             description: typeof row.description === "string" ? row.description : "",
+            items: Array.isArray(row.items)
+              ? (row.items as unknown[])
+                  .map((v) => (typeof v === "string" ? v.trim() : ""))
+                  .filter(Boolean)
+              : [],
+            images: Array.isArray(row.images)
+              ? (row.images as unknown[])
+                  .map((v) => (typeof v === "string" ? v.trim() : ""))
+                  .filter(Boolean)
+              : [],
+            heroImageUrl:
+              typeof row.heroImageUrl === "string" && row.heroImageUrl.trim().length > 0
+                ? row.heroImageUrl.trim()
+                : undefined,
             lineKind: row.lineKind === "event_type" ? "event_type" : "event",
             occasionSingle: mapOpts(row.occasionSingle),
             occasionBespokeProject: mapOpts(row.occasionBespokeProject),
@@ -404,6 +600,52 @@ export default function ContactInquiryForm({
   }, [apiBaseUrl]);
 
   useEffect(() => {
+    let cancelled = false;
+    fetch(`${apiBaseUrl}/api/v1/services`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error("services");
+        return res.json();
+      })
+      .then((json: unknown) => {
+        if (cancelled || !Array.isArray(json)) return;
+        const parsed: PublicServiceOption[] = [];
+        for (const row of json as Record<string, unknown>[]) {
+          const id = typeof row.id === "string" ? row.id : "";
+          const title = typeof row.serviceTypeName === "string" ? row.serviceTypeName.trim() : "";
+          if (!id || !title) continue;
+          const contactInquiryCode =
+            typeof row.contactInquiryCode === "string" ? row.contactInquiryCode : undefined;
+          parsed.push({
+            id,
+            title,
+            inquiryCode: inferInquiryCodeFromService(contactInquiryCode, title),
+            description: typeof row.description === "string" ? row.description : undefined,
+            items: Array.isArray(row.items)
+              ? (row.items as unknown[])
+                  .map((v) => (typeof v === "string" ? v.trim() : ""))
+                  .filter(Boolean)
+              : [],
+            imageUrl: typeof row.imageUrl === "string" && row.imageUrl.trim() ? row.imageUrl.trim() : undefined,
+          });
+        }
+        setServiceTypeOptions(parsed);
+      })
+      .catch(() => {
+        if (!cancelled) setServiceTypeOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl]);
+
+  useEffect(() => {
+    if (data.serviceOptionId || !data.inquiryCode || serviceTypeOptions.length === 0) return;
+    const firstByCode = serviceTypeOptions.find((s) => s.inquiryCode === data.inquiryCode);
+    if (!firstByCode) return;
+    setData((prev) => ({ ...prev, serviceOptionId: firstByCode.id }));
+  }, [data.serviceOptionId, data.inquiryCode, serviceTypeOptions]);
+
+  useEffect(() => {
     if (!initialEventId) skipServiceAppliedForEventIdRef.current = undefined;
   }, [initialEventId]);
 
@@ -416,7 +658,8 @@ export default function ContactInquiryForm({
       contactLineId: line.id,
       contactLineKind: line.lineKind ?? "event",
       eventTypeId: line.eventTypeId,
-      inquiryCode: resolveServiceLineFromCatalog(line.contactInquiryCode),
+      inquiryCode: hadServiceTypeInUrl ? prev.inquiryCode : "",
+      serviceOptionId: "",
       occasionTypeId: "",
       occasionTypeIdsProject: [],
       occasionTypeIdsRole: [],
@@ -427,15 +670,14 @@ export default function ContactInquiryForm({
       skipServiceAppliedForEventIdRef.current !== initialEventId
     ) {
       skipServiceAppliedForEventIdRef.current = initialEventId;
-      const code = resolveServiceLineFromCatalog(line.contactInquiryCode);
-      const detailIdx = phaseFlow(code).indexOf("detail");
+      const detailIdx = phaseFlow("").indexOf("detail");
       if (detailIdx >= 0) setPhaseIndex(detailIdx);
     }
-  }, [initialEventId, contactLines, hadEventIdInUrl, catalogDismissed]);
+  }, [initialEventId, contactLines, hadEventIdInUrl, catalogDismissed, hadServiceTypeInUrl]);
 
   useEffect(() => {
     if (initialCatalog) setCatalogDismissed(false);
-  }, [initialCatalog?.id, initialCatalog?.kind]);
+  }, [initialCatalog]);
 
   const stripCatalogFromUrl = useCallback(() => {
     const sp = new URLSearchParams(searchParams.toString());
@@ -479,7 +721,10 @@ export default function ContactInquiryForm({
           id?: string;
           title?: string;
           contactInquiryCode?: string | null;
+          description?: string;
           descriptionPreview?: string;
+          items?: string[];
+          imageUrl?: string | null;
         };
         if (cancelled) return;
         const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -496,8 +741,13 @@ export default function ContactInquiryForm({
             typeof body.contactInquiryCode === "string"
               ? body.contactInquiryCode
               : body.contactInquiryCode ?? null,
+          description: typeof body.description === "string" ? body.description : undefined,
           descriptionPreview:
             typeof body.descriptionPreview === "string" ? body.descriptionPreview : undefined,
+          items: Array.isArray(body.items)
+            ? body.items.map((v) => (typeof v === "string" ? v.trim() : "")).filter(Boolean)
+            : [],
+          imageUrl: typeof body.imageUrl === "string" && body.imageUrl.trim() ? body.imageUrl : undefined,
         };
         setCatalogSnapshot(snap);
         setCatalogFetchError(null);
@@ -534,12 +784,83 @@ export default function ContactInquiryForm({
       contactLineId: line.id,
       contactLineKind: line.lineKind ?? "event",
       eventTypeId: line.eventTypeId,
-      inquiryCode: resolveServiceLineFromCatalog(line.contactInquiryCode ?? catalogSnapshot.contactInquiryCode),
+      inquiryCode: hadServiceTypeInUrl ? prev.inquiryCode : "",
+      serviceOptionId: "",
       occasionTypeId: "",
       occasionTypeIdsProject: [],
       occasionTypeIdsRole: [],
     }));
-  }, [contactLines, catalogSnapshot, catalogDismissed]);
+  }, [contactLines, catalogSnapshot, catalogDismissed, hadServiceTypeInUrl]);
+
+  useEffect(() => {
+    if (!data.inquiryCode) {
+      setServiceSummary(null);
+      setServiceSummaryLoading(false);
+      return;
+    }
+    if (!catalogDismissed && catalogSnapshot?.kind === "service") {
+      setServiceSummary({
+        id: catalogSnapshot.id,
+        title: catalogSnapshot.title,
+        contactInquiryCode: catalogSnapshot.contactInquiryCode,
+        description: catalogSnapshot.description,
+        descriptionPreview: catalogSnapshot.descriptionPreview,
+        items: catalogSnapshot.items,
+        imageUrl: catalogSnapshot.imageUrl,
+      });
+      setServiceSummaryLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setServiceSummaryLoading(true);
+    fetch(`${apiBaseUrl}/api/v1/services/public/by-inquiry/${encodeURIComponent(data.inquiryCode)}`)
+      .then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 404) return null;
+          throw new Error("service_summary");
+        }
+        const body = (await res.json()) as {
+          id?: string;
+          title?: string;
+          contactInquiryCode?: string | null;
+          description?: string;
+          descriptionPreview?: string;
+          items?: string[];
+          imageUrl?: string | null;
+        };
+        if (cancelled) return null;
+        if (!body || typeof body.title !== "string" || !body.title.trim()) return null;
+        return {
+          id: typeof body.id === "string" ? body.id : "",
+          title: body.title.trim(),
+          contactInquiryCode:
+            typeof body.contactInquiryCode === "string"
+              ? body.contactInquiryCode
+              : body.contactInquiryCode ?? null,
+          description: typeof body.description === "string" ? body.description : undefined,
+          descriptionPreview: typeof body.descriptionPreview === "string" ? body.descriptionPreview : undefined,
+          items: Array.isArray(body.items)
+            ? body.items.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean)
+            : [],
+          imageUrl: typeof body.imageUrl === "string" && body.imageUrl.trim() ? body.imageUrl.trim() : undefined,
+        } as ServiceSummarySnapshot;
+      })
+      .then((summary) => {
+        if (cancelled) return;
+        setServiceSummary(summary);
+      })
+      .catch(() => {
+        if (!cancelled) setServiceSummary(null);
+      })
+      .finally(() => {
+        if (!cancelled) setServiceSummaryLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl, data.inquiryCode, catalogDismissed, catalogSnapshot]);
 
   useEffect(() => {
     const line = contactLines.find((l) => l.id === data.contactLineId);
@@ -646,7 +967,8 @@ export default function ContactInquiryForm({
       contactLineId: line.id,
       contactLineKind: line.lineKind ?? "event",
       eventTypeId: line.eventTypeId,
-      inquiryCode: resolveServiceLineFromCatalog(line.contactInquiryCode),
+      inquiryCode: hadServiceTypeInUrl ? prev.inquiryCode : "",
+      serviceOptionId: "",
       occasionTypeId: "",
       occasionTypeIdsProject: [],
       occasionTypeIdsRole: [],
@@ -680,7 +1002,6 @@ export default function ContactInquiryForm({
           eventDate: data.eventDate || undefined,
           location: data.location.trim() || undefined,
           serviceType: data.inquiryCode || undefined,
-          preferences: data.preferences.trim() || undefined,
           message: data.message.trim(),
           inquiryDetails,
         }),
@@ -715,6 +1036,8 @@ export default function ContactInquiryForm({
         return "Offering";
       case "detail":
         return "Event or project";
+      case "serviceType":
+        return "Service type";
       case "experiences":
         return "Performance add-ons";
       case "logistics":
@@ -751,8 +1074,79 @@ export default function ContactInquiryForm({
     .map((id) => selectedLine?.occasionBespokeRole.find((o) => o.id === id)?.name ?? id)
     .join(", ");
 
+  const selectedEventSummary = useMemo(() => {
+    if (selectedLine) {
+      const description = lineDescriptionPreview(selectedLine.description, 220);
+      return {
+        title: selectedLine.eventTypeName,
+        subtitle: readableInquiryCode(resolveServiceLineFromCatalog(selectedLine.contactInquiryCode)),
+        description: description || undefined,
+        items: selectedLine.items,
+        imageUrl: selectedLine.heroImageUrl ?? selectedLine.images[0] ?? undefined,
+      };
+    }
+    if (!catalogDismissed && catalogSnapshot?.kind === "event") {
+      return {
+        title: catalogSnapshot.title,
+        subtitle: catalogSnapshot.contactInquiryCode
+          ? readableInquiryCode(resolveServiceLineFromCatalog(catalogSnapshot.contactInquiryCode))
+          : undefined,
+        description: catalogSnapshot.descriptionPreview || undefined,
+        items: catalogSnapshot.items,
+        imageUrl: catalogSnapshot.imageUrl ?? undefined,
+      };
+    }
+    return null;
+  }, [selectedLine, catalogDismissed, catalogSnapshot]);
+
+  const selectedOccasionSummary = useMemo(() => {
+    const names: string[] = [];
+    if (occasionSingleLabel) names.push(occasionSingleLabel);
+    if (reviewProjectLabels) names.push(...reviewProjectLabels.split(", ").filter(Boolean));
+    if (reviewRoleLabels) names.push(...reviewRoleLabels.split(", ").filter(Boolean));
+    const uniq = [...new Set(names)];
+    if (uniq.length === 0) return null;
+    return {
+      title: uniq[0],
+      subtitle: uniq.length > 1 ? `${uniq.length} selected` : "Occasion type",
+      description: uniq.length > 1 ? uniq.slice(1).join(" • ") : undefined,
+      items: [],
+    };
+  }, [occasionSingleLabel, reviewProjectLabels, reviewRoleLabels]);
+
+  const selectedServiceSummary = useMemo(() => {
+    if (data.serviceOptionId) {
+      const selectedService = serviceTypeOptions.find((s) => s.id === data.serviceOptionId);
+      if (selectedService) {
+        return {
+          title: selectedService.title,
+          subtitle: readableInquiryCode(selectedService.inquiryCode),
+          description: selectedService.description || inquiryCodeDescription(selectedService.inquiryCode),
+          items: selectedService.items,
+          imageUrl: selectedService.imageUrl ?? undefined,
+        };
+      }
+    }
+    if (serviceSummary) {
+      return {
+        title: serviceSummary.title,
+        subtitle: readableInquiryCode(data.inquiryCode),
+        description: serviceSummary.description || serviceSummary.descriptionPreview,
+        items: serviceSummary.items,
+        imageUrl: serviceSummary.imageUrl ?? undefined,
+      };
+    }
+    if (!data.inquiryCode) return null;
+    return {
+      title: readableInquiryCode(data.inquiryCode),
+      subtitle: "Service type",
+      description: "Select a service option to preview image, description, and included items.",
+      items: [],
+    };
+  }, [serviceSummary, data.inquiryCode, data.serviceOptionId, serviceTypeOptions]);
+
   return (
-    <div className="max-w-2xl mx-auto text-left">
+    <div className="mx-auto max-w-5xl text-left">
       <h1 className="font-brand text-gold text-center text-3xl md:text-5xl tracking-[0.14em] mb-4">
         BOOKING INQUIRY
       </h1>
@@ -812,6 +1206,13 @@ export default function ContactInquiryForm({
         </p>
       ) : null}
       {linesError ? <p className="mb-6 text-center text-xs text-amber-200/85">{linesError}</p> : null}
+
+      <InquirySelectionSummary
+        eventCard={selectedEventSummary}
+        occasionCard={selectedOccasionSummary}
+        serviceCard={selectedServiceSummary}
+        loadingService={serviceSummaryLoading}
+      />
 
       <nav aria-label="Form progress" className="mb-8">
         <ol className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
@@ -992,6 +1393,63 @@ export default function ContactInquiryForm({
                 </label>
               </div>
             ) : null}
+          </div>
+        ) : null}
+
+        {currentPhase === "serviceType" ? (
+          <div className="space-y-4">
+            <p className="text-sm text-foreground/75 font-body">
+              Select the service type that best matches this inquiry.
+            </p>
+            <div className="grid gap-3">
+              {(serviceTypeOptions.length > 0
+                ? serviceTypeOptions.map((row) => ({
+                    id: row.id,
+                    code: row.inquiryCode,
+                    label: row.title,
+                    description: row.description || inquiryCodeDescription(row.inquiryCode),
+                    key: row.id,
+                  }))
+                : SERVICE_TYPE_CODES.map((code) => ({
+                    id: code,
+                    code,
+                    label: readableInquiryCode(code),
+                    description: inquiryCodeDescription(code),
+                    key: code,
+                  }))).map(({ id, code, label, description, key }) => {
+                const checked = data.serviceOptionId === id;
+                return (
+                  <label
+                    key={key}
+                    className={`flex cursor-pointer flex-col gap-1 rounded border p-4 transition-colors ${
+                      checked ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/45"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="serviceTypeCode"
+                        value={id}
+                        checked={checked}
+                        onChange={() => {
+                          update("serviceOptionId", id);
+                          update("inquiryCode", code);
+                        }}
+                        className="mt-1 border-gold/50 text-gold focus:ring-gold"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <span className="font-brand text-xs tracking-[0.14em] text-gold">
+                          {label}
+                        </span>
+                        <p className="mt-1 text-xs text-foreground/60 font-body leading-relaxed">
+                          {description}
+                        </p>
+                      </div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
           </div>
         ) : null}
 
@@ -1196,20 +1654,6 @@ export default function ContactInquiryForm({
             <div>
               <label className="block">
                 <span className="font-brand text-gold text-xs tracking-[0.14em]">
-                  Tone, music, or creative direction <span className="text-foreground/40 font-body">(optional)</span>
-                </span>
-                <textarea
-                  value={data.preferences}
-                  onChange={(e) => update("preferences", e.target.value)}
-                  rows={3}
-                  className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[88px]"
-                />
-              </label>
-              <p className="mt-1 text-[10px] text-foreground/40 text-right">{data.preferences.length}/2000</p>
-            </div>
-            <div>
-              <label className="block">
-                <span className="font-brand text-gold text-xs tracking-[0.14em]">
                   Main description <span className="text-red-300">*</span>
                 </span>
                 <textarea
@@ -1257,16 +1701,18 @@ export default function ContactInquiryForm({
           <div className="space-y-4 text-sm font-body">
             <p className="text-foreground/75">Please confirm before sending.</p>
             <ul className="space-y-2 rounded border border-gold/20 bg-black/30 p-4 text-foreground/85">
-              <li>
-                <span className="text-gold font-brand text-[10px] tracking-[0.14em]">INQUIRY TYPE</span>
-                <br />
-                {data.inquiryCode.replace(/_/g, " ") || "—"}
-              </li>
               {data.contactLineId ? (
                 <li>
                   <span className="text-gold font-brand text-[10px] tracking-[0.14em]">CATALOG LINE</span>
                   <br />
                   {selectedLine?.eventTypeName ?? data.contactLineId}
+                </li>
+              ) : null}
+              {data.serviceOptionId ? (
+                <li>
+                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">SERVICE</span>
+                  <br />
+                  {serviceTypeOptions.find((s) => s.id === data.serviceOptionId)?.title ?? "—"}
                 </li>
               ) : null}
               {data.occasionTypeId ? (
@@ -1330,13 +1776,6 @@ export default function ContactInquiryForm({
                   {data.projectDeadlineNote}
                 </li>
               ) : null}
-              {data.preferences.trim() ? (
-                <li>
-                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">PREFERENCES</span>
-                  <br />
-                  {data.preferences}
-                </li>
-              ) : null}
               <li>
                 <span className="text-gold font-brand text-[10px] tracking-[0.14em]">MESSAGE</span>
                 <br />
@@ -1395,7 +1834,7 @@ export default function ContactInquiryForm({
             <button
               type="button"
               onClick={goNext}
-              className="btn-outline-gold flex-1 min-w-[8rem] justify-center px-4 py-2.5 text-xs font-brand tracking-[0.14em]"
+              className="btn-outline-gold flex-1 min-w-32 justify-center px-4 py-2.5 text-xs font-brand tracking-[0.14em]"
             >
               {currentPhase === "contact" ? "Continue to review" : "Continue"}
             </button>
@@ -1411,7 +1850,7 @@ export default function ContactInquiryForm({
             </button>
             <button
               type="submit"
-              className="btn-outline-gold flex-1 min-w-[10rem] justify-center gap-2 font-brand disabled:opacity-60 disabled:pointer-events-none"
+              className="btn-outline-gold flex-1 min-w-40 justify-center gap-2 font-brand disabled:opacity-60 disabled:pointer-events-none"
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -1433,6 +1872,9 @@ export default function ContactInquiryForm({
         value={data.eventDate}
         onClose={() => setDatePickerOpen(false)}
         onConfirm={(iso) => update("eventDate", iso)}
+        blockedIsoDates={blockedIsoDates}
+        blockedReasonByIso={blockedReasonByIso}
+        minSelectableIso={minSelectableIso}
       />
       <ContactTimePickerModal
         isOpen={timePickerWhich === "start"}
@@ -1440,6 +1882,8 @@ export default function ContactInquiryForm({
         value={data.eventTimeStart}
         onClose={() => setTimePickerWhich(null)}
         onConfirm={(hhmm) => update("eventTimeStart", hhmm)}
+        timeClamp={startTimeClamp}
+        blockedRanges={occupiedRanges}
       />
       <ContactTimePickerModal
         isOpen={timePickerWhich === "end"}
@@ -1447,6 +1891,8 @@ export default function ContactInquiryForm({
         value={data.eventTimeEnd}
         onClose={() => setTimePickerWhich(null)}
         onConfirm={(hhmm) => update("eventTimeEnd", hhmm)}
+        timeClamp={startTimeClamp}
+        blockedRanges={occupiedRanges}
       />
     </div>
   );

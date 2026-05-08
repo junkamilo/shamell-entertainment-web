@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  CalendarDays,
   CalendarRange,
   ClipboardList,
   ExternalLink,
   ImageIcon,
-  Inbox,
   Info,
   Menu,
   Package,
@@ -19,11 +19,10 @@ import {
   PanelsTopLeft,
   UserPlus,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import FlameIcon from "@/components/FlameIcon";
-import ThemeToggle from "@/features/theme/components/ThemeToggle";
-import { useTheme } from "@/features/theme/hooks/useTheme";
 import {
   ADMIN_ACCESS_TOKEN_KEY,
   ADMIN_USER_KEY,
@@ -33,11 +32,12 @@ import {
 type AdminNavItem = {
   href: string;
   label: string;
-  icon: typeof Inbox;
+  icon: LucideIcon;
 };
 
 const navItems: AdminNavItem[] = [
-  { href: "/shamell-admin", label: "Bandeja de entrada", icon: Inbox },
+  { href: "/shamell-admin/agenda", label: "Agenda", icon: CalendarDays },
+  { href: "/shamell-admin/header-media", label: "Header principal", icon: ImageIcon },
   { href: "/shamell-admin/service-types", label: "Tipos de servicio", icon: Shapes },
   { href: "/shamell-admin/services", label: "Servicios", icon: Package },
   { href: "/shamell-admin/occasion-types", label: "Tipos de ocasión", icon: ClipboardList },
@@ -51,6 +51,12 @@ const navItems: AdminNavItem[] = [
 
 const breadcrumbLabel: Record<string, string> = {
   "shamell-admin": "Admin",
+  agenda: "Agenda",
+  "header-media": "Header principal",
+  agendar: "Agendar",
+  disponibilidad: "Disponibilidad",
+  peticiones: "Peticiones",
+  "mi-agenda": "Mi Agenda",
   "service-types": "Tipos de servicio",
   services: "Servicios",
   "event-types": "Tipos de eventos",
@@ -68,16 +74,19 @@ function breadcrumbFromPath(pathname: string): string[] {
   if (parts[0] !== "shamell-admin") return ["Admin"];
   const crumbs = ["Admin"];
   if (parts.length === 1) {
-    crumbs.push("Bandeja de entrada");
+    crumbs.push("Agenda");
     return crumbs;
   }
   const seg = parts[1] ?? "";
   crumbs.push(breadcrumbLabel[seg] ?? seg);
+  if (parts.length >= 3) {
+    const sub = parts[2] ?? "";
+    crumbs.push(breadcrumbLabel[sub] ?? sub);
+  }
   return crumbs;
 }
 
 export default function ShamellAdminShell({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -95,7 +104,6 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
     if (raw) {
       try {
         const u = JSON.parse(raw) as { fullName?: string; email?: string };
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setAdminName(u.fullName ?? "Administrador");
         setAdminEmail(u.email ?? "");
       } catch {
@@ -161,8 +169,8 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
       <nav className="shamell-scrollbar flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
         {navItems.map((item) => {
           const active =
-            item.href === "/shamell-admin"
-              ? pathname === "/shamell-admin"
+            item.href === "/shamell-admin/agenda"
+              ? pathname === "/shamell-admin/agenda" || pathname.startsWith("/shamell-admin/agenda/")
               : pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
           return (
@@ -228,11 +236,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
   );
 
   return (
-    <div
-      className={`admin-theme admin-theme-transition ${
-        theme === "light" ? "admin-theme--light" : "admin-theme--dark"
-      } flex h-screen overflow-hidden bg-background text-foreground`}
-    >
+    <div className="admin-theme flex h-screen min-h-0 overflow-hidden bg-transparent text-foreground">
       {sidebarOpen ? (
         <button
           type="button"
@@ -243,15 +247,15 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
       ) : null}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-gold/25 bg-background transition-all duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
+        className={`shamell-admin-sidebar fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-shamell-line-soft transition-all duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         } ${sidebarCollapsed ? "w-20" : "w-64"}`}
       >
         {navInner}
       </aside>
 
-      <div className="flex h-screen flex-1 flex-col overflow-hidden lg:min-w-0">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-gold/20 bg-background/95 px-4 backdrop-blur-sm">
+      <div className="shamell-admin-bg flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header className="admin-theme-main-header sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 px-4">
           <button
             type="button"
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold/30 text-gold transition hover:bg-gold/10 lg:hidden"
@@ -269,7 +273,6 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <ThemeToggle />
             <Link
               href="/"
               className="flex items-center gap-1.5 font-brand text-[10px] tracking-[0.12em] text-gold hover:text-gold-light"

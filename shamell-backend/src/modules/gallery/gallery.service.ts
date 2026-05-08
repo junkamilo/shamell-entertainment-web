@@ -60,13 +60,16 @@ export class GalleryService {
     limit?: number;
   }) {
     const page = params.page && params.page > 0 ? params.page : 1;
-    const limit = params.limit && params.limit > 0 ? Math.min(params.limit, 100) : 6;
+    const limit =
+      params.limit && params.limit > 0 ? Math.min(params.limit, 100) : 6;
     const skip = (page - 1) * limit;
     const category = params.category?.trim().toLowerCase();
     const where = {
       isActive: true,
       category: {
-        ...(category && category !== 'all' ? { slug: category, isActive: true } : { isActive: true }),
+        ...(category && category !== 'all'
+          ? { slug: category, isActive: true }
+          : { isActive: true }),
       },
     };
 
@@ -100,7 +103,9 @@ export class GalleryService {
   }
 
   async createCategory(dto: CreateGalleryCategoryDto) {
-    const slug = await this.ensureUniqueGalleryCategorySlug(this.slugFromDisplayName(dto.name));
+    const slug = await this.ensureUniqueGalleryCategorySlug(
+      this.slugFromDisplayName(dto.name),
+    );
 
     try {
       const created = await this.prisma.galleryCategory.create({
@@ -134,7 +139,10 @@ export class GalleryService {
 
     const slug =
       dto.name !== undefined
-        ? await this.ensureUniqueGalleryCategorySlug(this.slugFromDisplayName(dto.name), id)
+        ? await this.ensureUniqueGalleryCategorySlug(
+            this.slugFromDisplayName(dto.name),
+            id,
+          )
         : undefined;
 
     try {
@@ -167,7 +175,10 @@ export class GalleryService {
     return items.map((item) => this.mapPhoto(item));
   }
 
-  async createPhoto(dto: CreateGalleryPhotoDto, mediaFiles: Express.Multer.File[]) {
+  async createPhoto(
+    dto: CreateGalleryPhotoDto,
+    mediaFiles: Express.Multer.File[],
+  ) {
     this.ensureCloudinaryEnv();
     mediaFiles.forEach((file) => this.ensureMediaFile(file));
     await this.ensureReferencesAreValid(dto);
@@ -191,7 +202,10 @@ export class GalleryService {
         });
         createdPhotos.push(created);
       } catch (error) {
-        await this.deleteMediaFromCloudinary(upload.publicId, upload.mediaType).catch(() => null);
+        await this.deleteMediaFromCloudinary(
+          upload.publicId,
+          upload.mediaType,
+        ).catch(() => null);
         throw error;
       }
     }
@@ -202,7 +216,34 @@ export class GalleryService {
     };
   }
 
-  async updatePhoto(id: string, dto: UpdateGalleryPhotoDto, imageFile?: Express.Multer.File) {
+  /** Uploads gallery rows linked to an Event (uses category slug `event-catalog` unless EVENT_CATALOG_GALLERY_CATEGORY_ID is set). */
+  async createPhotosForEvent(
+    eventId: string,
+    mediaFiles: Express.Multer.File[],
+  ) {
+    let categoryId = process.env.EVENT_CATALOG_GALLERY_CATEGORY_ID?.trim();
+    if (!categoryId) {
+      const slug =
+        process.env.EVENT_CATALOG_GALLERY_SLUG?.trim() || 'event-catalog';
+      const cat = await this.prisma.galleryCategory.findFirst({
+        where: { slug },
+        select: { id: true },
+      });
+      categoryId = cat?.id;
+    }
+    if (!categoryId) {
+      throw new BadRequestException(
+        'Missing gallery category for event images. Run DB migrations or create a category with slug "event-catalog", or set EVENT_CATALOG_GALLERY_CATEGORY_ID.',
+      );
+    }
+    return this.createPhoto({ categoryId, eventId }, mediaFiles);
+  }
+
+  async updatePhoto(
+    id: string,
+    dto: UpdateGalleryPhotoDto,
+    imageFile?: Express.Multer.File,
+  ) {
     const existing = await this.prisma.galleryPhoto.findUnique({
       where: { id },
       include: { category: true },
@@ -217,7 +258,11 @@ export class GalleryService {
     }
     await this.ensureReferencesAreValid(dto);
 
-    let newUpload: { secureUrl: string; publicId: string; mediaType: GalleryMediaType } | null = null;
+    let newUpload: {
+      secureUrl: string;
+      publicId: string;
+      mediaType: GalleryMediaType;
+    } | null = null;
     if (imageFile) {
       newUpload = await this.uploadMediaToCloudinary(imageFile);
     }
@@ -226,12 +271,18 @@ export class GalleryService {
       const updated = await this.prisma.galleryPhoto.update({
         where: { id },
         data: {
-          ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
+          ...(dto.categoryId !== undefined
+            ? { categoryId: dto.categoryId }
+            : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
           ...(dto.serviceId !== undefined ? { serviceId: dto.serviceId } : {}),
-          ...(dto.serviceTypeId !== undefined ? { serviceTypeId: dto.serviceTypeId } : {}),
+          ...(dto.serviceTypeId !== undefined
+            ? { serviceTypeId: dto.serviceTypeId }
+            : {}),
           ...(dto.eventId !== undefined ? { eventId: dto.eventId } : {}),
-          ...(dto.eventTypeId !== undefined ? { eventTypeId: dto.eventTypeId } : {}),
+          ...(dto.eventTypeId !== undefined
+            ? { eventTypeId: dto.eventTypeId }
+            : {}),
           ...(newUpload
             ? {
                 imageUrl: newUpload.secureUrl,
@@ -244,7 +295,10 @@ export class GalleryService {
       });
 
       if (newUpload) {
-        await this.deleteMediaFromCloudinary(existing.imagePublicId, existing.mediaType).catch(() => null);
+        await this.deleteMediaFromCloudinary(
+          existing.imagePublicId,
+          existing.mediaType,
+        ).catch(() => null);
       }
 
       return {
@@ -253,7 +307,10 @@ export class GalleryService {
       };
     } catch (error) {
       if (newUpload) {
-        await this.deleteMediaFromCloudinary(newUpload.publicId, newUpload.mediaType).catch(() => null);
+        await this.deleteMediaFromCloudinary(
+          newUpload.publicId,
+          newUpload.mediaType,
+        ).catch(() => null);
       }
       throw error;
     }
@@ -268,7 +325,10 @@ export class GalleryService {
       throw new NotFoundException('Gallery photo not found.');
     }
 
-    await this.deleteMediaFromCloudinary(existing.imagePublicId, existing.mediaType).catch(() => null);
+    await this.deleteMediaFromCloudinary(
+      existing.imagePublicId,
+      existing.mediaType,
+    ).catch(() => null);
     await this.prisma.galleryPhoto.delete({ where: { id } });
 
     return {
@@ -277,8 +337,14 @@ export class GalleryService {
   }
 
   private ensureCloudinaryEnv() {
-    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      throw new InternalServerErrorException('Cloudinary environment variables are missing.');
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      throw new InternalServerErrorException(
+        'Cloudinary environment variables are missing.',
+      );
     }
   }
 
@@ -351,9 +417,11 @@ export class GalleryService {
     }
   }
 
-  private uploadMediaToCloudinary(
-    file: Express.Multer.File,
-  ): Promise<{ secureUrl: string; publicId: string; mediaType: GalleryMediaType }> {
+  private uploadMediaToCloudinary(file: Express.Multer.File): Promise<{
+    secureUrl: string;
+    publicId: string;
+    mediaType: GalleryMediaType;
+  }> {
     return new Promise((resolve, reject) => {
       const isVideo = file.mimetype.startsWith('video/');
       const uploadStream = cloudinary.uploader.upload_stream(
@@ -369,7 +437,9 @@ export class GalleryService {
           resolve({
             secureUrl: result.secure_url,
             publicId: result.public_id,
-            mediaType: isVideo ? GalleryMediaType.VIDEO : GalleryMediaType.IMAGE,
+            mediaType: isVideo
+              ? GalleryMediaType.VIDEO
+              : GalleryMediaType.IMAGE,
           });
         },
       );
@@ -378,19 +448,27 @@ export class GalleryService {
     });
   }
 
-  private async deleteMediaFromCloudinary(publicId: string, mediaType: GalleryMediaType) {
-    const result = await cloudinary.uploader.destroy(publicId, {
+  private async deleteMediaFromCloudinary(
+    publicId: string,
+    mediaType: GalleryMediaType,
+  ) {
+    const destroyResult = (await cloudinary.uploader.destroy(publicId, {
       resource_type: mediaType === GalleryMediaType.VIDEO ? 'video' : 'image',
-    });
-    const ok = result.result === 'ok' || result.result === 'not found';
+    })) as { result?: string };
+    const ok =
+      destroyResult.result === 'ok' || destroyResult.result === 'not found';
     if (!ok) {
-      throw new InternalServerErrorException('Cloudinary image deletion failed.');
+      throw new InternalServerErrorException(
+        'Cloudinary image deletion failed.',
+      );
     }
   }
 
   private slugFromDisplayName(name: string): string {
     const trimmed = name.trim();
-    const withoutAccents = trimmed.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const withoutAccents = trimmed
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
     const slug = withoutAccents
       .toLowerCase()
       .replace(/&/g, ' y ')
@@ -400,7 +478,10 @@ export class GalleryService {
     return slug.length >= 2 ? slug : 'categoria';
   }
 
-  private async ensureUniqueGalleryCategorySlug(base: string, excludeId?: string): Promise<string> {
+  private async ensureUniqueGalleryCategorySlug(
+    base: string,
+    excludeId?: string,
+  ): Promise<string> {
     let suffix = 0;
     while (suffix < 500) {
       const candidate = suffix === 0 ? base : `${base}-${suffix}`;

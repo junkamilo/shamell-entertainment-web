@@ -16,7 +16,10 @@ import { InviteAdminDto } from './dto/invite-admin.dto';
 import { VerifyAdminInviteDto } from './dto/verify-admin-invite.dto';
 import { GoogleCredentialDto } from './dto/google-credential.dto';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
-import { CurrentAdmin, type AdminJwtPayload } from './decorators/current-admin.decorator';
+import {
+  CurrentAdmin,
+  type AdminJwtPayload,
+} from './decorators/current-admin.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -64,7 +67,10 @@ export class AuthController {
   @Post('admin/invite')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AdminJwtGuard)
-  inviteAdmin(@CurrentAdmin() admin: AdminJwtPayload, @Body() dto: InviteAdminDto) {
+  inviteAdmin(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: InviteAdminDto,
+  ) {
     return this.authService.inviteAdmin(admin.id, dto);
   }
 

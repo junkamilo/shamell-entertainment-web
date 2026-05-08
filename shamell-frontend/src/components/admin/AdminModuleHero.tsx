@@ -8,7 +8,7 @@ type AdminModuleHeroProps = {
   title: string;
   subtitle?: ReactNode;
   eyebrow?: string;
-  actionLabel: string;
+  actionLabel?: string;
   actionHref?: string;
   onAction?: () => void;
   /** Optional outline action (e.g. export) shown before the primary gold button */
@@ -35,6 +35,7 @@ export default function AdminModuleHero({
   bordered = true,
 }: AdminModuleHeroProps) {
   const hasSecondary = Boolean(secondaryActionLabel && onSecondaryAction);
+  const hasPrimary = Boolean(actionLabel && (actionHref || onAction));
 
   return (
     <section
@@ -53,25 +54,29 @@ export default function AdminModuleHero({
           ) : null}
         </div>
 
-        <div
-          className={`flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center md:pt-1 ${hasSecondary ? "sm:flex-wrap" : ""}`}
-        >
-          {hasSecondary ? (
-            <button type="button" onClick={onSecondaryAction} className={`${secondaryButtonClass} w-full sm:w-auto`}>
-              <Download className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
-              {secondaryActionLabel}
-            </button>
-          ) : null}
-          {actionHref ? (
-            <Link href={actionHref} className={`${actionButtonClass} w-full sm:w-auto`}>
-              + {actionLabel}
-            </Link>
-          ) : (
-            <button type="button" onClick={onAction} className={`${actionButtonClass} w-full sm:w-auto`}>
-              + {actionLabel}
-            </button>
-          )}
-        </div>
+        {hasSecondary || hasPrimary ? (
+          <div
+            className={`flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center md:pt-1 ${hasSecondary ? "sm:flex-wrap" : ""}`}
+          >
+            {hasSecondary ? (
+              <button type="button" onClick={onSecondaryAction} className={`${secondaryButtonClass} w-full sm:w-auto`}>
+                <Download className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
+                {secondaryActionLabel}
+              </button>
+            ) : null}
+            {hasPrimary ? (
+              actionHref ? (
+                <Link href={actionHref} className={`${actionButtonClass} w-full sm:w-auto`}>
+                  + {actionLabel}
+                </Link>
+              ) : (
+                <button type="button" onClick={onAction} className={`${actionButtonClass} w-full sm:w-auto`}>
+                  + {actionLabel}
+                </button>
+              )
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </section>
   );

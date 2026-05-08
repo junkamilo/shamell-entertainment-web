@@ -50,7 +50,7 @@ export function formatTimeDisplayUs(hhmm: string): string {
 
 export function hhmmToParts(hhmm: string): { h12: number; min: number; ap: "AM" | "PM" } {
   if (!/^\d{2}:\d{2}$/.test(hhmm.trim())) return { h12: 12, min: 0, ap: "PM" };
-  let h24 = Number(hhmm.slice(0, 2));
+  const h24 = Number(hhmm.slice(0, 2));
   const min = Number(hhmm.slice(3, 5));
   const ap = h24 >= 12 ? "PM" : "AM";
   let h12 = h24 % 12;

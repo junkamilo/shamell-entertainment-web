@@ -254,7 +254,7 @@ export default function ShamellAdminAboutPage() {
       <div className="mb-6 flex flex-wrap justify-end gap-3">
         <Link
           href="/#about"
-          className="inline-flex items-center gap-2 rounded-full border border-gold/25 bg-black/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
+          className="shamell-glass-surface inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
         >
           Ver en el sitio
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -272,7 +272,7 @@ export default function ShamellAdminAboutPage() {
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-xl border border-gold/15 bg-black/25 px-4 py-3 shadow-[inset_0_1px_0_rgba(197,165,90,0.06)]"
+            className="shamell-glass-surface rounded-xl px-4 py-3"
           >
             <p className="font-brand text-[10px] tracking-[0.18em] text-gold/75">{label}</p>
             <p className="mt-1 truncate font-brand text-lg tracking-wide text-gold md:text-xl">{value}</p>
@@ -280,7 +280,7 @@ export default function ShamellAdminAboutPage() {
         ))}
       </div>
 
-      <section className="overflow-hidden rounded-2xl border border-gold/14 bg-black/15 shadow-[0_14px_48px_rgba(0,0,0,0.35)]">
+      <section className="shamell-glass-surface overflow-hidden rounded-2xl border border-gold/14">
         <div className="border-b border-gold/12 bg-linear-to-r from-gold/10 via-transparent to-transparent px-5 py-4 md:px-8 md:py-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
@@ -314,7 +314,7 @@ export default function ShamellAdminAboutPage() {
 
         {record ? (
           <div className="grid gap-0 lg:grid-cols-12">
-            <div className="relative flex min-h-[280px] items-stretch justify-center bg-black/40 p-6 lg:col-span-5 lg:min-h-[420px]">
+            <div className="shamell-glass-surface relative flex min-h-[280px] items-stretch justify-center p-6 lg:col-span-5 lg:min-h-[420px]">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(197,165,90,0.14),transparent_55%)]" />
               {record.imageUrl ? (
                 <button
@@ -333,12 +333,12 @@ export default function ShamellAdminAboutPage() {
                       sizes="(max-width: 1024px) 100vw, 40vw"
                     />
                   </div>
-                  <span className="absolute bottom-3 left-3 rounded-full border border-gold/30 bg-black/70 px-3 py-1 font-body text-[10px] text-gold/90 backdrop-blur-sm">
+                  <span className="shamell-glass-surface absolute bottom-3 left-3 rounded-full border border-gold/30 px-3 py-1 font-body text-[10px] text-gold/90">
                     Imagen About
                   </span>
                 </button>
               ) : (
-                <div className="relative z-10 flex w-full max-w-sm flex-col items-center justify-center rounded-2xl border border-dashed border-gold/25 bg-black/35 px-8 py-16 text-center">
+                <div className="shamell-glass-surface relative z-10 flex w-full max-w-sm flex-col items-center justify-center rounded-2xl border border-dashed border-gold/25 px-8 py-16 text-center">
                   <ImageIcon className="h-10 w-10 text-gold/30" strokeWidth={1.2} />
                   <p className="mt-3 font-body text-sm text-foreground/45">Sin imagen en este bloque</p>
                 </div>
@@ -349,7 +349,7 @@ export default function ShamellAdminAboutPage() {
               <p className="font-brand text-[10px] tracking-[0.28em] text-gold/70">TÍTULO EN SITIO</p>
               <h3 className="mt-2 font-brand text-2xl tracking-[0.06em] text-gold md:text-3xl">{record.title}</h3>
 
-              <div className="mt-6 flex items-start gap-3 rounded-xl border border-gold/12 bg-black/25 p-4">
+              <div className="shamell-glass-surface mt-6 flex items-start gap-3 rounded-xl p-4">
                 <FileText className="mt-0.5 h-5 w-5 shrink-0 text-gold/50" strokeWidth={1.4} />
                 <p className="font-body text-sm leading-relaxed text-foreground/70">
                   {excerptBody(record.paragraph1, 420) || "—"}
@@ -404,7 +404,7 @@ export default function ShamellAdminAboutPage() {
             <input
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              className="mt-2 h-11 w-full rounded-xl border border-gold/30 bg-black/35 px-4 text-sm text-foreground outline-none focus:border-gold"
+              className="mt-2 h-11 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none focus:border-gold"
             />
           </label>
 
@@ -414,7 +414,7 @@ export default function ShamellAdminAboutPage() {
               value={paragraph1}
               onChange={(event) => setParagraph1(event.target.value)}
               rows={8}
-              className="mt-2 w-full rounded-xl border border-gold/30 bg-black/35 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
             />
           </label>
 
@@ -424,7 +424,7 @@ export default function ShamellAdminAboutPage() {
               value={coreValuesText}
               onChange={(event) => setCoreValuesText(event.target.value)}
               rows={5}
-              className="mt-2 w-full rounded-xl border border-gold/30 bg-black/35 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
               placeholder={"Profesionalismo\nExcelencia\nAutenticidad"}
             />
           </label>
@@ -436,7 +436,7 @@ export default function ShamellAdminAboutPage() {
               type="file"
               accept="image/*"
               onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
-              className="mt-2 w-full rounded-xl border border-gold/30 bg-black/35 px-4 py-3 text-sm text-foreground outline-none file:mr-3 file:border-0 file:bg-gold/20 file:px-3 file:py-1 file:text-gold"
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none file:mr-3 file:border-0 file:bg-gold/20 file:px-3 file:py-1 file:text-gold"
             />
             {!record ? (
               <p className="mt-2 font-body text-[11px] text-foreground/45">
@@ -448,7 +448,7 @@ export default function ShamellAdminAboutPage() {
           </label>
 
           {imagePreviewUrl || existingImageUrl ? (
-            <div className="rounded-xl border border-gold/25 bg-black/25 p-4">
+            <div className="shamell-glass-surface rounded-xl p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs text-gold/85">
                   {imagePreviewUrl ? "Vista previa de imagen seleccionada" : "Imagen actual de About"}
@@ -468,7 +468,7 @@ export default function ShamellAdminAboutPage() {
                   </button>
                 ) : null}
               </div>
-              <div className="overflow-hidden rounded-lg border border-gold/20 bg-black/30 p-2">
+              <div className="shamell-glass-surface overflow-hidden rounded-lg p-2">
                 <button
                   type="button"
                   onClick={() => setIsPreviewLightboxOpen(true)}
@@ -517,7 +517,7 @@ export default function ShamellAdminAboutPage() {
             <button
               type="button"
               onClick={() => setIsPreviewLightboxOpen(false)}
-              className="absolute right-3 top-3 z-10 rounded-full border border-gold/30 bg-black/60 p-2 text-gold transition hover:bg-gold/10"
+              className="shamell-glass-surface absolute right-3 top-3 z-10 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
               aria-label="Cerrar vista previa"
             >
               <X className="h-5 w-5" />

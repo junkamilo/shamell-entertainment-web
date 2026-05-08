@@ -226,7 +226,7 @@ export default function ShamellAdminOccasionTypesPage() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Buscar ocasión..."
-          className="mx-0 min-h-12 max-w-none flex-1 rounded-xl border-gold/18 bg-black/22"
+          className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-wrap gap-2 lg:shrink-0">
           {filterPill("all", "Todos")}
@@ -235,7 +235,7 @@ export default function ShamellAdminOccasionTypesPage() {
         </div>
       </div>
 
-      <section className="rounded-xl border border-gold/12 bg-black/15 p-5 md:p-7">
+      <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
         {isLoading ? (
           <p className="py-16 text-center font-body text-sm text-foreground/65">Cargando...</p>
         ) : filtered.length === 0 ? (
@@ -264,7 +264,7 @@ export default function ShamellAdminOccasionTypesPage() {
             {filtered.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center gap-3 rounded-xl border border-gold/14 bg-black/28 px-4 py-3"
+                className="shamell-glass-surface flex items-center gap-3 rounded-xl border border-gold/14 px-4 py-3"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold/30 bg-gold/10">
                   <Sparkles className="h-4 w-4 text-gold/90" strokeWidth={1.4} />
@@ -292,7 +292,7 @@ export default function ShamellAdminOccasionTypesPage() {
                       "relative h-7 w-12 shrink-0 rounded-full border transition",
                       item.isActive
                         ? "border-emerald-400/45 bg-emerald-500/22"
-                        : "border-foreground/22 bg-black/45",
+                        : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                       togglingId === item.id && "cursor-not-allowed opacity-60",
                     )}
                     aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
@@ -327,7 +327,7 @@ export default function ShamellAdminOccasionTypesPage() {
               value={name}
               required
               onChange={(e) => setName(e.target.value)}
-              className="mt-2 h-12 w-full rounded-xl border border-gold/30 bg-black/35 px-4 text-base text-foreground outline-none focus:border-gold"
+              className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-base text-foreground outline-none focus:border-gold"
               placeholder="Ej. Cumpleaños de lujo"
             />
           </label>

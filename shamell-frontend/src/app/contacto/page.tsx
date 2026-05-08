@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import Footer from "@/components/Footer";
-import PearlDivider from "@/components/PearlDivider";
 import SiteHeader from "@/components/SiteHeader";
 import ContactInquiryGate from "@/components/ContactInquiryGate";
 
@@ -14,13 +13,12 @@ function ContactFormFallback() {
 
 export default function ContactoPage() {
   return (
-    <main className="bg-background min-h-screen pt-24 px-4 pb-16">
+    <main className="relative z-10 min-h-screen text-foreground">
       <SiteHeader />
-      <section className="max-w-4xl mx-auto py-12">
+      <section className="mx-auto min-h-[calc(100svh-5.5rem)] w-full max-w-4xl px-4 pt-24 pb-12">
         <Suspense fallback={<ContactFormFallback />}>
           <ContactInquiryGate />
         </Suspense>
-        <PearlDivider className="mt-12" />
       </section>
       <Footer />
     </main>

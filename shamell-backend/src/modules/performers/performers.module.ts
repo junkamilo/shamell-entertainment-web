@@ -4,6 +4,6 @@ import { PerformersService } from './performers.service';
 
 @Module({
   controllers: [PerformersController],
-  providers: [PerformersService]
+  providers: [PerformersService],
 })
 export class PerformersModule {}

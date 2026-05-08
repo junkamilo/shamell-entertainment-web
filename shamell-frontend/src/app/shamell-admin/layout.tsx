@@ -1,12 +1,15 @@
-"use client";
-
+import { Inter } from "next/font/google";
 import ShamellAdminShell from "@/components/admin/ShamellAdminShell";
-import { ThemeProvider } from "@/features/theme/context/ThemeContext";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-shamell-admin-sans",
+});
 
 export default function ShamellAdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ThemeProvider>
+    <div className={inter.variable}>
       <ShamellAdminShell>{children}</ShamellAdminShell>
-    </ThemeProvider>
+    </div>
   );
 }

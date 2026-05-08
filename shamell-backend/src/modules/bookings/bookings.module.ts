@@ -1,9 +1,18 @@
 import { Module } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { AvailabilityModule } from '../availability/availability.module';
+import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
 
 @Module({
+  imports: [
+    JwtModule.register({
+      secret: process.env.JWT_SECRET ?? 'change-me-in-production',
+    }),
+    AvailabilityModule,
+  ],
   controllers: [BookingsController],
-  providers: [BookingsService]
+  providers: [BookingsService, AdminJwtGuard],
 })
 export class BookingsModule {}

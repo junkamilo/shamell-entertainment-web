@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../styles/shamell-admin-tokens.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -52,6 +53,55 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Shamell admin — Purple Fire (resolve inside .admin-theme via inheritance) */
+  --color-shamell-night: var(--shamell-night);
+  --color-shamell-twilight: var(--shamell-twilight);
+  --color-shamell-dusk: var(--shamell-dusk);
+  --color-shamell-ember: var(--shamell-ember);
+  --color-shamell-fire: var(--shamell-fire);
+  --color-shamell-flame: var(--shamell-flame);
+  --color-shamell-fire-red: var(--shamell-fire-red);
+  --color-shamell-fire-orange: var(--shamell-fire-orange);
+  --color-shamell-fire-yellow: var(--shamell-fire-yellow);
+  --color-shamell-gold: var(--shamell-gold);
+  --color-shamell-gold-bright: var(--shamell-gold-bright);
+  --color-shamell-gold-deep: var(--shamell-gold-deep);
+  --color-shamell-surface-deep: var(--shamell-surface-deep);
+  --color-shamell-surface-base: var(--shamell-surface-base);
+  --color-shamell-surface-raised: var(--shamell-surface-raised);
+  --color-shamell-surface-card: var(--shamell-surface-card);
+  --color-shamell-surface-input: var(--shamell-surface-input);
+  --color-shamell-surface-overlay: var(--shamell-surface-overlay);
+  --color-shamell-text-primary: var(--shamell-text-primary);
+  --color-shamell-text-secondary: var(--shamell-text-secondary);
+  --color-shamell-text-muted: var(--shamell-text-muted);
+  --color-shamell-text-subtle: var(--shamell-text-subtle);
+  --color-shamell-danger: var(--shamell-danger);
+  --color-shamell-success: var(--shamell-success);
+  --color-shamell-warning: var(--shamell-warning);
+  --color-shamell-cta-primary: var(--shamell-cta-primary);
+
+  --background-image-shamell-page: var(--shamell-bg-page);
+  --background-image-shamell-sidebar: var(--shamell-bg-sidebar);
+
+  --color-shamell-line: var(--shamell-border-gold);
+  --color-shamell-line-soft: var(--shamell-border-gold-soft);
+  --color-shamell-line-strong: var(--shamell-border-gold-strong);
+  --color-shamell-line-fire: var(--shamell-border-fire);
+
+  --font-family-shamell-display: var(--shamell-font-display);
+  --font-family-shamell-body: var(--shamell-font-body);
+
+  --radius-shamell-sm: var(--shamell-radius-sm);
+  --radius-shamell-md: var(--shamell-radius-md);
+  --radius-shamell-lg: var(--shamell-radius-lg);
+  --radius-shamell-pill: var(--shamell-radius-pill);
+
+  --tracking-shamell-wide: var(--shamell-tracking-wide);
+  --tracking-shamell-wider: var(--shamell-tracking-wider);
+  --tracking-shamell-widest: var(--shamell-tracking-widest);
+  --tracking-shamell-hero: var(--shamell-tracking-hero);
 }
 
 :root {
@@ -151,6 +201,16 @@
       radial-gradient(ellipse 100% 52% at 50% 104%, rgba(120, 58, 42, 0.14) 0%, transparent 52%),
       radial-gradient(ellipse 92% 72% at 50% 48%, #2c241f 0%, #1c1714 44%, #14110f 100%);
   }
+
+  .shamell-time-select {
+    background-color: var(--shamell-surface-overlay, #1a0928);
+    color: #faf6f2;
+  }
+
+  .shamell-time-select option {
+    background-color: var(--shamell-surface-overlay, #1a0928);
+    color: #faf6f2;
+  }
 }
 
 @layer utilities {
@@ -184,7 +244,7 @@
     background: linear-gradient(180deg, rgba(245, 230, 184, 0.95), rgba(197, 165, 90, 0.9));
   }
 
-  /* Service catalog cards (ServicesSection.ServiceCard) */
+  /* Service catalog cards (EventCatalogCard) */
   .animate-shamell-exp-card-in {
     opacity: 0;
     animation: shamell-exp-card-in 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -346,216 +406,75 @@
   }
 }
 
-/* ─── Home: rich stage backdrop (warm embers + cool wash + soft motion) ─── */
-@keyframes shamell-atmosphere-float-1 {
-  0%,
-  100% {
-    transform: translate(-6%, 2%) scale(1);
-    opacity: 0.5;
-  }
-  50% {
-    transform: translate(8%, -8%) scale(1.1);
-    opacity: 0.82;
-  }
-}
+/* Shamell admin — Purple Fire semantic layer (pairs with shamell-admin-tokens.css) */
+.admin-theme {
+  --background: transparent;
+  --foreground: var(--shamell-text-primary);
+  --background-elevated: var(--shamell-surface-raised);
+  --background-overlay: var(--shamell-surface-overlay);
+  --foreground-muted: var(--shamell-text-secondary);
+  --foreground-subtle: var(--shamell-text-muted);
+  --border: var(--shamell-border-gold-soft);
+  --border-strong: var(--shamell-border-gold-strong);
+  --gold-dark-mode: var(--shamell-gold);
+  --primary: var(--shamell-gold);
+  --primary-foreground: var(--shamell-night);
+  --primary-hover: var(--shamell-gold-bright);
+  --secondary: color-mix(in srgb, var(--shamell-gold) 16%, transparent);
+  --accent: color-mix(in srgb, var(--shamell-flame) 18%, transparent);
+  --destructive: var(--shamell-danger);
+  --success: var(--shamell-success);
+  --warning: var(--shamell-warning);
+  --ring: color-mix(in srgb, var(--shamell-state-focus) 52%, transparent);
+  --card: var(--shamell-glass-fill);
+  --card-foreground: var(--shamell-text-primary);
+  --popover: var(--shamell-surface-overlay);
+  --popover-foreground: var(--shamell-text-primary);
+  --input: var(--shamell-border-gold);
+  --muted: color-mix(in srgb, var(--shamell-gold) 12%, transparent);
+  --muted-foreground: var(--shamell-text-muted);
+  --shadow-sm: 0 4px 18px rgba(0, 0, 0, 0.38);
+  --shadow-md: 0 12px 34px rgba(0, 0, 0, 0.44);
+  --shadow-lg: 0 22px 52px rgba(0, 0, 0, 0.52);
 
-@keyframes shamell-atmosphere-float-2 {
-  0%,
-  100% {
-    transform: translate(4%, -6%) scale(1.02);
-    opacity: 0.38;
-  }
-  50% {
-    transform: translate(-12%, 6%) scale(0.96);
-    opacity: 0.68;
-  }
-}
-
-@keyframes shamell-atmosphere-float-3 {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0.28;
-  }
-  50% {
-    transform: translate(-50%, -50%) scale(1.12);
-    opacity: 0.48;
-  }
-}
-
-@keyframes shamell-atmosphere-sheen {
-  0% {
-    transform: translateX(-42%) skewX(-12deg);
-    opacity: 0;
-  }
-  18% {
-    opacity: 0.14;
-  }
-  42% {
-    opacity: 0.22;
-  }
-  70% {
-    opacity: 0.08;
-  }
-  100% {
-    transform: translateX(48%) skewX(-12deg);
-    opacity: 0;
-  }
-}
-
-@keyframes shamell-atmosphere-gradient-flow {
-  0% {
-    background-position: 12% 20%;
-  }
-  28% {
-    background-position: 88% 35%;
-  }
-  52% {
-    background-position: 40% 88%;
-  }
-  78% {
-    background-position: 70% 18%;
-  }
-  100% {
-    background-position: 12% 20%;
-  }
-}
-
-@keyframes shamell-atmosphere-gradient-flow-2 {
-  0% {
-    background-position: 90% 10%;
-  }
-  50% {
-    background-position: 8% 92%;
-  }
-  100% {
-    background-position: 90% 10%;
-  }
-}
-
-/* Admin theme system (light/dark) */
-:root {
-  --gold-light-mode: #886a3a;
-  --gold-dark-mode: #c5a55a;
-  --background-elevated: #15100f;
-  --background-overlay: rgba(0, 0, 0, 0.72);
-  --foreground-muted: rgba(245, 238, 224, 0.78);
-  --foreground-subtle: rgba(245, 238, 224, 0.6);
-  --border-strong: rgba(197, 165, 90, 0.34);
-  --primary-hover: #d2b36e;
-  --success: #6f9e78;
-  --warning: #a9854a;
-  --shadow-sm: 0 4px 18px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 14px 34px rgba(0, 0, 0, 0.34);
-  --shadow-lg: 0 22px 52px rgba(0, 0, 0, 0.55);
-}
-
-.admin-theme.admin-theme--dark {
-  --background: #0f0b0a;
-  --background-elevated: #171110;
-  --background-overlay: rgba(6, 6, 7, 0.8);
-  --foreground: #f4ecdc;
-  --foreground-muted: rgba(244, 236, 220, 0.78);
-  --foreground-subtle: rgba(244, 236, 220, 0.56);
-  --border: rgba(196, 165, 93, 0.18);
-  --border-strong: rgba(196, 165, 93, 0.34);
-  --gold-dark-mode: #c5a55a;
-  --primary: var(--gold-dark-mode);
-  --primary-foreground: #0f0b0a;
-  --primary-hover: #d2b36e;
-  --secondary: rgba(197, 165, 90, 0.14);
-  --accent: rgba(197, 165, 90, 0.12);
-  --destructive: #b4635d;
-  --success: #6f9e78;
-  --warning: #a9854a;
-  --ring: rgba(214, 182, 108, 0.62);
-  --card: #171110;
-  --card-foreground: #f4ecdc;
-  --input: rgba(197, 165, 90, 0.24);
-  --muted: rgba(197, 165, 90, 0.1);
-  --muted-foreground: rgba(244, 236, 220, 0.7);
-  --shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 10px 24px rgba(0, 0, 0, 0.28);
-  --shadow-lg: 0 20px 44px rgba(0, 0, 0, 0.4);
-}
-
-.admin-theme.admin-theme--light {
-  --background: #f7f2e9;
-  --background-elevated: #fefcf8;
-  --background-overlay: rgba(28, 21, 17, 0.36);
-  --foreground: #2a2520;
-  --foreground-muted: #5c544a;
-  --foreground-subtle: #72685c;
-  --border: rgba(169, 141, 88, 0.26);
-  --border-strong: rgba(156, 127, 74, 0.4);
-  --gold-light-mode: #886a3a;
-  --primary: var(--gold-light-mode);
-  --primary-foreground: #fffaf0;
-  --primary-hover: #7a5d2e;
-  --secondary: rgba(159, 125, 63, 0.13);
-  --accent: rgba(159, 125, 63, 0.11);
-  --destructive: #9b5952;
-  --success: #5d8668;
-  --warning: #8f6b2f;
-  --ring: rgba(165, 128, 64, 0.48);
-  --card: #fffdf8;
-  --card-foreground: #2f251f;
-  --input: rgba(167, 137, 82, 0.33);
-  --muted: rgba(159, 125, 63, 0.09);
-  --muted-foreground: #766d62;
-  --shadow-sm: 0 1px 3px rgba(139, 111, 61, 0.08);
-  --shadow-md: 0 16px 34px rgba(87, 67, 40, 0.12);
-  --shadow-lg: 0 26px 52px rgba(87, 67, 40, 0.17);
-}
-
-.admin-theme-transition,
-.admin-theme-transition * {
-  transition-property: color, background-color, border-color, fill, stroke, box-shadow;
-  transition-duration: 240ms;
-  transition-timing-function: ease;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .admin-theme-transition,
-  .admin-theme-transition * {
-    transition-duration: 0ms !important;
-  }
+  --color-gold: var(--shamell-gold);
+  --color-gold-light: var(--shamell-gold-bright);
 }
 
 .admin-theme [class~="bg-[#070707]"] {
-  background-color: var(--background) !important;
+  background-color: color-mix(in srgb, var(--shamell-surface-deep) 92%, transparent) !important;
 }
 .admin-theme [class~="bg-[#0a0c10]"],
 .admin-theme [class~="bg-[#0a0d12]"],
 .admin-theme [class~="bg-[#0b0f14]"],
 .admin-theme [class~="bg-[#0c0c0c]"],
 .admin-theme [class~="bg-[#0c1016]"] {
-  background-color: var(--background-elevated) !important;
+  background-color: color-mix(in srgb, var(--shamell-surface-raised) 94%, transparent) !important;
 }
 
 .admin-theme [class~="bg-black/15"] {
-  background-color: color-mix(in srgb, var(--background-elevated) 84%, transparent) !important;
+  background-color: color-mix(in srgb, var(--shamell-surface-card) 72%, transparent) !important;
 }
 .admin-theme [class~="bg-black/20"],
 .admin-theme [class~="bg-black/22"] {
-  background-color: color-mix(in srgb, var(--background-elevated) 88%, transparent) !important;
+  background-color: color-mix(in srgb, var(--shamell-surface-card) 82%, transparent) !important;
 }
 .admin-theme [class~="bg-black/25"],
 .admin-theme [class~="bg-black/28"],
 .admin-theme [class~="bg-black/30"],
 .admin-theme [class~="bg-black/35"] {
-  background-color: color-mix(in srgb, var(--background-elevated) 92%, transparent) !important;
+  background-color: color-mix(in srgb, var(--shamell-surface-card) 90%, transparent) !important;
 }
 .admin-theme [class~="bg-black/40"],
 .admin-theme [class~="bg-black/45"],
 .admin-theme [class~="bg-black/50"] {
-  background-color: color-mix(in srgb, var(--background-elevated) 97%, transparent) !important;
+  background-color: color-mix(in srgb, var(--shamell-surface-card) 96%, transparent) !important;
 }
 .admin-theme [class~="bg-black/60"],
 .admin-theme [class~="bg-black/70"],
 .admin-theme [class~="bg-black/75"],
 .admin-theme [class~="bg-black/85"] {
-  background-color: var(--background-overlay) !important;
+  background-color: var(--shamell-surface-overlay) !important;
 }
 
 .admin-theme [class~="border-gold/12"],
@@ -567,11 +486,11 @@
 .admin-theme [class~="border-gold/25"],
 .admin-theme [class~="border-gold/30"],
 .admin-theme [class~="border-gold/35"] {
-  border-color: var(--border) !important;
+  border-color: var(--shamell-border-gold-soft) !important;
 }
 
 .admin-theme [class~="text-gold"] {
-  color: var(--primary) !important;
+  color: var(--shamell-gold) !important;
 }
 .admin-theme [class~="text-foreground/50"],
 .admin-theme [class~="text-foreground/55"],
@@ -590,6 +509,10 @@
   background-color: var(--accent) !important;
 }
 
+.admin-theme [class~="hover:bg-white/5"]:hover {
+  background-color: color-mix(in srgb, var(--shamell-text-primary) 6%, transparent) !important;
+}
+
 .admin-theme [class*="shadow-[0_"],
 .admin-theme [class~="shadow-2xl"],
 .admin-theme [class~="shadow-xl"],
@@ -597,214 +520,141 @@
   box-shadow: var(--shadow-sm) !important;
 }
 
-.admin-theme :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]) {
-  background-color: color-mix(in srgb, var(--background-elevated) 96%, transparent) !important;
-  border-color: var(--input) !important;
-  color: var(--foreground) !important;
+.admin-theme
+  :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([data-shamell-admin-search]) {
+  background-color: var(--shamell-surface-input) !important;
+  backdrop-filter: var(--shamell-blur-input);
+  -webkit-backdrop-filter: var(--shamell-blur-input);
+  border-color: var(--shamell-border-gold) !important;
+  color: var(--shamell-text-primary) !important;
 }
 
-.admin-theme :is(input, textarea, select):focus {
+.admin-theme
+  :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([data-shamell-admin-search])::placeholder {
+  color: var(--shamell-text-muted);
+  opacity: 1;
+}
+
+.admin-theme :is(input, textarea, select):not([data-shamell-admin-search]):focus {
   outline: none;
-  border-color: var(--border-strong) !important;
-  box-shadow: 0 0 0 2px var(--ring) !important;
+  border-color: var(--shamell-border-gold-strong) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--shamell-state-focus) 48%, transparent) !important;
+}
+
+/*
+ * Pill search inputs: excluded from rule above via [data-shamell-admin-search].
+ * Extra reset avoids forced dark UA styling / WebKit text-field chrome reading as “black box”.
+ */
+.admin-theme label.admin-search-pill input[data-shamell-admin-search],
+.admin-theme label.admin-search-pill input[data-shamell-admin-search]:focus {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.admin-theme .shamell-admin-checkbox {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--shamell-gold);
+  border-radius: 3px;
+  border: 1px solid var(--shamell-border-gold);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--shamell-night) 65%, transparent);
+}
+
+.admin-theme .shamell-time-input {
+  background-color: color-mix(in srgb, var(--shamell-surface-input) 88%, transparent) !important;
+  border-color: var(--shamell-border-gold) !important;
+  color: var(--shamell-text-primary) !important;
+  backdrop-filter: var(--shamell-blur-input);
+  -webkit-backdrop-filter: var(--shamell-blur-input);
+  color-scheme: dark;
+}
+
+.admin-theme .shamell-time-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.95;
+  filter: sepia(1) saturate(1.9) hue-rotate(338deg) brightness(1.08);
 }
 
 .admin-theme table thead tr {
-  background-color: color-mix(in srgb, var(--background-elevated) 93%, transparent) !important;
+  background-color: color-mix(in srgb, var(--shamell-surface-raised) 88%, transparent) !important;
 }
 .admin-theme table tbody tr:hover {
   background-color: var(--accent) !important;
 }
 
-.admin-btn-primary {
-  border-radius: 0.75rem;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  transition: all 240ms ease;
+.admin-theme .admin-btn-primary {
+  border-radius: var(--shamell-radius-lg);
+  background: var(--shamell-cta-primary);
+  color: var(--shamell-text-primary);
+  border: 1px solid var(--shamell-border-gold-soft);
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease,
+    box-shadow 180ms ease;
   box-shadow: var(--shadow-sm);
 }
 
-.admin-btn-primary:hover {
-  background: var(--primary-hover);
+.admin-theme .admin-btn-primary:hover {
+  background: var(--shamell-cta-primary-hover);
   transform: translateY(-1px);
 }
 
-.admin-btn-primary:active {
+.admin-theme .admin-btn-primary:active {
+  background: var(--shamell-cta-primary-active);
   transform: translateY(0) scale(0.985);
 }
 
-.admin-btn-secondary {
-  border-radius: 0.75rem;
-  border: 1px solid var(--border-strong);
-  color: var(--primary);
+.admin-theme .admin-btn-secondary {
+  border-radius: var(--shamell-radius-lg);
+  border: 1px solid var(--shamell-border-gold);
+  color: var(--shamell-gold);
   background: transparent;
-  transition: all 240ms ease;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
 }
 
-.admin-btn-secondary:hover {
-  background: var(--accent);
+.admin-theme .admin-btn-secondary:hover {
+  background: color-mix(in srgb, var(--shamell-flame) 14%, transparent);
+  border-color: var(--shamell-border-gold-strong);
 }
 
-.admin-panel {
-  border: 1px solid var(--border);
-  background: color-mix(in srgb, var(--background-elevated) 97%, transparent);
-  border-radius: 0.9rem;
+.admin-theme .admin-panel {
+  border: 1px solid var(--shamell-border-gold-soft);
+  background: var(--shamell-glass-fill);
+  backdrop-filter: var(--shamell-blur-card);
+  -webkit-backdrop-filter: var(--shamell-blur-card);
+  border-radius: var(--shamell-radius-lg);
   box-shadow: var(--shadow-sm);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
 }
 
-.admin-overlay {
-  background-color: var(--background-overlay);
+.admin-theme .admin-panel:hover {
+  border-color: var(--shamell-border-gold);
 }
 
-.admin-text-brand {
-  color: var(--primary);
+.admin-theme .admin-overlay {
+  background-color: color-mix(in srgb, var(--shamell-night) 72%, transparent);
 }
 
-.admin-text-muted {
+.admin-theme .admin-text-brand {
+  color: var(--shamell-gold);
+}
+
+.admin-theme .admin-text-muted {
   color: var(--foreground-muted);
 }
 
-.admin-text-subtle {
+.admin-theme .admin-text-subtle {
   color: var(--foreground-subtle);
-}
-
-.shamell-home {
-  background-color: #050406;
-  background-image: linear-gradient(180deg, #0a070c 0%, #050406 55%, #08060a 100%);
-}
-
-.shamell-home__gradient-aurora {
-  position: absolute;
-  inset: -25%;
-  will-change: background-position;
-  background: linear-gradient(
-    118deg,
-    rgba(32, 18, 14, 0.75) 0%,
-    rgba(14, 10, 28, 0.82) 18%,
-    rgba(8, 6, 18, 0.78) 36%,
-    rgba(42, 22, 16, 0.72) 52%,
-    rgba(20, 14, 40, 0.8) 70%,
-    rgba(28, 16, 12, 0.74) 88%,
-    rgba(12, 10, 22, 0.78) 100%
-  );
-  background-size: 320% 320%;
-  animation: shamell-atmosphere-gradient-flow 38s ease-in-out infinite;
-  opacity: 0.92;
-}
-
-.shamell-home__gradient-dusk {
-  position: absolute;
-  inset: -18%;
-  will-change: background-position;
-  mix-blend-mode: soft-light;
-  opacity: 0.5;
-  background: linear-gradient(
-    -42deg,
-    rgba(197, 165, 90, 0.22) 0%,
-    transparent 22%,
-    rgba(90, 62, 120, 0.2) 48%,
-    transparent 72%,
-    rgba(160, 72, 38, 0.18) 88%,
-    transparent 100%
-  );
-  background-size: 260% 260%;
-  animation: shamell-atmosphere-gradient-flow-2 52s ease-in-out infinite;
-}
-
-.shamell-home__atmosphere {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-}
-
-.shamell-home__atmosphere-vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse 88% 72% at 50% 42%,
-    transparent 0%,
-    rgba(0, 0, 0, 0.35) 72%,
-    rgba(0, 0, 0, 0.82) 100%
-  );
-}
-
-.shamell-home__blob {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(76px);
-  will-change: transform, opacity;
-}
-
-.shamell-home__blob--warm {
-  width: min(118vw, 920px);
-  height: min(78vh, 640px);
-  left: -28%;
-  bottom: -24%;
-  background: radial-gradient(
-    circle,
-    rgba(200, 88, 42, 0.2) 0%,
-    rgba(197, 165, 90, 0.08) 40%,
-    transparent 72%
-  );
-  animation: shamell-atmosphere-float-1 34s ease-in-out infinite alternate;
-}
-
-.shamell-home__blob--cool {
-  width: min(105vw, 760px);
-  height: min(68vh, 560px);
-  right: -26%;
-  top: -18%;
-  background: radial-gradient(
-    circle,
-    rgba(98, 78, 160, 0.18) 0%,
-    rgba(42, 36, 72, 0.1) 48%,
-    transparent 70%
-  );
-  animation: shamell-atmosphere-float-2 40s ease-in-out infinite alternate-reverse;
-}
-
-.shamell-home__blob--gold {
-  width: min(72vw, 520px);
-  height: 420px;
-  left: 50%;
-  top: 52%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(197, 165, 90, 0.11) 0%, transparent 68%);
-  filter: blur(88px);
-  animation: shamell-atmosphere-float-3 46s ease-in-out infinite alternate;
-}
-
-.shamell-home__sheen {
-  position: absolute;
-  bottom: -35%;
-  left: -25%;
-  width: 65%;
-  height: 55%;
-  background: linear-gradient(98deg, transparent 0%, rgba(245, 230, 184, 0.06) 45%, transparent 100%);
-  filter: blur(48px);
-  animation: shamell-atmosphere-sheen 52s ease-in-out infinite;
-  opacity: 0.9;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .shamell-home__gradient-aurora,
-  .shamell-home__gradient-dusk {
-    animation: none !important;
-    background-position: 50% 50%;
-  }
-
-  .shamell-home__blob--warm,
-  .shamell-home__blob--cool,
-  .shamell-home__blob--gold,
-  .shamell-home__sheen {
-    animation: none !important;
-    opacity: 0.55;
-  }
-
-  .shamell-home__blob--gold {
-    opacity: 0.35;
-    transform: translate(-50%, -50%) scale(1);
-  }
 }

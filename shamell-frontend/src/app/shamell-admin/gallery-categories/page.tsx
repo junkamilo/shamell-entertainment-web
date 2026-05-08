@@ -376,7 +376,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
       <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
         <Link
           href="/shamell-admin/gallery"
-          className="inline-flex items-center gap-2 rounded-full border border-gold/25 bg-black/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
+          className="shamell-glass-surface inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
         >
           <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
           Ir a galería
@@ -394,7 +394,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
         ).map(([label, value]) => (
           <div
             key={label}
-            className="group relative overflow-hidden rounded-xl border border-gold/15 bg-black/25 px-4 py-3 shadow-[inset_0_1px_0_rgba(197,165,90,0.06)] transition hover:border-gold/25"
+            className="group relative overflow-hidden shamell-glass-surface rounded-xl px-4 py-3 transition hover:border-gold/25"
           >
             <div className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-gold/10 blur-2xl transition group-hover:bg-gold/15" />
             <p className="relative font-brand text-[10px] tracking-[0.18em] text-gold/75">{label}</p>
@@ -408,7 +408,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Buscar por nombre o slug..."
-          className="mx-0 min-h-12 max-w-none flex-1 rounded-xl border-gold/18 bg-black/22"
+          className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-wrap gap-2 lg:shrink-0">
           {filterPill("all", "Todas")}
@@ -417,7 +417,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
         </div>
       </div>
 
-      <section className="rounded-xl border border-gold/12 bg-black/15 p-5 md:p-7">
+      <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
         {isLoading ? <p className="text-sm text-foreground/65">Cargando...</p> : null}
         {!isLoading && filteredCategories.length === 0 ? (
           <p className="text-sm text-foreground/65">
@@ -437,7 +437,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
               <article
                 key={category.id}
                 className={cn(
-                  "relative flex flex-col overflow-hidden rounded-2xl border bg-black/28 p-1 shadow-[0_12px_40px_rgba(0,0,0,0.4)] transition",
+                  "shamell-glass-surface relative flex flex-col overflow-hidden rounded-2xl border p-1 transition",
                   isSpotlight
                     ? "border-gold/40 ring-1 ring-gold/25 md:col-span-2"
                     : "border-gold/16 hover:border-gold/28",
@@ -488,7 +488,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
                         Colección para agrupar fotos y videos en la galería pública.
                       </p>
 
-                      <div className="relative overflow-hidden rounded-xl border border-gold/14 bg-black/35 p-3">
+                      <div className="shamell-glass-surface relative overflow-hidden rounded-xl border border-gold/14 p-3">
                         <div className="mb-2 flex items-center gap-2">
                           <Aperture className="h-3.5 w-3.5 text-gold/45" strokeWidth={1.5} />
                           <p className="font-brand text-[9px] tracking-[0.14em] text-gold/55">VISTA PREVIA</p>
@@ -505,7 +505,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
                             {previews.slice(0, isSpotlight ? 5 : 4).map((url, i) => (
                               <div
                                 key={`${category.id}-${i}`}
-                                className="relative aspect-square overflow-hidden rounded-lg border border-gold/22 bg-black/50 shadow-inner"
+                                className="relative aspect-square overflow-hidden rounded-lg border border-gold/22 bg-gold/5 shadow-inner"
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img src={url} alt="" className="h-full w-full object-cover" />
@@ -513,7 +513,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
                             ))}
                           </div>
                         ) : (
-                          <div className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gold/20 bg-black/25 px-4 py-10 text-center">
+                          <div className="shamell-glass-surface flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-gold/20 px-4 py-10 text-center">
                             <ImageIcon className="h-8 w-8 text-gold/30" strokeWidth={1.2} />
                             <p className="font-body text-[11px] text-foreground/40">Sin vista previa aún</p>
                           </div>
@@ -543,7 +543,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
                           "relative h-7 w-12 shrink-0 rounded-full border transition",
                           category.isActive
                             ? "border-emerald-400/45 bg-emerald-500/22"
-                            : "border-foreground/22 bg-black/45",
+                            : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                           togglingId === category.id && "cursor-not-allowed opacity-60",
                         )}
                         aria-label={`${category.isActive ? "Desactivar" : "Activar"} ${category.name}`}
@@ -578,13 +578,13 @@ export default function ShamellAdminGalleryCategoriesPage() {
             <input
               value={categoryName}
               onChange={(event) => setCategoryName(event.target.value)}
-              className="mt-2 h-11 w-full rounded-xl border border-gold/30 bg-black/35 px-4 text-sm text-foreground outline-none focus:border-gold"
+              className="mt-2 h-11 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none focus:border-gold"
               placeholder="Ej. Performance en vivo"
             />
             {!editingCategoryId ? (
               <p className="mt-2 font-body text-[11px] text-foreground/50">
                 Vista previa del slug:{" "}
-                <code className="rounded border border-gold/15 bg-black/40 px-1.5 py-0.5 font-mono text-gold/80">
+                <code className="shamell-glass-surface rounded border border-gold/15 px-1.5 py-0.5 font-mono text-gold/80">
                   {slugifyDisplay(categoryName) || "…"}
                 </code>{" "}
                 (se confirma al guardar; el backend garantiza que sea único).
@@ -592,7 +592,7 @@ export default function ShamellAdminGalleryCategoriesPage() {
             ) : (
               <p className="mt-2 font-body text-[11px] text-foreground/50">
                 Slug publicado:{" "}
-                <code className="rounded border border-gold/15 bg-black/40 px-1.5 py-0.5 font-mono text-gold/80">
+                <code className="shamell-glass-surface rounded border border-gold/15 px-1.5 py-0.5 font-mono text-gold/80">
                   /
                   {categories.find((c) => c.id === editingCategoryId)?.slug ?? "…"}
                 </code>

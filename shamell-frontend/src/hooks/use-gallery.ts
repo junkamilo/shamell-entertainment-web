@@ -59,7 +59,6 @@ export function useGalleryCategories() {
 
   useEffect(() => {
     let isCancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
 
     fetch(`${apiBaseUrl}/api/v1/gallery/categories`)
@@ -106,7 +105,6 @@ export function useGalleryPhotos(filter: string, limit?: number) {
 
   useEffect(() => {
     let isCancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
 
     const params = new URLSearchParams();

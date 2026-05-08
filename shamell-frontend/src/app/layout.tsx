@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Cormorant_Garamond, Geist, Geist_Mono, Great_Vibes, Cinzel } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import PublicBackgroundGate from "@/components/shared/PublicBackgroundGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,6 +49,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${cinzel.variable} ${greatVibes.variable} ${cormorant.variable} h-full antialiased dark`}
     >
       <body className="min-h-full flex flex-col">
+        <PublicBackgroundGate />
         {children}
         <Toaster />
       </body>

@@ -1,6 +1,19 @@
 import { Transform, Type } from 'class-transformer';
-import { IsArray, IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength, ValidateNested } from 'class-validator';
-import { CONTACT_INQUIRY_CODES, type ContactInquiryCode } from '../../../common/contact-inquiry-codes';
+import {
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
+import {
+  CONTACT_INQUIRY_CODES,
+  type ContactInquiryCode,
+} from '../../../common/contact-inquiry-codes';
 import { EventTypeOccasionAssignmentDto } from './event-type-occasion-assignment.dto';
 
 export class CreateEventTypeDto {

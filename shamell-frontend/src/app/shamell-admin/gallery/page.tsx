@@ -433,7 +433,7 @@ export default function ShamellAdminGalleryPage() {
       <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
         <Link
           href="/shamell-admin/gallery-categories"
-          className="inline-flex items-center gap-2 rounded-full border border-gold/25 bg-black/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
+          className="shamell-glass-surface inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
         >
           <FolderOpen className="h-3.5 w-3.5" strokeWidth={1.5} />
           Gestionar categorías
@@ -462,7 +462,7 @@ export default function ShamellAdminGalleryPage() {
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-xl border border-gold/15 bg-black/25 px-4 py-3 shadow-[inset_0_1px_0_rgba(197,165,90,0.06)]"
+            className="shamell-glass-surface rounded-xl px-4 py-3"
           >
             <p className="font-brand text-[10px] tracking-[0.16em] text-gold/75">{label}</p>
             <p className="mt-1 truncate font-brand text-lg tracking-wide text-gold md:text-xl">{value}</p>
@@ -475,7 +475,7 @@ export default function ShamellAdminGalleryPage() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Buscar por nombre de categoría..."
-          className="mx-0 min-h-12 max-w-none flex-1 rounded-xl border-gold/18 bg-black/22"
+          className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div ref={filterDropdownRef} className="relative w-full shrink-0 lg:w-72">
           <button
@@ -487,7 +487,7 @@ export default function ShamellAdminGalleryPage() {
               "flex h-12 w-full items-center justify-between gap-3 rounded-xl border px-4 font-brand text-[10px] tracking-[0.14em] transition",
               filterDropdownOpen
                 ? "border-gold/50 bg-gold/10 text-gold shadow-[inset_0_1px_0_rgba(197,165,90,0.12)]"
-                : "border-gold/18 bg-black/22 text-foreground/80 hover:border-gold/35 hover:text-gold",
+                : "border-gold/18 text-foreground/80 hover:border-gold/35 hover:text-gold",
             )}
           >
             <span className="min-w-0 truncate text-left">
@@ -523,7 +523,7 @@ export default function ShamellAdminGalleryPage() {
                 )}
               >
                 <span>Todas las categorías</span>
-                <span className="rounded-full border border-gold/20 bg-black/40 px-2 py-0.5 font-body text-[10px] text-foreground/55">
+                <span className="shamell-glass-surface rounded-full border border-gold/20 px-2 py-0.5 font-body text-[10px] text-foreground/55">
                   {totalForFilterAll}
                 </span>
               </button>
@@ -547,7 +547,7 @@ export default function ShamellAdminGalleryPage() {
                     )}
                   >
                     <span className="min-w-0 truncate font-brand text-[10px] tracking-[0.12em]">{c.name}</span>
-                    <span className="shrink-0 rounded-full border border-gold/18 bg-black/35 px-2 py-0.5 font-body text-[10px] text-foreground/50">
+                    <span className="shamell-glass-surface shrink-0 rounded-full border border-gold/18 px-2 py-0.5 font-body text-[10px] text-foreground/50">
                       {n}
                     </span>
                   </button>
@@ -558,7 +558,7 @@ export default function ShamellAdminGalleryPage() {
         </div>
       </div>
 
-      <section className="rounded-xl border border-gold/12 bg-black/15 p-5 md:p-6">
+      <section className="shamell-glass-surface rounded-xl p-5 md:p-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Biblioteca de medios</h2>
@@ -578,10 +578,10 @@ export default function ShamellAdminGalleryPage() {
             return (
               <article
                 key={cat.id}
-                className="relative overflow-hidden rounded-2xl border border-gold/14 bg-black/25 shadow-[0_12px_40px_rgba(0,0,0,0.38)]"
+                className="shamell-glass-surface relative overflow-hidden rounded-2xl border border-gold/14"
               >
                 <div className="pointer-events-none absolute inset-0 rounded-2xl bg-linear-to-br from-gold/6 via-transparent to-transparent opacity-90" />
-                <div className="relative border-b border-gold/12 bg-black/35 px-5 py-4 md:px-6">
+                <div className="shamell-glass-surface relative border-b border-gold/12 px-5 py-4 md:px-6">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="font-brand text-[9px] tracking-[0.18em] text-gold/55">ÁLBUM</p>
@@ -622,7 +622,7 @@ export default function ShamellAdminGalleryPage() {
                 {albumExpanded ? (
                 <div className="relative p-4 md:p-5">
                   {n === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gold/20 bg-black/20 px-6 py-12 text-center">
+                    <div className="shamell-glass-surface flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gold/20 px-6 py-12 text-center">
                       <ImageIcon className="h-9 w-9 text-gold/25" strokeWidth={1.2} />
                       <p className="font-body text-sm text-foreground/45">No hay medios en este álbum todavía.</p>
                     </div>
@@ -632,11 +632,11 @@ export default function ShamellAdminGalleryPage() {
                         <div
                           key={photo.id}
                           className={cn(
-                            "group flex flex-col overflow-hidden rounded-xl border border-gold/16 bg-black/35 shadow-inner transition hover:border-gold/30",
+                            "shamell-glass-surface group flex flex-col overflow-hidden rounded-xl border border-gold/16 transition hover:border-gold/30",
                             !photo.isActive && "opacity-60",
                           )}
                         >
-                          <div className="relative aspect-square w-full overflow-hidden bg-black/50">
+                          <div className="relative aspect-square w-full overflow-hidden bg-gold/5">
                             {isVideoMedia(photo) ? (
                               <video
                                 src={photo.imageUrl}
@@ -656,12 +656,12 @@ export default function ShamellAdminGalleryPage() {
                             )}
                             <div className="absolute left-2 top-2 flex flex-wrap gap-1">
                               {isVideoMedia(photo) ? (
-                                <span className="rounded border border-sky-400/35 bg-black/75 px-1.5 py-0.5 font-body text-[8px] uppercase tracking-wide text-sky-100/95">
+                                <span className="shamell-glass-surface rounded border border-sky-400/35 px-1.5 py-0.5 font-body text-[8px] uppercase tracking-wide text-sky-100/95">
                                   Video
                                 </span>
                               ) : null}
                               {!photo.isActive ? (
-                                <span className="rounded border border-foreground/25 bg-black/75 px-1.5 py-0.5 font-brand text-[8px] tracking-[0.1em] text-foreground/70">
+                                <span className="shamell-glass-surface rounded border border-foreground/25 px-1.5 py-0.5 font-brand text-[8px] tracking-[0.1em] text-foreground/70">
                                   Oculto
                                 </span>
                               ) : null}
@@ -695,7 +695,7 @@ export default function ShamellAdminGalleryPage() {
                                   "relative ml-auto h-7 w-12 shrink-0 rounded-full border transition",
                                   photo.isActive
                                     ? "border-emerald-400/45 bg-emerald-500/22"
-                                    : "border-foreground/22 bg-black/45",
+                                    : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                                 )}
                                 title={photo.isActive ? "Visible en el sitio" : "Oculto en el sitio"}
                                 aria-label={`${photo.isActive ? "Ocultar" : "Mostrar"} en el sitio`}
@@ -762,7 +762,7 @@ export default function ShamellAdminGalleryPage() {
                       "flex flex-col rounded-xl border px-3 py-3 text-left transition",
                       selected
                         ? "border-gold/55 bg-gold/15 ring-1 ring-gold/30"
-                        : "border-gold/15 bg-black/30 hover:border-gold/30 hover:bg-black/40",
+                        : "shamell-glass-surface border-gold/15 hover:border-gold/30",
                     )}
                   >
                     <span className="font-brand text-sm tracking-[0.06em] text-gold">{c.name}</span>
@@ -785,7 +785,7 @@ export default function ShamellAdminGalleryPage() {
 
           <label className="block">
             <p className="font-brand text-[11px] tracking-[0.2em] text-gold/95">2 · ARCHIVO</p>
-            <div className="mt-2 flex flex-col items-center justify-center rounded-xl border border-dashed border-gold/25 bg-black/30 px-4 py-8 text-center">
+            <div className="shamell-glass-surface mt-2 flex flex-col items-center justify-center rounded-xl border border-dashed border-gold/25 px-4 py-8 text-center">
               <Upload className="mx-auto h-8 w-8 text-gold/50" strokeWidth={1.3} />
               <p className="mt-2 font-body text-xs text-foreground/55">
                 {editingPhotoId ? "Opcional: nuevo archivo (reemplaza el actual)." : "Imagen o video — requerido."}
@@ -794,7 +794,7 @@ export default function ShamellAdminGalleryPage() {
                 type="file"
                 accept="image/*,video/*"
                 onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
-                className="mt-4 w-full max-w-xs cursor-pointer rounded-lg border border-gold/20 bg-black/40 px-3 py-2 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-gold/20 file:px-3 file:py-1.5 file:text-gold"
+                className="mt-4 w-full max-w-xs cursor-pointer rounded-lg border border-gold/20 px-3 py-2 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-gold/20 file:px-3 file:py-1.5 file:text-gold"
               />
               {imageFile ? (
                 <p className="mt-2 font-mono text-[10px] text-foreground/50">{imageFile.name}</p>

@@ -1,5 +1,16 @@
-import { Transform } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsBoolean, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class UpdateServiceDto {
   @IsOptional()
@@ -9,21 +20,39 @@ export class UpdateServiceDto {
   @IsOptional()
   @IsString()
   @MaxLength(5000)
-  @Transform(({ value }) => (value === undefined ? undefined : String(value).trim()))
+  @Transform(({ value }) =>
+    value === undefined ? undefined : String(value).trim(),
+  )
   description?: string;
 
   @IsOptional()
   @IsArray()
   @ArrayMinSize(1)
   @IsString({ each: true })
-  @Transform(({ value }) =>
-    Array.isArray(value)
-      ? value.map((item) => String(item).trim()).filter(Boolean)
-      : typeof value === 'string' && value.trim().length > 0
-        ? [value.trim()]
-        : value,
-  )
+  @Transform(({ value }: { value: unknown }) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => (typeof item === 'string' ? item.trim() : ''))
+        .filter((item) => item.length > 0);
+    }
+    if (typeof value === 'string' && value.trim().length > 0)
+      return [value.trim()];
+    return undefined;
+  })
   items?: string[];
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === '' || value === null || value === undefined) return null;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number(value);
+    return undefined;
+  })
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  price?: number | null;
 
   @IsOptional()
   @Transform(({ value }) => {

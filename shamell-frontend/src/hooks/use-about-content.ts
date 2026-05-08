@@ -30,7 +30,6 @@ export function useAboutContent() {
 
   useEffect(() => {
     let isCancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
 
     fetch(`${apiBaseUrl}/api/v1/about`)

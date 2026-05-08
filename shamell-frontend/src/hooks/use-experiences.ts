@@ -42,7 +42,6 @@ export function useExperiences() {
     const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, "");
 
     let isCancelled = false;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
 
     fetch(`${baseUrl}/api/v1/services`)

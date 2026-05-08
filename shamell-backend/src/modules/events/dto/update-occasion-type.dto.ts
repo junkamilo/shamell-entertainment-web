@@ -1,5 +1,12 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class UpdateOccasionTypeDto {
   @IsOptional()
@@ -9,7 +16,9 @@ export class UpdateOccasionTypeDto {
   @Matches(/^[A-Za-zÀ-ÿ0-9\s&,.()'¿?¡!/-]+$/, {
     message: 'Name contains invalid characters.',
   })
-  @Transform(({ value }) => (value === undefined ? undefined : String(value).trim()))
+  @Transform(({ value }) =>
+    value === undefined ? undefined : String(value).trim(),
+  )
   name?: string;
 
   @IsOptional()

@@ -35,6 +35,24 @@ enum EventTypeOccasionUsage {
   BESPOKE_ROLE
 }
 
+enum BookingSource {
+  CLIENT_REGISTERED
+  ADMIN_PHONE
+  ADMIN_FROM_CONTACT
+}
+
+enum AvailabilityClosureKind {
+  SPECIFIC_DATE
+  RECURRING_WEEKDAY
+  DATE_RANGE
+}
+
+enum ContactRequestStatus {
+  PENDING
+  RESERVED
+  CANCELLED
+}
+
 // ============ MODELS ============
 model User {
   id                     String        @id @default(uuid())
@@ -48,7 +66,8 @@ model User {
   twoFactorSecret        String?
   passwordResetToken     String?
   passwordResetExpiresAt DateTime?
-  bookings               Booking[]
+  bookings               Booking[]     @relation("ClientBookings")
+  bookingsCreatedAsAdmin Booking[]     @relation("AdminCreatedBookings")
   adminInvitesCreated    AdminInvite[] @relation("AdminInviteInvitedBy")
   createdAt              DateTime      @default(now())
   updatedAt              DateTime      @updatedAt
@@ -77,6 +96,7 @@ model Service {
   serviceTypeId String      @unique
   description   String      @db.Text
   items         String[]
+  price         Decimal?    @db.Decimal(12, 2)
   imageUrl      String?
   isActive      Boolean     @default(true)
   bookings      Booking[]
@@ -106,9 +126,11 @@ model Event {
   eventTypeId String    @unique
   description String    @db.Text
   items       String[]
+  price       Decimal?  @db.Decimal(12, 2)
   isActive    Boolean   @default(true)
   showOnHome  Boolean   @default(true)
   galleryPhotos GalleryPhoto[]
+  bookings    Booking[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -120,6 +142,7 @@ model OccasionType {
   name        String              @unique
   isActive    Boolean             @default(true)
   eventLinks  EventTypeOccasion[]
+  bookings    Booking[]
   createdAt   DateTime            @default(now())
   updatedAt   DateTime            @updatedAt
 
@@ -148,6 +171,7 @@ model EventType {
   events              Event[]
   occasionLinks       EventTypeOccasion[]
   galleryPhotos       GalleryPhoto[]
+  bookings            Booking[]
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
 
@@ -189,12 +213,58 @@ model GalleryPhoto {
   @@map("gallery_photos")
 }
 
+model WeeklyAvailabilitySlot {
+  id        String   @id @default(uuid())
+  weekday   Int      @unique // 0 = Sunday … 6 = Saturday
+  isClosed  Boolean  @default(false)
+  startTime String? // HH:mm in BOOKING_TZ
+  endTime   String? // HH:mm in BOOKING_TZ
+  updatedAt DateTime @updatedAt
+
+  @@map("weekly_availability_slots")
+}
+
+model AvailabilityClosure {
+  id        String                  @id @default(uuid())
+  kind      AvailabilityClosureKind
+  date      DateTime?               @db.Date // SPECIFIC_DATE (calendar day closed)
+  weekday   Int? // RECURRING_WEEKDAY (0–6), closes every such weekday
+  startDate DateTime?               @db.Date // DATE_RANGE start (inclusive)
+  endDate   DateTime?               @db.Date // DATE_RANGE end (inclusive)
+  note      String?
+  createdAt DateTime                @default(now())
+
+  @@index([kind])
+  @@map("availability_closures")
+}
+
 model Booking {
-  id          String        @id @default(uuid())
-  user        User          @relation(fields: [userId], references: [id])
-  userId      String
-  service     Service       @relation(fields: [serviceId], references: [id])
-  serviceId   String
+  id       String    @id @default(uuid())
+  user     User?     @relation("ClientBookings", fields: [userId], references: [id])
+  userId   String?
+  guestFullName String?
+  guestEmail    String?
+  guestPhone    String?
+
+  createdByAdmin   User?   @relation("AdminCreatedBookings", fields: [createdByAdminId], references: [id])
+  createdByAdminId String?
+  contactRequest   ContactRequest? @relation(fields: [contactRequestId], references: [id])
+  contactRequestId String?
+
+  source BookingSource @default(CLIENT_REGISTERED)
+
+  service   Service @relation(fields: [serviceId], references: [id])
+  serviceId String
+
+  eventType   EventType? @relation(fields: [eventTypeId], references: [id])
+  eventTypeId String?
+  occasionType   OccasionType? @relation(fields: [occasionTypeId], references: [id])
+  occasionTypeId String?
+  event   Event?  @relation(fields: [eventId], references: [id])
+  eventId String?
+
+  bookingDetails Json?
+
   eventDate   DateTime
   location    String
   guestCount  Int?
@@ -204,6 +274,10 @@ model Booking {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  @@index([eventDate])
+  @@index([status])
+  @@index([createdByAdminId])
+  @@index([contactRequestId])
   @@map("bookings")
 }
 
@@ -219,9 +293,12 @@ model ContactRequest {
   subject         String
   message         String    @db.Text
   inquiryDetails  Json?
+  bookings        Booking[]
   isRead          Boolean   @default(false)
+  status          ContactRequestStatus @default(PENDING)
   createdAt       DateTime  @default(now())
 
+  @@index([status])
   @@map("contact_requests")
 }
 

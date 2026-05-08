@@ -32,11 +32,15 @@ export class AuthService {
     private readonly config: ConfigService,
   ) {
     const googleClientId = this.config.get<string>('GOOGLE_CLIENT_ID')?.trim();
-    this.googleClient = googleClientId ? new OAuth2Client(googleClientId) : null;
+    this.googleClient = googleClientId
+      ? new OAuth2Client(googleClientId)
+      : null;
   }
 
   async bootstrapAdmin(dto: BootstrapAdminDto, providedSecret?: string) {
-    const expectedSecret = this.config.get<string>('BOOTSTRAP_ADMIN_SECRET')?.trim();
+    const expectedSecret = this.config
+      .get<string>('BOOTSTRAP_ADMIN_SECRET')
+      ?.trim();
     if (!expectedSecret) {
       throw new ForbiddenException('Admin bootstrap is disabled.');
     }
@@ -141,15 +145,21 @@ export class AuthService {
     });
 
     if (!user || user.role !== 'ADMIN') {
-      throw new UnauthorizedException('No admin account for this Google email.');
+      throw new UnauthorizedException(
+        'No admin account for this Google email.',
+      );
     }
 
     if (user.googleSub && user.googleSub !== sub) {
-      throw new UnauthorizedException('Google account does not match this profile.');
+      throw new UnauthorizedException(
+        'Google account does not match this profile.',
+      );
     }
 
     if (user.twoFactorEnabled) {
-      throw new BadRequestException('2FA is enabled; use email and password with 2FA code.');
+      throw new BadRequestException(
+        '2FA is enabled; use email and password with 2FA code.',
+      );
     }
 
     if (!user.googleSub) {
@@ -179,7 +189,9 @@ export class AuthService {
 
   async inviteAdmin(inviterId: string, dto: InviteAdminDto) {
     const resendKey = this.config.get<string>('RESEND_API_KEY')?.trim();
-    const fromEmail = this.config.get<string>('RESEND_FROM_EMAIL')?.trim() ?? 'onboarding@resend.dev';
+    const fromEmail =
+      this.config.get<string>('RESEND_FROM_EMAIL')?.trim() ??
+      'onboarding@resend.dev';
 
     if (!resendKey) {
       throw new BadRequestException(
@@ -202,7 +214,9 @@ export class AuthService {
       select: { id: true },
     });
     if (existing) {
-      throw new ConflictException('This email is already registered. Use another email.');
+      throw new ConflictException(
+        'This email is already registered. Use another email.',
+      );
     }
 
     await this.prisma.adminInvite.deleteMany({
@@ -224,7 +238,8 @@ export class AuthService {
       select: { id: true },
     });
 
-    const appName = this.config.get<string>('APP_PUBLIC_NAME')?.trim() ?? 'Shamell Admin';
+    const appName =
+      this.config.get<string>('APP_PUBLIC_NAME')?.trim() ?? 'Shamell Admin';
 
     try {
       const resend = new Resend(resendKey);
@@ -247,21 +262,34 @@ export class AuthService {
       });
 
       if (error) {
-        await this.prisma.adminInvite.delete({ where: { id: invite.id } }).catch(() => null);
-        const raw = (typeof error.message === 'string' ? error.message : '').trim();
+        await this.prisma.adminInvite
+          .delete({ where: { id: invite.id } })
+          .catch(() => null);
+        const raw = (
+          typeof error.message === 'string' ? error.message : ''
+        ).trim();
         if (/only send testing emails|verify a domain/i.test(raw)) {
           throw new BadRequestException(
             'Resend está en modo de prueba: solo puedes enviar a la dirección asociada a tu cuenta de Resend, o verifica un dominio en https://resend.com/domains y configura RESEND_FROM_EMAIL con un remitente de ese dominio para enviar el código a cualquier correo.',
           );
         }
-        throw new InternalServerErrorException(raw || 'No se pudo enviar el correo de invitación.');
+        throw new InternalServerErrorException(
+          raw || 'No se pudo enviar el correo de invitación.',
+        );
       }
     } catch (err) {
-      await this.prisma.adminInvite.delete({ where: { id: invite.id } }).catch(() => null);
-      if (err instanceof InternalServerErrorException || err instanceof BadRequestException) {
+      await this.prisma.adminInvite
+        .delete({ where: { id: invite.id } })
+        .catch(() => null);
+      if (
+        err instanceof InternalServerErrorException ||
+        err instanceof BadRequestException
+      ) {
         throw err;
       }
-      throw new InternalServerErrorException('Failed to send verification email.');
+      throw new InternalServerErrorException(
+        'Failed to send verification email.',
+      );
     }
 
     return {
@@ -287,7 +315,9 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired invitation.');
     }
 
-    const digest = createHash('sha256').update(dto.code.trim(), 'utf8').digest('hex');
+    const digest = createHash('sha256')
+      .update(dto.code.trim(), 'utf8')
+      .digest('hex');
     if (digest !== invite.codeHash) {
       throw new UnauthorizedException('Invalid verification code.');
     }
@@ -321,7 +351,8 @@ export class AuthService {
     });
 
     return {
-      message: 'Admin account activated. You can sign in with email and password.',
+      message:
+        'Admin account activated. You can sign in with email and password.',
       email,
     };
   }
@@ -339,7 +370,9 @@ export class AuthService {
     });
 
     if (!invite) {
-      throw new UnauthorizedException('No pending invitation for this Google email.');
+      throw new UnauthorizedException(
+        'No pending invitation for this Google email.',
+      );
     }
 
     const existingUser = await this.prisma.user.findUnique({
@@ -350,7 +383,8 @@ export class AuthService {
       throw new ConflictException('This email is already registered.');
     }
 
-    const displayName = invite.fullName.trim() || name?.trim() || email.split('@')[0];
+    const displayName =
+      invite.fullName.trim() || name?.trim() || email.split('@')[0];
 
     const newUser = await this.prisma.$transaction(async (tx) => {
       const u = await tx.user.create({
@@ -454,10 +488,14 @@ export class AuthService {
       .replace(/"/g, '&quot;');
   }
 
-  private async verifyGoogleIdToken(idToken: string): Promise<{ email: string; sub: string; name?: string }> {
+  private async verifyGoogleIdToken(
+    idToken: string,
+  ): Promise<{ email: string; sub: string; name?: string }> {
     const audience = this.config.get<string>('GOOGLE_CLIENT_ID')?.trim();
     if (!this.googleClient || !audience) {
-      throw new BadRequestException('Google sign-in is not configured. Set GOOGLE_CLIENT_ID.');
+      throw new BadRequestException(
+        'Google sign-in is not configured. Set GOOGLE_CLIENT_ID.',
+      );
     }
 
     const ticket = await this.googleClient.verifyIdToken({

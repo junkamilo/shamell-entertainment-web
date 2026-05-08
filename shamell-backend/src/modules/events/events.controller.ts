@@ -1,5 +1,23 @@
-import { BadRequestException, Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { GalleryService } from '../gallery/gallery.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
 import { CreateOccasionTypeDto } from './dto/create-occasion-type.dto';
@@ -10,7 +28,10 @@ import { EventsService } from './events.service';
 
 @Controller('events')
 export class EventsController {
-  constructor(private readonly eventsService: EventsService) {}
+  constructor(
+    private readonly eventsService: EventsService,
+    private readonly galleryService: GalleryService,
+  ) {}
 
   @Get()
   @HttpCode(HttpStatus.OK)
@@ -53,7 +74,10 @@ export class EventsController {
   @Patch('occasions/admin/:id')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  updateOccasionType(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateOccasionTypeDto) {
+  updateOccasionType(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateOccasionTypeDto,
+  ) {
     if (Object.keys(dto).length === 0) {
       throw new BadRequestException('Provide at least one field to update.');
     }
@@ -95,6 +119,25 @@ export class EventsController {
     return this.eventsService.createEvent(dto);
   }
 
+  @Post('admin/:id/images')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard)
+  @UseInterceptors(
+    FilesInterceptor('media', 12, {
+      storage: memoryStorage(),
+      limits: { fileSize: 200 * 1024 * 1024 },
+    }),
+  )
+  addEventCatalogImages(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @UploadedFiles() mediaFiles?: Express.Multer.File[],
+  ) {
+    if (!mediaFiles?.length) {
+      throw new BadRequestException('At least one media file is required.');
+    }
+    return this.galleryService.createPhotosForEvent(id, mediaFiles);
+  }
+
   @Post('types/admin')
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AdminJwtGuard)
@@ -105,7 +148,10 @@ export class EventsController {
   @Patch('admin/:id')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  updateEvent(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateEventDto) {
+  updateEvent(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateEventDto,
+  ) {
     if (Object.keys(dto).length === 0) {
       throw new BadRequestException('Provide at least one field to update.');
     }
@@ -122,7 +168,10 @@ export class EventsController {
   @Patch('types/admin/:id')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  updateEventType(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateEventTypeDto) {
+  updateEventType(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateEventTypeDto,
+  ) {
     if (Object.keys(dto).length === 0) {
       throw new BadRequestException('Provide at least one field to update.');
     }

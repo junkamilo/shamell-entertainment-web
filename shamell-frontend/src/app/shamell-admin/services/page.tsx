@@ -31,6 +31,7 @@ type AdminService = {
   serviceTypeName: string;
   description: string;
   items: string[];
+  price: number | null;
   imageUrl: string | null;
   isActive: boolean;
 };
@@ -77,6 +78,14 @@ function displayServiceHeading(description: string): { title: string; subtitle: 
   return { title, subtitle };
 }
 
+function formatPriceEs(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return new Intl.NumberFormat("es", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+}
+
 type FilterTab = "all" | "active" | "inactive";
 
 export default function ShamellAdminServicesPage() {
@@ -96,12 +105,14 @@ export default function ShamellAdminServicesPage() {
 
   const [description, setDescription] = useState("");
   const [itemsText, setItemsText] = useState("");
+  const [priceInput, setPriceInput] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
   const [originalSnapshot, setOriginalSnapshot] = useState<{
     serviceTypeId: string;
     description: string;
     itemsText: string;
+    price: number | null;
   } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [services, setServices] = useState<AdminService[]>([]);
@@ -124,6 +135,7 @@ export default function ShamellAdminServicesPage() {
     setServiceTypeId((current) => current || serviceTypes.find((item) => item.isActive)?.id || "");
     setDescription("");
     setItemsText("");
+    setPriceInput("");
     setImage(null);
     setExistingImageUrl(null);
     setEditingId(null);
@@ -230,6 +242,13 @@ export default function ShamellAdminServicesPage() {
   const hasValidItems = normalizedItems.length > 0 && normalizedItems.every((item) => item.length <= ITEM_MAX_LENGTH);
   const hasValidType = Boolean(serviceTypeId);
   const hasImageIfNeeded = editingId ? true : Boolean(image);
+  const parsedPrice = (() => {
+    const t = priceInput.trim();
+    if (!t) return { ok: true as const, value: null as number | null };
+    const n = Number(t.replace(",", "."));
+    if (!Number.isFinite(n) || n < 0) return { ok: false as const, value: null as number | null };
+    return { ok: true as const, value: Math.round(n * 100) / 100 };
+  })();
 
   const hasChanges = editingId
     ? Boolean(
@@ -237,6 +256,7 @@ export default function ShamellAdminServicesPage() {
           (serviceTypeId !== originalSnapshot.serviceTypeId ||
             trimmedDescription !== originalSnapshot.description ||
             normalizedItems.join("\n") !== originalSnapshot.itemsText ||
+            (parsedPrice.ok ? parsedPrice.value : null) !== (originalSnapshot.price ?? null) ||
             Boolean(image)),
       )
     : Boolean(serviceTypeId || trimmedDescription || normalizedItems.length || image);
@@ -246,6 +266,7 @@ export default function ShamellAdminServicesPage() {
 
   const getValidationError = () => {
     if (!hasValidType) return "Debes seleccionar un tipo de servicio.";
+    if (!parsedPrice.ok) return "El precio no es válido.";
     if (!hasValidDescriptionLength) {
       return `La descripcion debe tener entre ${DESCRIPTION_MIN_LENGTH} y ${DESCRIPTION_MAX_LENGTH} caracteres.`;
     }
@@ -282,6 +303,11 @@ export default function ShamellAdminServicesPage() {
     formData.append("serviceTypeId", serviceTypeId);
     formData.append("description", trimmedDescription);
     normalizedItems.forEach((item) => formData.append("items", item));
+    if (parsedPrice.ok && parsedPrice.value !== null) {
+      formData.append("price", String(parsedPrice.value));
+    } else if (editingId && parsedPrice.ok && parsedPrice.value === null) {
+      formData.append("price", "");
+    }
     if (image) {
       formData.append("image", image);
     }
@@ -336,11 +362,13 @@ export default function ShamellAdminServicesPage() {
     setDescription(service.description);
     const itemsJoined = service.items.join("\n");
     setItemsText(itemsJoined);
+    setPriceInput(service.price != null ? String(service.price) : "");
     setExistingImageUrl(service.imageUrl);
     setOriginalSnapshot({
       serviceTypeId: service.serviceTypeId,
       description: service.description.trim(),
       itemsText: itemsJoined,
+      price: service.price ?? null,
     });
     setImage(null);
     setIsModalOpen(true);
@@ -451,6 +479,7 @@ export default function ShamellAdminServicesPage() {
       const searchable = [
         service.serviceTypeName,
         service.description,
+        formatPriceEs(service.price),
         ...service.items,
         service.isActive ? "activo" : "inactivo",
       ]
@@ -522,14 +551,13 @@ export default function ShamellAdminServicesPage() {
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
         title="Servicios"
-        subtitle="Catálogo completo de tu oferta artística."
         actionLabel="Nuevo servicio"
         onAction={onHeroAction}
         bordered={false}
       />
 
       {serviceTypes.filter((item) => item.isActive).length === 0 ? (
-        <div className="mb-8 rounded-xl border border-gold/25 bg-black/22 px-5 py-4 text-sm text-foreground/75">
+        <div className="mb-8 shamell-glass-surface rounded-xl px-5 py-4 text-sm text-foreground/75">
           No hay tipos de servicio activos.{" "}
           <Link href="/shamell-admin/service-types" className="text-gold underline underline-offset-2">
             Ir a Tipos de servicio
@@ -549,7 +577,7 @@ export default function ShamellAdminServicesPage() {
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-xl border border-gold/15 bg-black/25 px-4 py-3 shadow-[inset_0_1px_0_rgba(197,165,90,0.06)]"
+            className="shamell-glass-surface rounded-xl px-4 py-3"
           >
             <p className="font-brand text-[10px] tracking-[0.16em] text-gold/75">{label}</p>
             <p className="mt-1 truncate font-brand text-lg tracking-wide text-gold md:text-xl">{value}</p>
@@ -562,10 +590,10 @@ export default function ShamellAdminServicesPage() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Buscar servicio..."
-          className="mx-0 min-h-[3rem] max-w-none flex-1 rounded-xl border-gold/18 bg-black/22"
+          className="shamell-glass-surface mx-0 min-h-[3rem] max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:shrink-0">
-          <div className="flex rounded-xl border border-gold/18 bg-black/22 p-1">
+          <div className="shamell-glass-surface flex rounded-xl p-1">
             {(
               [
                 ["all", "Todos", tabCounts.all],
@@ -595,7 +623,7 @@ export default function ShamellAdminServicesPage() {
               "inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 font-brand text-[10px] tracking-[0.14em] transition",
               filtersOpen
                 ? "border-gold/50 bg-gold/10 text-gold"
-                : "border-gold/18 bg-black/22 text-foreground/60 hover:border-gold/35 hover:text-gold",
+                : "border-gold/18 text-foreground/60 hover:border-gold/35 hover:text-gold",
             )}
           >
             <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
@@ -605,7 +633,7 @@ export default function ShamellAdminServicesPage() {
       </div>
 
       {filtersOpen ? (
-        <div className="mb-6 rounded-xl border border-gold/15 bg-black/22 px-4 py-4 md:px-5">
+        <div className="mb-6 shamell-glass-surface rounded-xl px-4 py-4 md:px-5">
           <p className="font-brand text-[10px] tracking-[0.2em] text-gold/80">TIPO DE SERVICIO</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -639,15 +667,16 @@ export default function ShamellAdminServicesPage() {
         </div>
       ) : null}
 
-      <section className="rounded-xl border border-gold/12 bg-black/15 p-4 md:p-5">
+      <section className="shamell-glass-surface rounded-xl p-4 md:p-5">
         <div className="overflow-x-auto rounded-xl border border-gold/14">
           <table className="w-full min-w-[920px] border-collapse text-left">
             <thead>
-              <tr className="border-b border-gold/12 bg-black/40">
+              <tr className="border-b border-gold/12">
                 <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
                 <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">SERVICIO</th>
                 <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TIPO</th>
                 <th className="w-20 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
+                <th className="w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRECIO</th>
                 <th className="min-w-[9rem] px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">
                   ESTADO
                 </th>
@@ -660,9 +689,9 @@ export default function ShamellAdminServicesPage() {
               {paginatedServices.map((service) => {
                 const { title } = displayServiceHeading(service.description);
                 return (
-                  <tr key={service.id} className="border-b border-gold/8 bg-black/15 transition hover:bg-gold/5">
+                  <tr key={service.id} className="border-b border-gold/8 transition hover:bg-gold/5">
                     <td className="px-2 py-3 align-middle">
-                      <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-gold/20 bg-black/40">
+                      <div className="shamell-glass-surface flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-gold/20">
                         {service.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -691,6 +720,9 @@ export default function ShamellAdminServicesPage() {
                     <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75">
                       {service.items.length}
                     </td>
+                    <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75">
+                      {formatPriceEs(service.price)}
+                    </td>
                     <td className="px-3 py-3 align-middle">
                       <div className="flex items-center gap-3">
                         <button
@@ -701,7 +733,7 @@ export default function ShamellAdminServicesPage() {
                             "relative h-7 w-12 shrink-0 rounded-full border transition",
                             service.isActive
                               ? "border-emerald-400/45 bg-emerald-500/22"
-                              : "border-foreground/22 bg-black/45",
+                              : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                             togglingId === service.id && "cursor-not-allowed opacity-60",
                           )}
                           aria-label={`${service.isActive ? "Desactivar" : "Activar"} servicio`}
@@ -751,7 +783,7 @@ export default function ShamellAdminServicesPage() {
               })}
               {!isLoading && filteredServices.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-sm text-foreground/60">
+                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-foreground/60">
                     No hay servicios para mostrar.
                   </td>
                 </tr>
@@ -821,7 +853,7 @@ export default function ShamellAdminServicesPage() {
                   if (activeServiceTypes.length === 0) return;
                   setIsTypeDropdownOpen((prev) => !prev);
                 }}
-                className="flex h-12 w-full items-center justify-between rounded-xl border border-gold/30 bg-black/35 px-4 text-sm text-foreground transition hover:border-gold/55"
+                className="shamell-glass-trigger flex h-12 w-full items-center justify-between rounded-xl px-4 text-sm text-foreground"
               >
                 <span className={selectedTypeName ? "text-foreground" : "text-foreground/55"}>
                   {selectedTypeName ?? "Primero crea un tipo de servicio"}
@@ -864,7 +896,7 @@ export default function ShamellAdminServicesPage() {
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows={4}
-              className="mt-2 w-full rounded-xl border border-gold/30 bg-black/35 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
               placeholder="Describe el servicio..."
             />
           </label>
@@ -878,8 +910,20 @@ export default function ShamellAdminServicesPage() {
               value={itemsText}
               onChange={(event) => setItemsText(event.target.value)}
               rows={5}
-              className="mt-2 w-full rounded-xl border border-gold/30 bg-black/35 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
               placeholder={"Item 1\nItem 2\nItem 3"}
+            />
+          </label>
+
+          <label className="block">
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PRECIO (OPCIONAL)</span>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={priceInput}
+              onChange={(event) => setPriceInput(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              placeholder="Ej. 2500 o 2500.50"
             />
           </label>
 
@@ -889,12 +933,12 @@ export default function ShamellAdminServicesPage() {
               type="file"
               accept="image/*"
               onChange={(event) => setImage(event.target.files?.[0] ?? null)}
-              className="mt-2 w-full rounded-xl border border-gold/30 bg-black/35 px-4 py-3 text-sm text-foreground outline-none file:mr-3 file:border-0 file:bg-gold/20 file:px-3 file:py-1 file:text-gold"
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none file:mr-3 file:border-0 file:bg-gold/20 file:px-3 file:py-1 file:text-gold"
             />
           </label>
 
           {imagePreviewUrl || existingImageUrl ? (
-            <div className="rounded-xl border border-gold/25 bg-black/25 p-4">
+            <div className="shamell-glass-surface rounded-xl p-4">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-xs text-gold/85">
                   {imagePreviewUrl ? "Vista previa de imagen seleccionada" : "Imagen actual del servicio"}
@@ -913,7 +957,7 @@ export default function ShamellAdminServicesPage() {
                   </button>
                 ) : null}
               </div>
-              <div className="overflow-hidden rounded-lg border border-gold/20 bg-black/30 p-2">
+              <div className="shamell-glass-surface overflow-hidden rounded-lg p-2">
                 <button
                   type="button"
                   onClick={() => setIsPreviewLightboxOpen(true)}
@@ -962,7 +1006,7 @@ export default function ShamellAdminServicesPage() {
             <button
               type="button"
               onClick={() => setIsPreviewLightboxOpen(false)}
-              className="absolute right-3 top-3 z-10 rounded-full border border-gold/30 bg-black/60 p-2 text-gold transition hover:bg-gold/10"
+              className="shamell-glass-surface absolute right-3 top-3 z-10 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
               aria-label="Cerrar vista previa"
             >
               <X className="h-5 w-5" />
@@ -989,7 +1033,7 @@ export default function ShamellAdminServicesPage() {
             <button
               type="button"
               onClick={() => setViewService(null)}
-              className="absolute right-3 top-3 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
+              className="shamell-glass-surface absolute right-3 top-3 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
               aria-label="Cerrar"
             >
               <X className="h-4 w-4" />
@@ -999,6 +1043,9 @@ export default function ShamellAdminServicesPage() {
               {displayServiceHeading(viewService.description).title}
             </h2>
             <p className="mt-1 font-body text-xs text-foreground/45">{viewService.serviceTypeName}</p>
+            <p className="mt-2 font-brand text-[10px] tracking-[0.14em] text-gold/80">
+              PRECIO <span className="font-body text-foreground/70">{formatPriceEs(viewService.price)}</span>
+            </p>
             {viewService.imageUrl ? (
               <div className="mt-4 overflow-hidden rounded-xl border border-gold/15">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

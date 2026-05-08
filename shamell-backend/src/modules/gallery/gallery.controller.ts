@@ -62,7 +62,10 @@ export class GalleryController {
   @Patch('admin/categories/:id')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  updateCategory(@Param('id', new ParseUUIDPipe()) id: string, @Body() dto: UpdateGalleryCategoryDto) {
+  updateCategory(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: UpdateGalleryCategoryDto,
+  ) {
     if (Object.keys(dto).length === 0) {
       throw new BadRequestException('Provide at least one field to update.');
     }
@@ -85,7 +88,10 @@ export class GalleryController {
       limits: { fileSize: 200 * 1024 * 1024 },
     }),
   )
-  createPhoto(@Body() dto: CreateGalleryPhotoDto, @UploadedFiles() mediaFiles?: Express.Multer.File[]) {
+  createPhoto(
+    @Body() dto: CreateGalleryPhotoDto,
+    @UploadedFiles() mediaFiles?: Express.Multer.File[],
+  ) {
     if (!mediaFiles?.length) {
       throw new BadRequestException('At least one media file is required.');
     }
@@ -109,7 +115,9 @@ export class GalleryController {
     const mediaFile = mediaFiles?.[0];
     const hasBodyFields = Object.keys(dto).length > 0;
     if (!hasBodyFields && !mediaFile) {
-      throw new BadRequestException('Provide at least one field or media file to update.');
+      throw new BadRequestException(
+        'Provide at least one field or media file to update.',
+      );
     }
     return this.galleryService.updatePhoto(id, dto, mediaFile);
   }

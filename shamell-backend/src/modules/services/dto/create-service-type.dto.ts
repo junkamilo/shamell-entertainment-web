@@ -1,6 +1,11 @@
 import { Transform } from 'class-transformer';
-import { IsIn, IsNotEmpty, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
-import { CONTACT_INQUIRY_CODES, type ContactInquiryCode } from '../../../common/contact-inquiry-codes';
+import {
+  IsNotEmpty,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 
 export class CreateServiceTypeDto {
   @IsString()
@@ -12,13 +17,4 @@ export class CreateServiceTypeDto {
   })
   @Transform(({ value }) => String(value).trim())
   name!: string;
-
-  @IsOptional()
-  @IsString()
-  @IsIn([...CONTACT_INQUIRY_CODES])
-  @Transform(({ value }) => {
-    if (value === undefined || value === null || value === '') return undefined;
-    return String(value).trim();
-  })
-  contactInquiryCode?: ContactInquiryCode;
 }
