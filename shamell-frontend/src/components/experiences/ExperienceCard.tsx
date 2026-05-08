@@ -70,6 +70,7 @@ export default function ExperienceCard({ experience, index = 0 }: ExperienceCard
           </div>
 
           {typeof experience.image === "string" ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={experience.image}
               alt={`${experience.title} — special experience`}

@@ -45,6 +45,12 @@ export class ServicesController {
     return this.servicesService.getPublicCatalogById(id);
   }
 
+  @Get('public/by-inquiry/:code')
+  @HttpCode(HttpStatus.OK)
+  getPublicServiceByInquiryCode(@Param('code') code: string) {
+    return this.servicesService.getPublicServiceByInquiryCode(code);
+  }
+
   @Get('admin')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
@@ -117,7 +123,9 @@ export class ServicesController {
 
     const hasBodyFields = Object.keys(dto).length > 0;
     if (!hasBodyFields && !imageFile) {
-      throw new BadRequestException('Provide at least one field or image to update.');
+      throw new BadRequestException(
+        'Provide at least one field or image to update.',
+      );
     }
 
     return this.servicesService.updateService(id, dto, imageFile);

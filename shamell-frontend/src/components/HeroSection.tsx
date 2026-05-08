@@ -1,6 +1,10 @@
-import Image from "next/image";
-import heroBg from "@/assets/hero-bg.jpg";
+/* eslint-disable @next/next/no-img-element */
+"use client";
+
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { buildHeroWaveClipPathD } from "@/lib/heroPearlWave";
+import HeroFallbackBackground from "./HeroFallbackBackground";
 import FlameIcon from "./FlameIcon";
 import PearlDivider from "./PearlDivider";
 
@@ -8,10 +12,59 @@ const heroWaveClipPathId = "shamell-hero-wave-clip";
 const heroClipPath = `url(#${heroWaveClipPathId})`;
 
 const HeroSection = () => {
+  const apiBaseUrl = useMemo(
+    () => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
+    [],
+  );
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const response = await fetch(`${apiBaseUrl}/api/v1/header-media`, {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => []);
+        if (!response.ok || !Array.isArray(data)) return;
+        const urls = data
+          .map((item) =>
+            typeof item?.imageUrl === "string" ? item.imageUrl.trim() : "",
+          )
+          .filter(Boolean);
+        setPhotos(urls);
+      } catch {
+        // Keep fallback background when API is unavailable.
+      }
+    };
+    void load();
+  }, [apiBaseUrl]);
+
+  useEffect(() => {
+    if (photos.length <= 1) return;
+    const id = window.setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % photos.length);
+    }, 5500);
+    return () => window.clearInterval(id);
+  }, [photos.length]);
+
+  const hasRemotePhotos = photos.length > 0;
+  const canSlide = photos.length > 1;
+
+  const onPrev = () => {
+    if (!canSlide) return;
+    setActiveIndex((prev) => (prev - 1 + photos.length) % photos.length);
+  };
+
+  const onNext = () => {
+    if (!canSlide) return;
+    setActiveIndex((prev) => (prev + 1) % photos.length);
+  };
+
   return (
     <section
       id="hero"
-      className="relative flex min-h-[100svh] flex-col overflow-hidden bg-transparent"
+      className="relative flex min-h-svh flex-col overflow-hidden bg-transparent"
     >
       <svg
         width={0}
@@ -34,14 +87,22 @@ const HeroSection = () => {
         }}
       >
         <div className="shamell-hero-ken absolute inset-0 min-h-full min-w-full">
-          <Image
-            src={heroBg}
-            alt="Shamell - Exclusive belly dance performer at sunset"
-            className="hero-zoom h-full w-full object-cover"
-            width={1920}
-            height={1280}
-            priority
-          />
+          {hasRemotePhotos ? (
+            <div className="relative h-full w-full">
+              {photos.map((url, index) => (
+                <img
+                  key={`${url}-${index}`}
+                  src={url}
+                  alt=""
+                  className={`hero-zoom absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+                    index === activeIndex ? "opacity-100" : "opacity-0"
+                  }`}
+                />
+              ))}
+            </div>
+          ) : (
+            <HeroFallbackBackground />
+          )}
         </div>
 
         <div
@@ -53,6 +114,27 @@ const HeroSection = () => {
           aria-hidden
         />
       </div>
+
+      {canSlide ? (
+        <div className="absolute inset-x-0 bottom-24 z-20 mx-auto flex w-full max-w-6xl items-center justify-between px-4 sm:px-6 md:bottom-28">
+          <button
+            type="button"
+            onClick={onPrev}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold/45 bg-black/35 text-gold transition hover:border-gold hover:bg-gold/10"
+            aria-label="Foto anterior"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={onNext}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gold/45 bg-black/35 text-gold transition hover:border-gold hover:bg-gold/10"
+            aria-label="Foto siguiente"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
+      ) : null}
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 pb-36 pt-24 sm:px-8 sm:pb-40 sm:pt-28 md:px-10">
         <div className="relative w-full max-w-xl text-center md:max-w-3xl lg:max-w-4xl">
@@ -89,7 +171,7 @@ const HeroSection = () => {
             </p>
 
             <div className="shamell-hero-enter shamell-hero-enter--d4 mx-auto w-full max-w-md md:max-w-xl">
-              <div className="rounded-2xl border border-white/[0.12] bg-black/35 px-5 py-6 shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md sm:px-8 sm:py-7 md:rounded-3xl md:px-10 md:py-8">
+              <div className="rounded-2xl border border-white/12 bg-black/35 px-5 py-6 shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md sm:px-8 sm:py-7 md:rounded-3xl md:px-10 md:py-8">
                 <p className="font-script text-2xl leading-snug text-gold drop-shadow-[0_2px_16px_rgba(0,0,0,0.5)] sm:text-3xl md:text-[2.1rem] md:leading-tight">
                   Dance is the hidden language of the soul.
                   <span className="ml-2 inline-block h-2 w-2 rounded-full bg-gold-light align-middle opacity-90" />
@@ -102,9 +184,9 @@ const HeroSection = () => {
                   />
                   <a
                     href="/contacto"
-                    className="group relative inline-flex min-h-11 items-center justify-center gap-2 self-center border border-gold/55 px-8 py-2.5 font-brand text-[10px] tracking-[0.26em] text-gold uppercase transition-all duration-300 hover:border-gold hover:bg-gold/[0.08] hover:text-gold-light hover:shadow-[0_0_28px_rgba(197,165,90,0.2)] sm:min-h-12 sm:px-10 sm:text-xs sm:tracking-[0.28em]"
+                    className="group relative inline-flex min-h-11 items-center justify-center gap-2 self-center border border-gold/55 px-8 py-2.5 font-brand text-[10px] tracking-[0.26em] text-gold uppercase transition-all duration-300 hover:border-gold hover:bg-gold/8 hover:text-gold-light hover:shadow-[0_0_28px_rgba(197,165,90,0.2)] sm:min-h-12 sm:px-10 sm:text-xs sm:tracking-[0.28em]"
                   >
-                    <span className="absolute inset-0 -z-10 bg-linear-to-r from-transparent via-white/[0.06] to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" aria-hidden />
+                    <span className="absolute inset-0 -z-10 bg-linear-to-r from-transparent via-white/6 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" aria-hidden />
                     Inquire
                   </a>
                   <span

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EventTypeOccasionUsage } from '@prisma/client';
+import { EventTypeOccasionUsage, GalleryMediaType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
@@ -30,7 +30,8 @@ export class EventsService {
       select: { id: true, isActive: true },
     });
     if (!eventType) throw new NotFoundException('Event type not found.');
-    if (!eventType.isActive) throw new BadRequestException('Event type is inactive.');
+    if (!eventType.isActive)
+      throw new BadRequestException('Event type is inactive.');
 
     try {
       const created = await this.prisma.event.create({
@@ -39,8 +40,17 @@ export class EventsService {
           description: dto.description,
           items: dto.items,
           showOnHome: dto.showOnHome ?? true,
+          ...(dto.price !== undefined && dto.price !== null
+            ? { price: dto.price }
+            : {}),
         },
-        include: { eventType: true },
+        include: {
+          eventType: true,
+          galleryPhotos: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'asc' },
+          },
+        },
       });
 
       return {
@@ -60,7 +70,14 @@ export class EventsService {
   async getPublicEvents() {
     const events = await this.prisma.event.findMany({
       where: { isActive: true, showOnHome: true },
-      include: { eventType: true },
+      include: {
+        eventType: true,
+        galleryPhotos: {
+          where: { isActive: true, mediaType: GalleryMediaType.IMAGE },
+          orderBy: { createdAt: 'asc' },
+          select: { imageUrl: true },
+        },
+      },
       orderBy: { createdAt: 'asc' },
     });
     return events.map((item) => this.mapEvent(item));
@@ -71,12 +88,21 @@ export class EventsService {
     const events = await this.prisma.event.findMany({
       where: { isActive: true },
       include: {
+        galleryPhotos: {
+          where: { isActive: true, mediaType: GalleryMediaType.IMAGE },
+          orderBy: { createdAt: 'asc' },
+          select: { imageUrl: true },
+        },
         eventType: {
           include: {
             occasionLinks: {
               where: { occasionType: { isActive: true } },
               orderBy: [{ sortOrder: 'asc' }],
-              include: { occasionType: { select: { id: true, name: true, isActive: true } } },
+              include: {
+                occasionType: {
+                  select: { id: true, name: true, isActive: true },
+                },
+              },
             },
           },
         },
@@ -84,7 +110,9 @@ export class EventsService {
       orderBy: { createdAt: 'asc' },
     });
 
-    const fromEvents = events.filter((e) => e.eventType.isActive).map((item) => this.mapContactLine(item));
+    const fromEvents = events
+      .filter((e) => e.eventType.isActive)
+      .map((item) => this.mapContactLine(item));
 
     const coveredTypeIds = fromEvents.map((l) => l.eventTypeId);
     const orphanTypes = await this.prisma.eventType.findMany({
@@ -96,13 +124,17 @@ export class EventsService {
         occasionLinks: {
           where: { occasionType: { isActive: true } },
           orderBy: [{ sortOrder: 'asc' }],
-          include: { occasionType: { select: { id: true, name: true, isActive: true } } },
+          include: {
+            occasionType: { select: { id: true, name: true, isActive: true } },
+          },
         },
       },
       orderBy: { name: 'asc' },
     });
 
-    const fromTypesOnly = orphanTypes.map((t) => this.mapContactLineFromEventType(t));
+    const fromTypesOnly = orphanTypes.map((t) =>
+      this.mapContactLineFromEventType(t),
+    );
 
     return [...fromEvents, ...fromTypesOnly];
   }
@@ -111,7 +143,14 @@ export class EventsService {
   async getPublicCatalogById(id: string) {
     const event = await this.prisma.event.findFirst({
       where: { id, isActive: true },
-      include: { eventType: true },
+      include: {
+        eventType: true,
+        galleryPhotos: {
+          where: { isActive: true, mediaType: GalleryMediaType.IMAGE },
+          orderBy: { createdAt: 'asc' },
+          select: { imageUrl: true },
+        },
+      },
     });
     if (!event || !event.eventType.isActive) {
       throw new NotFoundException('Event not found.');
@@ -121,14 +160,24 @@ export class EventsService {
       kind: 'event' as const,
       id: event.id,
       title: event.eventType.name.trim(),
+      description: event.description,
       descriptionPreview: preview || undefined,
+      items: event.items,
+      imageUrl: event.galleryPhotos[0]?.imageUrl ?? null,
       contactInquiryCode: event.eventType.contactInquiryCode ?? null,
     };
   }
 
   async getAdminEvents() {
     const events = await this.prisma.event.findMany({
-      include: { eventType: true },
+      include: {
+        eventType: true,
+        galleryPhotos: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, imageUrl: true, mediaType: true },
+        },
+      },
       orderBy: { createdAt: 'asc' },
     });
     return events.map((item) => this.mapEvent(item));
@@ -137,14 +186,24 @@ export class EventsService {
   async getAdminEventById(id: string) {
     const event = await this.prisma.event.findUnique({
       where: { id },
-      include: { eventType: true },
+      include: {
+        eventType: true,
+        galleryPhotos: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, imageUrl: true, mediaType: true },
+        },
+      },
     });
     if (!event) throw new NotFoundException('Event not found.');
     return this.mapEvent(event);
   }
 
   async updateEvent(id: string, dto: UpdateEventDto) {
-    const existing = await this.prisma.event.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.event.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) throw new NotFoundException('Event not found.');
 
     if (dto.eventTypeId) {
@@ -153,7 +212,8 @@ export class EventsService {
         select: { id: true, isActive: true },
       });
       if (!eventType) throw new NotFoundException('Event type not found.');
-      if (!eventType.isActive) throw new BadRequestException('Event type is inactive.');
+      if (!eventType.isActive)
+        throw new BadRequestException('Event type is inactive.');
     }
 
     try {
@@ -161,12 +221,24 @@ export class EventsService {
         where: { id },
         data: {
           ...(dto.eventTypeId ? { eventTypeId: dto.eventTypeId } : {}),
-          ...(dto.description !== undefined ? { description: dto.description } : {}),
+          ...(dto.description !== undefined
+            ? { description: dto.description }
+            : {}),
           ...(dto.items !== undefined ? { items: dto.items } : {}),
+          ...(dto.price !== undefined ? { price: dto.price } : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-          ...(dto.showOnHome !== undefined ? { showOnHome: dto.showOnHome } : {}),
+          ...(dto.showOnHome !== undefined
+            ? { showOnHome: dto.showOnHome }
+            : {}),
         },
-        include: { eventType: true },
+        include: {
+          eventType: true,
+          galleryPhotos: {
+            where: { isActive: true },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true, imageUrl: true, mediaType: true },
+          },
+        },
       });
 
       return {
@@ -183,13 +255,23 @@ export class EventsService {
   }
 
   async deleteEvent(id: string) {
-    const existing = await this.prisma.event.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.event.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) throw new NotFoundException('Event not found.');
 
     const updated = await this.prisma.event.update({
       where: { id },
       data: { isActive: false },
-      include: { eventType: true },
+      include: {
+        eventType: true,
+        galleryPhotos: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+          select: { id: true, imageUrl: true, mediaType: true },
+        },
+      },
     });
 
     return {
@@ -253,7 +335,10 @@ export class EventsService {
   }
 
   async updateEventType(id: string, dto: UpdateEventTypeDto) {
-    const existing = await this.prisma.eventType.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.eventType.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) throw new NotFoundException('Event type not found.');
 
     if (dto.isActive === false) {
@@ -263,7 +348,9 @@ export class EventsService {
     try {
       const dataPayload = {
         ...(dto.name !== undefined ? { name: dto.name } : {}),
-        ...(dto.contactInquiryCode !== undefined ? { contactInquiryCode: dto.contactInquiryCode } : {}),
+        ...(dto.contactInquiryCode !== undefined
+          ? { contactInquiryCode: dto.contactInquiryCode }
+          : {}),
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       };
       if (Object.keys(dataPayload).length > 0) {
@@ -301,7 +388,10 @@ export class EventsService {
   }
 
   async deleteEventType(id: string) {
-    const existing = await this.prisma.eventType.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.eventType.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) throw new NotFoundException('Event type not found.');
 
     await this.ensureEventTypeCanBeDisabled(id);
@@ -363,7 +453,10 @@ export class EventsService {
   }
 
   async updateOccasionType(id: string, dto: UpdateOccasionTypeDto) {
-    const existing = await this.prisma.occasionType.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.occasionType.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) throw new NotFoundException('Occasion type not found.');
     try {
       const updated = await this.prisma.occasionType.update({
@@ -393,7 +486,10 @@ export class EventsService {
   }
 
   async deleteOccasionType(id: string) {
-    const existing = await this.prisma.occasionType.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.occasionType.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) throw new NotFoundException('Occasion type not found.');
     const updated = await this.prisma.occasionType.update({
       where: { id },
@@ -411,17 +507,24 @@ export class EventsService {
     };
   }
 
-  private async syncOccasionAssignments(eventTypeId: string, assignments: EventTypeOccasionAssignmentDto[]) {
+  private async syncOccasionAssignments(
+    eventTypeId: string,
+    assignments: EventTypeOccasionAssignmentDto[],
+  ) {
     const seen = new Set<string>();
     for (const row of assignments) {
       if (seen.has(row.occasionTypeId)) {
-        throw new BadRequestException('Duplicate occasion type in assignment list.');
+        throw new BadRequestException(
+          'Duplicate occasion type in assignment list.',
+        );
       }
       seen.add(row.occasionTypeId);
     }
     const ids = [...seen];
     if (ids.length === 0) {
-      await this.prisma.eventTypeOccasion.deleteMany({ where: { eventTypeId } });
+      await this.prisma.eventTypeOccasion.deleteMany({
+        where: { eventTypeId },
+      });
       return;
     }
     const occasions = await this.prisma.occasionType.findMany({
@@ -429,7 +532,9 @@ export class EventsService {
       select: { id: true },
     });
     if (occasions.length !== ids.length) {
-      throw new BadRequestException('One or more occasion types are invalid or inactive.');
+      throw new BadRequestException(
+        'One or more occasion types are invalid or inactive.',
+      );
     }
     await this.prisma.$transaction(async (tx) => {
       await tx.eventTypeOccasion.deleteMany({ where: { eventTypeId } });
@@ -463,9 +568,12 @@ export class EventsService {
     });
     for (const L of sorted) {
       const row = { id: L.occasionType.id, name: L.occasionType.name };
-      if (L.usage === EventTypeOccasionUsage.OCCASION_SINGLE) occasionSingle.push(row);
-      else if (L.usage === EventTypeOccasionUsage.BESPOKE_PROJECT) occasionBespokeProject.push(row);
-      else if (L.usage === EventTypeOccasionUsage.BESPOKE_ROLE) occasionBespokeRole.push(row);
+      if (L.usage === EventTypeOccasionUsage.OCCASION_SINGLE)
+        occasionSingle.push(row);
+      else if (L.usage === EventTypeOccasionUsage.BESPOKE_PROJECT)
+        occasionBespokeProject.push(row);
+      else if (L.usage === EventTypeOccasionUsage.BESPOKE_ROLE)
+        occasionBespokeRole.push(row);
     }
     return { occasionSingle, occasionBespokeProject, occasionBespokeRole };
   }
@@ -475,6 +583,7 @@ export class EventsService {
     eventTypeId: string;
     description: string;
     items: string[];
+    galleryPhotos: { imageUrl: string }[];
     isActive: boolean;
     showOnHome: boolean;
     createdAt: Date;
@@ -495,6 +604,8 @@ export class EventsService {
       contactInquiryCode: item.eventType.contactInquiryCode,
       description: item.description,
       items: item.items,
+      images: item.galleryPhotos.map((p) => p.imageUrl),
+      heroImageUrl: item.galleryPhotos[0]?.imageUrl ?? null,
       showOnHome: item.showOnHome,
       lineKind: 'event' as const,
       ...groups,
@@ -516,6 +627,8 @@ export class EventsService {
       contactInquiryCode: item.contactInquiryCode,
       description: '',
       items: [] as string[],
+      images: [] as string[],
+      heroImageUrl: null as string | null,
       showOnHome: false,
       lineKind: 'event_type' as const,
       ...groups,
@@ -527,10 +640,15 @@ export class EventsService {
     eventTypeId: string;
     description: string;
     items: string[];
+    price: unknown;
     isActive: boolean;
     showOnHome: boolean;
     createdAt: Date;
     updatedAt: Date;
+    galleryPhotos?: Array<
+      | { imageUrl: string }
+      | { id: string; imageUrl: string; mediaType: GalleryMediaType }
+    >;
     eventType: {
       id: string;
       name: string;
@@ -540,6 +658,15 @@ export class EventsService {
       updatedAt: Date;
     };
   }) {
+    const rows = item.galleryPhotos ?? [];
+    const imageRows = rows.filter(
+      (p) => !('mediaType' in p) || p.mediaType === GalleryMediaType.IMAGE,
+    );
+    const catalogImages = rows.filter(
+      (p): p is { id: string; imageUrl: string; mediaType: GalleryMediaType } =>
+        'id' in p && 'mediaType' in p && p.mediaType === GalleryMediaType.IMAGE,
+    );
+
     return {
       id: item.id,
       eventTypeId: item.eventType.id,
@@ -548,6 +675,12 @@ export class EventsService {
       eventType: this.mapEventType(item.eventType),
       description: item.description,
       items: item.items,
+      price: item.price != null ? Number(item.price) : null,
+      images: imageRows.map((p) => p.imageUrl),
+      catalogImages: catalogImages.map((p) => ({
+        id: p.id,
+        imageUrl: p.imageUrl,
+      })),
       isActive: item.isActive,
       showOnHome: item.showOnHome,
       createdAt: item.createdAt,

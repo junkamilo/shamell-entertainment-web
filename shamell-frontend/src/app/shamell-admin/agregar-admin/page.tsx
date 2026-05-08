@@ -186,7 +186,7 @@ export default function ShamellAdminAgregarAdminPage() {
       />
 
       <div
-        className="mb-6 h-1 overflow-hidden rounded-full bg-black/40 ring-1 ring-gold/10"
+        className="mb-6 h-1 overflow-hidden rounded-full bg-gold/15 ring-1 ring-gold/10"
         aria-hidden
       >
         <div
@@ -209,10 +209,10 @@ export default function ShamellAdminAgregarAdminPage() {
           <div
             key={label}
             className={cn(
-              "relative overflow-hidden rounded-xl border px-4 py-3 shadow-[inset_0_1px_0_rgba(197,165,90,0.06)] transition",
+              "shamell-glass-surface relative overflow-hidden rounded-xl border px-4 py-3 transition",
               phase === 2 && i >= 1
                 ? "border-gold/35 bg-gold/8 ring-1 ring-gold/15"
-                : "border-gold/15 bg-black/25",
+                : "border-gold/15",
             )}
           >
             <div className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-gold/10 blur-2xl" />
@@ -224,7 +224,7 @@ export default function ShamellAdminAgregarAdminPage() {
 
       <section
         id="add-admin-flow"
-        className="overflow-hidden rounded-2xl border border-gold/14 bg-black/15 shadow-[0_14px_48px_rgba(0,0,0,0.35)]"
+        className="shamell-glass-surface overflow-hidden rounded-2xl border border-gold/14"
       >
         <div className="border-b border-gold/12 bg-linear-to-r from-gold/10 via-transparent to-transparent px-5 py-4 md:px-8 md:py-5">
           <div className="flex flex-wrap items-center gap-2">
@@ -237,7 +237,7 @@ export default function ShamellAdminAgregarAdminPage() {
           {/* Columna: datos del nuevo administrador */}
           <div
             className={cn(
-              "flex h-full min-h-0 flex-col rounded-2xl border bg-black/22 p-5 shadow-inner md:p-6",
+              "shamell-glass-surface flex h-full min-h-0 flex-col rounded-2xl border p-5 md:p-6",
               phase === 1 ? "border-gold/28 ring-1 ring-gold/12" : "border-gold/14",
             )}
           >
@@ -264,7 +264,7 @@ export default function ShamellAdminAgregarAdminPage() {
                   disabled={phase === 2}
                   autoComplete="off"
                   placeholder="nuevo.admin@ejemplo.com"
-                  className="mt-2 h-12 w-full rounded-xl border border-gold/30 bg-black/40 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-55"
+                  className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-55"
                   required
                 />
                 <p className="mt-1.5 font-body text-[11px] text-foreground/45">
@@ -283,7 +283,7 @@ export default function ShamellAdminAgregarAdminPage() {
                   onChange={(e) => setFullName(e.target.value)}
                   disabled={phase === 2}
                   placeholder="Como figurará en el panel"
-                  className="mt-2 h-12 w-full rounded-xl border border-gold/30 bg-black/40 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-55"
+                  className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-55"
                   required
                   minLength={2}
                 />
@@ -309,7 +309,7 @@ export default function ShamellAdminAgregarAdminPage() {
                       setCode("");
                       setPassword("");
                     }}
-                    className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gold/22 bg-black/30 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold"
+                    className="shamell-glass-surface inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gold/22 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold"
                   >
                     <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} />
                     Editar correo o nombre
@@ -322,10 +322,10 @@ export default function ShamellAdminAgregarAdminPage() {
           {/* Columna: código y contraseña */}
           <div
             className={cn(
-              "relative flex h-full min-h-0 flex-col rounded-2xl border p-5 shadow-inner md:p-6",
+              "relative flex h-full min-h-0 flex-col rounded-2xl border p-5 md:p-6",
               phase === 2
-                ? "border-gold/30 bg-black/25 ring-1 ring-gold/15"
-                : "border-gold/10 border-dashed bg-black/18",
+                ? "shamell-glass-surface border-gold/30 ring-1 ring-gold/15"
+                : "shamell-glass-surface border-gold/10 border-dashed opacity-[0.92]",
             )}
           >
             <div className="mb-4 flex items-center gap-3 border-b border-gold/10 pb-4">
@@ -334,7 +334,7 @@ export default function ShamellAdminAgregarAdminPage() {
                   "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border font-brand text-xs",
                   phase === 2
                     ? "border-gold/40 bg-gold/15 text-gold"
-                    : "border-gold/15 bg-black/40 text-foreground/40",
+                    : "border-gold/15 bg-gold/8 text-foreground/40",
                 )}
               >
                 2
@@ -382,7 +382,7 @@ export default function ShamellAdminAgregarAdminPage() {
                       value={code}
                       onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
                       placeholder="• • • • • •"
-                      className="mt-2 h-14 w-full max-w-xs rounded-xl border border-gold/35 bg-black/45 px-4 text-center font-mono text-2xl tracking-[0.45em] text-gold placeholder:text-gold/20 placeholder:tracking-[0.2em] focus:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/25"
+                      className="mt-2 h-14 w-full max-w-xs rounded-xl border border-gold/35 px-4 text-center font-mono text-2xl tracking-[0.45em] text-gold placeholder:text-gold/20 placeholder:tracking-[0.2em] focus:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/25"
                       required
                     />
                     <p className="mt-1.5 font-body text-[11px] text-foreground/45">
@@ -402,7 +402,7 @@ export default function ShamellAdminAgregarAdminPage() {
                       autoComplete="new-password"
                       placeholder="Mínimo 8 caracteres"
                       minLength={8}
-                      className="mt-2 h-12 w-full rounded-xl border border-gold/30 bg-black/40 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20"
+                      className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20"
                       required
                     />
                   </label>
@@ -422,7 +422,7 @@ export default function ShamellAdminAgregarAdminPage() {
                       type="button"
                       onClick={() => void sendVerificationCode(true)}
                       disabled={isSending}
-                      className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gold/22 bg-black/35 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold disabled:opacity-50"
+                      className="shamell-glass-surface inline-flex min-h-11 items-center justify-center rounded-xl border border-gold/22 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold disabled:opacity-50"
                     >
                       Reenviar código
                     </button>

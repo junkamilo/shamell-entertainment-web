@@ -71,6 +71,12 @@ function stringArrayField(raw: unknown): string[] {
 
 export type InquiryDetailRow = { label: string; value: string };
 
+export type InquiryDetailViewer = "admin" | "technical";
+
+export type BuildInquiryDetailRowsOptions = {
+  viewer?: InquiryDetailViewer;
+};
+
 const KNOWN_KEYS = new Set([
   "entrySource",
   "occasionCode",
@@ -98,11 +104,18 @@ const KNOWN_KEYS = new Set([
   "sourceCatalogTitle",
 ]);
 
-/** Convierte `inquiryDetails` guardado en BD en filas etiquetadas para el admin. */
-export function buildInquiryDetailRows(details: unknown): InquiryDetailRow[] {
+/**
+ * Convierte `inquiryDetails` guardado en BD en filas etiquetadas.
+ * `viewer: "admin"` (default): oculta origen, UUIDs y filas solo-id para lectura humana.
+ */
+export function buildInquiryDetailRows(
+  details: unknown,
+  opts?: BuildInquiryDetailRowsOptions,
+): InquiryDetailRow[] {
   if (details === null || details === undefined) return [];
   if (typeof details !== "object" || Array.isArray(details)) return [];
 
+  const admin = (opts?.viewer ?? "admin") === "admin";
   const d = details as Record<string, unknown>;
   const rows: InquiryDetailRow[] = [];
 
@@ -121,7 +134,7 @@ export function buildInquiryDetailRows(details: unknown): InquiryDetailRow[] {
     rows.push({ label, value: v });
   };
 
-  if (typeof d.entrySource === "string") {
+  if (!admin && typeof d.entrySource === "string") {
     push("Origen del formulario", labelEntrySource(d.entrySource));
   }
 
@@ -132,12 +145,12 @@ export function buildInquiryDetailRows(details: unknown): InquiryDetailRow[] {
     if (title) push(label, title);
   }
 
-  if (typeof d.eventId === "string") push("Evento (id)", d.eventId);
+  if (!admin && typeof d.eventId === "string") push("Evento (id)", d.eventId);
   if (typeof d.eventTypeLabel === "string") push("Tipo de evento", d.eventTypeLabel);
-  else if (typeof d.eventTypeId === "string") push("Tipo de evento (id)", d.eventTypeId);
+  else if (!admin && typeof d.eventTypeId === "string") push("Tipo de evento (id)", d.eventTypeId);
 
   if (typeof d.occasionSingleLabel === "string") push("Tipo de ocasión", d.occasionSingleLabel);
-  else if (typeof d.occasionTypeId === "string") push("Tipo de ocasión (id)", d.occasionTypeId);
+  else if (!admin && typeof d.occasionTypeId === "string") push("Tipo de ocasión (id)", d.occasionTypeId);
 
   if (typeof d.occasionCode === "string") {
     push("Tipo de ocasión (código antiguo)", labelLegacyOccasion(d.occasionCode));
@@ -152,8 +165,10 @@ export function buildInquiryDetailRows(details: unknown): InquiryDetailRow[] {
   } else {
     const projects = stringArrayField(d.bespokeProjectTypes);
     if (projects.length) push("Tipo de proyecto (legado)", projects.map(titleCaseLoose).join(" · "));
-    const ids = stringArrayField(d.occasionTypeIdsProject);
-    if (ids.length) push("Proyectos bespoke (ids)", ids.join(", "));
+    if (!admin) {
+      const ids = stringArrayField(d.occasionTypeIdsProject);
+      if (ids.length) push("Proyectos bespoke (ids)", ids.join(", "));
+    }
   }
 
   const bespokeRoleLabels = stringArrayField(d.bespokeRoleLabels);
@@ -162,8 +177,10 @@ export function buildInquiryDetailRows(details: unknown): InquiryDetailRow[] {
   } else {
     const roles = stringArrayField(d.bespokeRoles);
     if (roles.length) push("Rol / colaboración (legado)", roles.map(titleCaseLoose).join(" · "));
-    const ids = stringArrayField(d.occasionTypeIdsRole);
-    if (ids.length) push("Roles bespoke (ids)", ids.join(", "));
+    if (!admin) {
+      const ids = stringArrayField(d.occasionTypeIdsRole);
+      if (ids.length) push("Roles bespoke (ids)", ids.join(", "));
+    }
   }
 
   if (typeof d.projectDeadlineNote === "string") {
@@ -211,15 +228,17 @@ export function buildInquiryDetailRows(details: unknown): InquiryDetailRow[] {
 export function InquiryDetailsReadable({
   details,
   rows: rowsProp,
+  viewer = "admin",
 }: {
   details?: unknown;
   rows?: InquiryDetailRow[];
+  viewer?: InquiryDetailViewer;
 }) {
-  const rows = rowsProp ?? buildInquiryDetailRows(details);
+  const rows = rowsProp ?? buildInquiryDetailRows(details, { viewer });
   if (rows.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-gold/15 bg-black/22 p-4">
+    <div className="shamell-glass-surface rounded-xl p-4">
       <p className="mb-3 font-brand text-[10px] tracking-[0.18em] text-gold/75">DETALLE DEL FORMULARIO</p>
       <dl className="grid gap-3 sm:grid-cols-2">
         {rows.map(({ label, value }, idx) => (

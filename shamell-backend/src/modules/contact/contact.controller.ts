@@ -1,8 +1,21 @@
 // src/modules/contact/contact.controller.ts
-import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ContactService } from './contact.service';
+import { AdminContactQueryDto } from './dto/admin-contact-query.dto';
+import { AdminPeticionesQueryDto } from './dto/admin-peticiones-query.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
+import { UpdateContactStatusDto } from './dto/update-contact-status.dto';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
 
 @ApiTags('Contact')
@@ -19,8 +32,15 @@ export class ContactController {
   @Get()
   @ApiOperation({ summary: 'Get all contact requests (admin)' })
   @UseGuards(AdminJwtGuard)
-  findAll() {
-    return this.contactService.findAll();
+  findAll(@Query() query: AdminContactQueryDto) {
+    return this.contactService.findAll(query);
+  }
+
+  @Get('peticiones')
+  @ApiOperation({ summary: 'Get unified peticiones feed (admin)' })
+  @UseGuards(AdminJwtGuard)
+  findAllPeticiones(@Query() query: AdminPeticionesQueryDto) {
+    return this.contactService.findAllPeticiones(query);
   }
 
   @Get(':id')
@@ -33,6 +53,12 @@ export class ContactController {
   @UseGuards(AdminJwtGuard)
   markAsRead(@Param('id') id: string) {
     return this.contactService.markAsRead(id);
+  }
+
+  @Patch(':id/status')
+  @UseGuards(AdminJwtGuard)
+  updateStatus(@Param('id') id: string, @Body() dto: UpdateContactStatusDto) {
+    return this.contactService.updateStatus(id, dto.status);
   }
 
   @Delete(':id')

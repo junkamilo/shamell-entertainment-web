@@ -15,7 +15,7 @@ function GalleryPageContent() {
   const { photos, isLoading } = useGalleryPhotos(currentFilter);
 
   return (
-    <main className="bg-background min-h-screen">
+    <main className="relative z-10 min-h-screen text-foreground">
       <SiteHeader />
       <section className="pt-24 pb-16 px-4">
         <div className="max-w-6xl mx-auto">
@@ -77,7 +77,7 @@ function GalleryPageContent() {
 
 export default function GalleryPage() {
   return (
-    <Suspense fallback={<main className="min-h-screen bg-background" />}>
+    <Suspense fallback={<main className="relative z-10 min-h-screen text-foreground" />}>
       <GalleryPageContent />
     </Suspense>
   );

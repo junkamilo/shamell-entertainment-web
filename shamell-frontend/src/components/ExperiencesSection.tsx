@@ -17,7 +17,7 @@ const ExperiencesSection = () => {
         </div>
         <div className="relative">
           <h2 className="mb-3 font-brand text-sm tracking-[0.3em] text-gold md:text-base">
-            SPECIAL EXPERIENCES
+            SERVICE CATALOG
           </h2>
           <p className="mx-auto max-w-3xl text-center font-body text-sm text-foreground/60">
             Signature experiences crafted to elevate the atmosphere with visual impact, refined

@@ -12,6 +12,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { EventsModule } from './modules/events/events.module';
 import { GalleryModule } from './modules/gallery/gallery.module';
 import { AboutModule } from './modules/about/about.module';
+import { AvailabilityModule } from './modules/availability/availability.module';
+import { HeaderMediaModule } from './modules/header-media/header-media.module';
 
 @Module({
   imports: [
@@ -27,6 +29,8 @@ import { AboutModule } from './modules/about/about.module';
     EventsModule,
     GalleryModule,
     AboutModule,
+    AvailabilityModule,
+    HeaderMediaModule,
   ],
 })
 export class AppModule {}

@@ -11,7 +11,10 @@ import {
   IsObject,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { CONTACT_INQUIRY_CODES, type ContactInquiryCode } from '../../../common/contact-inquiry-codes';
+import {
+  CONTACT_INQUIRY_CODES,
+  type ContactInquiryCode,
+} from '../../../common/contact-inquiry-codes';
 
 export const SERVICE_TYPES = CONTACT_INQUIRY_CODES;
 

@@ -36,7 +36,10 @@ export class AboutService {
     return latest ? this.mapAboutContent(latest) : null;
   }
 
-  async upsertAdminAboutContent(dto: UpsertAboutContentDto, imageFile?: Express.Multer.File) {
+  async upsertAdminAboutContent(
+    dto: UpsertAboutContentDto,
+    imageFile?: Express.Multer.File,
+  ) {
     const existing = await this.prisma.aboutContent.findFirst({
       orderBy: { updatedAt: 'desc' },
     });
@@ -59,8 +62,12 @@ export class AboutService {
             where: { id: existing.id },
             data: {
               ...(dto.title !== undefined ? { title: dto.title } : {}),
-              ...(dto.paragraph1 !== undefined ? { paragraph1: dto.paragraph1 } : {}),
-              ...(dto.coreValues !== undefined ? { coreValues: dto.coreValues } : {}),
+              ...(dto.paragraph1 !== undefined
+                ? { paragraph1: dto.paragraph1 }
+                : {}),
+              ...(dto.coreValues !== undefined
+                ? { coreValues: dto.coreValues }
+                : {}),
               ...(newImageUpload
                 ? {
                     imageUrl: newImageUpload.secureUrl,
@@ -81,33 +88,52 @@ export class AboutService {
           });
 
       if (newImageUpload && existing?.imagePublicId) {
-        await this.deleteImageFromCloudinary(existing.imagePublicId).catch(() => null);
+        await this.deleteImageFromCloudinary(existing.imagePublicId).catch(
+          () => null,
+        );
       }
 
       return {
-        message: isCreating ? 'About content created successfully.' : 'About content updated successfully.',
+        message: isCreating
+          ? 'About content created successfully.'
+          : 'About content updated successfully.',
         about: this.mapAboutContent(saved),
       };
     } catch (error) {
       if (newImageUpload) {
-        await this.deleteImageFromCloudinary(newImageUpload.publicId).catch(() => null);
+        await this.deleteImageFromCloudinary(newImageUpload.publicId).catch(
+          () => null,
+        );
       }
       throw error;
     }
   }
 
-  private ensureRequiredForCreate(dto: UpsertAboutContentDto, imageFile?: Express.Multer.File) {
+  private ensureRequiredForCreate(
+    dto: UpsertAboutContentDto,
+    imageFile?: Express.Multer.File,
+  ) {
     if (!dto.title || !dto.paragraph1 || !dto.coreValues?.length) {
-      throw new BadRequestException('Title, paragraph1, and at least one core value are required.');
+      throw new BadRequestException(
+        'Title, paragraph1, and at least one core value are required.',
+      );
     }
     if (!imageFile) {
-      throw new BadRequestException('Image file is required to create about content.');
+      throw new BadRequestException(
+        'Image file is required to create about content.',
+      );
     }
   }
 
   private ensureCloudinaryEnv() {
-    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      throw new InternalServerErrorException('Cloudinary environment variables are missing.');
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      throw new InternalServerErrorException(
+        'Cloudinary environment variables are missing.',
+      );
     }
   }
 
@@ -120,7 +146,9 @@ export class AboutService {
     }
   }
 
-  private uploadImageToCloudinary(file: Express.Multer.File): Promise<{ secureUrl: string; publicId: string }> {
+  private uploadImageToCloudinary(
+    file: Express.Multer.File,
+  ): Promise<{ secureUrl: string; publicId: string }> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -144,10 +172,15 @@ export class AboutService {
   }
 
   private async deleteImageFromCloudinary(publicId: string) {
-    const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-    const ok = result.result === 'ok' || result.result === 'not found';
+    const destroyResult = (await cloudinary.uploader.destroy(publicId, {
+      resource_type: 'image',
+    })) as { result?: string };
+    const ok =
+      destroyResult.result === 'ok' || destroyResult.result === 'not found';
     if (!ok) {
-      throw new InternalServerErrorException('Cloudinary image deletion failed.');
+      throw new InternalServerErrorException(
+        'Cloudinary image deletion failed.',
+      );
     }
   }
 

@@ -1,5 +1,16 @@
-import { Transform } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsNotEmpty, IsString, IsUUID, MaxLength } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  ArrayMinSize,
+  IsArray,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class CreateServiceDto {
   @IsUUID()
@@ -22,4 +33,17 @@ export class CreateServiceDto {
         : [],
   )
   items!: string[];
+
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === '' || value === null || value === undefined) return null;
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Number(value);
+    return undefined;
+  })
+  @ValidateIf((_, v) => v !== null && v !== undefined)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  price?: number | null;
 }

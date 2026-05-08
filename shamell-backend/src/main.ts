@@ -5,9 +5,9 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 
-
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks();
 
   // Security
   app.use(helmet());
@@ -21,9 +21,9 @@ async function bootstrap() {
   // Validación global automática de DTOs
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,           // elimina props que no estén en el DTO
+      whitelist: true, // elimina props que no estén en el DTO
       forbidNonWhitelisted: true, // lanza error si hay props extras
-      transform: true,            // convierte tipos automáticamente
+      transform: true, // convierte tipos automáticamente
     }),
   );
 
@@ -64,4 +64,4 @@ async function bootstrap() {
     }
   }
 }
-bootstrap();
+void bootstrap();

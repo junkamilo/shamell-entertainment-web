@@ -12,11 +12,15 @@ export class AdminJwtGuard implements CanActivate {
   constructor(private readonly jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<{ headers: Record<string, string | undefined> }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ headers: Record<string, string | undefined> }>();
     const authorizationHeader = request.headers.authorization;
 
     if (!authorizationHeader?.startsWith('Bearer ')) {
-      throw new UnauthorizedException('Missing or invalid authorization header.');
+      throw new UnauthorizedException(
+        'Missing or invalid authorization header.',
+      );
     }
 
     const token = authorizationHeader.slice(7).trim();

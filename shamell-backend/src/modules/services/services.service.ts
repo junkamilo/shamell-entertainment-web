@@ -27,8 +27,14 @@ export class ServicesService {
       throw new BadRequestException('Image file is required.');
     }
 
-    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      throw new InternalServerErrorException('Cloudinary environment variables are missing.');
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      throw new InternalServerErrorException(
+        'Cloudinary environment variables are missing.',
+      );
     }
 
     const imageUrl = await this.uploadImageToCloudinary(imageFile);
@@ -50,6 +56,9 @@ export class ServicesService {
           serviceTypeId: dto.serviceTypeId,
           description: dto.description,
           items: dto.items,
+          ...(dto.price !== undefined && dto.price !== null
+            ? { price: dto.price }
+            : {}),
           imageUrl,
         },
         include: {
@@ -91,12 +100,55 @@ export class ServicesService {
     if (!service || !service.serviceType.isActive) {
       throw new NotFoundException('Service not found.');
     }
-    const preview = service.description.replace(/\s+/g, ' ').trim().slice(0, 280);
+    const preview = service.description
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 280);
     return {
       kind: 'service' as const,
       id: service.id,
       title: service.serviceType.name.trim(),
+      description: service.description,
       descriptionPreview: preview || undefined,
+      items: service.items,
+      imageUrl: service.imageUrl,
+      contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
+    };
+  }
+
+  /** Public details by contact inquiry code (VIP_EVENT, PRIVATE_GALA, etc). */
+  async getPublicServiceByInquiryCode(code: string) {
+    const inquiryCode = code.trim().toUpperCase();
+    if (!inquiryCode)
+      throw new BadRequestException('Inquiry code is required.');
+
+    const service = await this.prisma.service.findFirst({
+      where: {
+        isActive: true,
+        serviceType: {
+          isActive: true,
+          contactInquiryCode: inquiryCode,
+        },
+      },
+      include: { serviceType: true },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!service) {
+      throw new NotFoundException('Service not found for this inquiry code.');
+    }
+
+    const preview = service.description
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 280);
+    return {
+      kind: 'service' as const,
+      id: service.id,
+      title: service.serviceType.name.trim(),
+      description: service.description,
+      descriptionPreview: preview || undefined,
+      items: service.items,
+      imageUrl: service.imageUrl,
       contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
     };
   }
@@ -126,7 +178,11 @@ export class ServicesService {
     return this.mapService(service);
   }
 
-  async updateService(id: string, dto: UpdateServiceDto, imageFile?: Express.Multer.File) {
+  async updateService(
+    id: string,
+    dto: UpdateServiceDto,
+    imageFile?: Express.Multer.File,
+  ) {
     const existing = await this.prisma.service.findUnique({
       where: { id },
       select: { id: true, imageUrl: true },
@@ -143,8 +199,12 @@ export class ServicesService {
           await this.deleteImageFromCloudinaryByUrl(existing.imageUrl);
         }
       } catch {
-        await this.deleteImageFromCloudinaryByUrl(newImageUrl).catch(() => null);
-        throw new InternalServerErrorException('Cannot replace previous image in Cloudinary.');
+        await this.deleteImageFromCloudinaryByUrl(newImageUrl).catch(
+          () => null,
+        );
+        throw new InternalServerErrorException(
+          'Cannot replace previous image in Cloudinary.',
+        );
       }
       imageUrl = newImageUrl;
     }
@@ -164,8 +224,11 @@ export class ServicesService {
 
     const data = {
       ...(dto.serviceTypeId ? { serviceTypeId: dto.serviceTypeId } : {}),
-      ...(dto.description !== undefined ? { description: dto.description } : {}),
+      ...(dto.description !== undefined
+        ? { description: dto.description }
+        : {}),
       ...(dto.items !== undefined ? { items: dto.items } : {}),
+      ...(dto.price !== undefined ? { price: dto.price } : {}),
       ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
       ...(imageUrl ? { imageUrl } : {}),
     };
@@ -193,7 +256,10 @@ export class ServicesService {
   }
 
   async deleteService(id: string) {
-    const existing = await this.prisma.service.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.service.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) {
       throw new NotFoundException('Service not found.');
     }
@@ -217,7 +283,7 @@ export class ServicesService {
       const created = await this.prisma.serviceType.create({
         data: {
           name: dto.name,
-          contactInquiryCode: dto.contactInquiryCode ?? null,
+          contactInquiryCode: null,
         },
       });
 
@@ -228,7 +294,9 @@ export class ServicesService {
     } catch (error: unknown) {
       const prismaError = error as { code?: string };
       if (prismaError?.code === 'P2002') {
-        throw new ConflictException(`Service type "${dto.name}" already exists.`);
+        throw new ConflictException(
+          `Service type "${dto.name}" already exists.`,
+        );
       }
       throw error;
     }
@@ -250,7 +318,10 @@ export class ServicesService {
   }
 
   async updateServiceType(id: string, dto: UpdateServiceTypeDto) {
-    const existing = await this.prisma.serviceType.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.serviceType.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) {
       throw new NotFoundException('Service type not found.');
     }
@@ -264,7 +335,6 @@ export class ServicesService {
         where: { id },
         data: {
           ...(dto.name !== undefined ? { name: dto.name } : {}),
-          ...(dto.contactInquiryCode !== undefined ? { contactInquiryCode: dto.contactInquiryCode } : {}),
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         },
       });
@@ -276,14 +346,19 @@ export class ServicesService {
     } catch (error: unknown) {
       const prismaError = error as { code?: string };
       if (prismaError?.code === 'P2002' && dto.name) {
-        throw new ConflictException(`Service type "${dto.name}" already exists.`);
+        throw new ConflictException(
+          `Service type "${dto.name}" already exists.`,
+        );
       }
       throw error;
     }
   }
 
   async deleteServiceType(id: string) {
-    const existing = await this.prisma.serviceType.findUnique({ where: { id }, select: { id: true } });
+    const existing = await this.prisma.serviceType.findUnique({
+      where: { id },
+      select: { id: true },
+    });
     if (!existing) {
       throw new NotFoundException('Service type not found.');
     }
@@ -313,6 +388,7 @@ export class ServicesService {
     };
     description: string;
     items: string[];
+    price: unknown;
     imageUrl: string | null;
     isActive: boolean;
     createdAt: Date;
@@ -326,6 +402,7 @@ export class ServicesService {
       serviceType: this.mapServiceType(service.serviceType),
       description: service.description,
       items: service.items,
+      price: service.price != null ? Number(service.price) : null,
       imageUrl: service.imageUrl,
       isActive: service.isActive,
       createdAt: service.createdAt,
@@ -386,13 +463,20 @@ export class ServicesService {
   private async deleteImageFromCloudinaryByUrl(imageUrl: string) {
     const publicId = this.extractCloudinaryPublicIdFromUrl(imageUrl);
     if (!publicId) {
-      throw new InternalServerErrorException('Cannot resolve Cloudinary image identifier.');
+      throw new InternalServerErrorException(
+        'Cannot resolve Cloudinary image identifier.',
+      );
     }
 
-    const result = await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
-    const ok = result.result === 'ok' || result.result === 'not found';
+    const destroyResult = (await cloudinary.uploader.destroy(publicId, {
+      resource_type: 'image',
+    })) as { result?: string };
+    const ok =
+      destroyResult.result === 'ok' || destroyResult.result === 'not found';
     if (!ok) {
-      throw new InternalServerErrorException('Cloudinary image deletion failed.');
+      throw new InternalServerErrorException(
+        'Cloudinary image deletion failed.',
+      );
     }
   }
 

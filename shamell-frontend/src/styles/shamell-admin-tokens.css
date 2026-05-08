@@ -1,0 +1,270 @@
+/* ============================================================
+   SHAMELL ADMIN — DESIGN TOKENS ("Purple Fire")
+   Scoped to .admin-theme only — does not affect public site.
+   ============================================================ */
+
+.admin-theme {
+  /* ---------- Gradient stops ---------- */
+  --shamell-night: #1f0a2e;
+  --shamell-twilight: #2d1240;
+  --shamell-dusk: #4a1f3a;
+  --shamell-ember: #7a2828;
+  --shamell-fire: #b8381e;
+  --shamell-flame: #e8842f;
+
+  /* ---------- Fire accents ---------- */
+  --shamell-fire-red: #d63e2c;
+  --shamell-fire-orange: #e8842f;
+  --shamell-fire-yellow: #f5c53d;
+
+  /* ---------- Gold ---------- */
+  --shamell-gold: #d4b568;
+  --shamell-gold-bright: #e8c97a;
+  --shamell-gold-deep: #a88e45;
+
+  /* ---------- Surfaces ---------- */
+  --shamell-surface-deep: #170824;
+  --shamell-surface-base: #1f0a2e;
+  --shamell-surface-raised: #2a1438;
+  /* Glass card / panel base (single source with utilities below) */
+  --shamell-glass-fill: rgba(20, 8, 32, 0.45);
+  --shamell-glass-fill-hover: rgba(20, 8, 32, 0.55);
+  /* Dropdowns / listboxes over forms — nearly opaque so underlying labels don't show through */
+  --shamell-glass-menu-fill: rgba(23, 10, 38, 0.96);
+  --shamell-blur-card: blur(8px);
+  --shamell-blur-menu: blur(14px);
+  --shamell-blur-input: blur(6px);
+  --shamell-surface-card: var(--shamell-glass-fill);
+  --shamell-surface-input: rgba(15, 5, 26, 0.7);
+  --shamell-surface-overlay: rgba(15, 5, 26, 0.85);
+
+  /* ---------- Text (high contrast on purple glass) ---------- */
+  --shamell-text-primary: #faf6f2;
+  --shamell-text-secondary: rgba(250, 246, 242, 0.82);
+  --shamell-text-muted: rgba(250, 246, 242, 0.58);
+  --shamell-text-subtle: rgba(250, 246, 242, 0.68);
+
+  /* ---------- Borders ---------- */
+  --shamell-border-gold-soft: rgba(212, 181, 104, 0.3);
+  --shamell-border-gold: rgba(212, 181, 104, 0.4);
+  --shamell-border-gold-strong: rgba(212, 181, 104, 0.6);
+  --shamell-border-fire: rgba(232, 132, 47, 0.4);
+
+  /* ---------- Semantic ---------- */
+  --shamell-cta-primary: #d63e2c;
+  --shamell-cta-primary-hover: #b8381e;
+  --shamell-cta-primary-active: #8b2820;
+  --shamell-state-active: #e8842f;
+  --shamell-state-focus: #f5c53d;
+
+  --shamell-danger: #c9001f;
+  --shamell-danger-hover: #a30018;
+  --shamell-success: #4a8b5c;
+  --shamell-warning: #e8842f;
+
+  /* ---------- Composite backgrounds ---------- */
+  --shamell-bg-page: radial-gradient(
+    ellipse 120% 90% at 100% 100%,
+    var(--shamell-flame) 0%,
+    var(--shamell-fire) 12%,
+    var(--shamell-ember) 24%,
+    var(--shamell-dusk) 42%,
+    var(--shamell-twilight) 65%,
+    var(--shamell-night) 90%
+  );
+
+  --shamell-bg-sidebar: linear-gradient(
+    180deg,
+    var(--shamell-surface-deep) 0%,
+    var(--shamell-surface-base) 60%,
+    var(--shamell-surface-raised) 100%
+  );
+
+  /* ---------- Typography (display uses root Cinzel variable when present) ---------- */
+  --shamell-font-display: var(--font-cinzel), Georgia, "Times New Roman", serif;
+  --shamell-font-body: var(--font-shamell-admin-sans), Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* ---------- Radii ---------- */
+  --shamell-radius-sm: 4px;
+  --shamell-radius-md: 6px;
+  --shamell-radius-lg: 12px;
+  --shamell-radius-pill: 20px;
+
+  /* ---------- Tracking ---------- */
+  --shamell-tracking-tight: 0.5px;
+  --shamell-tracking-normal: 1px;
+  --shamell-tracking-wide: 1.5px;
+  --shamell-tracking-wider: 2px;
+  --shamell-tracking-widest: 3px;
+  --shamell-tracking-hero: 4px;
+
+  font-family: var(--shamell-font-body);
+}
+
+/* Page column behind content */
+.shamell-admin-bg {
+  background: var(--shamell-bg-page);
+  background-attachment: fixed;
+}
+
+.shamell-admin-sidebar {
+  background: var(--shamell-bg-sidebar);
+}
+
+.admin-theme ::selection {
+  background: var(--shamell-fire-orange);
+  color: var(--shamell-night);
+}
+
+.admin-theme ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.admin-theme ::-webkit-scrollbar-track {
+  background: var(--shamell-surface-deep);
+}
+
+.admin-theme ::-webkit-scrollbar-thumb {
+  background: var(--shamell-gold-deep);
+  border-radius: var(--shamell-radius-sm);
+}
+
+.admin-theme ::-webkit-scrollbar-thumb:hover {
+  background: var(--shamell-gold);
+}
+
+.admin-theme .shamell-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--shamell-gold-deep) var(--shamell-surface-deep);
+}
+
+.admin-theme .shamell-scrollbar::-webkit-scrollbar-track {
+  background: var(--shamell-surface-deep);
+  border-radius: 9999px;
+  border: 1px solid var(--shamell-border-gold-soft);
+}
+
+.admin-theme .shamell-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--shamell-gold-bright) 85%, transparent),
+    color-mix(in srgb, var(--shamell-gold) 75%, transparent)
+  );
+  border-radius: 9999px;
+  border: 2px solid color-mix(in srgb, var(--shamell-surface-deep) 85%, transparent);
+}
+
+.admin-theme .shamell-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    var(--shamell-gold-bright),
+    var(--shamell-gold)
+  );
+}
+
+/* Sticky header over radial gradient */
+.admin-theme-main-header {
+  background: color-mix(in srgb, var(--shamell-surface-overlay) 78%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--shamell-border-gold-soft);
+}
+
+/* ---------- Glass surfaces (forms, sections, hub cards) ---------- */
+
+.admin-theme .shamell-glass-surface {
+  background: var(--shamell-glass-fill);
+  backdrop-filter: var(--shamell-blur-card);
+  -webkit-backdrop-filter: var(--shamell-blur-card);
+  border: 1px solid var(--shamell-border-gold-soft);
+  border-radius: var(--shamell-radius-lg);
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.admin-theme .shamell-glass-menu {
+  background: var(--shamell-glass-menu-fill);
+  backdrop-filter: var(--shamell-blur-menu);
+  -webkit-backdrop-filter: var(--shamell-blur-menu);
+  border: 1px solid var(--shamell-border-gold);
+  border-radius: var(--shamell-radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.admin-theme .shamell-glass-card {
+  display: flex;
+  flex-direction: column;
+  background: var(--shamell-glass-fill);
+  backdrop-filter: var(--shamell-blur-card);
+  -webkit-backdrop-filter: var(--shamell-blur-card);
+  border: 1px solid var(--shamell-border-gold-soft);
+  border-radius: var(--shamell-radius-lg);
+  padding: 18px;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.admin-theme .shamell-glass-card:hover {
+  background: var(--shamell-glass-fill-hover);
+  border-color: var(--shamell-border-fire);
+  transform: translateY(-2px);
+}
+
+.admin-theme .shamell-glass-card--fire {
+  border-color: rgba(232, 132, 47, 0.5);
+}
+
+.admin-theme .shamell-glass-card--fire:hover {
+  border-color: rgba(232, 132, 47, 0.65);
+}
+
+.admin-theme .shamell-icon-box {
+  display: flex;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--shamell-radius-md);
+  border: 1px solid var(--shamell-border-gold-soft);
+  background: rgba(212, 181, 104, 0.12);
+  color: var(--shamell-gold);
+}
+
+.admin-theme .shamell-glass-card--fire .shamell-icon-box {
+  background: rgba(232, 132, 47, 0.18);
+  border-color: rgba(232, 132, 47, 0.5);
+  color: var(--shamell-fire-yellow);
+}
+
+/* Date/time pickers and similar triggers (agendar, inquiry-style) */
+.admin-theme .shamell-glass-trigger {
+  background: var(--shamell-glass-fill);
+  backdrop-filter: var(--shamell-blur-card);
+  -webkit-backdrop-filter: var(--shamell-blur-card);
+  border: 1px solid var(--shamell-border-gold);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.admin-theme .shamell-glass-trigger:hover {
+  border-color: var(--shamell-border-gold-strong);
+  background: var(--shamell-glass-fill-hover);
+}
+
+.admin-theme .shamell-glass-trigger:focus-visible {
+  outline: none;
+  border-color: var(--shamell-border-gold-strong);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--shamell-state-focus) 48%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-theme .shamell-glass-card:hover {
+    transform: none;
+  }
+}

@@ -11,7 +11,10 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { CONTACT_INQUIRY_CODES, type ContactInquiryCode } from '../../../common/contact-inquiry-codes';
+import {
+  CONTACT_INQUIRY_CODES,
+  type ContactInquiryCode,
+} from '../../../common/contact-inquiry-codes';
 import { EventTypeOccasionAssignmentDto } from './event-type-occasion-assignment.dto';
 
 export class UpdateEventTypeDto {
@@ -22,7 +25,9 @@ export class UpdateEventTypeDto {
   @Matches(/^[A-Za-zÀ-ÿ\s&-]+$/, {
     message: 'Name must contain only letters, spaces, ampersands, or hyphens.',
   })
-  @Transform(({ value }) => (value === undefined ? undefined : String(value).trim()))
+  @Transform(({ value }) =>
+    value === undefined ? undefined : String(value).trim(),
+  )
   name?: string;
 
   @IsOptional()
@@ -31,7 +36,10 @@ export class UpdateEventTypeDto {
     if (value === null || value === '') return null;
     return String(value).trim();
   })
-  @ValidateIf((o: UpdateEventTypeDto) => o.contactInquiryCode !== null && o.contactInquiryCode !== undefined)
+  @ValidateIf(
+    (o: UpdateEventTypeDto) =>
+      o.contactInquiryCode !== null && o.contactInquiryCode !== undefined,
+  )
   @IsString()
   @IsIn([...CONTACT_INQUIRY_CODES])
   contactInquiryCode?: ContactInquiryCode | null;

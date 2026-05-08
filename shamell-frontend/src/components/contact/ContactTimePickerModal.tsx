@@ -3,10 +3,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { hhmmToParts, partsToHHMM } from "@/components/contact/contactLogisticsUtils";
+import { hhmmToMinutes, hhmmToParts, partsToHHMM } from "@/components/contact/contactLogisticsUtils";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
+
+function formatClampHint(totalMinutes: number): string {
+  const h24 = Math.floor(totalMinutes / 60) % 24;
+  const m = totalMinutes % 60;
+  const d = new Date();
+  d.setHours(h24, m, 0, 0);
+  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+}
 
 type Props = {
   isOpen: boolean;
@@ -14,13 +22,26 @@ type Props = {
   value: string;
   onClose: () => void;
   onConfirm: (hhmm: string) => void;
+  /** Minutes from midnight (24h); inclusive — from weekly availability for the chosen date. */
+  timeClamp?: { minMinutes: number; maxMinutes: number };
+  /** Occupied windows from existing bookings (inclusive). */
+  blockedRanges?: Array<{ startMinutes: number; endMinutes: number }>;
 };
 
-export default function ContactTimePickerModal({ isOpen, title, value, onClose, onConfirm }: Props) {
+export default function ContactTimePickerModal({
+  isOpen,
+  title,
+  value,
+  onClose,
+  onConfirm,
+  timeClamp,
+  blockedRanges,
+}: Props) {
   const initial = useMemo(() => hhmmToParts(value), [value]);
   const [h12, setH12] = useState(initial.h12);
   const [min, setMin] = useState(initial.min);
   const [ap, setAp] = useState<"AM" | "PM">(initial.ap);
+  const [clampError, setClampError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -30,6 +51,10 @@ export default function ContactTimePickerModal({ isOpen, title, value, onClose, 
     setAp(p.ap);
   }, [isOpen, value]);
 
+  useEffect(() => {
+    if (!isOpen) setClampError(null);
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const preview = partsToHHMM(h12, min, ap);
@@ -37,13 +62,17 @@ export default function ContactTimePickerModal({ isOpen, title, value, onClose, 
   const [hs, ms] = preview.split(":");
   d.setHours(Number(hs), Number(ms), 0, 0);
   const usLabel = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  const previewMinutes = hhmmToMinutes(preview);
+  const isBlockedByBooking =
+    previewMinutes !== null &&
+    (blockedRanges ?? []).some((r) => previewMinutes >= r.startMinutes && previewMinutes <= r.endMinutes);
 
   const selectClass =
-    "mt-2 w-full rounded-xl border border-gold/35 bg-black/35 px-3 py-2.5 font-body text-sm text-foreground outline-none focus:border-gold";
+    "shamell-time-select mt-2 w-full rounded-xl border border-gold/35 bg-shamell-surface-overlay px-3 py-2.5 font-body text-sm text-foreground outline-none [color-scheme:dark] focus:border-gold";
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 px-4 py-8 backdrop-blur-[2px]"
+      className="fixed inset-0 z-100 flex items-center justify-center bg-[color-mix(in_srgb,var(--shamell-night)_74%,transparent)] px-4 py-8 backdrop-blur-[3px]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="contact-time-picker-title"
@@ -52,13 +81,13 @@ export default function ContactTimePickerModal({ isOpen, title, value, onClose, 
       }}
     >
       <div
-        className="relative w-full max-w-sm rounded-2xl border border-gold/35 bg-[linear-gradient(165deg,rgba(18,15,10,0.98)_0%,rgba(6,5,4,1)_100%)] shadow-[0_28px_90px_rgba(0,0,0,0.72)]"
+        className="relative w-full max-w-sm rounded-2xl border border-gold/35 bg-[linear-gradient(165deg,rgba(31,10,46,0.94)_0%,rgba(23,8,36,0.98)_100%)] shadow-[0_28px_90px_rgba(0,0,0,0.72)] backdrop-blur-[14px]"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 rounded-full border border-gold/25 p-2 text-gold/80 transition hover:border-gold/50 hover:bg-gold/10 hover:text-gold"
+          className="absolute right-3 top-3 rounded-full border border-gold/25 bg-gold/5 p-2 text-gold/90 transition hover:border-gold/50 hover:bg-gold/10 hover:text-gold"
           aria-label="Close"
         >
           <X className="h-4 w-4" aria-hidden />
@@ -71,9 +100,25 @@ export default function ContactTimePickerModal({ isOpen, title, value, onClose, 
           >
             {title}
           </p>
-          <p className="mt-2 font-body text-lg text-gold-light tracking-wide">{usLabel}</p>
-          <p className="mt-1 text-[10px] text-foreground/45 font-body">US format · 12-hour clock</p>
+          <p
+            className={cn(
+              "mt-2 font-body text-lg tracking-wide",
+              isBlockedByBooking ? "text-foreground/50" : "text-gold-light",
+            )}
+          >
+            {usLabel}
+          </p>
+          <p className="mt-1 text-[10px] text-foreground/65 font-body">US format · 12-hour clock</p>
         </div>
+
+        {clampError ? (
+          <p className="px-5 pb-0 pt-2 font-body text-xs text-red-300/90">{clampError}</p>
+        ) : null}
+        {!clampError && isBlockedByBooking ? (
+          <p className="px-5 pb-0 pt-2 font-body text-xs text-foreground/65">
+            Esta hora ya está reservada. Elige otra disponible.
+          </p>
+        ) : null}
 
         <div className="grid grid-cols-3 gap-3 px-5 py-5">
           <label className="block">
@@ -98,7 +143,11 @@ export default function ContactTimePickerModal({ isOpen, title, value, onClose, 
           </label>
           <div className="block">
             <span className="font-brand text-[9px] tracking-[0.16em] text-gold/80">PERIOD</span>
-            <div className={cn("mt-2 grid grid-cols-2 gap-1 rounded-xl border border-gold/25 p-1")}>
+            <div
+              className={cn(
+                "mt-2 grid grid-cols-2 gap-1 rounded-xl border border-gold/25 bg-shamell-surface-overlay p-1",
+              )}
+            >
               {(["AM", "PM"] as const).map((p) => (
                 <button
                   key={p}
@@ -127,10 +176,30 @@ export default function ContactTimePickerModal({ isOpen, title, value, onClose, 
           <button
             type="button"
             onClick={() => {
-              onConfirm(partsToHHMM(h12, min, ap));
+              const hhmm = partsToHHMM(h12, min, ap);
+              if (timeClamp) {
+                const m = hhmmToMinutes(hhmm);
+                if (m === null || m < timeClamp.minMinutes || m > timeClamp.maxMinutes) {
+                  setClampError(
+                    `Choose a time between ${formatClampHint(timeClamp.minMinutes)} and ${formatClampHint(timeClamp.maxMinutes)}.`,
+                  );
+                  return;
+                }
+              }
+              const m = hhmmToMinutes(hhmm);
+              if (
+                m !== null &&
+                (blockedRanges ?? []).some((r) => m >= r.startMinutes && m <= r.endMinutes)
+              ) {
+                setClampError("Ese horario ya está reservado. Elige otra hora.");
+                return;
+              }
+              setClampError(null);
+              onConfirm(hhmm);
               onClose();
             }}
-            className="rounded-xl border border-gold/40 bg-gold/12 px-5 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold uppercase transition hover:bg-gold/22"
+            disabled={isBlockedByBooking}
+            className="rounded-xl border border-gold/40 bg-gold/12 px-5 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold uppercase transition hover:bg-gold/22 disabled:cursor-not-allowed disabled:border-gold/20 disabled:bg-gold/5 disabled:text-foreground/45"
           >
             Apply
           </button>

@@ -1,15 +1,12 @@
 import { Transform } from 'class-transformer';
 import {
   IsBoolean,
-  IsIn,
   IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
-  ValidateIf,
 } from 'class-validator';
-import { CONTACT_INQUIRY_CODES, type ContactInquiryCode } from '../../../common/contact-inquiry-codes';
 
 export class UpdateServiceTypeDto {
   @IsOptional()
@@ -19,19 +16,10 @@ export class UpdateServiceTypeDto {
   @Matches(/^[A-Za-zÀ-ÿ\s&-]+$/, {
     message: 'Name must contain only letters, spaces, ampersands, or hyphens.',
   })
-  @Transform(({ value }) => (value === undefined ? undefined : String(value).trim()))
+  @Transform(({ value }) =>
+    value === undefined ? undefined : String(value).trim(),
+  )
   name?: string;
-
-  @IsOptional()
-  @Transform(({ value }) => {
-    if (value === undefined) return undefined;
-    if (value === null || value === '') return null;
-    return String(value).trim();
-  })
-  @ValidateIf((o: UpdateServiceTypeDto) => o.contactInquiryCode !== null && o.contactInquiryCode !== undefined)
-  @IsString()
-  @IsIn([...CONTACT_INQUIRY_CODES])
-  contactInquiryCode?: ContactInquiryCode | null;
 
   @IsOptional()
   @Transform(({ value }) => {

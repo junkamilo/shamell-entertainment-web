@@ -1,12 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Briefcase,
   Cake,
-  ChevronDown,
-  ChevronUp,
   Crown,
   Flame,
   Heart,
@@ -56,14 +53,6 @@ function packOccasionAssignments(singleIds: string[], projectIds: string[], role
 /** Order matters: matches backend `EventTypeOccasion.sortOrder` sequence within each usage block. */
 function occasionAssignmentsOrderedSignature(rows: { occasionTypeId: string; usage: OccasionUsage }[]) {
   return JSON.stringify(rows.map((r) => ({ occasionTypeId: r.occasionTypeId, usage: r.usage })));
-}
-
-function swapAdjacentInList(ids: string[], index: number, delta: number): string[] {
-  const j = index + delta;
-  if (j < 0 || j >= ids.length) return ids;
-  const next = [...ids];
-  [next[index], next[j]] = [next[j], next[index]];
-  return next;
 }
 
 const NAME_MIN_LENGTH = 2;
@@ -158,11 +147,6 @@ export default function ShamellAdminEventTypesPage() {
     setRoleIds([]);
     setEditingId(null);
     setOccasionPickerOpen(false);
-  };
-
-  const toggleOccasion = (id: string, list: string[], setList: (next: string[]) => void) => {
-    if (list.includes(id)) setList(list.filter((x) => x !== id));
-    else setList([...list, id]);
   };
 
   useEffect(() => {
@@ -472,20 +456,6 @@ export default function ShamellAdminEventTypesPage() {
     return list;
   }, [types, searchQuery, filterTab]);
 
-  const sortedActiveOccasions = useMemo(
-    () =>
-      [...occasionCatalog]
-        .filter((o) => o.isActive)
-        .sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" })),
-    [occasionCatalog],
-  );
-
-  const occasionNameById = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const o of occasionCatalog) m.set(o.id, o.name);
-    return m;
-  }, [occasionCatalog]);
-
   const stats = useMemo(() => {
     const total = types.length;
     const active = types.filter((t) => t.isActive).length;
@@ -540,7 +510,7 @@ export default function ShamellAdminEventTypesPage() {
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-xl border border-gold/15 bg-black/25 px-4 py-3 shadow-[inset_0_1px_0_rgba(197,165,90,0.06)]"
+            className="shamell-glass-surface rounded-xl px-4 py-3"
           >
             <p className="font-brand text-[10px] tracking-[0.18em] text-gold/75">{label}</p>
             <p className="mt-1 truncate font-brand text-lg tracking-wide text-gold md:text-xl">{value}</p>
@@ -553,7 +523,7 @@ export default function ShamellAdminEventTypesPage() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Buscar tipo de evento..."
-          className="mx-0 min-h-12 max-w-none flex-1 rounded-xl border-gold/18 bg-black/22"
+          className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-wrap gap-2 lg:shrink-0">
           {filterPill("all", "Todos")}
@@ -562,7 +532,7 @@ export default function ShamellAdminEventTypesPage() {
         </div>
       </div>
 
-      <section className="rounded-xl border border-gold/12 bg-black/15 p-5 md:p-7">
+      <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
         {isLoading ? (
           <p className="py-16 text-center font-body text-sm text-foreground/65">Cargando...</p>
         ) : filteredTypes.length === 0 ? (
@@ -589,7 +559,7 @@ export default function ShamellAdminEventTypesPage() {
             return (
               <article
                 key={item.id}
-                className="relative flex flex-col rounded-2xl border border-gold/16 bg-black/28 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.35)]"
+                className="shamell-glass-surface relative flex flex-col rounded-2xl border border-gold/16 p-4"
               >
                 <div className="flex items-start justify-between gap-2">
                   <p
@@ -675,7 +645,7 @@ export default function ShamellAdminEventTypesPage() {
                         "relative h-7 w-12 shrink-0 rounded-full border transition",
                         item.isActive
                           ? "border-emerald-400/45 bg-emerald-500/22"
-                          : "border-foreground/22 bg-black/45",
+                          : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
                         togglingId === item.id && "cursor-not-allowed opacity-60",
                       )}
                       aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
@@ -709,288 +679,10 @@ export default function ShamellAdminEventTypesPage() {
               value={name}
               required
               onChange={(event) => setName(event.target.value)}
-              className="mt-2 h-12 w-full rounded-xl border border-gold/30 bg-black/35 px-4 text-base text-foreground outline-none focus:border-gold"
+              className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-base text-foreground outline-none focus:border-gold"
               placeholder="Ej. Bodas privadas"
             />
           </label>
-
-          {editingId || isNameValid ? (
-            <div className="rounded-xl border border-gold/18 bg-black/22 p-4">
-              <p className="font-brand text-[11px] tracking-[0.2em] text-gold/95">TIPOS DE OCASIÓN (FORMULARIO)</p>
-              {sortedActiveOccasions.length === 0 ? (
-                <div className="mt-5 flex flex-col items-center justify-center gap-5 rounded-xl border border-gold/14 bg-linear-to-b from-black/35 to-black/20 px-6 py-12 text-center">
-                  <p className="font-brand text-xl tracking-[0.06em] text-gold sm:text-2xl">No hay ocasiones creadas</p>
-                  <p className="max-w-sm font-body text-base leading-relaxed text-foreground/55">
-                    Crea tipos de ocasión en el catálogo para poder vincularlos aquí y mostrarlos en el contacto público.
-                  </p>
-                  <Link
-                    href="/shamell-admin/occasion-types"
-                    className="inline-flex items-center justify-center rounded-xl border border-gold/45 bg-gold/12 px-8 py-3.5 font-brand text-[11px] tracking-[0.18em] text-gold shadow-sm transition hover:border-gold/70 hover:bg-gold/20"
-                  >
-                    Ir a Tipos de ocasión
-                  </Link>
-                </div>
-              ) : editingId ? (
-                <div className="mt-4 space-y-5">
-                  <p className="font-body text-sm leading-relaxed text-foreground/55">
-                    Elige las que aplican a esta categoría. Con varias opciones en un grupo, usa las flechas para el orden en el
-                    formulario de contacto.
-                  </p>
-                  <div>
-                    <p className="font-brand text-[9px] tracking-widest text-gold/65">UNA OPCIÓN (GALA / VIP)</p>
-                    <div className="mt-2 flex flex-col gap-2">
-                      {sortedActiveOccasions.map((o) => (
-                        <label key={`s-${o.id}`} className="flex cursor-pointer items-center gap-2 text-sm text-foreground/80">
-                          <input
-                            type="checkbox"
-                            checked={singleIds.includes(o.id)}
-                            onChange={() => toggleOccasion(o.id, singleIds, setSingleIds)}
-                            className="h-4 w-4 rounded border-gold/35 text-gold"
-                          />
-                          {o.name}
-                        </label>
-                      ))}
-                    </div>
-                    {singleIds.length > 1 ? (
-                      <div className="mt-3 rounded-lg border border-gold/12 bg-black/35 px-3 py-2">
-                        <p className="font-brand text-[9px] tracking-[0.14em] text-gold/55">
-                          ORDEN EN CONTACTO (ARRIBA → SE MUESTRA PRIMERO)
-                        </p>
-                        <ul className="mt-2 space-y-1.5">
-                          {singleIds.map((id, idx) => (
-                            <li
-                              key={id}
-                              className="flex items-center justify-between gap-2 rounded-md border border-gold/10 bg-black/25 px-2 py-1.5"
-                            >
-                              <span className="min-w-0 truncate text-xs text-foreground/85">
-                                {occasionNameById.get(id) ?? id}
-                              </span>
-                              <span className="flex shrink-0 gap-1">
-                                <button
-                                  type="button"
-                                  disabled={idx === 0}
-                                  aria-label="Subir"
-                                  onClick={() => setSingleIds(swapAdjacentInList(singleIds, idx, -1))}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-gold/25 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                                >
-                                  <ChevronUp className="h-4 w-4" strokeWidth={1.5} />
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={idx === singleIds.length - 1}
-                                  aria-label="Bajar"
-                                  onClick={() => setSingleIds(swapAdjacentInList(singleIds, idx, 1))}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-gold/25 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                                >
-                                  <ChevronDown className="h-4 w-4" strokeWidth={1.5} />
-                                </button>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div>
-                    <p className="font-brand text-[9px] tracking-widest text-gold/65">PROYECTOS BESPOKE (VARIAS)</p>
-                    <div className="mt-2 flex flex-col gap-2">
-                      {sortedActiveOccasions.map((o) => (
-                        <label key={`p-${o.id}`} className="flex cursor-pointer items-center gap-2 text-sm text-foreground/80">
-                          <input
-                            type="checkbox"
-                            checked={projectIds.includes(o.id)}
-                            onChange={() => toggleOccasion(o.id, projectIds, setProjectIds)}
-                            className="h-4 w-4 rounded border-gold/35 text-gold"
-                          />
-                          {o.name}
-                        </label>
-                      ))}
-                    </div>
-                    {projectIds.length > 1 ? (
-                      <div className="mt-3 rounded-lg border border-gold/12 bg-black/35 px-3 py-2">
-                        <p className="font-brand text-[9px] tracking-[0.14em] text-gold/55">
-                          ORDEN EN CONTACTO (ARRIBA → SE MUESTRA PRIMERO)
-                        </p>
-                        <ul className="mt-2 space-y-1.5">
-                          {projectIds.map((id, idx) => (
-                            <li
-                              key={id}
-                              className="flex items-center justify-between gap-2 rounded-md border border-gold/10 bg-black/25 px-2 py-1.5"
-                            >
-                              <span className="min-w-0 truncate text-xs text-foreground/85">
-                                {occasionNameById.get(id) ?? id}
-                              </span>
-                              <span className="flex shrink-0 gap-1">
-                                <button
-                                  type="button"
-                                  disabled={idx === 0}
-                                  aria-label="Subir"
-                                  onClick={() => setProjectIds(swapAdjacentInList(projectIds, idx, -1))}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-gold/25 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                                >
-                                  <ChevronUp className="h-4 w-4" strokeWidth={1.5} />
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={idx === projectIds.length - 1}
-                                  aria-label="Bajar"
-                                  onClick={() => setProjectIds(swapAdjacentInList(projectIds, idx, 1))}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-gold/25 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                                >
-                                  <ChevronDown className="h-4 w-4" strokeWidth={1.5} />
-                                </button>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div>
-                    <p className="font-brand text-[9px] tracking-widest text-gold/65">ROLES / COLABORACIÓN (VARIAS)</p>
-                    <div className="mt-2 flex flex-col gap-2">
-                      {sortedActiveOccasions.map((o) => (
-                        <label key={`r-${o.id}`} className="flex cursor-pointer items-center gap-2 text-sm text-foreground/80">
-                          <input
-                            type="checkbox"
-                            checked={roleIds.includes(o.id)}
-                            onChange={() => toggleOccasion(o.id, roleIds, setRoleIds)}
-                            className="h-4 w-4 rounded border-gold/35 text-gold"
-                          />
-                          {o.name}
-                        </label>
-                      ))}
-                    </div>
-                    {roleIds.length > 1 ? (
-                      <div className="mt-3 rounded-lg border border-gold/12 bg-black/35 px-3 py-2">
-                        <p className="font-brand text-[9px] tracking-[0.14em] text-gold/55">
-                          ORDEN EN CONTACTO (ARRIBA → SE MUESTRA PRIMERO)
-                        </p>
-                        <ul className="mt-2 space-y-1.5">
-                          {roleIds.map((id, idx) => (
-                            <li
-                              key={id}
-                              className="flex items-center justify-between gap-2 rounded-md border border-gold/10 bg-black/25 px-2 py-1.5"
-                            >
-                              <span className="min-w-0 truncate text-xs text-foreground/85">
-                                {occasionNameById.get(id) ?? id}
-                              </span>
-                              <span className="flex shrink-0 gap-1">
-                                <button
-                                  type="button"
-                                  disabled={idx === 0}
-                                  aria-label="Subir"
-                                  onClick={() => setRoleIds(swapAdjacentInList(roleIds, idx, -1))}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-gold/25 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                                >
-                                  <ChevronUp className="h-4 w-4" strokeWidth={1.5} />
-                                </button>
-                                <button
-                                  type="button"
-                                  disabled={idx === roleIds.length - 1}
-                                  aria-label="Bajar"
-                                  onClick={() => setRoleIds(swapAdjacentInList(roleIds, idx, 1))}
-                                  className="inline-flex h-7 w-7 items-center justify-center rounded border border-gold/25 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                                >
-                                  <ChevronDown className="h-4 w-4" strokeWidth={1.5} />
-                                </button>
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : (
-                <div className="mt-4 space-y-4">
-                  <p className="font-body text-sm leading-relaxed text-foreground/55">
-                    Elige una o más ocasiones del catálogo para el formulario de contacto (Gala/VIP). El orden en la lista del
-                    contacto lo ajustas con las flechas si marcas varias.
-                  </p>
-                  <div ref={occasionPickerRef} className="relative">
-                    <button
-                      type="button"
-                      aria-expanded={occasionPickerOpen}
-                      aria-haspopup="listbox"
-                      onClick={() => setOccasionPickerOpen((open) => !open)}
-                      className="flex h-12 w-full items-center justify-between gap-3 rounded-xl border border-gold/30 bg-black/35 px-4 text-left text-sm text-foreground outline-none transition hover:border-gold/45 focus-visible:border-gold"
-                    >
-                      <span className={cn("min-w-0 truncate", singleIds.length ? "text-foreground" : "text-foreground/45")}>
-                        {singleIds.length === 0
-                          ? "Elegir tipos de ocasión…"
-                          : singleIds.map((id) => occasionNameById.get(id) ?? id).join(" · ")}
-                      </span>
-                      <ChevronDown
-                        className={cn("h-4 w-4 shrink-0 text-gold/80 transition", occasionPickerOpen && "rotate-180")}
-                        strokeWidth={1.5}
-                      />
-                    </button>
-                    {occasionPickerOpen ? (
-                      <div
-                        role="listbox"
-                        className="shamell-scrollbar absolute left-0 right-0 top-full z-40 mt-2 max-h-56 overflow-y-auto rounded-xl border border-gold/30 bg-[#0b0f14] p-2 shadow-[0_16px_36px_rgba(0,0,0,0.55)]"
-                      >
-                        {sortedActiveOccasions.map((o) => (
-                          <label
-                            key={o.id}
-                            className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2.5 text-sm text-foreground/85 transition hover:bg-gold/10"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={singleIds.includes(o.id)}
-                              onChange={() => toggleOccasion(o.id, singleIds, setSingleIds)}
-                              className="h-4 w-4 shrink-0 rounded border-gold/35 text-gold"
-                            />
-                            {o.name}
-                          </label>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                  {singleIds.length > 1 ? (
-                    <div className="rounded-lg border border-gold/12 bg-black/35 px-3 py-2">
-                      <p className="font-brand text-[9px] tracking-[0.14em] text-gold/55">
-                        ORDEN EN CONTACTO (ARRIBA → SE MUESTRA PRIMERO)
-                      </p>
-                      <ul className="mt-2 space-y-1.5">
-                        {singleIds.map((id, idx) => (
-                          <li
-                            key={id}
-                            className="flex items-center justify-between gap-2 rounded-md border border-gold/10 bg-black/25 px-2 py-1.5"
-                          >
-                            <span className="min-w-0 truncate text-xs text-foreground/85">
-                              {occasionNameById.get(id) ?? id}
-                            </span>
-                            <span className="flex shrink-0 gap-1">
-                              <button
-                                type="button"
-                                disabled={idx === 0}
-                                aria-label="Subir"
-                                onClick={() => setSingleIds(swapAdjacentInList(singleIds, idx, -1))}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded border border-gold/25 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                              >
-                                <ChevronUp className="h-4 w-4" strokeWidth={1.5} />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={idx === singleIds.length - 1}
-                                aria-label="Bajar"
-                                onClick={() => setSingleIds(swapAdjacentInList(singleIds, idx, 1))}
-                                className="inline-flex h-7 w-7 items-center justify-center rounded border border-gold/25 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-                              >
-                                <ChevronDown className="h-4 w-4" strokeWidth={1.5} />
-                              </button>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          ) : null}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button

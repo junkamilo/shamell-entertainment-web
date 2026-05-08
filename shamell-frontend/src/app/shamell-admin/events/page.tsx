@@ -8,9 +8,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  LayoutGrid,
   Pencil,
-  Table2,
+  Plus,
   Tags,
   Trash2,
   X,
@@ -31,6 +30,8 @@ type AdminEvent = {
   eventTypeName: string;
   description: string;
   items: string[];
+  price: number | null;
+  catalogImages: { id: string; imageUrl: string }[];
   isActive: boolean;
   showOnHome: boolean;
   createdAt?: string;
@@ -41,6 +42,31 @@ const DESCRIPTION_MIN_LENGTH = 10;
 const DESCRIPTION_MAX_LENGTH = 5000;
 const ITEM_MAX_LENGTH = 180;
 const PAGE_SIZE = 6;
+const MAX_CATALOG_IMAGES = 12;
+
+function parseOptionalPrice(
+  raw: string,
+  mode: "create" | "edit",
+): { ok: true; value: number | null | undefined } | { ok: false; message: string } {
+  const t = raw.trim();
+  if (!t) return { ok: true, value: mode === "edit" ? null : undefined };
+  const n = Number(t.replace(",", "."));
+  if (!Number.isFinite(n) || n < 0) return { ok: false, message: "El precio no es válido." };
+  if (n > 99_999_999.99) return { ok: false, message: "El precio es demasiado alto." };
+  return { ok: true, value: Math.round(n * 100) / 100 };
+}
+
+function formatPriceEs(value: number | null | undefined): string {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return new Intl.NumberFormat("es", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(Number(value));
+}
+
+function formatPriceInput(value: number): string {
+  return String(value);
+}
 
 const TYPE_PILL_STYLES = [
   "border-gold/50 bg-gold/12 text-gold-light",
@@ -86,7 +112,6 @@ function formatShortDateEs(iso: string | undefined): string {
 }
 
 type FilterTab = "all" | "upcoming" | "completed";
-type ViewMode = "table" | "calendar";
 
 export default function ShamellAdminEventsPage() {
   const apiBaseUrl = useMemo(() => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001", []);
@@ -95,16 +120,19 @@ export default function ShamellAdminEventsPage() {
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("table");
   const [page, setPage] = useState(1);
   const [viewEvent, setViewEvent] = useState<AdminEvent | null>(null);
 
   const [description, setDescription] = useState("");
   const [itemsText, setItemsText] = useState("");
+  const [priceInput, setPriceInput] = useState("");
+  const [existingImages, setExistingImages] = useState<{ id: string; imageUrl: string }[]>([]);
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [originalSnapshot, setOriginalSnapshot] = useState<{
     eventTypeId: string;
     description: string;
     itemsText: string;
+    price: number | null;
   } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [events, setEvents] = useState<AdminEvent[]>([]);
@@ -124,9 +152,17 @@ export default function ShamellAdminEventsPage() {
     setEventTypeId((current) => current || eventTypes.find((item) => item.isActive)?.id || "");
     setDescription("");
     setItemsText("");
+    setPriceInput("");
+    setExistingImages([]);
+    setPendingFiles([]);
     setEditingId(null);
     setOriginalSnapshot(null);
   }, [eventTypes]);
+
+  const pendingPreviewUrls = useMemo(() => pendingFiles.map((f) => URL.createObjectURL(f)), [pendingFiles]);
+  useEffect(() => {
+    return () => pendingPreviewUrls.forEach((u) => URL.revokeObjectURL(u));
+  }, [pendingPreviewUrls]);
 
   const openCreateModal = () => {
     resetForm();
@@ -197,17 +233,36 @@ export default function ShamellAdminEventsPage() {
       }
       setEvents(
         Array.isArray(eventsData)
-          ? (eventsData as Record<string, unknown>[]).map((ev) => ({
-              id: String(ev.id),
-              eventTypeId: String(ev.eventTypeId),
-              eventTypeName: String(ev.eventTypeName ?? ""),
-              description: String(ev.description ?? ""),
-              items: Array.isArray(ev.items) ? (ev.items as string[]) : [],
-              isActive: Boolean(ev.isActive),
-              showOnHome: ev.showOnHome !== undefined ? Boolean(ev.showOnHome) : true,
-              createdAt: typeof ev.createdAt === "string" ? ev.createdAt : undefined,
-              updatedAt: typeof ev.updatedAt === "string" ? ev.updatedAt : undefined,
-            }))
+          ? (eventsData as Record<string, unknown>[]).map((ev) => {
+              const rawPrice = ev.price;
+              const priceParsed =
+                rawPrice === null || rawPrice === undefined
+                  ? null
+                  : typeof rawPrice === "number"
+                    ? rawPrice
+                    : Number(rawPrice);
+              const catalogRaw = ev.catalogImages;
+              const catalogImages = Array.isArray(catalogRaw)
+                ? (catalogRaw as Record<string, unknown>[]).flatMap((row) => {
+                    const id = row.id != null ? String(row.id) : "";
+                    const imageUrl = row.imageUrl != null ? String(row.imageUrl) : "";
+                    return id && imageUrl ? [{ id, imageUrl }] : [];
+                  })
+                : [];
+              return {
+                id: String(ev.id),
+                eventTypeId: String(ev.eventTypeId),
+                eventTypeName: String(ev.eventTypeName ?? ""),
+                description: String(ev.description ?? ""),
+                items: Array.isArray(ev.items) ? (ev.items as string[]) : [],
+                price: Number.isFinite(priceParsed as number) ? (priceParsed as number) : null,
+                catalogImages,
+                isActive: Boolean(ev.isActive),
+                showOnHome: ev.showOnHome !== undefined ? Boolean(ev.showOnHome) : true,
+                createdAt: typeof ev.createdAt === "string" ? ev.createdAt : undefined,
+                updatedAt: typeof ev.updatedAt === "string" ? ev.updatedAt : undefined,
+              };
+            })
           : [],
       );
     } catch {
@@ -235,20 +290,33 @@ export default function ShamellAdminEventsPage() {
     trimmedDescription.length <= DESCRIPTION_MAX_LENGTH;
   const hasValidItems = normalizedItems.length > 0 && normalizedItems.every((item) => item.length <= ITEM_MAX_LENGTH);
   const hasValidType = Boolean(eventTypeId);
+  const priceMode = editingId ? ("edit" as const) : ("create" as const);
+  const priceResult = parseOptionalPrice(priceInput, priceMode);
 
   const hasChanges = editingId
     ? Boolean(
         originalSnapshot &&
           (eventTypeId !== originalSnapshot.eventTypeId ||
             trimmedDescription !== originalSnapshot.description ||
-            normalizedItems.join("\n") !== originalSnapshot.itemsText),
+            normalizedItems.join("\n") !== originalSnapshot.itemsText ||
+            pendingFiles.length > 0 ||
+            (priceResult.ok && (originalSnapshot.price ?? null) !== (priceResult.value ?? null))),
       )
-    : Boolean(eventTypeId || trimmedDescription || normalizedItems.length);
+    : Boolean(
+        eventTypeId ||
+          trimmedDescription ||
+          normalizedItems.length ||
+          Boolean(priceInput.trim()) ||
+          pendingFiles.length > 0,
+      );
 
-  const canSubmit = !isSubmitting && hasValidType && hasValidDescriptionLength && hasValidItems && hasChanges;
+  const priceOk = priceResult.ok;
+  const canSubmit =
+    !isSubmitting && hasValidType && hasValidDescriptionLength && hasValidItems && priceOk && hasChanges;
 
   const getValidationError = () => {
     if (!hasValidType) return "Debes seleccionar un tipo de evento.";
+    if (!priceOk) return priceResult.message;
     if (!hasValidDescriptionLength) {
       return `La descripción debe tener entre ${DESCRIPTION_MIN_LENGTH} y ${DESCRIPTION_MAX_LENGTH} caracteres.`;
     }
@@ -281,6 +349,13 @@ export default function ShamellAdminEventsPage() {
         ? `${apiBaseUrl}/api/v1/events/admin/${editingId}`
         : `${apiBaseUrl}/api/v1/events/admin`;
       const method = editingId ? "PATCH" : "POST";
+      const pricePayload =
+        editingId && priceResult.ok
+          ? { price: priceResult.value ?? null }
+          : !editingId && priceResult.ok && priceResult.value !== undefined
+            ? { price: priceResult.value }
+            : {};
+
       const response = await fetch(endpoint, {
         method,
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -289,6 +364,7 @@ export default function ShamellAdminEventsPage() {
           description: trimmedDescription,
           items: normalizedItems,
           showOnHome: true,
+          ...pricePayload,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -299,6 +375,26 @@ export default function ShamellAdminEventsPage() {
           description: parseErrorMessage(data, "No se pudo guardar el evento."),
         });
         return;
+      }
+
+      const payload = data as { event?: { id?: string } };
+      const savedId = editingId ?? (payload.event?.id ? String(payload.event.id) : undefined);
+      if (savedId && pendingFiles.length > 0) {
+        const fd = new FormData();
+        pendingFiles.forEach((f) => fd.append("media", f));
+        const imgRes = await fetch(`${apiBaseUrl}/api/v1/events/admin/${savedId}/images`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+        const imgData = await imgRes.json().catch(() => ({}));
+        if (!imgRes.ok) {
+          toast({
+            variant: "destructive",
+            title: "Imágenes no guardadas",
+            description: parseErrorMessage(imgData, "El evento se guardó pero falló la subida de imágenes."),
+          });
+        }
       }
 
       const wasEditing = Boolean(editingId);
@@ -323,12 +419,65 @@ export default function ShamellAdminEventsPage() {
     setDescription(item.description);
     const itemsJoined = item.items.join("\n");
     setItemsText(itemsJoined);
+    setPriceInput(item.price != null ? formatPriceInput(item.price) : "");
+    setExistingImages(item.catalogImages);
+    setPendingFiles([]);
     setOriginalSnapshot({
       eventTypeId: item.eventTypeId,
       description: item.description.trim(),
       itemsText: itemsJoined,
+      price: item.price ?? null,
     });
     setIsModalOpen(true);
+  };
+
+  const onPickCatalogImages = (fileList: FileList | null) => {
+    if (!fileList?.length) return;
+    const next: File[] = [];
+    const capacity = MAX_CATALOG_IMAGES - existingImages.length - pendingFiles.length;
+    if (capacity <= 0) return;
+    for (let i = 0; i < fileList.length && next.length < capacity; i++) {
+      const f = fileList.item(i);
+      if (!f || !f.type.startsWith("image/")) continue;
+      next.push(f);
+    }
+    if (next.length) setPendingFiles((prev) => [...prev, ...next]);
+  };
+
+  const removePendingAt = (index: number) => {
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingCatalogImage = async (photoId: string) => {
+    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Sesión requerida",
+        description: "Debes iniciar sesión como admin.",
+      });
+      return;
+    }
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/gallery/admin/photos/${photoId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const delData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: parseErrorMessage(delData, "No se pudo eliminar la imagen."),
+        });
+        return;
+      }
+      setExistingImages((prev) => prev.filter((p) => p.id !== photoId));
+      toast({ title: "Imagen eliminada" });
+      await loadAllData();
+    } catch {
+      toast({ variant: "destructive", title: "Sin conexión", description: "No se pudo conectar con el backend." });
+    }
   };
 
   const onDisable = async (eventId: string) => {
@@ -370,6 +519,7 @@ export default function ShamellAdminEventsPage() {
         item.eventTypeName,
         item.description,
         ...item.items,
+        formatPriceEs(item.price),
         item.isActive ? "activo" : "inactivo",
         "próximo",
         "proximo",
@@ -425,33 +575,6 @@ export default function ShamellAdminEventsPage() {
     return { total, upcoming, completed: total - upcoming, itemsTotal, nearestLabel };
   }, [events]);
 
-  const calendarMonthLabel = useMemo(() => {
-    const d = new Date();
-    return d.toLocaleDateString("es", { month: "long", year: "numeric" });
-  }, []);
-
-  const calendarCells = useMemo(() => {
-    const now = new Date();
-    const y = now.getFullYear();
-    const m = now.getMonth();
-    const firstDow = new Date(y, m, 1).getDay();
-    const startMonday = (firstDow + 6) % 7;
-    const daysInMonth = new Date(y, m + 1, 0).getDate();
-    const cells: { day: number | null; events: AdminEvent[] }[] = [];
-    for (let i = 0; i < startMonday; i++) cells.push({ day: null, events: [] });
-    for (let d = 1; d <= daysInMonth; d++) {
-      const onDay = filteredEvents.filter((ev) => {
-        const iso = ev.updatedAt ?? ev.createdAt;
-        if (!iso) return false;
-        const dt = new Date(iso);
-        return dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d;
-      });
-      cells.push({ day: d, events: onDay });
-    }
-    while (cells.length % 7 !== 0) cells.push({ day: null, events: [] });
-    return cells;
-  }, [filteredEvents]);
-
   const activeEventTypes = eventTypes.filter((item) => item.isActive);
   const selectedTypeName = activeEventTypes.find((item) => item.id === eventTypeId)?.name;
 
@@ -459,14 +582,13 @@ export default function ShamellAdminEventsPage() {
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
         title="Eventos"
-        subtitle="Calendario y gestión de presentaciones."
         actionLabel="Nuevo evento"
         onAction={openCreateModal}
         bordered={false}
       />
 
       {eventTypes.filter((item) => item.isActive).length === 0 ? (
-        <section className="mb-8 rounded-xl border border-gold/12 bg-black/15 p-5 md:p-7">
+        <section className="mb-8 shamell-glass-surface rounded-xl p-5 md:p-7">
           <AdminCatalogEmptyState
             title="No hay tipos de evento activos"
             description="Crea o activa categorías en Tipos de eventos antes de registrar presentaciones aquí."
@@ -488,7 +610,7 @@ export default function ShamellAdminEventsPage() {
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-xl border border-gold/15 bg-black/25 px-4 py-3 shadow-[inset_0_1px_0_rgba(197,165,90,0.06)]"
+            className="shamell-glass-surface rounded-xl px-4 py-3"
           >
             <p className="font-brand text-[10px] tracking-[0.16em] text-gold/75">{label}</p>
             <p className="mt-1 truncate font-brand text-lg tracking-wide text-gold md:text-xl">{value}</p>
@@ -501,10 +623,10 @@ export default function ShamellAdminEventsPage() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Buscar evento..."
-          className="mx-0 min-h-12 max-w-none flex-1 rounded-xl border-gold/18 bg-black/22"
+          className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
         />
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end lg:shrink-0">
-          <div className="flex flex-wrap rounded-xl border border-gold/18 bg-black/22 p-1">
+          <div className="shamell-glass-surface flex flex-wrap rounded-xl p-1">
             {(
               [
                 ["all", "Todos", tabCounts.all],
@@ -527,48 +649,19 @@ export default function ShamellAdminEventsPage() {
               </button>
             ))}
           </div>
-          <div className="flex rounded-xl border border-gold/18 bg-black/22 p-1">
-            <button
-              type="button"
-              onClick={() => setViewMode("table")}
-              className={cn(
-                "inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-brand text-[10px] tracking-[0.12em] transition sm:flex-none",
-                viewMode === "table"
-                  ? "border border-gold/40 bg-gold/10 text-gold"
-                  : "border border-transparent text-foreground/50 hover:text-foreground/75",
-              )}
-            >
-              <Table2 className="h-4 w-4" strokeWidth={1.5} />
-              Tabla
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("calendar")}
-              className={cn(
-                "inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 font-brand text-[10px] tracking-[0.12em] transition sm:flex-none",
-                viewMode === "calendar"
-                  ? "border border-gold/40 bg-gold/10 text-gold"
-                  : "border border-transparent text-foreground/50 hover:text-foreground/75",
-              )}
-            >
-              <LayoutGrid className="h-4 w-4" strokeWidth={1.5} />
-              Calendario
-            </button>
-          </div>
         </div>
       </div>
 
-      <section className="rounded-xl border border-gold/12 bg-black/15 p-4 md:p-5">
-        {viewMode === "table" ? (
-          <>
-            <div className="overflow-x-auto rounded-xl border border-gold/14">
-              <table className="w-full min-w-[960px] border-collapse text-left">
+      <section className="shamell-glass-surface rounded-xl p-4 md:p-5">
+        <div className="overflow-x-auto rounded-xl border border-gold/14">
+              <table className="w-full min-w-[1040px] border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-gold/12 bg-black/40">
+                  <tr className="border-b border-gold/12">
                     <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
                     <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">EVENTO</th>
                     <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TIPO</th>
                     <th className="w-16 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
+                    <th className="min-w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRECIO</th>
                     <th className="min-w-36 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">FECHA</th>
                     <th className="min-w-32 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">CLIENTE</th>
                     <th className="w-32 px-3 py-3 text-right font-brand text-[10px] tracking-[0.14em] text-gold/80">
@@ -584,7 +677,7 @@ export default function ShamellAdminEventsPage() {
                       <tr
                         key={item.id}
                         className={cn(
-                          "border-b border-gold/8 bg-black/15 transition hover:bg-gold/5",
+                          "border-b border-gold/8 transition hover:bg-gold/5",
                           !item.isActive && "opacity-55",
                         )}
                       >
@@ -611,6 +704,9 @@ export default function ShamellAdminEventsPage() {
                         </td>
                         <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75">
                           {item.items.length}
+                        </td>
+                        <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75 whitespace-nowrap">
+                          {formatPriceEs(item.price)}
                         </td>
                         <td className="px-3 py-3 align-middle">
                           <div className="flex items-center gap-2 font-body text-xs text-foreground/65">
@@ -657,7 +753,7 @@ export default function ShamellAdminEventsPage() {
                   })}
                   {!isLoading && filteredEvents.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="border-b border-gold/8 p-0 align-middle">
+                      <td colSpan={8} className="border-b border-gold/8 p-0 align-middle">
                         {events.length === 0 ? (
                           <AdminCatalogEmptyState
                             title="Aún no hay eventos"
@@ -681,9 +777,9 @@ export default function ShamellAdminEventsPage() {
                   ) : null}
                 </tbody>
               </table>
-            </div>
+        </div>
 
-            <div className="mt-4 flex flex-col gap-3 border-t border-gold/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-4 flex flex-col gap-3 border-t border-gold/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="font-body text-xs text-foreground/50">
                 {filteredEvents.length === 0
                   ? "Mostrando 0 de 0"
@@ -724,62 +820,7 @@ export default function ShamellAdminEventsPage() {
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
-            </div>
-          </>
-        ) : (
-          <div>
-            <p className="mb-1 font-brand text-sm capitalize tracking-[0.08em] text-gold">{calendarMonthLabel}</p>
-            <p className="mb-4 font-body text-xs text-foreground/50">
-              Las celdas usan la fecha de última actualización del registro. Cuando agregues fecha de presentación al
-              modelo, aquí se mostrará el calendario real.
-            </p>
-            <div className="grid grid-cols-7 gap-1.5 text-center font-brand text-[10px] tracking-[0.14em] text-gold/60">
-              {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
-                <div key={d} className="py-2">
-                  {d}
-                </div>
-              ))}
-            </div>
-            <div className="mt-1 grid grid-cols-7 gap-1.5">
-              {calendarCells.map((cell, idx) => (
-                <div
-                  key={idx}
-                  className={cn(
-                    "min-h-18 rounded-lg border border-gold/12 bg-black/25 p-1.5 text-left",
-                    !cell.day && "border-transparent bg-transparent",
-                  )}
-                >
-                  {cell.day ? (
-                    <>
-                      <p className="font-brand text-xs text-gold/80">{cell.day}</p>
-                      <div className="mt-1 space-y-0.5">
-                        {cell.events.slice(0, 2).map((ev) => {
-                          const t = displayEventHeading(ev.description).title;
-                          return (
-                            <p
-                              key={ev.id}
-                              className={cn(
-                                "truncate rounded border border-gold/10 bg-gold/5 px-1 py-0.5 font-body text-[9px] text-foreground/70",
-                                !ev.isActive && "opacity-50",
-                              )}
-                              title={t}
-                            >
-                              {t.slice(0, 18)}
-                              {t.length > 18 ? "…" : ""}
-                            </p>
-                          );
-                        })}
-                        {cell.events.length > 2 ? (
-                          <p className="text-[9px] text-gold/60">+{cell.events.length - 2}</p>
-                        ) : null}
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        </div>
 
         {isLoading ? <p className="mt-4 text-sm text-foreground/65">Cargando...</p> : null}
       </section>
@@ -795,7 +836,7 @@ export default function ShamellAdminEventsPage() {
                   if (activeEventTypes.length === 0) return;
                   setIsTypeDropdownOpen((prev) => !prev);
                 }}
-                className="flex h-12 w-full items-center justify-between rounded-xl border border-gold/30 bg-black/35 px-4 text-sm text-foreground transition hover:border-gold/55"
+                className="shamell-glass-trigger flex h-12 w-full items-center justify-between rounded-xl px-4 text-sm text-foreground"
               >
                 <span className={selectedTypeName ? "text-foreground" : "text-foreground/55"}>
                   {selectedTypeName ?? "Primero crea un tipo de evento"}
@@ -838,7 +879,7 @@ export default function ShamellAdminEventsPage() {
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               rows={4}
-              className="mt-2 w-full rounded-xl border border-gold/30 bg-black/35 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
               placeholder="Describe el evento..."
             />
           </label>
@@ -853,10 +894,86 @@ export default function ShamellAdminEventsPage() {
               value={itemsText}
               onChange={(event) => setItemsText(event.target.value)}
               rows={5}
-              className="mt-2 w-full rounded-xl border border-gold/30 bg-black/35 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
               placeholder={"Ítem 1\nÍtem 2\nÍtem 3"}
             />
           </label>
+
+          <label className="block">
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PRECIO (OPCIONAL)</span>
+            <p className="mt-1 font-body text-xs text-foreground/55">
+              Monto de referencia para el catálogo público (usa coma o punto decimal).
+            </p>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={priceInput}
+              onChange={(event) => setPriceInput(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              placeholder="Ej. 2500 o 2500.50"
+              autoComplete="off"
+            />
+          </label>
+
+          <div className="block">
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">IMÁGENES DEL CATÁLOGO</span>
+            <p className="mt-1 font-body text-xs text-foreground/55">
+              Se suben a la galería y se enlazan a este evento. Máximo {MAX_CATALOG_IMAGES} imágenes. Las nuevas se envían
+              al guardar el formulario.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {existingImages.map((img) => (
+                <div
+                  key={img.id}
+                  className="relative h-20 w-20 overflow-hidden rounded-xl border border-gold/22 bg-black/40"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={img.imageUrl} alt="" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => void removeExistingCatalogImage(img.id)}
+                    className="absolute right-1 top-1 rounded-md border border-white/25 bg-black/70 p-1 text-white transition hover:bg-red-500/80"
+                    aria-label="Quitar imagen"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
+              {pendingPreviewUrls.map((url, idx) => (
+                <div
+                  key={`pending-${idx}`}
+                  className="relative h-20 w-20 overflow-hidden rounded-xl border border-gold/35 bg-black/40"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="" className="h-full w-full object-cover opacity-90" />
+                  <button
+                    type="button"
+                    onClick={() => removePendingAt(idx)}
+                    className="absolute right-1 top-1 rounded-md border border-white/25 bg-black/70 p-1 text-white transition hover:bg-red-500/80"
+                    aria-label="Quitar imagen pendiente"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2} />
+                  </button>
+                </div>
+              ))}
+              {existingImages.length + pendingFiles.length < MAX_CATALOG_IMAGES ? (
+                <label className="flex h-20 w-20 cursor-pointer items-center justify-center rounded-xl border border-dashed border-gold/40 bg-gold/5 text-gold transition hover:border-gold/60 hover:bg-gold/10">
+                  <Plus className="h-7 w-7" strokeWidth={1.25} aria-hidden />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="sr-only"
+                    onChange={(event) => {
+                      onPickCatalogImages(event.target.files);
+                      event.target.value = "";
+                    }}
+                  />
+                  <span className="sr-only">Agregar imagen</span>
+                </label>
+              ) : null}
+            </div>
+          </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <button
@@ -897,6 +1014,19 @@ export default function ShamellAdminEventsPage() {
             <p className="font-brand text-[10px] tracking-[0.2em] text-gold/75">VISTA RÁPIDA</p>
             <h2 className="mt-2 font-brand text-xl text-gold">{displayEventHeading(viewEvent.description).title}</h2>
             <p className="mt-1 font-body text-xs text-foreground/45">{viewEvent.eventTypeName}</p>
+            <p className="mt-3 font-brand text-xs tracking-[0.14em] text-gold/85">
+              PRECIO <span className="font-body text-foreground/75">{formatPriceEs(viewEvent.price)}</span>
+            </p>
+            {viewEvent.catalogImages.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {viewEvent.catalogImages.map((img) => (
+                  <div key={img.id} className="h-16 w-16 overflow-hidden rounded-lg border border-gold/20">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img.imageUrl} alt="" className="h-full w-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <p className="mt-4 font-body text-sm leading-relaxed text-foreground/70">{viewEvent.description}</p>
             <p className="mt-3 font-body text-xs text-foreground/45">
               {viewEvent.items.length} ítem(s) · {formatShortDateEs(viewEvent.updatedAt ?? viewEvent.createdAt)} ·{" "}

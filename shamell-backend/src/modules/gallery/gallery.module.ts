@@ -17,5 +17,6 @@ import { GalleryService } from './gallery.service';
   ],
   controllers: [GalleryController],
   providers: [GalleryService, AdminJwtGuard],
+  exports: [GalleryService],
 })
 export class GalleryModule {}

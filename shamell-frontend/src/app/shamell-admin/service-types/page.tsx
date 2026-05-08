@@ -16,22 +16,18 @@ import {
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminModal from "@/components/admin/AdminModal";
+import AdminPagination from "@/components/admin/AdminPagination";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import { toast } from "@/hooks/use-toast";
-import { ADMIN_INQUIRY_CODE_OPTIONS } from "@/lib/contactInquiryConstants";
+import { DEFAULT_PAGINATION_META } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
 type ServiceTypeItem = {
   id: string;
   name: string;
-  contactInquiryCode?: string | null;
   isActive: boolean;
   createdAt?: string;
   updatedAt?: string;
-};
-
-type AdminServiceRow = {
-  serviceTypeId: string;
 };
 
 const NAME_MIN_LENGTH = 2;
@@ -48,23 +44,6 @@ function iconForTypeName(name: string) {
   return TYPE_ICONS[Math.abs(hash) % TYPE_ICONS.length];
 }
 
-function formatRelativeEs(iso: string | undefined): string {
-  if (!iso) return "—";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  const sec = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (sec < 45) return "Hace un momento";
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `Hace ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `Hace ${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 7) return `Hace ${d}d`;
-  const w = Math.floor(d / 7);
-  if (w < 8) return `Hace ${w} sem`;
-  return date.toLocaleDateString("es", { day: "numeric", month: "short" });
-}
-
 type FilterTab = "all" | "active" | "inactive";
 
 export default function ShamellAdminServiceTypesPage() {
@@ -74,17 +53,17 @@ export default function ShamellAdminServiceTypesPage() {
   );
 
   const [name, setName] = useState("");
-  const [contactInquiryCode, setContactInquiryCode] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [types, setTypes] = useState<ServiceTypeItem[]>([]);
-  const [serviceCountByTypeId, setServiceCountByTypeId] = useState<Record<string, number>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
   const parseErrorMessage = useCallback((data: unknown, fallback: string) => {
     if (typeof data !== "object" || data === null) return fallback;
@@ -102,7 +81,6 @@ export default function ShamellAdminServiceTypesPage() {
 
   const resetForm = () => {
     setName("");
-    setContactInquiryCode("");
     setEditingId(null);
   };
 
@@ -120,7 +98,6 @@ export default function ShamellAdminServiceTypesPage() {
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) {
       setTypes([]);
-      setServiceCountByTypeId({});
       toast({
         variant: "destructive",
         title: "Sesión requerida",
@@ -131,14 +108,9 @@ export default function ShamellAdminServiceTypesPage() {
 
     setIsLoading(true);
     try {
-      const [typesResponse, servicesResponse] = await Promise.all([
-        fetch(`${apiBaseUrl}/api/v1/services/types/admin`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${apiBaseUrl}/api/v1/services/admin`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-      ]);
+      const typesResponse = await fetch(`${apiBaseUrl}/api/v1/services/types/admin`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       const typesData = await typesResponse.json().catch(() => []);
       if (!typesResponse.ok) {
@@ -150,18 +122,6 @@ export default function ShamellAdminServiceTypesPage() {
         return;
       }
       setTypes(Array.isArray(typesData) ? (typesData as ServiceTypeItem[]) : []);
-
-      const servicesData = await servicesResponse.json().catch(() => []);
-      if (servicesResponse.ok && Array.isArray(servicesData)) {
-        const counts: Record<string, number> = {};
-        for (const row of servicesData as AdminServiceRow[]) {
-          const tid = row.serviceTypeId;
-          if (tid) counts[tid] = (counts[tid] ?? 0) + 1;
-        }
-        setServiceCountByTypeId(counts);
-      } else {
-        setServiceCountByTypeId({});
-      }
     } catch {
       toast({
         variant: "destructive",
@@ -183,11 +143,8 @@ export default function ShamellAdminServiceTypesPage() {
   const isNameValid = hasValidChars && hasValidLength;
   const editingRow = editingId ? types.find((item) => item.id === editingId) : undefined;
   const originalName = editingRow?.name.trim() ?? "";
-  const inquiryDraft = contactInquiryCode.trim() === "" ? null : contactInquiryCode.trim();
-  const originalInquiry = editingRow?.contactInquiryCode ?? null;
   const nameChanged = !editingId || trimmedName !== originalName;
-  const inquiryChanged = !editingId || inquiryDraft !== originalInquiry;
-  const hasChanges = editingId ? nameChanged || inquiryChanged : trimmedName.length > 0;
+  const hasChanges = editingId ? nameChanged : trimmedName.length > 0;
   const canSubmit = !isSubmitting && isNameValid && hasChanges;
 
   const getNameValidationError = () => {
@@ -233,15 +190,7 @@ export default function ShamellAdminServiceTypesPage() {
         ? `${apiBaseUrl}/api/v1/services/types/admin/${editingId}`
         : `${apiBaseUrl}/api/v1/services/types/admin`;
       const method = editingId ? "PATCH" : "POST";
-      const body = editingId
-        ? JSON.stringify({
-            name: trimmedName,
-            contactInquiryCode: inquiryDraft,
-          })
-        : JSON.stringify({
-            name: trimmedName,
-            ...(inquiryDraft ? { contactInquiryCode: inquiryDraft } : {}),
-          });
+      const body = JSON.stringify({ name: trimmedName });
 
       const response = await fetch(endpoint, {
         method,
@@ -284,7 +233,6 @@ export default function ShamellAdminServiceTypesPage() {
   const startEdit = (item: ServiceTypeItem) => {
     setEditingId(item.id);
     setName(item.name);
-    setContactInquiryCode(item.contactInquiryCode ?? "");
     setIsModalOpen(true);
     setMenuOpenId(null);
   };
@@ -345,6 +293,10 @@ export default function ShamellAdminServiceTypesPage() {
 
   const onHeroAction = () => openCreateModal();
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterTab]);
+
   const filteredTypes = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     let list = types.filter((item) => item.name.toLowerCase().includes(q));
@@ -352,6 +304,25 @@ export default function ShamellAdminServiceTypesPage() {
     if (filterTab === "inactive") list = list.filter((t) => !t.isActive);
     return list;
   }, [types, searchQuery, filterTab]);
+
+  const paginationMeta = useMemo(() => {
+    const totalItems = filteredTypes.length;
+    const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    return {
+      page: safePage,
+      perPage,
+      totalItems,
+      totalPages,
+      hasPrev: safePage > 1,
+      hasNext: safePage < totalPages,
+    };
+  }, [page, perPage, filteredTypes.length]);
+
+  const pagedTypes = useMemo(() => {
+    const start = (paginationMeta.page - 1) * paginationMeta.perPage;
+    return filteredTypes.slice(start, start + paginationMeta.perPage);
+  }, [filteredTypes, paginationMeta.page, paginationMeta.perPage]);
 
   const stats = useMemo(() => {
     const total = types.length;
@@ -390,7 +361,6 @@ export default function ShamellAdminServiceTypesPage() {
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
         title="Tipos de servicio"
-        subtitle="Categorías que organizan tu oferta."
         actionLabel="Nuevo tipo"
         onAction={onHeroAction}
         bordered={false}
@@ -407,7 +377,7 @@ export default function ShamellAdminServiceTypesPage() {
         ).map(([label, value]) => (
           <div
             key={label}
-            className="rounded-xl border border-gold/15 bg-black/25 px-4 py-3 shadow-[inset_0_1px_0_rgba(197,165,90,0.06)]"
+            className="shamell-glass-surface rounded-xl px-4 py-3"
           >
             <p className="font-brand text-[10px] tracking-[0.18em] text-gold/75">{label}</p>
             <p className="mt-1 truncate font-brand text-lg tracking-wide text-gold md:text-xl">{value}</p>
@@ -420,7 +390,7 @@ export default function ShamellAdminServiceTypesPage() {
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Buscar tipo de servicio..."
-          className="mx-0 min-h-[3rem] max-w-none flex-1 rounded-xl border-gold/18 bg-black/22"
+          className="mx-0 min-h-[3rem] max-w-none flex-1"
         />
         <div className="flex flex-wrap gap-2 lg:shrink-0">
           {filterPill("all", "Todos")}
@@ -429,7 +399,7 @@ export default function ShamellAdminServiceTypesPage() {
         </div>
       </div>
 
-      <section className="rounded-xl border border-gold/12 bg-black/15 p-5 md:p-7">
+      <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
         {isLoading ? <p className="text-sm text-foreground/65">Cargando...</p> : null}
         {!isLoading && filteredTypes.length === 0 ? (
           <p className="text-sm text-foreground/65">
@@ -438,14 +408,12 @@ export default function ShamellAdminServiceTypesPage() {
         ) : null}
 
         <div className="mt-2 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredTypes.map((item) => {
+          {pagedTypes.map((item) => {
             const Icon = iconForTypeName(item.name);
-            const nServices = serviceCountByTypeId[item.id] ?? 0;
-            const serviceLabel = nServices === 1 ? "1 servicio" : `${nServices} servicios`;
             return (
               <article
                 key={item.id}
-                className="relative flex flex-col rounded-2xl border border-gold/16 bg-black/28 p-4 shadow-[0_12px_36px_rgba(0,0,0,0.35)]"
+                className="shamell-glass-surface relative flex flex-col rounded-2xl border border-gold/16 p-4"
               >
                 <div className="flex items-start justify-between gap-2">
                   <p
@@ -510,45 +478,52 @@ export default function ShamellAdminServiceTypesPage() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-gold/12 pt-4 font-body text-[11px] text-foreground/45">
-                  <span>{serviceLabel}</span>
-                  <span className="text-gold/25">·</span>
-                  <span>{formatRelativeEs(item.updatedAt ?? item.createdAt)}</span>
-                  <div className="ml-auto flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(item)}
-                      className="rounded-lg border border-gold/22 p-2 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
-                      aria-label={`Editar ${item.name}`}
-                    >
-                      <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => void onToggleActive(item)}
-                      disabled={togglingId === item.id}
+                <div className="mt-6 flex items-center justify-end gap-2 border-t border-gold/12 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(item)}
+                    className="rounded-lg border border-gold/22 p-2 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
+                    aria-label={`Editar ${item.name}`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onToggleActive(item)}
+                    disabled={togglingId === item.id}
+                    className={cn(
+                      "relative h-7 w-12 shrink-0 rounded-full border transition",
+                      item.isActive
+                        ? "border-emerald-400/45 bg-emerald-500/22"
+                        : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
+                      togglingId === item.id && "cursor-not-allowed opacity-60",
+                    )}
+                    aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
+                  >
+                    <span
                       className={cn(
-                        "relative h-7 w-12 shrink-0 rounded-full border transition",
-                        item.isActive
-                          ? "border-emerald-400/45 bg-emerald-500/22"
-                          : "border-foreground/22 bg-black/45",
-                        togglingId === item.id && "cursor-not-allowed opacity-60",
+                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
+                        item.isActive ? "left-6" : "left-1",
                       )}
-                      aria-label={`${item.isActive ? "Desactivar" : "Activar"} ${item.name}`}
-                    >
-                      <span
-                        className={cn(
-                          "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
-                          item.isActive ? "left-6" : "left-1",
-                        )}
-                      />
-                    </button>
-                  </div>
+                    />
+                  </button>
                 </div>
               </article>
             );
           })}
         </div>
+
+        {!isLoading && filteredTypes.length > 0 ? (
+          <AdminPagination
+            className="mt-6 border-t border-gold/10 pt-4"
+            meta={paginationMeta}
+            onPageChange={setPage}
+            onPerPageChange={(next) => {
+              setPerPage(next);
+              setPage(DEFAULT_PAGINATION_META.page);
+            }}
+          />
+        ) : null}
       </section>
 
       <AdminModal
@@ -564,30 +539,9 @@ export default function ShamellAdminServiceTypesPage() {
               value={name}
               required
               onChange={(event) => setName(event.target.value)}
-              className="mt-2 h-12 w-full rounded-xl border border-gold/30 bg-black/35 px-4 text-base text-foreground outline-none focus:border-gold"
+              className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-base text-foreground outline-none focus:border-gold"
               placeholder="Ej. Bodas"
             />
-          </label>
-
-          <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">
-              CÓDIGO FORMULARIO /CONTACTO
-            </span>
-            <p className="mt-1 text-xs text-foreground/55 font-body">
-              Opcional: precarga al pulsar Inquire en experiencias públicas (PRIVATE_GALA, VIP_EVENT, BESPOKE,
-              GENERAL).
-            </p>
-            <select
-              value={contactInquiryCode}
-              onChange={(e) => setContactInquiryCode(e.target.value)}
-              className="mt-2 h-12 w-full rounded-xl border border-gold/30 bg-black/35 px-4 text-sm text-foreground outline-none focus:border-gold"
-            >
-              {ADMIN_INQUIRY_CODE_OPTIONS.map((opt) => (
-                <option key={opt.value || "none"} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
           </label>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
