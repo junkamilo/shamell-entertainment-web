@@ -180,6 +180,7 @@ function RequestCard({
   const busy = busyId === row.id;
   const reserving = row.origin === "CONTACT" && reservingContactId === row.id;
   const contact = row.origin === "CONTACT" ? row.contact : null;
+  const contactRow = row.origin === "CONTACT" ? row : null;
   const booking = row.origin === "BOOKING_ADMIN" ? row.booking : null;
   const inquiryRows = useMemo(
     () => (contact ? buildInquiryDetailRows(contact.inquiryDetails) : []),
@@ -303,23 +304,23 @@ function RequestCard({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {contact ? (
+            {contactRow ? (
               <button
                 type="button"
-                disabled={busy || reserving || row.state !== "PENDING"}
+                disabled={busy || reserving || contactRow.state !== "PENDING"}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onReserveFromContact(contact);
+                  onReserveFromContact(contactRow.contact);
                 }}
                 className={cn(
                   "inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 font-brand text-[10px] tracking-widest transition disabled:opacity-50",
-                  row.state === "RESERVED"
+                  contactRow.state === "RESERVED"
                     ? "border-emerald-400/45 text-emerald-200"
                     : "border-gold/35 text-gold hover:bg-gold/10",
                 )}
               >
                 {reserving ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} /> : null}
-                {row.state === "RESERVED" ? "Reservada" : "Reservar"}
+                {contactRow.state === "RESERVED" ? "Reservada" : "Reservar"}
               </button>
             ) : null}
             <Link
