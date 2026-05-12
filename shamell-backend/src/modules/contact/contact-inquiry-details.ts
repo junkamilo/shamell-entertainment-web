@@ -11,6 +11,7 @@ export const INQUIRY_ENTRY_SOURCES = [
   'contact_page',
   'home_service_card',
   'inquire_section',
+  'concierge_gate',
 ] as const;
 export type InquiryEntrySource = (typeof INQUIRY_ENTRY_SOURCES)[number];
 
@@ -40,6 +41,10 @@ export type SanitizedInquiryDetails = {
   /** Street / venue address line from public booking form (city may still be in top-level `location`). */
   eventAddress?: string;
   venueIndoor?: boolean | null;
+  conciergeIntent?: string;
+  planningStage?: string;
+  occasionHint?: string;
+  visionSummary?: string;
   sourceCatalogKind?: SourceCatalogKind;
   sourceCatalogId?: string;
   sourceCatalogTitle?: string;
@@ -57,6 +62,7 @@ const MAX_ITEM_LEN = 120;
 const MAX_CATALOG_TITLE = 120;
 const MAX_EVENT_ADDRESS = 400;
 const MAX_UUID_ARRAY = 24;
+const MAX_VISION_SUMMARY = 1000;
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -220,6 +226,18 @@ export function sanitizeInquiryDetails(
     out.venueIndoor = raw.venueIndoor;
   }
 
+  const conciergeIntent = trimString(raw.conciergeIntent, MAX_STR);
+  if (conciergeIntent) out.conciergeIntent = conciergeIntent;
+
+  const planningStage = trimString(raw.planningStage, MAX_STR);
+  if (planningStage) out.planningStage = planningStage;
+
+  const occasionHint = trimString(raw.occasionHint, MAX_NOTE);
+  if (occasionHint) out.occasionHint = occasionHint;
+
+  const visionSummary = trimString(raw.visionSummary, MAX_VISION_SUMMARY);
+  if (visionSummary) out.visionSummary = visionSummary;
+
   const hasCatalogHint =
     raw.sourceCatalogKind !== undefined ||
     raw.sourceCatalogId !== undefined ||
@@ -318,5 +336,13 @@ export function formatInquiryDetailsSummary(
     lines.push(`Event address: ${details.eventAddress}`);
   if (details.venueIndoor === true) lines.push('Venue: indoor');
   if (details.venueIndoor === false) lines.push('Venue: outdoor');
+  if (details.conciergeIntent)
+    lines.push(`Concierge intent: ${details.conciergeIntent}`);
+  if (details.planningStage)
+    lines.push(`Planning stage: ${details.planningStage}`);
+  if (details.occasionHint)
+    lines.push(`Occasion idea: ${details.occasionHint}`);
+  if (details.visionSummary)
+    lines.push(`Vision summary: ${details.visionSummary}`);
   return lines.join('\n');
 }

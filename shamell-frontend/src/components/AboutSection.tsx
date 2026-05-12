@@ -3,6 +3,7 @@
 import Image from "next/image";
 import portrait from "@/assets/gallery-2.jpg";
 import OrnamentDivider from "./OrnamentDivider";
+import RevealOnView from "@/components/shared/RevealOnView";
 import { useAboutContent } from "@/hooks/use-about-content";
 import { splitAboutParagraphs } from "@/lib/aboutParagraphs";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,7 @@ const AboutSection = () => {
   return (
     <section id="about" className="bg-transparent px-4 py-20 md:py-24">
       <div className="mx-auto max-w-6xl">
-        <header className="relative mb-12 text-center md:mb-16">
+        <RevealOnView className="relative mb-12 text-center md:mb-16" delay={40}>
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             <div className="h-36 w-[min(28rem,94vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.08),transparent_72%)] blur-3xl opacity-80" />
           </div>
@@ -27,10 +28,10 @@ const AboutSection = () => {
               aria-hidden
             />
           </div>
-        </header>
+        </RevealOnView>
 
         <div className="grid grid-cols-1 items-stretch gap-10 lg:grid-cols-12 lg:gap-14">
-          <div className="animate-shamell-exp-card-in lg:col-span-5" style={{ animationDelay: "0ms" }}>
+          <RevealOnView className="lg:col-span-5" delay={80} amount={0.18}>
             <div
               className={cn(
                 "group/portrait relative aspect-3/4 w-full overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_center,rgba(32,28,24,1)_0%,#060606_70%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_16px_48px_rgba(0,0,0,0.45)] transition-[border-color,box-shadow] duration-500",
@@ -74,12 +75,9 @@ const AboutSection = () => {
                 <div className="absolute inset-0 bg-white/4" aria-hidden />
               )}
             </div>
-          </div>
+          </RevealOnView>
 
-          <div
-            className="flex animate-shamell-exp-card-in flex-col justify-center lg:col-span-7"
-            style={{ animationDelay: "140ms" }}
-          >
+          <RevealOnView className="flex flex-col justify-center lg:col-span-7" delay={180} amount={0.18}>
             <div className="mb-10 space-y-6">
               {bodyParagraphs.map((block, index) => (
                 <p
@@ -120,7 +118,7 @@ const AboutSection = () => {
                 ))}
               </div>
             </div>
-          </div>
+          </RevealOnView>
         </div>
 
         <OrnamentDivider className="mt-14 md:mt-16" />

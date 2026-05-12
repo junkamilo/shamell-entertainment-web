@@ -13,7 +13,12 @@ export function isValidServiceTypeParam(v: string | null): v is ServiceTypeCode 
   return isValidInquiryCode(v);
 }
 
-export const INQUIRY_ENTRY_SOURCES = ["contact_page", "home_service_card", "inquire_section"] as const;
+export const INQUIRY_ENTRY_SOURCES = [
+  "contact_page",
+  "home_service_card",
+  "inquire_section",
+  "concierge_gate",
+] as const;
 export type InquiryEntrySource = (typeof INQUIRY_ENTRY_SOURCES)[number];
 
 export function parseInquiryEntrySource(raw: string | null): InquiryEntrySource | undefined {

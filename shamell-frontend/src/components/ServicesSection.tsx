@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { EventCatalogCard, type EventCatalogItem } from "@/components/catalog/EventCatalogCard";
+import RevealOnView from "@/components/shared/RevealOnView";
 
 type EventsApiItem = {
   id?: string;
@@ -87,7 +88,7 @@ const ServicesSection = () => {
         <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2">
           <div className="h-24 w-[min(20rem,88vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(120,90,160,0.12),transparent_70%)] blur-3xl opacity-80" />
         </div>
-        <div className="relative">
+        <RevealOnView className="relative" delay={40}>
           <h2 className="mb-2 font-brand text-base font-semibold tracking-[0.24em] text-gold md:text-lg md:tracking-[0.26em]">
             SPECIAL EXPERIENCES
           </h2>
@@ -95,7 +96,7 @@ const ServicesSection = () => {
             Three tiers of experience—from intimate galas to fully bespoke productions. Each level
             includes different scope, production depth, and pricing transparency.
           </p>
-        </div>
+        </RevealOnView>
       </div>
 
       <div className="mx-auto max-w-6xl">
@@ -113,9 +114,9 @@ const ServicesSection = () => {
 
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:gap-10">
           {services.map((service, index) => (
-            <div key={service.id} className="h-full">
+            <RevealOnView key={service.id} className="h-full" delay={index * 80} amount={0.18}>
               <EventCatalogCard service={service} index={index} />
-            </div>
+            </RevealOnView>
           ))}
         </div>
       </div>

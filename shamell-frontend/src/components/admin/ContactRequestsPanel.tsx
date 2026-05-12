@@ -95,6 +95,15 @@ function contactIsBookingInquiry(row: ContactRequest): boolean {
   return subject.includes("booking inquiry") || serviceType.includes("booking inquiry");
 }
 
+function contactIsConciergeInquiry(row: ContactRequest): boolean {
+  const subject = row.subject?.toLowerCase() ?? "";
+  const details =
+    row.inquiryDetails && typeof row.inquiryDetails === "object" && !Array.isArray(row.inquiryDetails)
+      ? (row.inquiryDetails as Record<string, unknown>)
+      : null;
+  return subject.includes("concierge inquiry") || details?.entrySource === "concierge_gate";
+}
+
 function hhmmFromBookingDate(eventDate: string, tz: string): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
@@ -357,9 +366,11 @@ function RequestCard({
             </button>
           </div>
           <p className="font-body text-[10px] leading-relaxed text-foreground/40">
-            {contact && contactIsBookingInquiry(contact)
-              ? "This request is a BOOKING INQUIRY: confirm the booking manually after you contact the client."
-              : "Bookings created from Book appear here as reserved (green)."}
+            {contact && contactIsConciergeInquiry(contact)
+              ? "This is a CONCIERGE INQUIRY: contact the client first, then convert it once the experience is clear."
+              : contact && contactIsBookingInquiry(contact)
+                ? "This request is a BOOKING INQUIRY: confirm the booking manually after you contact the client."
+                : "Bookings created from Book appear here as reserved (green)."}
           </p>
         </div>
       ) : null}

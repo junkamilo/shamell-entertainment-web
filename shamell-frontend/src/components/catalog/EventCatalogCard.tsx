@@ -33,7 +33,6 @@ const inquireLinkClass = cn(
 /** Shamell luxury catalog card — used for dynamic events from GET /api/v1/events */
 export function EventCatalogCard({
   service,
-  index = 0,
   currencySuffix = "USD",
 }: {
   service: EventCatalogItem;
@@ -41,7 +40,6 @@ export function EventCatalogCard({
   /** Shown after the amount when price is set (e.g. USD). */
   currencySuffix?: string;
 }) {
-  const delayMs = Math.min(index, 8) * 100;
   const inquireHref = buildEventLineContactHref(service.id);
   const hasPrice = service.price != null && !Number.isNaN(Number(service.price));
   const [isTypesCollapsed, setIsTypesCollapsed] = useState(true);
@@ -49,14 +47,12 @@ export function EventCatalogCard({
 
   return (
     <article
-      style={{ animationDelay: `${delayMs}ms` }}
       className={cn(
         "group/card relative flex h-full flex-col overflow-hidden rounded-2xl",
         isTypesCollapsed ? "md:h-176" : "md:h-auto",
         "border border-gold/30",
         "bg-[linear-gradient(168deg,rgba(18,15,12,0.98)_0%,rgba(8,7,5,1)_48%,rgba(3,2,2,1)_100%)]",
         "shadow-[0_18px_56px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.035)]",
-        "animate-shamell-exp-card-in",
         "transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
         "hover:-translate-y-2 hover:shadow-[0_36px_96px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.05)]",
         "motion-reduce:hover:translate-y-0 motion-reduce:transition-colors",

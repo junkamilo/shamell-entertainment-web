@@ -12,8 +12,7 @@ type ExperienceCardProps = {
   index?: number;
 };
 
-export default function ExperienceCard({ experience, index = 0 }: ExperienceCardProps) {
-  const delayMs = Math.min(index, 8) * 110;
+export default function ExperienceCard({ experience }: ExperienceCardProps) {
   const inquireHref = useMemo(
     () =>
       appendCatalogToContactHref(buildServiceInquireHref(experience.contactInquiryCode), "service", experience.id),
@@ -22,13 +21,11 @@ export default function ExperienceCard({ experience, index = 0 }: ExperienceCard
 
   return (
     <article
-      style={{ animationDelay: `${delayMs}ms` }}
       className={cn(
         "group relative flex flex-col overflow-hidden rounded-2xl",
         "border border-gold/22 bg-[linear-gradient(195deg,rgba(18,14,22,0.97)_0%,rgba(8,7,10,0.99)_42%,rgba(3,2,4,1)_100%)]",
         "shadow-[0_18px_52px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.04)]",
         "ring-1 ring-white/6",
-        "animate-shamell-xp-curtain-in",
         "transition-[box-shadow,border-color,ring-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
         "hover:border-white/14 hover:shadow-[0_36px_90px_rgba(0,0,0,0.78),0_1px_0_rgba(255,255,255,0.06)_inset]",
         "hover:ring-white/10",
@@ -131,7 +128,7 @@ export default function ExperienceCard({ experience, index = 0 }: ExperienceCard
                     style={{ transitionDelay: `${i * 40}ms` }}
                     className="relative flex gap-2.5 pl-5 text-base font-medium leading-snug text-foreground/85 transition-[transform,color] duration-300 group-hover:-translate-x-0.5 group-hover:text-foreground/92 motion-reduce:group-hover:translate-x-0 md:text-lg md:leading-snug"
                   >
-                    <span className="absolute left-0 top-[0.45rem] text-xs text-gold/80 transition-transform duration-300 group-hover:-rotate-12 group-hover:text-gold/95 md:top-[0.5rem]">
+                    <span className="absolute left-0 top-[0.45rem] text-xs text-gold/80 transition-transform duration-300 group-hover:-rotate-12 group-hover:text-gold/95 md:top-2">
                       ✦
                     </span>
                     {item}
