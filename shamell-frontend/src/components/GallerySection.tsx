@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import RevealOnView from "@/components/shared/RevealOnView";
 import { useGalleryCategories, useGalleryPhotos } from "@/hooks/use-gallery";
 import { cn } from "@/lib/utils";
 
@@ -27,41 +28,43 @@ const GallerySection = () => {
         <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2">
           <div className="h-32 w-[min(26rem,92vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.1),transparent_75%)] blur-3xl opacity-75" />
         </div>
-        <div className="relative">
+        <RevealOnView className="relative" delay={40}>
           <h2 className="mb-3 text-center font-brand text-2xl font-semibold tracking-wider text-gold md:text-3xl">
             Performance Gallery
           </h2>
           <p className="mx-auto mb-2 max-w-2xl text-center font-body text-base font-medium leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
             Visual portfolio organized by performance type. Tap any image for full-screen view.
           </p>
-        </div>
+        </RevealOnView>
       </div>
 
       <div className="mx-auto max-w-6xl">
 
-        <div
-          role="tablist"
-          aria-label="Gallery filters"
-          className="mb-10 flex flex-wrap justify-center gap-2"
-        >
-          {categories.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={filter === tab.id}
-              onClick={() => setFilter(tab.id)}
-              className={cn(
-                "border px-3 py-2 font-brand text-xs font-semibold tracking-[0.12em] transition-colors",
-                filter === tab.id
-                  ? "border-gold bg-gold/15 text-gold"
-                  : "border-gold/30 text-foreground/70 hover:border-gold/50 hover:text-gold",
-              )}
-            >
-              {tab.label.toUpperCase()}
-            </button>
-          ))}
-        </div>
+        <RevealOnView delay={120} amount={0.16}>
+          <div
+            role="tablist"
+            aria-label="Gallery filters"
+            className="mb-10 flex flex-wrap justify-center gap-2"
+          >
+            {categories.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={filter === tab.id}
+                onClick={() => setFilter(tab.id)}
+                className={cn(
+                  "border px-3 py-2 font-brand text-xs font-semibold tracking-[0.12em] transition-colors",
+                  filter === tab.id
+                    ? "border-gold bg-gold/15 text-gold"
+                    : "border-gold/30 text-foreground/70 hover:border-gold/50 hover:text-gold",
+                )}
+              >
+                {tab.label.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </RevealOnView>
 
         {isLoading ? (
           <p className="mb-6 text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">Loading gallery...</p>
@@ -69,9 +72,11 @@ const GallerySection = () => {
 
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-6 md:gap-5">
           {photos.slice(0, 6).map((item, index) => (
-            <div
+            <RevealOnView
               key={item.id}
               className={cn("group relative", cellLayoutClass(index), index === 5 && "md:justify-center")}
+              delay={index * 70}
+              amount={0.14}
             >
               <div
                 className={cn(
@@ -110,15 +115,15 @@ const GallerySection = () => {
                   aria-hidden
                 />
               </div>
-            </div>
+            </RevealOnView>
           ))}
         </div>
 
-        <div className="mt-12 flex justify-center">
+        <RevealOnView className="mt-12 flex justify-center" delay={120} amount={0.2}>
           <Link href={`/gallery?filter=${filter}`} className="btn-outline-gold font-brand md:text-xs">
             View more
           </Link>
-        </div>
+        </RevealOnView>
       </div>
     </section>
   );

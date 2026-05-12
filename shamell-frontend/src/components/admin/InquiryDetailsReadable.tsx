@@ -28,6 +28,18 @@ const ENTRY_SOURCE_LABELS: Record<string, string> = {
   contact_page: "Contact page",
   home_service_card: "Card from home",
   inquire_section: "Inquire block on site",
+  concierge_gate: "Concierge gate",
+};
+
+const CONCIERGE_INTENT_LABELS: Record<string, string> = {
+  needs_guidance: "Client needs guidance",
+};
+
+const PLANNING_STAGE_LABELS: Record<string, string> = {
+  EARLY_IDEA: "Early idea, needs direction",
+  COMPARING_OPTIONS: "Comparing possible experiences",
+  DATE_OR_VENUE_READY: "Date or venue in mind",
+  JUST_EXPLORING: "Exploring what Shamell offers",
 };
 
 /** Legacy occasion codes (before UUID occasion types). */
@@ -52,6 +64,14 @@ function labelLegacyOccasion(code: string): string {
 
 function labelEntrySource(code: string): string {
   return ENTRY_SOURCE_LABELS[code] ?? titleCaseLoose(code);
+}
+
+function labelConciergeIntent(code: string): string {
+  return CONCIERGE_INTENT_LABELS[code] ?? titleCaseLoose(code);
+}
+
+function labelPlanningStage(code: string): string {
+  return PLANNING_STAGE_LABELS[code] ?? titleCaseLoose(code);
 }
 
 const EXPERIENCE_ADDON_LABELS: Record<string, string> = {
@@ -103,6 +123,10 @@ const KNOWN_KEYS = new Set([
   "guestCount",
   "eventAddress",
   "venueIndoor",
+  "conciergeIntent",
+  "planningStage",
+  "occasionHint",
+  "visionSummary",
   "sourceCatalogKind",
   "sourceCatalogId",
   "sourceCatalogTitle",
@@ -138,8 +162,23 @@ export function buildInquiryDetailRows(
     rows.push({ label, value: v });
   };
 
-  if (!admin && typeof d.entrySource === "string") {
+  if (d.entrySource === "concierge_gate") {
+    push("Request type", "Concierge guidance");
+  } else if (!admin && typeof d.entrySource === "string") {
     push("Form entry source", labelEntrySource(d.entrySource));
+  }
+
+  if (typeof d.conciergeIntent === "string") {
+    push("Concierge request", labelConciergeIntent(d.conciergeIntent));
+  }
+  if (typeof d.planningStage === "string") {
+    push("Planning stage", labelPlanningStage(d.planningStage));
+  }
+  if (typeof d.occasionHint === "string") {
+    push("Occasion idea", d.occasionHint);
+  }
+  if (typeof d.visionSummary === "string") {
+    push("Vision summary", d.visionSummary);
   }
 
   if (d.sourceCatalogKind === "service" || d.sourceCatalogKind === "event") {
@@ -248,7 +287,7 @@ export function InquiryDetailsReadable({
         {rows.map(({ label, value }, idx) => (
           <div key={idx} className="min-w-0 sm:col-span-1">
             <dt className="font-brand text-[9px] tracking-widest text-gold/55">{label}</dt>
-            <dd className="mt-1 break-words font-body text-sm leading-snug text-foreground/85">{value}</dd>
+            <dd className="mt-1 wrap-break-word font-body text-sm leading-snug text-foreground/85">{value}</dd>
           </div>
         ))}
       </dl>
