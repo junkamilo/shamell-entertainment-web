@@ -83,7 +83,7 @@ export class GalleryController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(
-    FilesInterceptor('media', undefined, {
+    FilesInterceptor('media', 1, {
       storage: memoryStorage(),
       limits: { fileSize: 200 * 1024 * 1024 },
     }),

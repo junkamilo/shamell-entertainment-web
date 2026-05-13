@@ -103,7 +103,6 @@ export default function AgendaHubPage() {
     <div className="mx-auto w-full max-w-5xl">
       <AdminModuleHero
         title="Schedule"
-        subtitle="Manage manual bookings, working hours, and contact requests in one place."
         actionLabel="Open inbox"
         actionHref="/shamell-admin/agenda/peticiones"
         bordered={false}
@@ -124,9 +123,13 @@ export default function AgendaHubPage() {
             <div className="shamell-icon-box">
               <Icon className="h-5 w-5" strokeWidth={1.5} />
             </div>
-            <p className="mt-5 font-brand text-xs tracking-[0.18em] text-gold">{title.toUpperCase()}</p>
-            <p className="mt-2 font-body text-sm leading-relaxed text-foreground/65">{subtitle}</p>
-            <span className="mt-4 font-brand text-[10px] tracking-[0.14em] text-gold/70 group-hover:text-gold">
+            <p className="mt-5 font-brand text-xs tracking-[0.18em] text-gold sm:text-sm">
+              {title.toUpperCase()}
+            </p>
+            <p className="mt-3 font-body text-base leading-relaxed text-foreground/82 sm:text-[1.0625rem] sm:leading-[1.55]">
+              {subtitle}
+            </p>
+            <span className="mt-4 font-brand text-xs tracking-[0.14em] text-gold/75 group-hover:text-gold sm:text-[11px]">
               OPEN →
             </span>
           </Link>

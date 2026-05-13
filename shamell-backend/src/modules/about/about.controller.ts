@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -37,21 +38,28 @@ export class AboutController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(
-    FileInterceptor('image', {
+    FileInterceptor('media', {
       storage: memoryStorage(),
       limits: { fileSize: 100 * 1024 * 1024 },
     }),
   )
   upsertAdminAboutContent(
     @Body() dto: UpsertAboutContentDto,
-    @UploadedFile() imageFile?: Express.Multer.File,
+    @UploadedFile() mediaFile?: Express.Multer.File,
   ) {
     const hasBodyFields = Object.keys(dto).length > 0;
-    if (!hasBodyFields && !imageFile) {
+    if (!hasBodyFields && !mediaFile) {
       throw new BadRequestException(
         'Provide at least one field or media file (image/video) to update.',
       );
     }
-    return this.aboutService.upsertAdminAboutContent(dto, imageFile);
+    return this.aboutService.upsertAdminAboutContent(dto, mediaFile);
+  }
+
+  @Delete('admin/media')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  deleteAdminAboutHeroMedia() {
+    return this.aboutService.deleteAdminAboutHeroMedia();
   }
 }

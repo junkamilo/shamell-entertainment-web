@@ -2,10 +2,13 @@
 
 import { FormEvent, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
+import { motion } from "motion/react";
 import AdminAccordionSingleSelect from "@/components/admin/AdminAccordionSingleSelect";
 import AdminBackButton from "@/components/admin/AdminBackButton";
+import AdminModal from "@/components/admin/AdminModal";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
+import AdminServicesMultiSelect from "@/components/admin/AdminServicesMultiSelect";
 import ContactDatePickerModal from "@/components/contact/ContactDatePickerModal";
 import ContactTimePickerModal from "@/components/contact/ContactTimePickerModal";
 import {
@@ -29,7 +32,10 @@ import {
   sanitizeNameInput,
   sanitizePhoneInput,
   validateAgendarForm,
+  getAgendarMobileSectionStatus,
 } from "@/app/shamell-admin/agenda/agendar/form-validation";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 type IdName = { id: string; name: string };
 
@@ -54,7 +60,7 @@ function AgendaAgendarPageContent() {
   const [eventTypes, setEventTypes] = useState<IdName[]>([]);
   const [occasions, setOccasions] = useState<IdName[]>([]);
 
-  const [serviceId, setServiceId] = useState("");
+  const [serviceIds, setServiceIds] = useState<string[]>([]);
   const [eventTypeId, setEventTypeId] = useState("");
   const [occasionTypeId, setOccasionTypeId] = useState("");
   const [eventDateIso, setEventDateIso] = useState("");
@@ -70,9 +76,46 @@ function AgendaAgendarPageContent() {
   const [guestCount, setGuestCount] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [mobileSectionModal, setMobileSectionModal] = useState<
+    null | "event" | "logistics" | "client"
+  >(null);
   const bookingId = searchParams.get("bookingId")?.trim() ?? "";
   const returnTo = searchParams.get("returnTo")?.trim() || "/shamell-admin/agenda";
   const isEditMode = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(bookingId);
+
+  const isMobileLayout = useIsMobile();
+
+  const mobileSectionStatus = useMemo(
+    () =>
+      getAgendarMobileSectionStatus({
+        serviceIds,
+        eventTypeId,
+        occasionTypeId,
+        eventDateIso,
+        eventTimeStart,
+        eventTimeEnd,
+        location,
+        guestFullName,
+        guestEmail,
+        guestPhone,
+        guestCount,
+        notes,
+      }),
+    [
+      serviceIds,
+      eventTypeId,
+      occasionTypeId,
+      eventDateIso,
+      eventTimeStart,
+      eventTimeEnd,
+      location,
+      guestFullName,
+      guestEmail,
+      guestPhone,
+      guestCount,
+      notes,
+    ],
+  );
 
   const { rules: availabilityRules } = usePublicAvailability(true);
   const bookingTz = useMemo(
@@ -112,6 +155,7 @@ function AgendaAgendarPageContent() {
     const qStart = searchParams.get("start") ?? "";
     const qEnd = searchParams.get("end") ?? "";
     const qMessage = searchParams.get("message") ?? "";
+    const qServiceIds = searchParams.get("serviceIds") ?? "";
     const qServiceId = searchParams.get("serviceId") ?? "";
     const qEventTypeId = searchParams.get("eventTypeId") ?? "";
     const qOccasionTypeId = searchParams.get("occasionTypeId") ?? "";
@@ -128,7 +172,13 @@ function AgendaAgendarPageContent() {
     if (/^\d{2}:\d{2}$/.test(qStart)) setEventTimeStart(qStart);
     if (/^\d{2}:\d{2}$/.test(qEnd)) setEventTimeEnd(qEnd);
     if (qMessage) setNotes(qMessage.trim());
-    if (uuidOk(qServiceId)) setServiceId(qServiceId.trim());
+    if (qServiceIds.trim()) {
+      const parts = qServiceIds
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => uuidOk(s));
+      if (parts.length > 0) setServiceIds(parts);
+    } else if (uuidOk(qServiceId)) setServiceIds([qServiceId.trim()]);
     if (uuidOk(qEventTypeId)) setEventTypeId(qEventTypeId.trim());
     if (uuidOk(qOccasionTypeId)) setOccasionTypeId(qOccasionTypeId.trim());
     if (/^\d+$/.test(qGuestCount.trim())) setGuestCount(sanitizeIntegerInput(qGuestCount.trim()));
@@ -244,7 +294,7 @@ function AgendaAgendarPageContent() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const validated = validateAgendarForm({
-      serviceId,
+      serviceIds,
       eventTypeId,
       occasionTypeId,
       eventDateIso,
@@ -301,6 +351,7 @@ function AgendaAgendarPageContent() {
         bookingDetails: {
           eventTimeStart: data.eventTimeStart,
           eventTimeEnd: data.eventTimeEnd,
+          serviceIds: data.serviceIds,
         },
       };
       if (isEditMode) {
@@ -327,6 +378,245 @@ function AgendaAgendarPageContent() {
     }
   };
 
+  const eventSelects = (
+    <>
+      <div className="block">
+        <span className={fieldLabelClass}>EVENT TYPE</span>
+        <div className="mt-2">
+          <AdminAccordionSingleSelect
+            options={eventTypes.map((t) => ({ id: t.id, label: t.name }))}
+            value={eventTypeId}
+            onChange={setEventTypeId}
+            emptyDisplay="Select an event type"
+            ariaLabel="Select event type"
+            required
+            showNoneOption={false}
+          />
+        </div>
+      </div>
+
+      <div className="block">
+        <span className={fieldLabelClass}>OCCASION</span>
+        <div className="mt-2">
+          <AdminAccordionSingleSelect
+            options={occasions.map((o) => ({ id: o.id, label: o.name }))}
+            value={occasionTypeId}
+            onChange={setOccasionTypeId}
+            emptyDisplay="Select an occasion"
+            ariaLabel="Select occasion"
+            required
+            showNoneOption={false}
+          />
+        </div>
+      </div>
+
+      <div className="block">
+        <span className={fieldLabelClass}>SERVICES</span>
+        <p className="mt-1 font-body text-xs text-foreground/55">
+          Choose one or more. Order is saved; the first is the primary catalog line.
+        </p>
+        <div className="mt-2">
+          <AdminServicesMultiSelect
+            options={services.map((s) => ({
+              id: s.id,
+              label: s.serviceTypeName,
+            }))}
+            value={serviceIds}
+            onChange={setServiceIds}
+          />
+        </div>
+      </div>
+    </>
+  );
+
+  const dateAndTimeDesktop = (
+    <div className="block">
+      <span className={`${fieldLabelClass} block text-center`}>EVENT DATE & TIME</span>
+      <div className="mx-auto mt-2 grid w-full max-w-5xl grid-cols-1 gap-4 sm:mt-3 sm:grid-cols-3 sm:gap-5 md:gap-8">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className={`${fieldLabelClass} block text-center sm:text-left`}>DATE</span>
+          <button
+            type="button"
+            onClick={() => setDatePickerOpen(true)}
+            className={logisticsPickerTriggerClass}
+          >
+            <span className="font-body text-foreground">
+              {eventDateIso ? formatDateDisplayUs(eventDateIso) : "Choose date"}
+            </span>
+            <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">CALENDAR</span>
+          </button>
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className={`${fieldLabelClass} block text-center sm:text-left`}>START TIME</span>
+          <button
+            type="button"
+            onClick={() => setTimePickerWhich("start")}
+            className={logisticsPickerTriggerClass}
+          >
+            <span className="font-body text-foreground">
+              {eventTimeStart ? formatTimeDisplayUs(eventTimeStart) : "Choose time"}
+            </span>
+            <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">TIME</span>
+          </button>
+        </div>
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className={`${fieldLabelClass} block text-center sm:text-left`}>END TIME</span>
+          <button
+            type="button"
+            onClick={() => setTimePickerWhich("end")}
+            className={logisticsPickerTriggerClass}
+          >
+            <span className="font-body text-foreground">
+              {eventTimeEnd ? formatTimeDisplayUs(eventTimeEnd) : "Choose time"}
+            </span>
+            <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">TIME</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const dateAndTimeMobile = (
+    <div className="block">
+      <span className={`${fieldLabelClass} block text-center`}>EVENT DATE & TIME</span>
+      <div className="mx-auto mt-2 w-full max-w-5xl space-y-4">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className={`${fieldLabelClass} block text-center`}>DATE</span>
+          <button
+            type="button"
+            onClick={() => setDatePickerOpen(true)}
+            className={logisticsPickerTriggerClass}
+          >
+            <span className="font-body text-foreground">
+              {eventDateIso ? formatDateDisplayUs(eventDateIso) : "Choose date"}
+            </span>
+            <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">CALENDAR</span>
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className={`${fieldLabelClass} block text-center`}>START</span>
+            <button
+              type="button"
+              onClick={() => setTimePickerWhich("start")}
+              className={logisticsPickerTriggerClass}
+            >
+              <span className="min-w-0 truncate font-body text-foreground">
+                {eventTimeStart ? formatTimeDisplayUs(eventTimeStart) : "Time"}
+              </span>
+              <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">TIME</span>
+            </button>
+          </div>
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className={`${fieldLabelClass} block text-center`}>END</span>
+            <button
+              type="button"
+              onClick={() => setTimePickerWhich("end")}
+              className={logisticsPickerTriggerClass}
+            >
+              <span className="min-w-0 truncate font-body text-foreground">
+                {eventTimeEnd ? formatTimeDisplayUs(eventTimeEnd) : "Time"}
+              </span>
+              <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">TIME</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const locationField = (
+    <label className="block">
+      <span className={fieldLabelClass}>LOCATION</span>
+      <input
+        required
+        value={location}
+        onChange={(e) => setLocation(e.target.value)}
+        minLength={3}
+        maxLength={120}
+        className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
+        placeholder="City or venue"
+      />
+    </label>
+  );
+
+  const clientGrid = (
+    <div className="grid gap-4 md:grid-cols-3">
+      <label className="block">
+        <span className={fieldLabelClass}>CLIENT — NAME</span>
+        <input
+          required
+          value={guestFullName}
+          onChange={(e) => setGuestFullName(sanitizeNameInput(e.target.value))}
+          minLength={3}
+          maxLength={90}
+          className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
+          placeholder="Client full name"
+        />
+      </label>
+      <label className="block">
+        <span className={fieldLabelClass}>EMAIL</span>
+        <input
+          required
+          type="email"
+          value={guestEmail}
+          onChange={(e) => setGuestEmail(e.target.value)}
+          maxLength={120}
+          className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
+          placeholder="name@example.com"
+        />
+      </label>
+      <label className="block">
+        <span className={fieldLabelClass}>PHONE</span>
+        <input
+          required
+          value={guestPhone}
+          onChange={(e) => setGuestPhone(sanitizePhoneInput(e.target.value))}
+          minLength={10}
+          maxLength={20}
+          className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
+          placeholder="+1 (555) 000-0000"
+        />
+      </label>
+    </div>
+  );
+
+  const guestsField = (
+    <label className="block">
+      <span className={fieldLabelClass}>GUESTS (APPROX.)</span>
+      <input
+        required
+        type="number"
+        min={1}
+        max={20000}
+        value={guestCount}
+        onChange={(e) => setGuestCount(sanitizeIntegerInput(e.target.value))}
+        className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
+        placeholder="e.g. 120"
+      />
+    </label>
+  );
+
+  const notesField = (
+    <label className="block">
+      <span className={fieldLabelClass}>INTERNAL NOTES</span>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        rows={3}
+        maxLength={1000}
+        className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
+        placeholder="Extra details for this booking..."
+      />
+    </label>
+  );
+
+  const submitButtonClass =
+    "inline-flex min-h-11 w-full max-w-md items-center justify-center rounded-full border border-gold/40 bg-gold/12 px-7 py-3 font-brand text-xs tracking-[0.16em] text-gold transition hover:bg-gold/22 disabled:opacity-50 sm:w-auto";
+
+  const submitButtonClassMobile =
+    "inline-flex min-h-12 w-full max-w-md items-center justify-center rounded-full border border-gold/40 bg-gold/12 px-7 py-3.5 font-brand text-sm tracking-[0.14em] text-gold transition hover:bg-gold/22 disabled:opacity-50";
+
   return (
     <div className="mx-auto w-full max-w-4xl">
       <AdminBackButton href="/shamell-admin/agenda" label="Back" className="mb-4" />
@@ -343,187 +633,141 @@ function AgendaAgendarPageContent() {
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       ) : (
-        <form onSubmit={onSubmit} className="shamell-glass-surface space-y-6 rounded-2xl p-5 md:p-8">
-          <div className="block">
-            <span className={fieldLabelClass}>EVENT TYPE</span>
-            <div className="mt-2">
-              <AdminAccordionSingleSelect
-                options={eventTypes.map((t) => ({ id: t.id, label: t.name }))}
-                value={eventTypeId}
-                onChange={setEventTypeId}
-                emptyDisplay="Select an event type"
-                ariaLabel="Select event type"
-                required
-                showNoneOption={false}
-              />
-            </div>
-          </div>
-
-          <div className="block">
-            <span className={fieldLabelClass}>OCCASION</span>
-            <div className="mt-2">
-              <AdminAccordionSingleSelect
-                options={occasions.map((o) => ({ id: o.id, label: o.name }))}
-                value={occasionTypeId}
-                onChange={setOccasionTypeId}
-                emptyDisplay="Select an occasion"
-                ariaLabel="Select occasion"
-                required
-                showNoneOption={false}
-              />
-            </div>
-          </div>
-
-          <div className="block">
-            <span className={fieldLabelClass}>SERVICE</span>
-            <div className="mt-2">
-              <AdminAccordionSingleSelect
-                options={services.map((s) => ({
-                  id: s.id,
-                  label: s.serviceTypeName,
-                }))}
-                value={serviceId}
-                onChange={setServiceId}
-                emptyDisplay="Select a service"
-                ariaLabel="Select service"
-                required
-                showNoneOption={false}
-              />
-            </div>
-          </div>
-
-          <div className="block">
-            <span className={`${fieldLabelClass} block text-center`}>EVENT DATE & TIME</span>
-            <div className="mx-auto mt-3 grid w-full max-w-5xl grid-cols-1 gap-6 sm:grid-cols-3 sm:gap-5 md:gap-8">
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className={`${fieldLabelClass} block text-center sm:text-left`}>DATE</span>
-                <button
-                  type="button"
-                  onClick={() => setDatePickerOpen(true)}
-                  className={logisticsPickerTriggerClass}
-                >
-                  <span className={eventDateIso ? "font-body text-foreground" : "font-body text-foreground"}>
-                    {eventDateIso ? formatDateDisplayUs(eventDateIso) : "Choose date"}
-                  </span>
-                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">CALENDAR</span>
-                </button>
-              </div>
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className={`${fieldLabelClass} block text-center sm:text-left`}>START TIME</span>
-                <button
-                  type="button"
-                  onClick={() => setTimePickerWhich("start")}
-                  className={logisticsPickerTriggerClass}
-                >
-                  <span className={eventTimeStart ? "font-body text-foreground" : "font-body text-foreground"}>
-                    {eventTimeStart ? formatTimeDisplayUs(eventTimeStart) : "Choose time"}
-                  </span>
-                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">TIME</span>
-                </button>
-              </div>
-              <div className="flex min-w-0 flex-col gap-1">
-                <span className={`${fieldLabelClass} block text-center sm:text-left`}>END TIME</span>
-                <button
-                  type="button"
-                  onClick={() => setTimePickerWhich("end")}
-                  className={logisticsPickerTriggerClass}
-                >
-                  <span className={eventTimeEnd ? "font-body text-foreground" : "font-body text-foreground"}>
-                    {eventTimeEnd ? formatTimeDisplayUs(eventTimeEnd) : "Choose time"}
-                  </span>
-                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">TIME</span>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <label className="block">
-            <span className={fieldLabelClass}>LOCATION</span>
-            <input
-              required
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              minLength={3}
-              maxLength={120}
-              className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-              placeholder="City or venue"
-            />
-          </label>
-
-          <div className="grid gap-4 md:grid-cols-3">
-            <label className="block">
-              <span className={fieldLabelClass}>CLIENT — NAME</span>
-              <input
-                required
-                value={guestFullName}
-                onChange={(e) => setGuestFullName(sanitizeNameInput(e.target.value))}
-                minLength={3}
-                maxLength={90}
-                className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-                placeholder="Client full name"
-              />
-            </label>
-            <label className="block">
-              <span className={fieldLabelClass}>EMAIL</span>
-              <input
-                required
-                type="email"
-                value={guestEmail}
-                onChange={(e) => setGuestEmail(e.target.value)}
-                maxLength={120}
-                className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-                placeholder="name@example.com"
-              />
-            </label>
-            <label className="block">
-              <span className={fieldLabelClass}>PHONE</span>
-              <input
-                required
-                value={guestPhone}
-                onChange={(e) => setGuestPhone(sanitizePhoneInput(e.target.value))}
-                minLength={10}
-                maxLength={20}
-                className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-                placeholder="+1 (555) 000-0000"
-              />
-            </label>
-          </div>
-
-          <label className="block">
-            <span className={fieldLabelClass}>GUESTS (APPROX.)</span>
-            <input
-              required
-              type="number"
-              min={1}
-              max={20000}
-              value={guestCount}
-              onChange={(e) => setGuestCount(sanitizeIntegerInput(e.target.value))}
-              className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-              placeholder="e.g. 120"
-            />
-          </label>
-
-          <label className="block">
-            <span className={fieldLabelClass}>INTERNAL NOTES</span>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              maxLength={1000}
-              className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-3 font-body text-base text-foreground placeholder:text-foreground outline-none focus:border-gold"
-              placeholder="Extra details for this booking..."
-            />
-          </label>
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-full border border-gold/40 bg-gold/12 px-7 py-3 font-brand text-xs tracking-[0.16em] text-gold transition hover:bg-gold/22 disabled:opacity-50"
+        <>
+          <form
+            id="shamell-agendar-booking-form"
+            noValidate
+            onSubmit={onSubmit}
+            className={cn(
+              isMobileLayout
+                ? "w-full pb-[calc(5.5rem+env(safe-area-inset-bottom))]"
+                : "shamell-glass-surface space-y-4 md:space-y-6 rounded-2xl p-4 sm:p-5 md:p-8",
+            )}
           >
-            {submitting ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
-            {isEditMode ? "SAVE BOOKING" : "CREATE BOOKING"}
-          </button>
-        </form>
+            {isMobileLayout ? (
+              <div className="mx-auto flex w-full max-w-md flex-col gap-3">
+                {(
+                  [
+                    {
+                      id: "event" as const,
+                      title: "EVENT SETUP",
+                      subtitle: "Type, occasion, service(s)",
+                    },
+                    {
+                      id: "logistics" as const,
+                      title: "WHEN & WHERE",
+                      subtitle: "Date, time, location",
+                    },
+                    {
+                      id: "client" as const,
+                      title: "CLIENT & NOTES",
+                      subtitle: "Guest details & notes",
+                    },
+                  ] as const
+                ).map((row) => {
+                  const complete = mobileSectionStatus[row.id];
+                  return (
+                    <motion.div
+                      key={row.id}
+                      layout
+                      transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                      className={cn(
+                        "flex items-center justify-between gap-3 rounded-xl border px-4 py-4 shadow-sm backdrop-blur-[2px] transition-colors duration-300",
+                        complete
+                          ? "border-emerald-400/50 bg-emerald-500/12"
+                          : "border-gold/25 bg-black/35",
+                      )}
+                    >
+                      <div className="min-w-0 pr-2">
+                        <p className="font-brand text-[13px] tracking-[0.16em] text-gold">{row.title}</p>
+                        <p className="mt-1.5 font-body text-sm leading-relaxed text-foreground/68">
+                          {row.subtitle}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setMobileSectionModal(row.id)}
+                        className={cn(
+                          "flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border transition-colors",
+                          complete
+                            ? "border-emerald-400/45 text-emerald-200 hover:bg-emerald-500/15"
+                            : "border-gold/30 text-gold/90 hover:bg-gold/10 hover:text-gold",
+                        )}
+                        aria-label={`Open ${row.title.toLowerCase()}`}
+                      >
+                        <Eye className="h-6 w-6" strokeWidth={1.5} aria-hidden />
+                      </button>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <>
+                {eventSelects}
+                {dateAndTimeDesktop}
+                {locationField}
+                {clientGrid}
+                {guestsField}
+                {notesField}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className={cn(submitButtonClass, "md:max-w-none")}
+                >
+                  {submitting ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
+                  {isEditMode ? "SAVE BOOKING" : "CREATE BOOKING"}
+                </button>
+              </>
+            )}
+          </form>
+
+          {isMobileLayout ? (
+            <>
+              <AdminModal
+                title="Event setup"
+                isOpen={mobileSectionModal === "event"}
+                onClose={() => setMobileSectionModal(null)}
+              >
+                <div className="space-y-4">{eventSelects}</div>
+              </AdminModal>
+              <AdminModal
+                title="When & where"
+                isOpen={mobileSectionModal === "logistics"}
+                onClose={() => setMobileSectionModal(null)}
+              >
+                <div className="space-y-4">
+                  {dateAndTimeMobile}
+                  {locationField}
+                </div>
+              </AdminModal>
+              <AdminModal
+                title="Client & notes"
+                isOpen={mobileSectionModal === "client"}
+                onClose={() => setMobileSectionModal(null)}
+              >
+                <div className="space-y-4">
+                  {clientGrid}
+                  {guestsField}
+                  {notesField}
+                </div>
+              </AdminModal>
+            </>
+          ) : null}
+
+          {isMobileLayout ? (
+            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-130 flex justify-center border-t border-gold/20 bg-[#0b0f14]/95 px-4 py-3 backdrop-blur-md supports-backdrop-filter:bg-[#0b0f14]/88 md:hidden">
+              <button
+                type="submit"
+                form="shamell-agendar-booking-form"
+                disabled={submitting}
+                className={cn(submitButtonClassMobile, "pointer-events-auto w-full max-w-lg")}
+              >
+                {submitting ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
+                {isEditMode ? "SAVE BOOKING" : "CREATE BOOKING"}
+              </button>
+            </div>
+          ) : null}
+        </>
       )}
 
       <ContactDatePickerModal
@@ -535,6 +779,7 @@ function AgendaAgendarPageContent() {
         blockedIsoDates={blockedIsoDates}
         blockedReasonByIso={blockedReasonByIso}
         minSelectableIso={minSelectableIso}
+        overlayZClass={isMobileLayout ? "z-[220]" : "z-[100]"}
       />
       <ContactTimePickerModal
         isOpen={timePickerWhich === "start"}
@@ -544,6 +789,7 @@ function AgendaAgendarPageContent() {
         onConfirm={(hhmm) => setEventTimeStart(hhmm)}
         timeClamp={startTimeClamp}
         blockedRanges={occupiedRanges}
+        overlayZClass={isMobileLayout ? "z-[220]" : "z-100"}
       />
       <ContactTimePickerModal
         isOpen={timePickerWhich === "end"}
@@ -553,6 +799,7 @@ function AgendaAgendarPageContent() {
         onConfirm={(hhmm) => setEventTimeEnd(hhmm)}
         timeClamp={startTimeClamp}
         blockedRanges={occupiedRanges}
+        overlayZClass={isMobileLayout ? "z-[220]" : "z-100"}
       />
     </div>
   );

@@ -3,6 +3,7 @@ import { Cormorant_Garamond, Geist, Geist_Mono, Great_Vibes, Cinzel } from "next
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import PublicBackgroundGate from "@/components/shared/PublicBackgroundGate";
+import WhatsAppFloatingButton from "@/components/shared/WhatsAppFloatingButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,6 +53,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <PublicBackgroundGate />
         {children}
+        <WhatsAppFloatingButton />
         <Toaster />
       </body>
     </html>

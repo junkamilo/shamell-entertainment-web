@@ -1,8 +1,10 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { BookingSource, BookingStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
@@ -18,6 +20,14 @@ import {
 import type { AdminBookingQueryDto } from './dto/admin-booking-query.dto';
 import type { CreateAdminBookingDto } from './dto/create-admin-booking.dto';
 import type { UpdateAdminBookingDto } from './dto/update-admin-booking.dto';
+import {
+  buildBookingConfirmationHtml,
+  buildBookingConfirmationSubject,
+  buildBookingConfirmationText,
+  timesFromDetails,
+  type BookingConfirmationTemplateInput,
+} from './booking-confirmation.mail';
+import { MailService } from '../mail/mail.service';
 
 const bookingInclude = {
   service: { include: { serviceType: true } },
@@ -28,11 +38,19 @@ const bookingInclude = {
   createdByAdmin: { select: { id: true, fullName: true, email: true } },
 } satisfies Prisma.BookingInclude;
 
+type BookingWithRelations = Prisma.BookingGetPayload<{
+  include: typeof bookingInclude;
+}>;
+
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityService,
+    private readonly mail: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   private async enrichBookingDetails(
@@ -71,7 +89,44 @@ export class BookingsService {
       });
       if (et) out.eventTypeLabel = et.name;
     }
+    if (details.serviceIds?.length) {
+      const rows = await this.prisma.service.findMany({
+        where: { id: { in: details.serviceIds } },
+        select: {
+          id: true,
+          serviceType: { select: { name: true } },
+        },
+      });
+      const nameById = Object.fromEntries(
+        rows.map((r) => [r.id, r.serviceType?.name ?? '']),
+      );
+      out.serviceLabels = details.serviceIds
+        .map((id) => nameById[id] ?? '')
+        .filter((s) => s.length > 0);
+    }
     return out;
+  }
+
+  /** Multi-service Book flow: `bookingDetails.serviceIds[0]` must match top-level `serviceId`. */
+  private async assertAdminBookingServiceOrder(
+    primaryServiceId: string,
+    details: SanitizedInquiryDetails | undefined,
+  ): Promise<void> {
+    if (!details?.serviceIds?.length) return;
+    if (details.serviceIds[0] !== primaryServiceId) {
+      throw new BadRequestException(
+        'serviceId must match the first id in bookingDetails.serviceIds.',
+      );
+    }
+    const rows = await this.prisma.service.findMany({
+      where: { id: { in: details.serviceIds } },
+      select: { id: true },
+    });
+    if (rows.length !== details.serviceIds.length) {
+      throw new BadRequestException(
+        'One or more bookingDetails.serviceIds are not valid services.',
+      );
+    }
   }
 
   private bookingWindowFromEvent(
@@ -280,6 +335,7 @@ export class BookingsService {
       ? sanitizeInquiryDetails(dto.bookingDetails)
       : undefined;
     this.validateBookingTimeRange(detailsRaw);
+    await this.assertAdminBookingServiceOrder(dto.serviceId, detailsRaw);
     const enriched =
       detailsRaw && Object.keys(detailsRaw).length > 0
         ? await this.enrichBookingDetails(detailsRaw)
@@ -298,7 +354,7 @@ export class BookingsService {
         ? BookingSource.ADMIN_FROM_CONTACT
         : BookingSource.ADMIN_PHONE;
 
-    return this.prisma.booking.create({
+    const created = await this.prisma.booking.create({
       data: {
         serviceId: dto.serviceId,
         eventTypeId: dto.eventTypeId ?? null,
@@ -325,6 +381,101 @@ export class BookingsService {
       },
       include: bookingInclude,
     });
+
+    await this.sendBookingCreatedConfirmation(created);
+
+    return created;
+  }
+
+  /**
+   * Sends guest/client confirmation email (MailerSend). Never throws; logs on failure.
+   */
+  private async sendBookingCreatedConfirmation(
+    booking: BookingWithRelations,
+  ): Promise<void> {
+    try {
+      const toEmail =
+        booking.user?.email?.trim().toLowerCase() ??
+        booking.guestEmail?.trim().toLowerCase();
+      if (!toEmail) {
+        this.logger.warn(
+          `Booking ${booking.id}: confirmation email skipped (no recipient address).`,
+        );
+        return;
+      }
+
+      const recipientName =
+        booking.user?.fullName?.trim() ||
+        booking.guestFullName?.trim() ||
+        'Guest';
+
+      let details: SanitizedInquiryDetails | undefined;
+      if (
+        booking.bookingDetails !== null &&
+        booking.bookingDetails !== undefined
+      ) {
+        try {
+          details = sanitizeInquiryDetails(booking.bookingDetails);
+        } catch {
+          details = undefined;
+        }
+      }
+      const times = timesFromDetails(details);
+
+      const multiLabels = details?.serviceLabels?.filter(
+        (s) => typeof s === 'string' && s.trim().length > 0,
+      );
+      const serviceLabel =
+        multiLabels?.length ?
+          multiLabels.join(', ')
+        : (booking.service.serviceType?.name ?? 'Service');
+      const serviceHeading =
+        multiLabels && multiLabels.length > 1 ? 'Services' : 'Service';
+
+      const appPublicName =
+        this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+        'Shamell Entertainment';
+      const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
+      const frontendBaseUrl = frontendRaw?.split(',')[0]?.trim();
+
+      const templateInput: BookingConfirmationTemplateInput = {
+        recipientName,
+        timeZone: this.availability.bookingTimeZone(),
+        eventDate: booking.eventDate,
+        eventTimeStart: times.start,
+        eventTimeEnd: times.end,
+        location: booking.location,
+        serviceLabel,
+        serviceHeading,
+        eventTypeLabel: booking.eventType?.name ?? undefined,
+        occasionLabel: booking.occasionType?.name ?? undefined,
+        guestCount: booking.guestCount,
+        appPublicName,
+        frontendBaseUrl,
+      };
+
+      const subject = buildBookingConfirmationSubject(appPublicName);
+      const html = buildBookingConfirmationHtml(templateInput);
+      const text = buildBookingConfirmationText(templateInput);
+
+      const sent = await this.mail.sendTransactional({
+        to: toEmail,
+        toName: recipientName,
+        subject,
+        html,
+        text,
+      });
+
+      if (sent) {
+        this.logger.log(
+          `Booking confirmation email sent for booking ${booking.id} to ${toEmail}`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Booking ${booking.id}: confirmation email error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   async findAllAdmin(query: AdminBookingQueryDto) {
@@ -397,6 +548,28 @@ export class BookingsService {
       });
     }
 
+    let mergedDetailsUnknown: unknown = existing.bookingDetails;
+    if (dto.bookingDetails !== undefined) {
+      const prev =
+        existing.bookingDetails &&
+        typeof existing.bookingDetails === 'object' &&
+        !Array.isArray(existing.bookingDetails)
+          ? (existing.bookingDetails as Record<string, unknown>)
+          : {};
+      mergedDetailsUnknown = { ...prev, ...dto.bookingDetails };
+    }
+
+    let enrichedDetails: SanitizedInquiryDetails | undefined;
+    if (dto.bookingDetails !== undefined) {
+      const sanitizedMerge = sanitizeInquiryDetails(mergedDetailsUnknown);
+      if (!sanitizedMerge) {
+        throw new BadRequestException('Invalid bookingDetails merge.');
+      }
+      this.validateBookingTimeRange(sanitizedMerge);
+      await this.assertAdminBookingServiceOrder(serviceId, sanitizedMerge);
+      enrichedDetails = await this.enrichBookingDetails(sanitizedMerge);
+    }
+
     let eventDate = existing.eventDate;
     if (dto.eventDate !== undefined) {
       eventDate = new Date(dto.eventDate);
@@ -404,7 +577,17 @@ export class BookingsService {
         throw new BadRequestException('Invalid eventDate.');
       }
       await this.availability.assertDateTimeAllowed(eventDate);
-      await this.assertNoDuplicateSlot(eventDate, existing.bookingDetails, id);
+      await this.assertNoDuplicateSlot(
+        eventDate,
+        enrichedDetails ?? mergedDetailsUnknown,
+        id,
+      );
+    } else if (dto.bookingDetails !== undefined && enrichedDetails) {
+      await this.assertNoDuplicateSlot(
+        existing.eventDate,
+        enrichedDetails,
+        id,
+      );
     }
 
     return this.prisma.booking.update({
@@ -427,6 +610,11 @@ export class BookingsService {
           ? { notes: dto.notes?.trim() || null }
           : {}),
         ...(dto.status !== undefined ? { status: dto.status } : {}),
+        ...(enrichedDetails !== undefined
+          ? {
+              bookingDetails: enrichedDetails as unknown as Prisma.InputJsonValue,
+            }
+          : {}),
       },
       include: bookingInclude,
     });

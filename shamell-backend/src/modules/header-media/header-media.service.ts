@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { GalleryMediaType } from '@prisma/client';
 import { imageSize } from 'image-size';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GalleryService } from '../gallery/gallery.service';
@@ -11,6 +12,7 @@ type HeaderPhoto = {
   id: string;
   imageUrl: string;
   imagePublicId: string;
+  mediaType: GalleryMediaType;
   focalX: number;
   focalY: number;
   focalMobileX: number;
@@ -46,6 +48,7 @@ export class HeaderMediaService {
         id: true,
         imageUrl: true,
         imagePublicId: true,
+        mediaType: true,
         focalX: true,
         focalY: true,
         focalMobileX: true,
@@ -67,6 +70,7 @@ export class HeaderMediaService {
         id: true,
         imageUrl: true,
         imagePublicId: true,
+        mediaType: true,
         focalX: true,
         focalY: true,
         focalMobileX: true,
@@ -81,14 +85,20 @@ export class HeaderMediaService {
 
   async uploadAdminHeaderPhotos(files: Express.Multer.File[]) {
     if (!files.length) {
-      throw new BadRequestException('At least one image file is required.');
+      throw new BadRequestException('At least one image or video file is required.');
     }
-    const invalid = files.find((file) => !file.mimetype.startsWith('image/'));
+    const invalid = files.find(
+      (file) =>
+        !file.mimetype.startsWith('image/') &&
+        !file.mimetype.startsWith('video/'),
+    );
     if (invalid) {
-      throw new BadRequestException('Only image files are allowed.');
+      throw new BadRequestException('Only image or video files are allowed.');
     }
     for (const file of files) {
-      this.validateHeroImageDimensions(file);
+      if (file.mimetype.startsWith('image/')) {
+        this.validateHeroImageDimensions(file);
+      }
     }
 
     const category = await this.ensureHeaderCategory();
@@ -97,12 +107,13 @@ export class HeaderMediaService {
       files,
     );
     return {
-      message: 'Header photos uploaded successfully.',
+      message: 'Header media uploaded successfully.',
       items: created.items.map((item) =>
         this.mapHeaderPhoto({
           id: item.id,
           imageUrl: item.imageUrl,
           imagePublicId: item.imagePublicId,
+          mediaType: item.mediaType,
           focalX: 50,
           focalY: 35,
           focalMobileX: 50,
@@ -132,6 +143,7 @@ export class HeaderMediaService {
         id: true,
         imageUrl: true,
         imagePublicId: true,
+        mediaType: true,
         focalX: true,
         focalY: true,
         focalMobileX: true,
@@ -187,6 +199,7 @@ export class HeaderMediaService {
         id: true,
         imageUrl: true,
         imagePublicId: true,
+        mediaType: true,
         focalX: true,
         focalY: true,
         focalMobileX: true,
@@ -207,6 +220,7 @@ export class HeaderMediaService {
       id: photo.id,
       imageUrl: photo.imageUrl,
       imagePublicId: photo.imagePublicId,
+      mediaType: photo.mediaType,
       focalX: photo.focalX,
       focalY: photo.focalY,
       focalMobileX: photo.focalMobileX,

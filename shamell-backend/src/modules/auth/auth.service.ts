@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client } from 'google-auth-library';
-import { Resend } from 'resend';
+import { EmailParams, MailerSend, Recipient, Sender } from 'mailersend';
 import { compare, hash } from 'bcryptjs';
 import { createHash, randomBytes, randomInt } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -188,14 +188,13 @@ export class AuthService {
   }
 
   async inviteAdmin(inviterId: string, dto: InviteAdminDto) {
-    const resendKey = this.config.get<string>('RESEND_API_KEY')?.trim();
-    const fromEmail =
-      this.config.get<string>('RESEND_FROM_EMAIL')?.trim() ??
-      'onboarding@resend.dev';
+    const mailerSendKey = this.config.get<string>('MAILERSEND_API_KEY')?.trim();
+    const fromEmail = this.config.get<string>('MAILERSEND_FROM_EMAIL')?.trim();
+    const fromName = this.config.get<string>('MAILERSEND_FROM_NAME')?.trim();
 
-    if (!resendKey) {
+    if (!mailerSendKey || !fromEmail) {
       throw new BadRequestException(
-        'Email delivery is not configured. Set RESEND_API_KEY (and optionally RESEND_FROM_EMAIL).',
+        'Email delivery is not configured. Set MAILERSEND_API_KEY and MAILERSEND_FROM_EMAIL.',
       );
     }
 
@@ -208,6 +207,7 @@ export class AuthService {
     }
 
     const email = dto.email.toLowerCase();
+    const fullName = dto.fullName.trim();
 
     const existing = await this.prisma.user.findUnique({
       where: { email },
@@ -231,7 +231,7 @@ export class AuthService {
       data: {
         email,
         codeHash,
-        fullName: dto.fullName.trim(),
+        fullName,
         invitedById: inviterId,
         expiresAt,
       },
@@ -240,43 +240,27 @@ export class AuthService {
 
     const appName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ?? 'Shamell Admin';
+    const emailHtml = this.buildAdminInviteEmailHtml({
+      appName,
+      fullName,
+      code,
+    });
+    const emailText = this.buildAdminInviteEmailText({
+      appName,
+      fullName,
+      code,
+    });
 
     try {
-      const resend = new Resend(resendKey);
-      const from =
-        fromEmail.includes('<') || fromEmail.includes('>')
-          ? fromEmail
-          : `${appName} <${fromEmail}>`;
+      const mailerSend = new MailerSend({ apiKey: mailerSendKey });
+      const emailParams = new EmailParams()
+        .setFrom(new Sender(fromEmail, fromName || appName))
+        .setTo([new Recipient(email, fullName)])
+        .setSubject(`${appName} — código para crear tu cuenta de administrador`)
+        .setText(emailText)
+        .setHtml(emailHtml);
 
-      const { error } = await resend.emails.send({
-        from,
-        to: email,
-        subject: `${appName} — código para crear tu cuenta de administrador`,
-        html: `
-          <p>Hola ${this.escapeHtml(dto.fullName.trim())},</p>
-          <p>Se está dando de alta tu cuenta de administrador. Tu código de verificación es:</p>
-          <p style="font-size:28px;font-weight:bold;letter-spacing:4px;">${code}</p>
-          <p>Comparte este código con quien completa el alta en el panel (Shamell Admin → Agregar administrador), junto con la contraseña que definirán para tu cuenta.</p>
-          <p>Este código caduca en 48 horas.</p>
-        `,
-      });
-
-      if (error) {
-        await this.prisma.adminInvite
-          .delete({ where: { id: invite.id } })
-          .catch(() => null);
-        const raw = (
-          typeof error.message === 'string' ? error.message : ''
-        ).trim();
-        if (/only send testing emails|verify a domain/i.test(raw)) {
-          throw new BadRequestException(
-            'Resend está en modo de prueba: solo puedes enviar a la dirección asociada a tu cuenta de Resend, o verifica un dominio en https://resend.com/domains y configura RESEND_FROM_EMAIL con un remitente de ese dominio para enviar el código a cualquier correo.',
-          );
-        }
-        throw new InternalServerErrorException(
-          raw || 'No se pudo enviar el correo de invitación.',
-        );
-      }
+      await mailerSend.email.send(emailParams);
     } catch (err) {
       await this.prisma.adminInvite
         .delete({ where: { id: invite.id } })
@@ -287,8 +271,18 @@ export class AuthService {
       ) {
         throw err;
       }
+      const raw = this.mailerSendErrorMessage(err);
+      if (
+        /domain|sender|from|verified|verification|unauthorized|forbidden/i.test(
+          raw,
+        )
+      ) {
+        throw new BadRequestException(
+          'MailerSend no pudo enviar el correo. Verifica que MAILERSEND_FROM_EMAIL pertenezca a un dominio/remitente verificado y que MAILERSEND_API_KEY tenga permisos para enviar emails.',
+        );
+      }
       throw new InternalServerErrorException(
-        'Failed to send verification email.',
+        raw || 'Failed to send verification email.',
       );
     }
 
@@ -357,73 +351,6 @@ export class AuthService {
     };
   }
 
-  async completeAdminInviteGoogle(idToken: string) {
-    const { email, sub, name } = await this.verifyGoogleIdToken(idToken);
-
-    const invite = await this.prisma.adminInvite.findFirst({
-      where: {
-        email,
-        consumedAt: null,
-        expiresAt: { gt: new Date() },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!invite) {
-      throw new UnauthorizedException(
-        'No pending invitation for this Google email.',
-      );
-    }
-
-    const existingUser = await this.prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
-    if (existingUser) {
-      throw new ConflictException('This email is already registered.');
-    }
-
-    const displayName =
-      invite.fullName.trim() || name?.trim() || email.split('@')[0];
-
-    const newUser = await this.prisma.$transaction(async (tx) => {
-      const u = await tx.user.create({
-        data: {
-          email,
-          fullName: displayName,
-          password: null,
-          googleSub: sub,
-          role: 'ADMIN',
-        },
-      });
-      const consumed = await tx.adminInvite.updateMany({
-        where: { id: invite.id, consumedAt: null },
-        data: { consumedAt: new Date() },
-      });
-      if (consumed.count !== 1) {
-        throw new ConflictException('Invitation was already used.');
-      }
-      return u;
-    });
-
-    const accessToken = await this.jwtService.signAsync({
-      sub: newUser.id,
-      email: newUser.email,
-      role: newUser.role,
-    });
-
-    return {
-      message: 'Admin account activated.',
-      accessToken,
-      user: {
-        id: newUser.id,
-        fullName: newUser.fullName,
-        email: newUser.email,
-        role: newUser.role,
-      },
-    };
-  }
-
   async forgotPassword(dto: ForgotPasswordDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
@@ -480,12 +407,128 @@ export class AuthService {
     return { message: 'Password updated successfully' };
   }
 
+  private buildAdminInviteEmailHtml({
+    appName,
+    fullName,
+    code,
+  }: {
+    appName: string;
+    fullName: string;
+    code: string;
+  }): string {
+    const safeAppName = this.escapeHtml(appName);
+    const safeFullName = this.escapeHtml(fullName);
+    const spacedCode = code.split('').join(' ');
+
+    return `<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${safeAppName} invitation code</title>
+  </head>
+  <body style="margin:0;padding:0;background:#07090d;color:#f8f3e7;font-family:Arial,Helvetica,sans-serif;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      Tu código para crear una cuenta de administrador en ${safeAppName} es ${code}.
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;background:#07090d;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:620px;border:1px solid rgba(197,165,90,0.35);border-radius:28px;overflow:hidden;background:#0d1118;">
+            <tr>
+              <td style="padding:34px 28px 22px;text-align:center;background:linear-gradient(135deg,#121722 0%,#07090d 58%,#17120a 100%);border-bottom:1px solid rgba(197,165,90,0.22);">
+                <div style="font-size:12px;line-height:1.4;letter-spacing:0.28em;text-transform:uppercase;color:#c5a55a;">${safeAppName}</div>
+                <h1 style="margin:14px 0 0;font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1.2;font-weight:400;color:#fff8e6;">Admin Invitation</h1>
+                <p style="margin:12px auto 0;max-width:420px;font-size:14px;line-height:1.7;color:#d6cfbd;">Se está dando de alta una cuenta de administrador para ti.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:34px 28px 10px;">
+                <p style="margin:0 0 18px;font-size:16px;line-height:1.7;color:#f8f3e7;">Hola ${safeFullName},</p>
+                <p style="margin:0 0 24px;font-size:15px;line-height:1.75;color:#d6cfbd;">Usa este código para completar la creación de tu cuenta en el panel de administración de Shamell.</p>
+                <div style="margin:0 auto 26px;padding:22px 18px;border:1px solid rgba(197,165,90,0.45);border-radius:22px;background:#111722;text-align:center;">
+                  <div style="margin-bottom:10px;font-size:11px;line-height:1.4;letter-spacing:0.22em;text-transform:uppercase;color:#c5a55a;">Verification Code</div>
+                  <div style="font-family:'Courier New',Courier,monospace;font-size:38px;line-height:1.15;font-weight:700;letter-spacing:0.2em;color:#f5d27a;">${spacedCode}</div>
+                </div>
+                <p style="margin:0 0 14px;font-size:14px;line-height:1.7;color:#d6cfbd;">Comparte este código con quien completa el alta en <strong style="color:#fff8e6;">Shamell Admin → Agregar administrador</strong>, junto con la contraseña que definirán para tu cuenta.</p>
+                <p style="margin:0;font-size:14px;line-height:1.7;color:#d6cfbd;">Este código caduca en <strong style="color:#fff8e6;">48 horas</strong>. Si solicitan un código nuevo, usa siempre el email más reciente.</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:18px 28px 32px;">
+                <div style="padding:16px 18px;border-radius:18px;background:rgba(197,165,90,0.08);border:1px solid rgba(197,165,90,0.18);">
+                  <p style="margin:0;font-size:12px;line-height:1.7;color:#b9b09f;">Security note: this code only activates an administrator account for ${safeAppName}. If you were not expecting this invitation, ignore this email.</p>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+  }
+
+  private buildAdminInviteEmailText({
+    appName,
+    fullName,
+    code,
+  }: {
+    appName: string;
+    fullName: string;
+    code: string;
+  }): string {
+    return [
+      `Hola ${fullName},`,
+      '',
+      `Tu código para crear una cuenta de administrador en ${appName} es: ${code}`,
+      '',
+      'Este código caduca en 48 horas.',
+      '',
+      'Si solicitan un código nuevo, usa siempre el email más reciente.',
+      'Si no esperabas esta invitación, puedes ignorar este correo.',
+    ].join('\n');
+  }
+
   private escapeHtml(text: string): string {
     return text
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  }
+
+  private mailerSendErrorMessage(error: unknown): string {
+    if (!error || typeof error !== 'object') {
+      return '';
+    }
+
+    const maybeResponse = error as {
+      response?: { data?: unknown; body?: unknown };
+      body?: unknown;
+    };
+    const payload =
+      maybeResponse.response?.data ??
+      maybeResponse.response?.body ??
+      maybeResponse.body;
+
+    if (typeof payload === 'string') {
+      return payload.trim();
+    }
+
+    if (payload && typeof payload === 'object') {
+      try {
+        return JSON.stringify(payload);
+      } catch {
+        return '';
+      }
+    }
+
+    if (error instanceof Error && error.message.trim()) {
+      return error.message.trim();
+    }
+
+    return '';
   }
 
   private async verifyGoogleIdToken(

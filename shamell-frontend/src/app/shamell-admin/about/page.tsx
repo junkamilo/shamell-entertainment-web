@@ -2,19 +2,23 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import {
-  ArrowRight,
   FileText,
   Heart,
   Image as ImageIcon,
   Pencil,
   Sparkles,
+  Trash2,
+  Video,
   X,
 } from "lucide-react";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminModal from "@/components/admin/AdminModal";
+import { AdminMediaPickControl } from "@/components/admin/AdminMediaPickControl";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { isAboutHeroVideoDisplay } from "@/lib/aboutHeroMedia";
 import { toast } from "@/hooks/use-toast";
 
 type AdminAboutRow = {
@@ -26,17 +30,6 @@ type AdminAboutRow = {
   heroMediaType?: "IMAGE" | "VIDEO";
   updatedAt?: string;
 };
-
-function isAboutHeroVideo(
-  heroMediaType: string | null | undefined,
-  url: string | null | undefined,
-  file: File | null,
-): boolean {
-  if (file?.type.startsWith("video/")) return true;
-  if (heroMediaType === "VIDEO") return true;
-  const u = url ?? "";
-  return u.includes("/video/upload/");
-}
 
 function excerptBody(text: string, max = 220): string {
   const firstLine = text.split(/\r?\n/).find((line) => line.trim()) ?? "";
@@ -60,6 +53,75 @@ function formatRelativeEn(iso: string | undefined): string {
   return date.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
 }
 
+type AboutHeroPreviewCardProps = {
+  src: string;
+  isVideo: boolean;
+  badge: string;
+  onRemove: () => void;
+  removeDisabled?: boolean;
+  removeBusy?: boolean;
+  removeAriaLabel: string;
+  onExpand: () => void;
+};
+
+function AboutHeroPreviewCard({
+  src,
+  isVideo,
+  badge,
+  onRemove,
+  removeDisabled,
+  removeBusy,
+  removeAriaLabel,
+  onExpand,
+}: AboutHeroPreviewCardProps) {
+  return (
+    <div className="relative flex w-38 shrink-0 flex-col gap-1 rounded-xl border border-gold/22 bg-black/25 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ring-1 ring-gold/10">
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onRemove();
+        }}
+        disabled={removeDisabled}
+        className="absolute right-1 top-1 z-20 flex h-8 w-8 items-center justify-center rounded-full border border-red-500/35 bg-black/70 text-red-200/95 shadow-md backdrop-blur-sm transition hover:border-red-400/55 hover:bg-red-950/45 hover:text-red-50 disabled:cursor-not-allowed disabled:opacity-45"
+        aria-label={removeAriaLabel}
+      >
+        {removeBusy ? (
+          <span className="h-3.5 w-3.5 animate-pulse rounded-full bg-red-200/80" aria-hidden />
+        ) : (
+          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+        )}
+      </button>
+      <p className="pr-9 font-brand text-[9px] uppercase leading-tight tracking-[0.14em] text-gold/65">{badge}</p>
+      <button
+        type="button"
+        onClick={onExpand}
+        className="group relative aspect-square w-full overflow-hidden rounded-lg bg-[#080a0e] ring-1 ring-gold/12"
+        aria-label="View full size"
+      >
+        {isVideo ? (
+          <video
+            src={src}
+            className="h-full w-full object-contain p-1 transition group-hover:opacity-95"
+            muted
+            playsInline
+            loop
+            autoPlay
+            preload="metadata"
+          />
+        ) : (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={src}
+            alt=""
+            className="h-full w-full object-contain p-1 transition group-hover:opacity-95"
+          />
+        )}
+      </button>
+    </div>
+  );
+}
+
 export default function ShamellAdminAboutPage() {
   const apiBaseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
@@ -68,7 +130,9 @@ export default function ShamellAdminAboutPage() {
   const [record, setRecord] = useState<AdminAboutRow | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteHeroConfirmOpen, setIsDeleteHeroConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeletingHero, setIsDeletingHero] = useState(false);
 
   const [title, setTitle] = useState("ABOUT SHAMELL");
   const [paragraph1, setParagraph1] = useState("");
@@ -77,6 +141,8 @@ export default function ShamellAdminAboutPage() {
   const [existingHeroMediaType, setExistingHeroMediaType] = useState<"IMAGE" | "VIDEO">("IMAGE");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
+  const [lightboxDisplay, setLightboxDisplay] = useState<{ src: string; isVideo: boolean } | null>(null);
+  const [lightboxPortalReady, setLightboxPortalReady] = useState(false);
   const imageFileInputRef = useRef<HTMLInputElement>(null);
 
   const imagePreviewUrl = useMemo(() => {
@@ -88,6 +154,33 @@ export default function ShamellAdminAboutPage() {
     if (!imagePreviewUrl) return;
     return () => URL.revokeObjectURL(imagePreviewUrl);
   }, [imagePreviewUrl]);
+
+  useEffect(() => {
+    setLightboxPortalReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isPreviewLightboxOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isPreviewLightboxOpen]);
+
+  const closeHeroLightbox = useCallback((instant?: boolean) => {
+    if (instant === true) {
+      setIsPreviewLightboxOpen(false);
+      setLightboxDisplay(null);
+      return;
+    }
+    setIsPreviewLightboxOpen(false);
+  }, []);
+
+  const openHeroLightbox = useCallback((src: string, isVideo: boolean) => {
+    setLightboxDisplay({ src, isVideo });
+    setIsPreviewLightboxOpen(true);
+  }, []);
 
   const parseErrorMessage = useCallback((data: unknown, fallback: string) => {
     if (typeof data !== "object" || data === null) return fallback;
@@ -162,7 +255,10 @@ export default function ShamellAdminAboutPage() {
       media:
         record.imageUrl == null
           ? "No"
-          : record.heroMediaType === "VIDEO" || isAboutHeroVideo(record.heroMediaType, record.imageUrl, null)
+          : isAboutHeroVideoDisplay({
+              heroMediaType: record.heroMediaType,
+              imageUrl: record.imageUrl,
+            })
             ? "Video"
             : "Photo",
       updated: formatRelativeEn(record.updatedAt),
@@ -189,16 +285,76 @@ export default function ShamellAdminAboutPage() {
 
   const openAboutModal = () => {
     syncFormFromRecord(record);
-    setIsPreviewLightboxOpen(false);
+    closeHeroLightbox(true);
     setIsModalOpen(true);
   };
 
   const closeAboutModal = () => {
     setIsModalOpen(false);
-    setIsPreviewLightboxOpen(false);
+    setIsDeleteHeroConfirmOpen(false);
+    closeHeroLightbox(true);
     setImageFile(null);
+    setIsDeletingHero(false);
     if (imageFileInputRef.current) imageFileInputRef.current.value = "";
   };
+
+  const deleteSavedHeroMedia = useCallback(async () => {
+    if (!existingImageUrl && !record?.imageUrl) return;
+
+    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
+      });
+      return;
+    }
+
+    setIsDeletingHero(true);
+    try {
+      const response = await fetch(`${apiBaseUrl}/api/v1/about/admin/media`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Could not remove media",
+          description: parseErrorMessage(data, "Check Cloudinary configuration or try again."),
+        });
+        return;
+      }
+
+      setExistingImageUrl(null);
+      setExistingHeroMediaType("IMAGE");
+      closeHeroLightbox(true);
+      if (imageFileInputRef.current) imageFileInputRef.current.value = "";
+
+      toast({
+        title: "Hero media removed",
+        description: "You can upload a new image or video when you are ready.",
+      });
+      setIsDeleteHeroConfirmOpen(false);
+      await loadAboutContent();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Offline",
+        description: "Could not reach the server.",
+      });
+    } finally {
+      setIsDeletingHero(false);
+    }
+  }, [
+    apiBaseUrl,
+    closeHeroLightbox,
+    existingImageUrl,
+    loadAboutContent,
+    parseErrorMessage,
+    record?.imageUrl,
+  ]);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -232,7 +388,7 @@ export default function ShamellAdminAboutPage() {
       body.append("title", title.trim());
       body.append("paragraph1", paragraph1.replace(/^\s+|\s+$/g, ""));
       values.forEach((value) => body.append("coreValues", value));
-      if (imageFile) body.append("image", imageFile);
+      if (imageFile) body.append("media", imageFile);
 
       const response = await fetch(`${apiBaseUrl}/api/v1/about/admin`, {
         method: "PATCH",
@@ -266,14 +422,6 @@ export default function ShamellAdminAboutPage() {
     }
   };
 
-  const lightboxSrc = imagePreviewUrl ?? existingImageUrl ?? record?.imageUrl ?? "";
-  const lightboxHeroType = imageFile
-    ? undefined
-    : existingImageUrl
-      ? existingHeroMediaType
-      : record?.heroMediaType;
-  const lightboxIsVideo = isAboutHeroVideo(lightboxHeroType, lightboxSrc, imageFile);
-
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
@@ -282,16 +430,6 @@ export default function ShamellAdminAboutPage() {
         onAction={openAboutModal}
         bordered={false}
       />
-
-      <div className="mb-6 flex flex-wrap justify-end gap-3">
-        <Link
-          href="/#about"
-          className="shamell-glass-surface inline-flex items-center gap-2 rounded-full border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-gold/90 transition hover:border-gold/45 hover:bg-gold/10"
-        >
-          View on site
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </Link>
-      </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:mb-8 lg:grid-cols-4 lg:gap-4">
         {(
@@ -346,46 +484,75 @@ export default function ShamellAdminAboutPage() {
 
         {record ? (
           <div className="grid gap-0 lg:grid-cols-12">
-            <div className="shamell-glass-surface relative flex min-h-[280px] items-stretch justify-center p-6 lg:col-span-5 lg:min-h-[420px]">
+            <div className="shamell-glass-surface relative flex min-h-[200px] items-center justify-center p-6 lg:col-span-5 lg:min-h-0">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_30%_20%,rgba(197,165,90,0.14),transparent_55%)]" />
               {record.imageUrl ? (
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewLightboxOpen(true)}
-                  className="group relative z-10 w-full max-w-sm overflow-hidden rounded-2xl border border-gold/25 shadow-2xl"
-                  aria-label="View enlarged photo or video"
-                >
-                  <div className="relative aspect-4/5 w-full">
-                    {isAboutHeroVideo(record.heroMediaType, record.imageUrl, null) ? (
-                      <video
-                        src={record.imageUrl}
-                        className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-                        muted
-                        playsInline
-                        loop
-                        autoPlay
-                        preload="metadata"
-                        aria-hidden
-                      />
-                    ) : (
-                      <Image
-                        src={record.imageUrl}
-                        alt=""
-                        fill
-                        unoptimized
-                        className="object-cover transition duration-500 group-hover:scale-[1.03]"
-                        sizes="(max-width: 1024px) 100vw, 40vw"
-                      />
-                    )}
-                  </div>
-                  <span className="shamell-glass-surface absolute bottom-3 left-3 rounded-full border border-gold/30 px-3 py-1 font-body text-[10px] text-gold/90">
-                    {isAboutHeroVideo(record.heroMediaType, record.imageUrl, null) ? "About video" : "About image"}
-                  </span>
-                </button>
+                <div className="relative z-10 flex w-full max-w-52 flex-col items-center gap-2">
+                  <p className="font-brand text-[9px] uppercase tracking-[0.16em] text-gold/60">Hero preview</p>
+                  {isAboutHeroVideoDisplay({
+                    heroMediaType: record.heroMediaType,
+                    imageUrl: record.imageUrl,
+                  }) ? (
+                    <>
+                      <div className="w-full overflow-hidden rounded-xl border border-gold/25 bg-[#080a0e] shadow-lg ring-1 ring-gold/10">
+                        <div className="relative aspect-video w-full min-h-30">
+                          <video
+                            src={record.imageUrl}
+                            className="absolute inset-0 h-full w-full object-contain"
+                            controls
+                            playsInline
+                            preload="metadata"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-center gap-1 text-center">
+                        <span className="font-body text-[10px] text-gold/55">Video — use controls to play</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openHeroLightbox(
+                              record.imageUrl!,
+                              true,
+                            )
+                          }
+                          className="font-brand text-[10px] tracking-[0.12em] text-gold/80 underline decoration-gold/35 underline-offset-2 transition hover:text-gold"
+                        >
+                          Open full view
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openHeroLightbox(
+                            record.imageUrl!,
+                            false,
+                          )
+                        }
+                        className="group relative w-full max-w-52 shrink-0 overflow-hidden rounded-xl border border-gold/25 bg-[#080a0e] shadow-lg ring-1 ring-gold/10 transition hover:border-gold/40"
+                        aria-label="View enlarged photo"
+                      >
+                        <div className="relative aspect-square w-full">
+                          <Image
+                            src={record.imageUrl}
+                            alt=""
+                            fill
+                            unoptimized
+                            className="object-contain p-1 transition duration-500 group-hover:opacity-95"
+                            sizes="208px"
+                          />
+                        </div>
+                      </button>
+                      <span className="font-body text-[10px] text-gold/55">Image · Tap to enlarge</span>
+                    </>
+                  )}
+                </div>
               ) : (
-                <div className="shamell-glass-surface relative z-10 flex w-full max-w-sm flex-col items-center justify-center rounded-2xl border border-dashed border-gold/25 px-8 py-16 text-center">
-                  <ImageIcon className="h-10 w-10 text-gold/30" strokeWidth={1.2} />
-                  <p className="mt-3 font-body text-sm text-foreground/45">No photo or video in this block</p>
+                <div className="shamell-glass-surface relative z-10 flex w-full max-w-52 flex-col items-center justify-center rounded-xl border border-dashed border-gold/25 px-6 py-12 text-center">
+                  <ImageIcon className="h-8 w-8 text-gold/30" strokeWidth={1.2} />
+                  <p className="mt-2 font-body text-xs text-foreground/45">No photo or video</p>
                 </div>
               )}
             </div>
@@ -475,83 +642,123 @@ export default function ShamellAdminAboutPage() {
           </label>
 
           <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">ABOUT PHOTO OR VIDEO</span>
-            <input
+            <span className="flex flex-wrap items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
+              <span className="inline-flex items-center gap-1.5">
+                <ImageIcon className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} aria-hidden />
+                <Video className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} aria-hidden />
+              </span>
+              ABOUT IMAGE OR VIDEO
+            </span>
+            <AdminMediaPickControl
               ref={imageFileInputRef}
-              type="file"
-              accept="image/*,video/mp4,video/webm,video/quicktime"
-              onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
-              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none file:mr-3 file:border-0 file:bg-gold/20 file:px-3 file:py-1 file:text-gold"
+              accept="image/*,video/*"
+              onFileChange={(file) => setImageFile(file)}
+              disabled={isSubmitting || isDeletingHero}
+              selectedFileName={imageFile?.name ?? null}
             />
             {!record ? (
               <p className="mt-2 font-body text-[11px] text-foreground/45">
-                The first publish requires an image or video (MP4, WebM, or MOV recommended; max 100&nbsp;MB).
+                First publish requires a hero file: any common image format, or video (e.g. MP4, WebM, MOV). Max
+                100&nbsp;MB. The public About section will show it automatically as photo or video.
               </p>
             ) : (
               <p className="mt-2 font-body text-[11px] text-foreground/45">
-                Optional: replace the current About block photo or video.
+                Optional: upload a new image or video to replace the current hero (same field as when you first
+                published).
               </p>
             )}
           </label>
 
           {imagePreviewUrl || existingImageUrl ? (
-            <div className="shamell-glass-surface rounded-xl p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-xs text-gold/85">
-                  {imagePreviewUrl
-                    ? isAboutHeroVideo(undefined, null, imageFile)
-                      ? "Preview of selected video"
-                      : "Preview of selected image"
-                    : isAboutHeroVideo(existingHeroMediaType, existingImageUrl, null)
-                      ? "Current About video"
-                      : "Current About image"}
-                </p>
-                {imagePreviewUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => {
+            <div className="shamell-glass-surface rounded-xl border border-gold/15 p-4">
+              <p className="mb-3 text-center font-brand text-[10px] tracking-[0.18em] text-gold/70 sm:text-left">
+                HERO MEDIA
+              </p>
+              <div className="flex flex-wrap justify-center gap-4 sm:justify-start">
+                {existingImageUrl && imagePreviewUrl ? (
+                  <>
+                    <AboutHeroPreviewCard
+                      src={existingImageUrl}
+                      isVideo={isAboutHeroVideoDisplay({
+                        heroMediaType: existingHeroMediaType,
+                        imageUrl: existingImageUrl,
+                      })}
+                      badge="Live on site"
+                      onRemove={() => setIsDeleteHeroConfirmOpen(true)}
+                      removeDisabled={isDeletingHero || isSubmitting}
+                      removeBusy={isDeletingHero}
+                      removeAriaLabel="Remove published hero from Cloudinary and database"
+                      onExpand={() =>
+                        openHeroLightbox(
+                          existingImageUrl,
+                          isAboutHeroVideoDisplay({
+                            heroMediaType: existingHeroMediaType,
+                            imageUrl: existingImageUrl,
+                          }),
+                        )
+                      }
+                    />
+                    <AboutHeroPreviewCard
+                      src={imagePreviewUrl}
+                      isVideo={isAboutHeroVideoDisplay({ file: imageFile })}
+                      badge="New file (not saved)"
+                      onRemove={() => {
+                        setImageFile(null);
+                        if (imageFileInputRef.current) imageFileInputRef.current.value = "";
+                        closeHeroLightbox();
+                      }}
+                      removeDisabled={isSubmitting || isDeletingHero}
+                      removeAriaLabel="Discard selected file"
+                      onExpand={() =>
+                        openHeroLightbox(
+                          imagePreviewUrl,
+                          isAboutHeroVideoDisplay({ file: imageFile }),
+                        )
+                      }
+                    />
+                  </>
+                ) : existingImageUrl ? (
+                  <AboutHeroPreviewCard
+                    src={existingImageUrl}
+                    isVideo={isAboutHeroVideoDisplay({
+                      heroMediaType: existingHeroMediaType,
+                      imageUrl: existingImageUrl,
+                    })}
+                    badge="Live on site"
+                    onRemove={() => setIsDeleteHeroConfirmOpen(true)}
+                    removeDisabled={isDeletingHero || isSubmitting}
+                    removeBusy={isDeletingHero}
+                    removeAriaLabel="Remove published hero from Cloudinary and database"
+                    onExpand={() =>
+                      openHeroLightbox(
+                        existingImageUrl,
+                        isAboutHeroVideoDisplay({
+                          heroMediaType: existingHeroMediaType,
+                          imageUrl: existingImageUrl,
+                        }),
+                      )
+                    }
+                  />
+                ) : imagePreviewUrl ? (
+                  <AboutHeroPreviewCard
+                    src={imagePreviewUrl}
+                    isVideo={isAboutHeroVideoDisplay({ file: imageFile })}
+                    badge="New file"
+                    onRemove={() => {
                       setImageFile(null);
-                      setIsPreviewLightboxOpen(false);
                       if (imageFileInputRef.current) imageFileInputRef.current.value = "";
+                      closeHeroLightbox();
                     }}
-                    className="rounded-full border border-gold/30 p-1 text-gold/85 transition hover:bg-gold/10 hover:text-gold"
-                    aria-label="Remove selected file"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
+                    removeDisabled={isSubmitting || isDeletingHero}
+                    removeAriaLabel="Discard selected file"
+                    onExpand={() =>
+                      openHeroLightbox(
+                        imagePreviewUrl,
+                        isAboutHeroVideoDisplay({ file: imageFile }),
+                      )
+                    }
+                  />
                 ) : null}
-              </div>
-              <div className="shamell-glass-surface overflow-hidden rounded-lg p-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewLightboxOpen(true)}
-                  className="block w-full"
-                  aria-label="Open enlarged preview"
-                >
-                  {isAboutHeroVideo(
-                    imageFile ? undefined : existingHeroMediaType,
-                    imagePreviewUrl ?? existingImageUrl,
-                    imageFile,
-                  ) ? (
-                    <video
-                      src={imagePreviewUrl ?? existingImageUrl ?? ""}
-                      className="h-44 w-full rounded-md object-cover transition hover:opacity-90"
-                      muted
-                      playsInline
-                      loop
-                      autoPlay
-                      preload="metadata"
-                      aria-label="About preview"
-                    />
-                  ) : (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={imagePreviewUrl ?? existingImageUrl ?? ""}
-                      alt="About preview"
-                      className="h-44 w-full rounded-md object-cover transition hover:opacity-90"
-                    />
-                  )}
-                </button>
               </div>
             </div>
           ) : null}
@@ -566,7 +773,7 @@ export default function ShamellAdminAboutPage() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || isDeletingHero}
               className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isSubmitting ? "Saving..." : "Save"}
@@ -575,43 +782,120 @@ export default function ShamellAdminAboutPage() {
         </form>
       </AdminModal>
 
-      {isPreviewLightboxOpen && lightboxSrc ? (
-        <div
-          className="fixed inset-0 z-95 flex items-center justify-center bg-black/85 px-4 py-8"
-          onClick={() => setIsPreviewLightboxOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-5xl rounded-2xl border border-gold/30 bg-[#0a0d12] p-3 shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
+      <AdminModal
+        title="Remove hero media?"
+        isOpen={isDeleteHeroConfirmOpen}
+        onClose={() => {
+          if (!isDeletingHero) setIsDeleteHeroConfirmOpen(false);
+        }}
+      >
+        <div className="space-y-5">
+          <p className="font-body text-sm leading-relaxed text-foreground/75">
+            Remove the current hero photo or video? It will be deleted from Cloudinary and from the site. You can
+            upload a new file afterward.
+          </p>
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
-              onClick={() => setIsPreviewLightboxOpen(false)}
-              className="shamell-glass-surface absolute right-3 top-3 z-10 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
-              aria-label="Close preview"
+              disabled={isDeletingHero}
+              onClick={() => setIsDeleteHeroConfirmOpen(false)}
+              className="rounded-md border border-gold/25 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/70 transition hover:border-gold/35 hover:text-gold disabled:opacity-50"
             >
-              <X className="h-5 w-5" />
+              CANCEL
             </button>
-            {lightboxIsVideo ? (
-              <video
-                src={lightboxSrc}
-                className="max-h-[82vh] w-full rounded-xl object-contain"
-                controls
-                playsInline
-                preload="metadata"
-                aria-label="Expanded About view"
-              />
-            ) : (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={lightboxSrc}
-                alt="Expanded About view"
-                className="max-h-[82vh] w-full rounded-xl object-contain"
-              />
-            )}
+            <button
+              type="button"
+              disabled={isDeletingHero}
+              onClick={() => void deleteSavedHeroMedia()}
+              className="rounded-md border border-red-400/45 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-red-200 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isDeletingHero ? "REMOVING…" : "REMOVE"}
+            </button>
           </div>
         </div>
-      ) : null}
+      </AdminModal>
+
+      {lightboxPortalReady
+        ? createPortal(
+            <AnimatePresence onExitComplete={() => setLightboxDisplay(null)}>
+              {isPreviewLightboxOpen && lightboxDisplay ? (
+                <motion.div
+                  key={`${lightboxDisplay.src}-${lightboxDisplay.isVideo ? "v" : "i"}`}
+                  className="admin-theme fixed inset-0 z-190 flex items-center justify-center bg-black/88 px-4 py-8 backdrop-blur-sm"
+                  role="presentation"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+                  onClick={() => closeHeroLightbox()}
+                >
+                  <motion.div
+                    className="relative w-full max-w-5xl rounded-2xl border border-gold/30 bg-[#0a0d12] p-3 shadow-2xl ring-1 ring-gold/10"
+                    initial={{ opacity: 0, scale: 0.9, y: 28 }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                      y: 0,
+                      transition: { type: "spring", damping: 26, stiffness: 320, mass: 0.88 },
+                    }}
+                    exit={{
+                      opacity: 0,
+                      scale: 0.96,
+                      y: 14,
+                      transition: { duration: 0.2, ease: [0.4, 0, 1, 1] },
+                    }}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <motion.button
+                      type="button"
+                      onClick={() => closeHeroLightbox()}
+                      className="shamell-glass-surface absolute right-3 top-3 z-10 rounded-full border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
+                      aria-label="Close preview"
+                      initial={{ opacity: 0, scale: 0.85 }}
+                      animate={{
+                        opacity: 1,
+                        scale: 1,
+                        transition: { delay: 0.08, type: "spring", stiffness: 400, damping: 22 },
+                      }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                    >
+                      <X className="h-5 w-5" />
+                    </motion.button>
+                    <motion.div
+                      className="pt-2"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        transition: { delay: 0.06, duration: 0.26, ease: [0.22, 1, 0.36, 1] },
+                      }}
+                      exit={{ opacity: 0, transition: { duration: 0.12 } }}
+                    >
+                      {lightboxDisplay.isVideo ? (
+                        <video
+                          src={lightboxDisplay.src}
+                          className="max-h-[82vh] w-full rounded-xl object-contain"
+                          controls
+                          playsInline
+                          preload="metadata"
+                          aria-label="Expanded About view"
+                        />
+                      ) : (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={lightboxDisplay.src}
+                          alt="Expanded About view"
+                          className="max-h-[82vh] w-full rounded-xl object-contain"
+                        />
+                      )}
+                    </motion.div>
+                  </motion.div>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

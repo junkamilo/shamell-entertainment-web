@@ -4,6 +4,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -59,4 +60,10 @@ export class UpdateAdminBookingDto {
   @IsOptional()
   @IsEnum(BookingStatus)
   status?: BookingStatus;
+
+  /** Partial merge into existing `bookingDetails` (e.g. times, serviceIds). */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  bookingDetails?: Record<string, unknown>;
 }

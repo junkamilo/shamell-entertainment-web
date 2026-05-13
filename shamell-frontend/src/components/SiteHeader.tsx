@@ -97,6 +97,7 @@ export default function SiteHeader() {
   const [activeSection, setActiveSection] = useState("hero");
   const [showAdminEntry, setShowAdminEntry] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [desktopEffectsEnabled, setDesktopEffectsEnabled] = useState(false);
 
   useEffect(() => {
     const syncAdmin = () => setShowAdminEntry(isAdminLoggedIn());
@@ -114,6 +115,16 @@ export default function SiteHeader() {
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 768px)");
+    const syncViewport = () => setDesktopEffectsEnabled(mediaQuery.matches);
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+
+    return () => mediaQuery.removeEventListener("change", syncViewport);
   }, []);
 
   useEffect(() => {
@@ -165,7 +176,9 @@ export default function SiteHeader() {
 
   const activeHref = useMemo(() => {
     if (pathname === "/") {
-      const bySection = navItems.find((item) => item.sectionId === activeSection);
+      const bySection = navItems.find(
+        (item) => item.sectionId === activeSection,
+      );
       return bySection?.href ?? "/#hero";
     }
 
@@ -191,14 +204,18 @@ export default function SiteHeader() {
           boxShadow: headerElevated
             ? "0 18px 56px rgba(0,0,0,0.62)"
             : "0 10px 34px rgba(0,0,0,0.22)",
-          backdropFilter: headerElevated ? "blur(24px)" : "blur(14px)",
+          backdropFilter: desktopEffectsEnabled
+            ? headerElevated
+              ? "blur(18px)"
+              : "blur(8px)"
+            : "blur(2px)",
         }}
         transition={{ duration: 0.48, ease: [0.16, 1, 0.3, 1] }}
         className={cn(
           "fixed top-px left-0 right-0 z-90 transition-[background-color,border-color] duration-500 ease-out",
           headerElevated
-            ? "border-b border-gold/28 bg-[linear-gradient(180deg,rgba(10,6,14,0.92),rgba(8,6,10,0.72))] shadow-[0_18px_56px_rgba(0,0,0,0.62)] backdrop-blur-2xl"
-            : "border-b border-gold/16 bg-[linear-gradient(180deg,rgba(12,8,16,0.58),rgba(12,8,16,0.28))] backdrop-blur-lg",
+            ? "border-b border-gold/28 bg-[linear-gradient(180deg,rgba(10,6,14,0.94),rgba(8,6,10,0.78))] shadow-[0_18px_56px_rgba(0,0,0,0.62)] md:backdrop-blur-xl"
+            : "border-b border-gold/16 bg-[linear-gradient(180deg,rgba(12,8,16,0.68),rgba(12,8,16,0.36))] md:backdrop-blur-md",
           isMenuOpen && "md:border-gold/20",
         )}
       >
@@ -214,7 +231,11 @@ export default function SiteHeader() {
           <div className="hidden min-h-17 w-full items-center justify-between gap-6 md:flex lg:gap-8 xl:gap-10">
             <div className="flex min-w-0 flex-1 items-center gap-4 lg:gap-6 xl:gap-8">
               <motion.div
-                whileHover={{ scale: 1.035, y: -1, filter: "drop-shadow(0 0 14px rgba(197,165,90,0.18))" }}
+                whileHover={{
+                  scale: 1.035,
+                  y: -1,
+                  filter: "drop-shadow(0 0 14px rgba(197,165,90,0.18))",
+                }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.22, ease: "easeOut" }}
               >
@@ -246,7 +267,11 @@ export default function SiteHeader() {
             <div className="flex shrink-0 items-center gap-2 sm:gap-2.5 lg:gap-3">
               {showAdminEntry ? (
                 <motion.div
-                  whileHover={{ scale: 1.025, y: -1, boxShadow: "0 0 22px rgba(197,165,90,0.18)" }}
+                  whileHover={{
+                    scale: 1.025,
+                    y: -1,
+                    boxShadow: "0 0 22px rgba(197,165,90,0.18)",
+                  }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
                 >
@@ -260,13 +285,19 @@ export default function SiteHeader() {
                     title="Admin"
                   >
                     <FlameIcon className="h-5 w-3.5 shrink-0 opacity-90" />
-                    <span className="font-brand text-xs font-semibold tracking-[0.16em] lg:tracking-[0.18em]">ADMIN</span>
+                    <span className="font-brand text-xs font-semibold tracking-[0.16em] lg:tracking-[0.18em]">
+                      ADMIN
+                    </span>
                   </Link>
                 </motion.div>
               ) : null}
 
               <motion.div
-                whileHover={{ scale: 1.025, y: -1, boxShadow: "0 0 24px rgba(197,165,90,0.22)" }}
+                whileHover={{
+                  scale: 1.025,
+                  y: -1,
+                  boxShadow: "0 0 24px rgba(197,165,90,0.22)",
+                }}
                 whileTap={{ scale: 0.98 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
               >
@@ -287,7 +318,11 @@ export default function SiteHeader() {
           {/* Mobile */}
           <div className="flex min-h-17 w-full items-center justify-between gap-3 md:hidden">
             <motion.div
-              whileHover={{ scale: 1.035, y: -1, filter: "drop-shadow(0 0 14px rgba(197,165,90,0.18))" }}
+              whileHover={{
+                scale: 1.035,
+                y: -1,
+                filter: "drop-shadow(0 0 14px rgba(197,165,90,0.18))",
+              }}
               whileTap={{ scale: 0.98 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
             >
@@ -301,7 +336,11 @@ export default function SiteHeader() {
             <div className="flex shrink-0 items-center gap-1">
               {showAdminEntry ? (
                 <motion.div
-                  whileHover={{ scale: 1.025, y: -1, boxShadow: "0 0 18px rgba(197,165,90,0.16)" }}
+                  whileHover={{
+                    scale: 1.025,
+                    y: -1,
+                    boxShadow: "0 0 18px rgba(197,165,90,0.16)",
+                  }}
                   whileTap={{ scale: 0.98 }}
                   transition={{ duration: 0.2, ease: "easeOut" }}
                 >
@@ -310,7 +349,9 @@ export default function SiteHeader() {
                     className="flex min-h-9 min-w-24 items-center justify-center rounded-md border border-gold/40 bg-black/30 px-3 py-1.5 text-center text-gold"
                     aria-label="Admin"
                   >
-                    <span className="font-brand text-xs font-semibold tracking-[0.14em]">ADMIN</span>
+                    <span className="font-brand text-xs font-semibold tracking-[0.14em]">
+                      ADMIN
+                    </span>
                   </Link>
                 </motion.div>
               ) : null}
@@ -324,7 +365,11 @@ export default function SiteHeader() {
                 whileTap={{ scale: 0.94 }}
                 transition={{ duration: 0.18, ease: "easeOut" }}
               >
-                {isMenuOpen ? <X size={20} strokeWidth={1.5} /> : <Menu size={20} strokeWidth={1.5} />}
+                {isMenuOpen ? (
+                  <X size={20} strokeWidth={1.5} />
+                ) : (
+                  <Menu size={20} strokeWidth={1.5} />
+                )}
               </motion.button>
             </div>
           </div>
@@ -361,14 +406,20 @@ export default function SiteHeader() {
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
-                    transition={{ delay: 0.04 + i * 0.045, duration: 0.24, ease: "easeOut" }}
+                    transition={{
+                      delay: 0.04 + i * 0.045,
+                      duration: 0.24,
+                      ease: "easeOut",
+                    }}
                   >
                     <Link
                       href={item.href}
                       onClick={() => setIsMenuOpen(false)}
                       className={cn(
                         "block border-b border-white/6 py-4 font-brand text-base font-medium tracking-[0.2em] uppercase transition-colors duration-300",
-                        activeHref === item.href ? "text-gold" : "text-foreground/75 hover:text-gold-light",
+                        activeHref === item.href
+                          ? "text-gold"
+                          : "text-foreground/75 hover:text-gold-light",
                       )}
                     >
                       {item.label}
@@ -382,9 +433,16 @@ export default function SiteHeader() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -6 }}
-                  whileHover={{ scale: 1.02, boxShadow: "0 0 22px rgba(197,165,90,0.18)" }}
+                  whileHover={{
+                    scale: 1.02,
+                    boxShadow: "0 0 22px rgba(197,165,90,0.18)",
+                  }}
                   whileTap={{ scale: 0.98 }}
-                  transition={{ delay: 0.04 + navItems.length * 0.045, duration: 0.24, ease: "easeOut" }}
+                  transition={{
+                    delay: 0.04 + navItems.length * 0.045,
+                    duration: 0.24,
+                    ease: "easeOut",
+                  }}
                 >
                   Inquire
                 </motion.a>
@@ -393,7 +451,11 @@ export default function SiteHeader() {
                     initial={{ opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -6 }}
-                    transition={{ delay: 0.04 + (navItems.length + 1) * 0.045, duration: 0.24, ease: "easeOut" }}
+                    transition={{
+                      delay: 0.04 + (navItems.length + 1) * 0.045,
+                      duration: 0.24,
+                      ease: "easeOut",
+                    }}
                   >
                     <Link
                       href="/shamell-admin"

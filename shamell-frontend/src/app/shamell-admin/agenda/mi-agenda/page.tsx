@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, UserRound } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Package, UserRound } from "lucide-react";
 import AdminBackButton from "@/components/admin/AdminBackButton";
 import AdminModal from "@/components/admin/AdminModal";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
-import { hhmmToMinutes } from "@/components/contact/contactLogisticsUtils";
+import ShamellTime12hColumns from "@/components/ShamellTime12hColumns";
+import { hhmmToMinutes, hhmmToParts, partsToHHMM } from "@/components/contact/contactLogisticsUtils";
 import { useAdminBookings, type AdminBookingRow } from "@/hooks/use-admin-bookings";
 import { toast } from "@/hooks/use-toast";
 import { utcInstantForWallClock } from "@/lib/bookingAvailability";
+import { bookingServiceChip, bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
 
 type ViewMode = "day" | "week" | "month";
 type EnrichedBooking = AdminBookingRow & { dateIso: string; start: string; end: string; startM: number; durationM: number };
@@ -99,12 +101,11 @@ function readBookingTime(row: AdminBookingRow, timeZone: string): { start: strin
 }
 
 function eventTypeLabel(row: AdminBookingRow): string {
-  return row.event?.name || row.eventType?.name || row.service?.serviceType?.name || "Event";
+  return row.event?.name || row.eventType?.name || row.occasionType?.name || "—";
 }
 
 function eventChipLabel(row: AdminBookingRow): string {
-  if (row.service?.serviceType?.name) return row.service.serviceType.name.toUpperCase();
-  return "BOOKING";
+  return bookingServiceChip(row);
 }
 
 function durationLabel(minutes: number): string {
@@ -498,6 +499,10 @@ export default function MiAgendaPage() {
                       {selected.location || "Location TBD"}
                     </p>
                     <p className="flex items-center gap-2 text-sm text-foreground/75">
+                      <Package className="h-4 w-4 text-gold/80" />
+                      {bookingServiceDisplayLine(selected) || selected.service?.serviceType?.name || "—"}
+                    </p>
+                    <p className="flex items-center gap-2 text-sm text-foreground/75">
                       <Clock3 className="h-4 w-4 text-gold/80" />
                       {selected.start} - {selected.end} · {durationLabel(selected.durationM)}
                     </p>
@@ -533,24 +538,30 @@ export default function MiAgendaPage() {
                       className="mt-1 w-full rounded-lg border border-gold/20 bg-black/25 px-3 py-2 text-sm text-foreground outline-none focus:border-gold/40"
                     />
                   </label>
-                  <label className="block">
+                  <div className="block md:col-span-2">
                     <span className="font-brand text-[10px] tracking-widest text-gold/70">START TIME</span>
-                    <input
-                      type="time"
-                      value={editStart}
-                      onChange={(e) => setEditStart(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-gold/20 bg-black/25 px-3 py-2 text-sm text-foreground outline-none focus:border-gold/40"
+                    <ShamellTime12hColumns
+                      className="mt-1 max-w-sm"
+                      value={hhmmToParts(/^\d{2}:\d{2}$/.test(editStart.trim()) ? editStart.trim() : "12:00")}
+                      onChange={(p) => setEditStart(partsToHHMM(p.h12, p.min, p.ap))}
+                      labels={{ hour: "HOUR", minute: "MIN", period: "AM/PM" }}
                     />
-                  </label>
-                  <label className="block">
+                  </div>
+                  <div className="block md:col-span-2">
                     <span className="font-brand text-[10px] tracking-widest text-gold/70">END TIME</span>
-                    <input
-                      type="time"
-                      value={editEnd}
-                      onChange={(e) => setEditEnd(e.target.value)}
-                      className="mt-1 w-full rounded-lg border border-gold/20 bg-black/25 px-3 py-2 text-sm text-foreground outline-none focus:border-gold/40"
+                    <ShamellTime12hColumns
+                      className="mt-1 max-w-sm"
+                      value={hhmmToParts(
+                        /^\d{2}:\d{2}$/.test(editEnd.trim())
+                          ? editEnd.trim()
+                          : /^\d{2}:\d{2}$/.test(editStart.trim())
+                            ? editStart.trim()
+                            : "12:00",
+                      )}
+                      onChange={(p) => setEditEnd(partsToHHMM(p.h12, p.min, p.ap))}
+                      labels={{ hour: "HOUR", minute: "MIN", period: "AM/PM" }}
                     />
-                  </label>
+                  </div>
                   <label className="block md:col-span-2">
                     <span className="font-brand text-[10px] tracking-widest text-gold/70">NOTES</span>
                     <textarea

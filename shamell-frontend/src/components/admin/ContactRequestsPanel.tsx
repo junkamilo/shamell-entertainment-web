@@ -28,6 +28,7 @@ import { useAdminBookings, type AdminBookingRow } from "@/hooks/use-admin-bookin
 import { useAdminPeticiones } from "@/hooks/use-admin-peticiones";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
 
 function formatRequestDate(iso: string) {
   try {
@@ -264,7 +265,10 @@ function RequestCard({
           <p className="mt-1 line-clamp-2 font-body text-xs text-foreground/65">
             {contact
               ? formatContactSubjectForAdmin(contact.subject)
-              : booking?.event?.name || booking?.eventType?.name || booking?.service?.serviceType?.name || "Admin booking"}
+              : booking?.event?.name ||
+                  booking?.eventType?.name ||
+                  bookingServiceDisplayLine(booking) ||
+                  "Admin booking"}
           </p>
           <p className="mt-1 font-brand text-[10px] tracking-widest text-foreground/40">
             {formatRequestDate(row.createdAt)}

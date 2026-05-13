@@ -78,7 +78,7 @@ export class ServicesController {
   @UseInterceptors(
     FileInterceptor('image', {
       storage: memoryStorage(),
-      limits: { fileSize: 8 * 1024 * 1024 },
+      limits: { fileSize: 100 * 1024 * 1024 },
     }),
   )
   createService(
@@ -86,11 +86,14 @@ export class ServicesController {
     @UploadedFile() imageFile?: Express.Multer.File,
   ) {
     if (!imageFile) {
-      throw new BadRequestException('Image file is required.');
+      throw new BadRequestException('Image or video file is required.');
     }
 
-    if (!imageFile.mimetype.startsWith('image/')) {
-      throw new BadRequestException('Only image files are allowed.');
+    const okMime =
+      imageFile.mimetype.startsWith('image/') ||
+      imageFile.mimetype.startsWith('video/');
+    if (!okMime) {
+      throw new BadRequestException('Only image or video files are allowed.');
     }
 
     return this.servicesService.createService(dto, imageFile);
@@ -109,7 +112,7 @@ export class ServicesController {
   @UseInterceptors(
     FileInterceptor('image', {
       storage: memoryStorage(),
-      limits: { fileSize: 8 * 1024 * 1024 },
+      limits: { fileSize: 100 * 1024 * 1024 },
     }),
   )
   updateService(
@@ -117,14 +120,18 @@ export class ServicesController {
     @Body() dto: UpdateServiceDto,
     @UploadedFile() imageFile?: Express.Multer.File,
   ) {
-    if (imageFile && !imageFile.mimetype.startsWith('image/')) {
-      throw new BadRequestException('Only image files are allowed.');
+    if (
+      imageFile &&
+      !imageFile.mimetype.startsWith('image/') &&
+      !imageFile.mimetype.startsWith('video/')
+    ) {
+      throw new BadRequestException('Only image or video files are allowed.');
     }
 
     const hasBodyFields = Object.keys(dto).length > 0;
     if (!hasBodyFields && !imageFile) {
       throw new BadRequestException(
-        'Provide at least one field or image to update.',
+        'Provide at least one field or media file to update.',
       );
     }
 

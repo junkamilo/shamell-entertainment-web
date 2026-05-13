@@ -12,9 +12,16 @@ async function bootstrap() {
   // Security
   app.use(helmet());
 
-  // CORS - permite que el frontend consuma la API
+  // CORS: un origen o varios separados por coma (p. ej. dominio www + Vercel).
+  const frontendOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+  const corsOrigin =
+    frontendOrigins.length === 1 ? frontendOrigins[0] : frontendOrigins;
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    origin: corsOrigin,
     credentials: true,
   });
 

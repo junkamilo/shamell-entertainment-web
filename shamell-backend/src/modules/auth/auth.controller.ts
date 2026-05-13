@@ -79,10 +79,4 @@ export class AuthController {
   verifyAdminInvite(@Body() dto: VerifyAdminInviteDto) {
     return this.authService.verifyAdminInvite(dto);
   }
-
-  @Post('admin/invite/google')
-  @HttpCode(HttpStatus.CREATED)
-  completeAdminInviteGoogle(@Body() dto: GoogleCredentialDto) {
-    return this.authService.completeAdminInviteGoogle(dto.credential);
-  }
 }

@@ -1,5 +1,5 @@
 export type AgendarFormValues = {
-  serviceId: string;
+  serviceIds: string[];
   eventTypeId: string;
   occasionTypeId: string;
   eventDateIso: string;
@@ -15,6 +15,8 @@ export type AgendarFormValues = {
 
 export type NormalizedAgendarForm = Omit<AgendarFormValues, "guestCount"> & {
   guestCount: number;
+  /** Same as `serviceIds[0]`; sent as top-level `serviceId` to the API. */
+  serviceId: string;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -36,11 +38,58 @@ export function sanitizeIntegerInput(value: string): string {
   return value.replace(/[^\d]/g, "");
 }
 
+/** Per-section completion for mobile Book UI (aligned with `validateAgendarForm` rules). */
+export function getAgendarMobileSectionStatus(values: AgendarFormValues): {
+  event: boolean;
+  logistics: boolean;
+  client: boolean;
+} {
+  const serviceIds = values.serviceIds.filter((id) => id.trim().length > 0);
+  const eventTypeId = values.eventTypeId.trim();
+  const occasionTypeId = values.occasionTypeId.trim();
+  const event = Boolean(eventTypeId && occasionTypeId && serviceIds.length > 0);
+
+  const eventDateIso = values.eventDateIso.trim();
+  const eventTimeStart = values.eventTimeStart.trim();
+  const eventTimeEnd = values.eventTimeEnd.trim();
+  const location = compactSpaces(values.location);
+  const logistics =
+    Boolean(eventDateIso && ISO_DATE_RE.test(eventDateIso) && eventTimeStart && eventTimeEnd) &&
+    location.length >= 3 &&
+    location.length <= 120;
+
+  const guestFullName = compactSpaces(values.guestFullName);
+  const guestEmail = values.guestEmail.trim().toLowerCase();
+  const guestPhone = compactSpaces(values.guestPhone);
+  const guestCountRaw = values.guestCount.trim();
+  const notes = values.notes.trim();
+  const phoneDigits = guestPhone.replace(/\D/g, "");
+  const guestCount = Number(guestCountRaw);
+
+  const client =
+    guestFullName.length >= 3 &&
+    guestFullName.length <= 90 &&
+    !/\d/.test(guestFullName) &&
+    Boolean(guestEmail) &&
+    guestEmail.length <= 120 &&
+    EMAIL_RE.test(guestEmail) &&
+    Boolean(guestPhone) &&
+    phoneDigits.length >= 7 &&
+    phoneDigits.length <= 15 &&
+    Boolean(guestCountRaw) &&
+    Number.isInteger(guestCount) &&
+    guestCount >= 1 &&
+    guestCount <= 20000 &&
+    notes.length <= 1000;
+
+  return { event, logistics, client };
+}
+
 export function validateAgendarForm(values: AgendarFormValues): {
   error: string | null;
   normalized: NormalizedAgendarForm | null;
 } {
-  const serviceId = values.serviceId.trim();
+  const serviceIds = values.serviceIds.filter((id) => id.trim().length > 0);
   const eventTypeId = values.eventTypeId.trim();
   const occasionTypeId = values.occasionTypeId.trim();
   const eventDateIso = values.eventDateIso.trim();
@@ -55,7 +104,7 @@ export function validateAgendarForm(values: AgendarFormValues): {
 
   if (!eventTypeId) return { error: "Required field missing: Event type.", normalized: null };
   if (!occasionTypeId) return { error: "Required field missing: Occasion.", normalized: null };
-  if (!serviceId) return { error: "Required field missing: Service.", normalized: null };
+  if (serviceIds.length < 1) return { error: "Select at least one service.", normalized: null };
   if (!eventDateIso) return { error: "Required field missing: Event date.", normalized: null };
   if (!ISO_DATE_RE.test(eventDateIso)) return { error: "Event date is not valid.", normalized: null };
   if (!eventTimeStart) return { error: "Required field missing: Start time.", normalized: null };
@@ -98,7 +147,8 @@ export function validateAgendarForm(values: AgendarFormValues): {
   return {
     error: null,
     normalized: {
-      serviceId,
+      serviceId: serviceIds[0],
+      serviceIds,
       eventTypeId,
       occasionTypeId,
       eventDateIso,

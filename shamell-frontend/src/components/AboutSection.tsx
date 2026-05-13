@@ -5,12 +5,17 @@ import portrait from "@/assets/gallery-2.jpg";
 import OrnamentDivider from "./OrnamentDivider";
 import RevealOnView from "@/components/shared/RevealOnView";
 import { useAboutContent } from "@/hooks/use-about-content";
+import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
 import { splitAboutParagraphs } from "@/lib/aboutParagraphs";
 import { cn } from "@/lib/utils";
 
 const AboutSection = () => {
   const { about, isLoading } = useAboutContent();
   const bodyParagraphs = splitAboutParagraphs(about.paragraph1);
+  const heroIsVideo = inferAboutHeroIsVideo({
+    heroMediaType: about.heroMediaType,
+    imageUrl: about.imageUrl,
+  });
 
   return (
     <section id="about" className="bg-transparent px-4 py-20 md:py-24">
@@ -41,7 +46,7 @@ const AboutSection = () => {
             >
               {!isLoading ? (
                 <>
-                  {about.imageUrl && about.heroMediaType === "VIDEO" ? (
+                  {about.imageUrl && heroIsVideo ? (
                     <video
                       src={about.imageUrl}
                       className="absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-700 ease-out group-hover/portrait:opacity-95 sm:p-4"

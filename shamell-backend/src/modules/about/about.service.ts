@@ -120,6 +120,43 @@ export class AboutService {
     }
   }
 
+  async deleteAdminAboutHeroMedia() {
+    const existing = await this.prisma.aboutContent.findFirst({
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (!existing) {
+      throw new NotFoundException('About content not found.');
+    }
+    if (!existing.imageUrl && !existing.imagePublicId) {
+      throw new BadRequestException(
+        'There is no hero image or video to remove.',
+      );
+    }
+
+    if (existing.imagePublicId) {
+      this.ensureCloudinaryEnv();
+      const prevType = this.normalizeHeroMediaType(existing.heroMediaType);
+      await this.deleteHeroFromCloudinary(
+        existing.imagePublicId,
+        prevType,
+      );
+    }
+
+    const saved = await this.prisma.aboutContent.update({
+      where: { id: existing.id },
+      data: {
+        imageUrl: null,
+        imagePublicId: null,
+        heroMediaType: 'IMAGE',
+      },
+    });
+
+    return {
+      message: 'Hero image or video removed from the site and Cloudinary.',
+      about: this.mapAboutContent(saved),
+    };
+  }
+
   private ensureRequiredForCreate(
     dto: UpsertAboutContentDto,
     mediaFile?: Express.Multer.File,

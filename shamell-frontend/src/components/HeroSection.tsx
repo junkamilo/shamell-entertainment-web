@@ -6,6 +6,7 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { AnimatePresence, motion } from "motion/react";
 import { buildHeroWaveClipPathD } from "@/lib/heroPearlWave";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import HeroFallbackBackground from "./HeroFallbackBackground";
 import FlameIcon from "./FlameIcon";
 
@@ -15,6 +16,7 @@ const heroClipPath = `url(#${heroWaveClipPathId})`;
 type HeaderHeroPhoto = {
   id: string;
   imageUrl: string;
+  mediaType: "IMAGE" | "VIDEO";
   focalX?: number;
   focalY?: number;
   focalMobileX?: number;
@@ -24,6 +26,51 @@ type HeaderHeroPhoto = {
 function clampPercent(value: number | undefined, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function headerHeroMediaType(
+  imageUrl: string,
+  raw: unknown,
+): "IMAGE" | "VIDEO" {
+  if (raw === "VIDEO" || raw === "IMAGE") return raw;
+  return serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO"
+    ? "VIDEO"
+    : "IMAGE";
+}
+
+function HeroSlideMedia({
+  url,
+  isVideo,
+  objectPosition,
+  className,
+}: {
+  url: string;
+  isVideo: boolean;
+  objectPosition: string;
+  className: string;
+}) {
+  if (isVideo) {
+    return (
+      <video
+        src={url}
+        className={className}
+        style={{ objectPosition }}
+        muted
+        playsInline
+        loop
+        autoPlay
+        aria-hidden
+      />
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt=""
+      className={className}
+      style={{ objectPosition }}
+    />
+  );
 }
 
 const HeroSection = () => {
@@ -40,17 +87,26 @@ const HeroSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [enableAmbientHeroMotion, setEnableAmbientHeroMotion] = useState(false);
 
   useEffect(() => {
     setHasHydrated(true);
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const largeViewportQuery = window.matchMedia("(min-width: 1536px)");
     const syncMotionPreference = () =>
       setPrefersReducedMotion(mediaQuery.matches);
+    const syncAmbientMotion = () =>
+      setEnableAmbientHeroMotion(largeViewportQuery.matches);
 
     syncMotionPreference();
+    syncAmbientMotion();
     mediaQuery.addEventListener("change", syncMotionPreference);
+    largeViewportQuery.addEventListener("change", syncAmbientMotion);
 
-    return () => mediaQuery.removeEventListener("change", syncMotionPreference);
+    return () => {
+      mediaQuery.removeEventListener("change", syncMotionPreference);
+      largeViewportQuery.removeEventListener("change", syncAmbientMotion);
+    };
   }, []);
 
   useEffect(() => {
@@ -69,6 +125,7 @@ const HeroSection = () => {
             return {
               id: typeof item?.id === "string" ? item.id : imageUrl,
               imageUrl,
+              mediaType: headerHeroMediaType(imageUrl, item?.mediaType),
               focalX:
                 typeof item?.focalX === "number" ? item.focalX : undefined,
               focalY:
@@ -125,8 +182,8 @@ const HeroSection = () => {
           scrollTrigger: {
             trigger: pin,
             start: "top top",
-            end: reducedMotion ? "+=45%" : "+=110%",
-            scrub: true,
+            end: reducedMotion ? "+=38%" : "+=70%",
+            scrub: reducedMotion ? 0.2 : 0.35,
             pin: true,
             pinSpacing: true,
             anticipatePin: 1,
@@ -138,20 +195,20 @@ const HeroSection = () => {
           .to(
             imageLayer,
             {
-              scale: reducedMotion ? 1.18 : 1.7,
-              yPercent: reducedMotion ? -1 : -4,
+              scale: reducedMotion ? 1.12 : 1.45,
+              yPercent: reducedMotion ? -0.5 : -2,
               ease: "none",
             },
             0,
           )
           .to(
             content,
-            { opacity: 0, y: reducedMotion ? -24 : -58, ease: "none" },
+            { opacity: 0, y: reducedMotion ? -18 : -38, ease: "none" },
             0,
           )
           .to(
             darkOverlay,
-            { opacity: reducedMotion ? 0.34 : 0.68, ease: "none" },
+            { opacity: reducedMotion ? 0.3 : 0.5, ease: "none" },
             0,
           );
 
@@ -164,7 +221,7 @@ const HeroSection = () => {
             trigger: pin,
             start: "top top",
             end: reducedMotion ? "+=45%" : "+=82%",
-            scrub: true,
+            scrub: reducedMotion ? 0.2 : 0.3,
             pin: true,
             pinSpacing: true,
             anticipatePin: 1,
@@ -202,7 +259,7 @@ const HeroSection = () => {
             trigger: pin,
             start: "top top",
             end: reducedMotion ? "+=55%" : "+=110%",
-            scrub: true,
+            scrub: reducedMotion ? 0.25 : 0.35,
             pin: true,
             pinSpacing: true,
             anticipatePin: 1,
@@ -259,6 +316,7 @@ const HeroSection = () => {
     ? photos[activeIndex % photos.length]
     : null;
   const animateVisuals = hasHydrated && !prefersReducedMotion;
+  const animateAmbientHero = animateVisuals && enableAmbientHeroMotion;
 
   return (
     <section ref={heroSectionRef} id="hero" className="relative bg-transparent">
@@ -291,8 +349,8 @@ const HeroSection = () => {
             initial={false}
             animate={
               hasHydrated
-                ? { opacity: 1, scale: 1, filter: "blur(0px)" }
-                : { opacity: 0, scale: 1.12, filter: "blur(10px)" }
+                ? { opacity: 1, scale: 1 }
+                : { opacity: 0, scale: 1.12 }
             }
             transition={
               prefersReducedMotion
@@ -317,35 +375,32 @@ const HeroSection = () => {
                               ? {
                                   opacity: 0,
                                   scale: 1.12,
-                                  filter: "blur(12px)",
                                 }
                               : { opacity: 1 }
                           }
                           animate={{
                             opacity: 1,
                             scale: 1,
-                            filter: "blur(0px)",
                           }}
                           exit={
                             animateVisuals
-                              ? { opacity: 0, scale: 1.08, filter: "blur(8px)" }
+                              ? { opacity: 0, scale: 1.08 }
                               : { opacity: 0 }
                           }
                           transition={{
                             opacity: { duration: 0.9, ease: "easeOut" },
                             scale: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
-                            filter: { duration: 0.9, ease: "easeOut" },
                           }}
                         >
                           <motion.div
                             className="absolute inset-0"
                             animate={
-                              animateVisuals
+                              animateAmbientHero
                                 ? { scale: [1.03, 1.06] }
                                 : { scale: 1.03 }
                             }
                             transition={
-                              animateVisuals
+                              animateAmbientHero
                                 ? {
                                     duration: 18,
                                     ease: "easeInOut",
@@ -355,21 +410,17 @@ const HeroSection = () => {
                                 : undefined
                             }
                           >
-                            <img
-                              src={activePhoto.imageUrl}
-                              alt=""
+                            <HeroSlideMedia
+                              url={activePhoto.imageUrl}
+                              isVideo={activePhoto.mediaType === "VIDEO"}
+                              objectPosition={`${clampPercent(activePhoto.focalX, 50)}% ${clampPercent(activePhoto.focalY, 35)}%`}
                               className="absolute inset-0 hidden h-full w-full object-cover md:block"
-                              style={{
-                                objectPosition: `${clampPercent(activePhoto.focalX, 50)}% ${clampPercent(activePhoto.focalY, 35)}%`,
-                              }}
                             />
-                            <img
-                              src={activePhoto.imageUrl}
-                              alt=""
+                            <HeroSlideMedia
+                              url={activePhoto.imageUrl}
+                              isVideo={activePhoto.mediaType === "VIDEO"}
+                              objectPosition={`${clampPercent(activePhoto.focalMobileX, clampPercent(activePhoto.focalX, 50))}% ${clampPercent(activePhoto.focalMobileY, clampPercent(activePhoto.focalY, 35))}%`}
                               className="absolute inset-0 h-full w-full object-cover md:hidden"
-                              style={{
-                                objectPosition: `${clampPercent(activePhoto.focalMobileX, clampPercent(activePhoto.focalX, 50))}% ${clampPercent(activePhoto.focalMobileY, clampPercent(activePhoto.focalY, 35))}%`,
-                              }}
                             />
                           </motion.div>
                         </motion.div>
@@ -380,10 +431,12 @@ const HeroSection = () => {
                   <motion.div
                     className="absolute inset-0"
                     animate={
-                      animateVisuals ? { scale: [1.03, 1.06] } : { scale: 1.03 }
+                      animateAmbientHero
+                        ? { scale: [1.03, 1.06] }
+                        : { scale: 1.03 }
                     }
                     transition={
-                      animateVisuals
+                      animateAmbientHero
                         ? {
                             duration: 18,
                             ease: "easeInOut",

@@ -61,4 +61,13 @@ export class UpdateServiceDto {
   })
   @IsBoolean()
   isActive?: boolean;
+
+  /** When true (multipart field `clearImage`), removes stored media from DB and Cloudinary. Ignored if a new `image` file is uploaded in the same request. */
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return value === 'true' || value === true || value === '1';
+  })
+  @IsBoolean()
+  clearImage?: boolean;
 }
