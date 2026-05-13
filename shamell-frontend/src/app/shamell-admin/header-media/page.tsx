@@ -2,6 +2,7 @@
 
 import {
   type ChangeEvent,
+  type CSSProperties,
   type KeyboardEvent,
   FormEvent,
   type DragEvent,
@@ -27,16 +28,19 @@ import {
   X,
 } from "lucide-react";
 import AdminBackButton from "@/components/admin/AdminBackButton";
+import AdminModal from "@/components/admin/AdminModal";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminPagination from "@/components/admin/AdminPagination";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import { toast } from "@/hooks/use-toast";
 import { DEFAULT_PAGINATION_META } from "@/lib/pagination";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import { cn } from "@/lib/utils";
 
 type HeaderPhoto = {
   id: string;
   imageUrl: string;
+  mediaType?: "IMAGE" | "VIDEO";
   focalX: number;
   focalY: number;
   focalMobileX: number;
@@ -61,17 +65,79 @@ function clampPercent(value: number): number {
   return Math.min(100, Math.max(0, Math.round(value)));
 }
 
-function displayNameFromImageUrl(url: string): string {
-  try {
-    const u = new URL(url);
-    const last = u.pathname.split("/").filter(Boolean).pop();
-    if (last && last.includes(".")) return decodeURIComponent(last.slice(0, 48));
-    return decodeURIComponent(last ?? "Image").slice(0, 48);
-  } catch {
-    const trimmed = url.split("?")[0];
-    const last = trimmed.split("/").pop();
-    return (last ? decodeURIComponent(last) : "Image").slice(0, 48);
+function headerLibraryItemIsVideo(photo: HeaderPhoto): boolean {
+  if (photo.mediaType === "VIDEO") return true;
+  return serviceCatalogMediaTypeFromUrl(photo.imageUrl) === "VIDEO";
+}
+
+function HeaderLibraryMedia({
+  photo,
+  className,
+  style,
+}: {
+  photo: HeaderPhoto;
+  className: string;
+  style: CSSProperties;
+}) {
+  if (headerLibraryItemIsVideo(photo)) {
+    return (
+      <video
+        src={photo.imageUrl}
+        muted
+        playsInline
+        loop
+        autoPlay
+        className={cn("absolute inset-0 h-full w-full", className)}
+        style={style}
+      />
+    );
   }
+  return (
+    <Image
+      src={photo.imageUrl}
+      alt=""
+      fill
+      unoptimized
+      className={className}
+      style={style}
+    />
+  );
+}
+
+function HeaderFocusMedia({
+  url,
+  isVideo,
+  objectPosition,
+  className,
+}: {
+  url: string;
+  isVideo: boolean;
+  objectPosition: string;
+  className: string;
+}) {
+  if (isVideo) {
+    return (
+      <video
+        src={url}
+        muted
+        playsInline
+        loop
+        autoPlay
+        className={cn("absolute inset-0 h-full w-full", className)}
+        style={{ objectPosition }}
+      />
+    );
+  }
+  return (
+    <Image
+      src={url}
+      alt=""
+      fill
+      unoptimized
+      className={className}
+      style={{ objectPosition }}
+    />
+  );
 }
 
 function SectionGoldDivider() {
@@ -108,6 +174,8 @@ export default function ShamellAdminHeaderMediaPage() {
     mobileY: 35,
   });
   const [isSavingFocus, setIsSavingFocus] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<HeaderPhoto | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const paginationMeta = useMemo(() => {
     const totalItems = photos.length;
@@ -133,12 +201,20 @@ export default function ShamellAdminHeaderMediaPage() {
     [pendingFiles],
   );
 
+  const focusEditorIsVideo = useMemo(
+    () =>
+      editingFocusPhoto ? headerLibraryItemIsVideo(editingFocusPhoto) : false,
+    [editingFocusPhoto],
+  );
+
   const mergeFiles = useCallback((incoming: File[]) => {
-    const imageFiles = incoming.filter((f) => f.type.startsWith("image/"));
+    const mediaFiles = incoming.filter(
+      (f) => f.type.startsWith("image/") || f.type.startsWith("video/"),
+    );
     setPendingFiles((prev) => {
       const seen = new Set(prev.map(fileKey));
       const next = [...prev];
-      for (const f of imageFiles) {
+      for (const f of mediaFiles) {
         const k = fileKey(f);
         if (!seen.has(k)) {
           seen.add(k);
@@ -250,7 +326,7 @@ export default function ShamellAdminHeaderMediaPage() {
       toast({
         variant: "destructive",
         title: "File required",
-        description: "Select at least one image.",
+        description: "Select at least one image or video.",
       });
       return;
     }
@@ -273,8 +349,8 @@ export default function ShamellAdminHeaderMediaPage() {
         throw new Error(message);
       }
       toast({
-        title: "Photos uploaded",
-        description: "Main header images were saved.",
+        title: "Media uploaded",
+        description: "Main header images and videos were saved.",
       });
       clearPending();
       await loadData();
@@ -313,34 +389,56 @@ export default function ShamellAdminHeaderMediaPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not update the photo status.",
+        description: "Could not update the item status.",
       });
     }
   };
 
-  const onDelete = async (photoId: string) => {
+  const openDeleteConfirm = (photo: HeaderPhoto) => {
+    setPendingDelete(photo);
+  };
+
+  const onConfirmDelete = async () => {
+    if (!pendingDelete) return;
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
-    if (!token) return;
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
+      });
+      return;
+    }
+
+    setIsDeleting(true);
     try {
       const response = await fetch(
-        `${apiBaseUrl}/api/v1/header-media/admin/photos/${photoId}`,
+        `${apiBaseUrl}/api/v1/header-media/admin/photos/${pendingDelete.id}`,
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
         },
       );
       if (!response.ok) throw new Error();
+
+      if (editingFocusPhoto?.id === pendingDelete.id) {
+        setEditingFocusPhoto(null);
+      }
+
       toast({
-        title: "Photo removed",
-        description: "The photo was removed from the main header.",
+        title: "Item removed",
+        description: "The item was removed from the main header.",
       });
+      setPendingDelete(null);
       await loadData();
     } catch {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Could not delete the photo.",
+        description: "Could not delete the item.",
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -433,7 +531,7 @@ export default function ShamellAdminHeaderMediaPage() {
 
       <AdminModuleHero
         title="Main header"
-        actionLabel="Upload photos"
+        actionLabel="Upload media"
         onAction={onPickFiles}
         bordered={false}
       />
@@ -441,7 +539,7 @@ export default function ShamellAdminHeaderMediaPage() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         multiple
         className="hidden"
         onChange={onInputChange}
@@ -451,7 +549,7 @@ export default function ShamellAdminHeaderMediaPage() {
         {/* 01 — Upload zone */}
         <div className="mb-2 flex items-center justify-between gap-3">
           <p className="font-brand text-[11px] tracking-[0.2em] text-gold/90">
-            01 — UPLOAD IMAGES
+            01 — UPLOAD MEDIA
           </p>
         </div>
 
@@ -470,13 +568,13 @@ export default function ShamellAdminHeaderMediaPage() {
         >
           <CloudUpload className="h-10 w-10 text-gold/80" strokeWidth={1.25} aria-hidden />
           <p className="mt-4 font-body text-sm text-foreground">
-            Drag images here or{" "}
+            Drag images or videos here or{" "}
             <span className="font-medium text-gold underline decoration-gold/40 underline-offset-4">
               choose files
             </span>
           </p>
           <p className="mt-2 max-w-md font-body text-xs text-foreground/55">
-            JPG · PNG · WebP · 1920 × 1080 recommended · multiple files allowed
+            JPG · PNG · WebP · MP4 · WebM · 1920 × 1080 recommended · multiple files allowed
           </p>
         </button>
 
@@ -485,7 +583,7 @@ export default function ShamellAdminHeaderMediaPage() {
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Library</h2>
             <span className="rounded-full border border-gold/35 bg-gold/10 px-2.5 py-0.5 font-brand text-[10px] tracking-widest text-gold">
-              {isLoading ? "…" : `${paginationMeta.totalItems} foto${paginationMeta.totalItems === 1 ? "" : "s"}`}
+              {isLoading ? "…" : `${paginationMeta.totalItems} item${paginationMeta.totalItems === 1 ? "" : "s"}`}
             </span>
           </div>
           <span
@@ -501,7 +599,7 @@ export default function ShamellAdminHeaderMediaPage() {
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gold/20 px-6 py-12 text-center">
             <ImagePlus className="h-9 w-9 text-gold/35" />
             <p className="mt-3 text-sm text-foreground/55">
-              No photos in the main header yet.
+              No media in the main header yet.
             </p>
           </div>
         ) : isLoading && photos.length === 0 ? (
@@ -513,7 +611,6 @@ export default function ShamellAdminHeaderMediaPage() {
             {pagedPhotos.map((photo, idx) => {
               const globalIndex =
                 (paginationMeta.page - 1) * paginationMeta.perPage + idx + 1;
-              const fileLabel = displayNameFromImageUrl(photo.imageUrl);
               return (
                 <article
                   key={photo.id}
@@ -523,13 +620,12 @@ export default function ShamellAdminHeaderMediaPage() {
                   )}
                 >
                   <div className="relative aspect-video">
-                    <Image
-                      src={photo.imageUrl}
-                      alt=""
-                      fill
-                      unoptimized
+                    <HeaderLibraryMedia
+                      photo={photo}
                       className="object-cover"
-                      style={{ objectPosition: `${clampPercent(photo.focalX)}% ${clampPercent(photo.focalY)}%` }}
+                      style={{
+                        objectPosition: `${clampPercent(photo.focalX)}% ${clampPercent(photo.focalY)}%`,
+                      }}
                     />
                     <span className="absolute left-2 top-2 rounded-md border border-gold/35 bg-black/55 px-2 py-0.5 font-brand text-[10px] tracking-widest text-gold">
                       #{globalIndex}
@@ -545,15 +641,12 @@ export default function ShamellAdminHeaderMediaPage() {
                       {photo.isActive ? "● ACTIVE" : "● INACTIVE"}
                     </span>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 border-t border-gold/12 bg-black/20 px-2.5 py-2">
-                    <p className="min-w-0 flex-1 truncate font-body text-[11px] text-foreground/70" title={fileLabel}>
-                      {fileLabel}
-                    </p>
+                  <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gold/12 bg-black/20 px-2.5 py-2">
                     <button
                       type="button"
                       onClick={() => window.open(photo.imageUrl, "_blank", "noopener,noreferrer")}
                       className="shrink-0 rounded-lg border border-gold/25 p-1.5 text-gold transition hover:bg-gold/10"
-                      aria-label="Open image in new tab"
+                      aria-label="Open in new tab"
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </button>
@@ -585,9 +678,9 @@ export default function ShamellAdminHeaderMediaPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => onDelete(photo.id)}
-                      className="ml-auto shrink-0 rounded-lg border border-red-400/30 p-1.5 text-red-200 transition hover:bg-red-500/10"
-                      aria-label="Delete photo"
+                      onClick={() => openDeleteConfirm(photo)}
+                      className="shrink-0 rounded-lg border border-red-400/30 p-1.5 text-red-200 transition hover:bg-red-500/10"
+                      aria-label="Delete item"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
@@ -647,13 +740,22 @@ export default function ShamellAdminHeaderMediaPage() {
                       >
                         <div className="relative h-14 w-18 shrink-0 overflow-hidden rounded-md border border-gold/15 bg-black/30">
                           {previewUrl ? (
-                            <Image
-                              src={previewUrl}
-                              alt=""
-                              fill
-                              unoptimized
-                              className="object-cover"
-                            />
+                            file.type.startsWith("video/") ? (
+                              <video
+                                src={previewUrl}
+                                muted
+                                playsInline
+                                className="absolute inset-0 h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Image
+                                src={previewUrl}
+                                alt=""
+                                fill
+                                unoptimized
+                                className="object-cover"
+                              />
+                            )
                           ) : (
                             <div className="flex h-full items-center justify-center">
                               <ImagePlus className="h-6 w-6 text-gold/30" />
@@ -699,7 +801,7 @@ export default function ShamellAdminHeaderMediaPage() {
                 <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-gold/10 pt-4">
                   <p className="flex items-center gap-2 font-body text-xs text-foreground/50">
                     <span className="inline-block h-2 w-2 rounded-full bg-gold/50" aria-hidden />
-                    Images publish when you confirm.
+                    Images and videos publish when you confirm.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -720,7 +822,7 @@ export default function ShamellAdminHeaderMediaPage() {
                       ) : (
                         <Upload className="h-4 w-4" />
                       )}
-                      Publish {pendingFiles.length} photo{pendingFiles.length === 1 ? "" : "s"}
+                      Publish {pendingFiles.length} file{pendingFiles.length === 1 ? "" : "s"}
                     </button>
                   </div>
                 </div>
@@ -737,7 +839,7 @@ export default function ShamellAdminHeaderMediaPage() {
               <div>
                 <h3 className="font-brand text-base tracking-[0.12em] text-gold">Adjust hero focus</h3>
                 <p className="mt-1 text-xs text-foreground/60">
-                  Click the image to move the focal point. This improves framing on laptop and mobile.
+                  Click the preview to move the focal point. This improves framing on laptop and mobile.
                 </p>
               </div>
               <button
@@ -762,13 +864,11 @@ export default function ShamellAdminHeaderMediaPage() {
                 }}
                 className="relative aspect-video cursor-crosshair overflow-hidden rounded-xl border border-gold/20 sm:aspect-16/8"
               >
-                <Image
-                  src={editingFocusPhoto.imageUrl}
-                  alt=""
-                  fill
-                  unoptimized
+                <HeaderFocusMedia
+                  url={editingFocusPhoto.imageUrl}
+                  isVideo={focusEditorIsVideo}
+                  objectPosition={`${focusDraft.desktopX}% ${focusDraft.desktopY}%`}
                   className="object-cover scale-[1.12]"
-                  style={{ objectPosition: `${focusDraft.desktopX}% ${focusDraft.desktopY}%` }}
                 />
                 <span
                   className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-gold bg-black/50"
@@ -793,13 +893,11 @@ export default function ShamellAdminHeaderMediaPage() {
                     }}
                     className="relative aspect-video w-full cursor-crosshair overflow-hidden rounded-xl border border-gold/20"
                   >
-                    <Image
-                      src={editingFocusPhoto.imageUrl}
-                      alt=""
-                      fill
-                      unoptimized
+                    <HeaderFocusMedia
+                      url={editingFocusPhoto.imageUrl}
+                      isVideo={focusEditorIsVideo}
+                      objectPosition={`${focusDraft.desktopX}% ${focusDraft.desktopY}%`}
                       className="object-cover scale-[1.12]"
-                      style={{ objectPosition: `${focusDraft.desktopX}% ${focusDraft.desktopY}%` }}
                     />
                     <span
                       className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-gold bg-black/50"
@@ -859,13 +957,11 @@ export default function ShamellAdminHeaderMediaPage() {
                     }}
                     className="relative mx-auto aspect-9/16 w-full max-w-[220px] cursor-crosshair overflow-hidden rounded-xl border border-gold/20 md:mx-0"
                   >
-                    <Image
-                      src={editingFocusPhoto.imageUrl}
-                      alt=""
-                      fill
-                      unoptimized
+                    <HeaderFocusMedia
+                      url={editingFocusPhoto.imageUrl}
+                      isVideo={focusEditorIsVideo}
+                      objectPosition={`${focusDraft.mobileX}% ${focusDraft.mobileY}%`}
                       className="object-cover scale-[1.12]"
-                      style={{ objectPosition: `${focusDraft.mobileX}% ${focusDraft.mobileY}%` }}
                     />
                     <span
                       className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-gold bg-black/50"
@@ -939,6 +1035,42 @@ export default function ShamellAdminHeaderMediaPage() {
           </div>
         </div>
       ) : null}
+
+      <AdminModal
+        title="Remove header media"
+        isOpen={Boolean(pendingDelete)}
+        onClose={() => {
+          if (!isDeleting) setPendingDelete(null);
+        }}
+      >
+        <div className="space-y-5 font-body text-sm text-foreground/85">
+          <p>
+            Permanently remove this{" "}
+            {pendingDelete && headerLibraryItemIsVideo(pendingDelete)
+              ? "video"
+              : "image"}{" "}
+            from the main header? You will not be able to recover it.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setPendingDelete(null)}
+              disabled={isDeleting}
+              className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void onConfirmDelete()}
+              disabled={isDeleting}
+              className="rounded-xl border border-red-400/45 bg-red-500/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-red-200 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
+        </div>
+      </AdminModal>
     </div>
   );
 }

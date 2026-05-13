@@ -7,7 +7,6 @@ import {
   Crown,
   Flame,
   Heart,
-  MoreHorizontal,
   Music,
   Pencil,
   Sparkles,
@@ -18,8 +17,10 @@ import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminModal from "@/components/admin/AdminModal";
+import AdminPagination from "@/components/admin/AdminPagination";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import { toast } from "@/hooks/use-toast";
+import { DEFAULT_PAGINATION_META } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
 type OccasionUsage = "OCCASION_SINGLE" | "BESPOKE_PROJECT" | "BESPOKE_ROLE";
@@ -131,6 +132,8 @@ export default function ShamellAdminEventTypesPage() {
   const [name, setName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [types, setTypes] = useState<EventTypeItem[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -139,7 +142,6 @@ export default function ShamellAdminEventTypesPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<EventTypeItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [occasionCatalog, setOccasionCatalog] = useState<OccasionCatalogItem[]>([]);
   /** Active occasion ids (and optionally inherited inactive links) checked for this type. */
   const [linkedOccasionIds, setLinkedOccasionIds] = useState<string[]>([]);
@@ -150,13 +152,6 @@ export default function ShamellAdminEventTypesPage() {
     if (Array.isArray(payload.message)) return payload.message.join(", ");
     return payload.message ?? fallback;
   }, []);
-
-  useEffect(() => {
-    if (!menuOpenId) return;
-    const close = () => setMenuOpenId(null);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [menuOpenId]);
 
   const resetForm = () => {
     setName("");
@@ -408,7 +403,6 @@ export default function ShamellAdminEventTypesPage() {
     setName(item.name);
     setLinkedOccasionIds(flattenLinkedOccasionIdsFromAssignments(item.occasionAssignments));
     setIsModalOpen(true);
-    setMenuOpenId(null);
   };
 
   const hasBlockingUsage = (item: EventTypeItem) =>
@@ -440,7 +434,6 @@ export default function ShamellAdminEventTypesPage() {
     }
 
     setTogglingId(item.id);
-    setMenuOpenId(null);
     try {
       const response = await fetch(`${apiBaseUrl}/api/v1/events/types/admin/${item.id}`, {
         method: "PATCH",
@@ -492,7 +485,6 @@ export default function ShamellAdminEventTypesPage() {
       });
       return;
     }
-    setMenuOpenId(null);
     setPendingDelete(item);
   };
 
@@ -556,6 +548,29 @@ export default function ShamellAdminEventTypesPage() {
     return list;
   }, [types, searchQuery, filterTab]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterTab]);
+
+  const paginationMeta = useMemo(() => {
+    const totalItems = filteredTypes.length;
+    const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    return {
+      page: safePage,
+      perPage,
+      totalItems,
+      totalPages,
+      hasPrev: safePage > 1,
+      hasNext: safePage < totalPages,
+    };
+  }, [page, perPage, filteredTypes.length]);
+
+  const pagedTypes = useMemo(() => {
+    const start = (paginationMeta.page - 1) * paginationMeta.perPage;
+    return filteredTypes.slice(start, start + paginationMeta.perPage);
+  }, [filteredTypes, paginationMeta.page, paginationMeta.perPage]);
+
   const stats = useMemo(() => {
     const total = types.length;
     const active = types.filter((t) => t.isActive).length;
@@ -593,7 +608,6 @@ export default function ShamellAdminEventTypesPage() {
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
         title="Event types"
-        subtitle="Categories that organize your live experiences."
         actionLabel="New type"
         onAction={onHeroAction}
         bordered={false}
@@ -651,8 +665,9 @@ export default function ShamellAdminEventTypesPage() {
             />
           )
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredTypes.map((item) => {
+          <>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {pagedTypes.map((item) => {
             const Icon = iconForTypeName(item.name);
             const nEvents = item.eventCount ?? 0;
             const nBk = item.bookingCount ?? 0;
@@ -670,7 +685,7 @@ export default function ShamellAdminEventTypesPage() {
                 key={item.id}
                 className="shamell-glass-surface relative flex flex-col rounded-2xl border border-gold/16 p-4"
               >
-                <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2">
                   <p
                     className={cn(
                       "flex items-center gap-2 font-brand text-[10px] tracking-[0.16em]",
@@ -680,59 +695,6 @@ export default function ShamellAdminEventTypesPage() {
                     <span className="text-gold/90">•</span>
                     {item.isActive ? "ACTIVE" : "INACTIVE"}
                   </p>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setMenuOpenId((prev) => (prev === item.id ? null : item.id));
-                      }}
-                      className="rounded-lg border border-transparent p-1.5 text-foreground/55 transition hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
-                      aria-label={`More options: ${item.name}`}
-                    >
-                      <MoreHorizontal className="h-4 w-4" strokeWidth={1.6} />
-                    </button>
-                    {menuOpenId === item.id ? (
-                      <div
-                        role="menu"
-                        className="absolute right-0 top-full z-20 mt-1 min-w-40 rounded-lg border border-gold/20 bg-[#0c0c0c] py-1 shadow-xl"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold"
-                          onClick={() => startEdit(item)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold"
-                          onClick={() => void onToggleActive(item)}
-                          disabled={togglingId === item.id || blockDeactivate}
-                          title={
-                            blockDeactivate
-                              ? "Catalog, bookings, or photos are linked; cannot turn off."
-                              : undefined
-                          }
-                        >
-                          {item.isActive ? "Hide" : "Show"}
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full px-3 py-2 text-left text-xs text-red-200/90 hover:bg-red-500/10"
-                          onClick={() => openDeleteConfirm(item)}
-                          disabled={!deletable}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
                 </div>
 
                 <div className="mt-4 flex items-start gap-3">
@@ -811,7 +773,17 @@ export default function ShamellAdminEventTypesPage() {
               </article>
             );
           })}
-          </div>
+            </div>
+            <AdminPagination
+              className="mt-6 border-t border-gold/10 pt-4"
+              meta={paginationMeta}
+              onPageChange={setPage}
+              onPerPageChange={(next) => {
+                setPerPage(next);
+                setPage(DEFAULT_PAGINATION_META.page);
+              }}
+            />
+          </>
         )}
       </section>
 

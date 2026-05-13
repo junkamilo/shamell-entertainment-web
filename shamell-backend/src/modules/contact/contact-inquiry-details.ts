@@ -40,6 +40,10 @@ export type SanitizedInquiryDetails = {
   guestCount?: number;
   /** Street / venue address line from public booking form (city may still be in top-level `location`). */
   eventAddress?: string;
+  /** Admin Book form: multiple catalog service row ids (order = selection); first must match booking.serviceId. */
+  serviceIds?: string[];
+  /** Server-enriched service type names (same order as `serviceIds`). */
+  serviceLabels?: string[];
   venueIndoor?: boolean | null;
   conciergeIntent?: string;
   planningStage?: string;
@@ -206,6 +210,16 @@ export function sanitizeInquiryDetails(
   const eventTimeEnd = trimString(raw.eventTimeEnd, 24);
   if (eventTimeEnd) out.eventTimeEnd = eventTimeEnd;
 
+  const serviceIds = trimUuidArray(raw.serviceIds, MAX_UUID_ARRAY);
+  if (serviceIds) out.serviceIds = serviceIds;
+
+  const serviceLabels = trimStringArray(
+    raw.serviceLabels,
+    MAX_UUID_ARRAY,
+    MAX_ITEM_LEN,
+  );
+  if (serviceLabels) out.serviceLabels = serviceLabels;
+
   if (raw.guestCount !== undefined && raw.guestCount !== null) {
     const n = Number(raw.guestCount);
     if (!Number.isFinite(n) || n < 0 || n > 100_000 || !Number.isInteger(n)) {
@@ -329,6 +343,11 @@ export function formatInquiryDetailsSummary(
     lines.push(
       `Time: ${details.eventTimeStart ?? '?'} – ${details.eventTimeEnd ?? '?'}`,
     );
+  }
+  if (details.serviceLabels?.length) {
+    lines.push(`Services: ${details.serviceLabels.join(', ')}`);
+  } else if (details.serviceIds?.length) {
+    lines.push(`Service ids: ${details.serviceIds.join(', ')}`);
   }
   if (details.guestCount != null)
     lines.push(`Guests (approx.): ${details.guestCount}`);

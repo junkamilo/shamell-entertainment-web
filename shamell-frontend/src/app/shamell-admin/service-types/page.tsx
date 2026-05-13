@@ -7,7 +7,6 @@ import {
   Crown,
   Flame,
   Heart,
-  MoreHorizontal,
   Music,
   Pencil,
   Sparkles,
@@ -66,7 +65,6 @@ export default function ShamellAdminServiceTypesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ServiceTypeItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [page, setPage] = useState(1);
@@ -78,13 +76,6 @@ export default function ShamellAdminServiceTypesPage() {
     if (Array.isArray(payload.message)) return payload.message.join(", ");
     return payload.message ?? fallback;
   }, []);
-
-  useEffect(() => {
-    if (!menuOpenId) return;
-    const close = () => setMenuOpenId(null);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, [menuOpenId]);
 
   const resetForm = () => {
     setName("");
@@ -253,7 +244,6 @@ export default function ShamellAdminServiceTypesPage() {
     setEditingId(item.id);
     setName(item.name);
     setIsModalOpen(true);
-    setMenuOpenId(null);
   };
 
   const onToggleActive = async (item: ServiceTypeItem) => {
@@ -277,7 +267,6 @@ export default function ShamellAdminServiceTypesPage() {
     }
 
     setTogglingId(item.id);
-    setMenuOpenId(null);
     try {
       const response = await fetch(`${apiBaseUrl}/api/v1/services/types/admin/${item.id}`, {
         method: "PATCH",
@@ -337,7 +326,6 @@ export default function ShamellAdminServiceTypesPage() {
       });
       return;
     }
-    setMenuOpenId(null);
     setPendingDelete(item);
   };
 
@@ -525,77 +513,15 @@ export default function ShamellAdminServiceTypesPage() {
                 key={item.id}
                 className="shamell-glass-surface relative flex flex-col rounded-2xl border border-gold/16 p-4"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <p
-                    className={cn(
-                      "flex items-center gap-2 font-brand text-[10px] tracking-[0.16em]",
-                      item.isActive ? "text-emerald-400/90" : "text-foreground/45",
-                    )}
-                  >
-                    <span className="text-gold/90">•</span>
-                    {item.isActive ? "ACTIVE" : "INACTIVE"}
-                  </p>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setMenuOpenId((prev) => (prev === item.id ? null : item.id));
-                      }}
-                      className="rounded-lg border border-transparent p-1.5 text-foreground/55 transition hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
-                      aria-label={`More options: ${item.name}`}
-                    >
-                      <MoreHorizontal className="h-4 w-4" strokeWidth={1.6} />
-                    </button>
-                    {menuOpenId === item.id ? (
-                      <div
-                        role="menu"
-                        className="absolute right-0 top-full z-20 mt-1 min-w-[10rem] rounded-lg border border-gold/20 bg-[#0c0c0c] py-1 shadow-xl"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold"
-                          onClick={() => startEdit(item)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full px-3 py-2 text-left text-xs text-foreground/85 hover:bg-gold/10 hover:text-gold disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent disabled:hover:text-foreground/85"
-                          onClick={() => void onToggleActive(item)}
-                          disabled={togglingId === item.id || blockDeactivate}
-                          title={
-                            blockDeactivate
-                              ? "Services use this type; cannot turn off."
-                              : undefined
-                          }
-                        >
-                          {item.isActive ? "Hide" : "Show"}
-                        </button>
-                        <button
-                          type="button"
-                          role="menuitem"
-                          className="flex w-full px-3 py-2 text-left text-xs text-red-300/95 hover:bg-red-500/15 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent disabled:hover:text-red-300/95"
-                          onClick={() => openDeleteConfirm(item)}
-                          disabled={!deletable}
-                          title={
-                            !deletable
-                              ? svc > 0
-                                ? "Cannot delete: linked services exist."
-                                : "Cannot delete: linked gallery photos exist."
-                              : "Delete permanently from catalog"
-                          }
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
+                <p
+                  className={cn(
+                    "flex items-center gap-2 font-brand text-[10px] tracking-[0.16em]",
+                    item.isActive ? "text-emerald-400/90" : "text-foreground/45",
+                  )}
+                >
+                  <span className="text-gold/90">•</span>
+                  {item.isActive ? "ACTIVE" : "INACTIVE"}
+                </p>
 
                 <div className="mt-4 flex items-start gap-3">
                   <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-gold/35 bg-gold/10">

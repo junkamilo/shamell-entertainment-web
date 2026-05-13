@@ -9,6 +9,8 @@ type SummaryCardData = {
   description?: string;
   items?: string[];
   imageUrl?: string | null;
+  /** When set to VIDEO, `imageUrl` is played as muted inline video. */
+  imageMediaType?: "IMAGE" | "VIDEO";
 };
 
 function SummaryCard({
@@ -33,8 +35,22 @@ function SummaryCard({
     <div className="overflow-hidden rounded-xl border border-gold/30 bg-[linear-gradient(165deg,rgba(21,12,24,0.92),rgba(8,6,10,0.98))]">
       {data.imageUrl ? (
         <div className="relative aspect-video w-full overflow-hidden border-b border-gold/20">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={data.imageUrl} alt="" className="h-full w-full object-cover" />
+          {data.imageMediaType === "VIDEO" ? (
+            <video
+              src={data.imageUrl}
+              className="h-full w-full object-cover"
+              muted
+              playsInline
+              loop
+              autoPlay
+              aria-hidden
+            />
+          ) : (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={data.imageUrl} alt="" className="h-full w-full object-cover" />
+            </>
+          )}
           <div
             className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgba(3,2,4,0.72)_100%)]"
             aria-hidden

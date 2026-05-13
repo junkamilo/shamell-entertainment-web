@@ -64,3 +64,75 @@ export function partsToHHMM(h12: number, min: number, ap: "AM" | "PM"): string {
   if (ap === "AM" && h12 === 12) h24 = 0;
   return `${String(h24).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 }
+
+/** Minutes from midnight for a 12h clock triple. */
+export function minutesFromParts(h12: number, min: number, ap: "AM" | "PM"): number | null {
+  return hhmmToMinutes(partsToHHMM(h12, min, ap));
+}
+
+/** True if this wall time is within `timeClamp` and not inside any `blockedRanges` (inclusive). */
+export function isTimeSlotSelectable(
+  h12: number,
+  min: number,
+  ap: "AM" | "PM",
+  timeClamp?: { minMinutes: number; maxMinutes: number },
+  blockedRanges?: Array<{ startMinutes: number; endMinutes: number }>,
+): boolean {
+  const total = minutesFromParts(h12, min, ap);
+  if (total === null) return false;
+  if (timeClamp) {
+    if (total < timeClamp.minMinutes || total > timeClamp.maxMinutes) return false;
+  }
+  for (const r of blockedRanges ?? []) {
+    if (total >= r.startMinutes && total <= r.endMinutes) return false;
+  }
+  return true;
+}
+
+/** First selectable minute in clamp order (then full day as fallback). */
+export function firstSelectableMinuteParts(
+  timeClamp?: { minMinutes: number; maxMinutes: number },
+  blockedRanges?: Array<{ startMinutes: number; endMinutes: number }>,
+): { h12: number; min: number; ap: "AM" | "PM" } {
+  const ranges: Array<{ lo: number; hi: number }> = [];
+  if (timeClamp) ranges.push({ lo: timeClamp.minMinutes, hi: timeClamp.maxMinutes });
+  else ranges.push({ lo: 0, hi: 24 * 60 - 1 });
+  for (const { lo, hi } of ranges) {
+    for (let total = lo; total <= hi; total++) {
+      const h24 = Math.floor(total / 60);
+      const min = total % 60;
+      const ap: "AM" | "PM" = h24 >= 12 ? "PM" : "AM";
+      let h12 = h24 % 12;
+      if (h12 === 0) h12 = 12;
+      if (isTimeSlotSelectable(h12, min, ap, timeClamp, blockedRanges)) {
+        return { h12, min, ap };
+      }
+    }
+  }
+  if (timeClamp) {
+    for (let total = 0; total < 24 * 60; total++) {
+      const h24 = Math.floor(total / 60);
+      const min = total % 60;
+      const ap: "AM" | "PM" = h24 >= 12 ? "PM" : "AM";
+      let h12 = h24 % 12;
+      if (h12 === 0) h12 = 12;
+      if (isTimeSlotSelectable(h12, min, ap, timeClamp, blockedRanges)) {
+        return { h12, min, ap };
+      }
+    }
+  }
+  return { h12: 12, min: 0, ap: "AM" };
+}
+
+export function snapToNearestSelectableParts(
+  h12: number,
+  min: number,
+  ap: "AM" | "PM",
+  timeClamp?: { minMinutes: number; maxMinutes: number },
+  blockedRanges?: Array<{ startMinutes: number; endMinutes: number }>,
+): { h12: number; min: number; ap: "AM" | "PM" } {
+  if (isTimeSlotSelectable(h12, min, ap, timeClamp, blockedRanges)) {
+    return { h12, min, ap };
+  }
+  return firstSelectableMinuteParts(timeClamp, blockedRanges);
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
 
 export type AboutContentItem = {
   title: string;
@@ -25,10 +26,10 @@ function inferHeroMediaType(payload: {
   heroMediaType?: unknown;
   imageUrl?: string | null;
 }): "IMAGE" | "VIDEO" {
-  if (payload.heroMediaType === "VIDEO") return "VIDEO";
   if (payload.heroMediaType === "IMAGE") return "IMAGE";
-  const u = typeof payload.imageUrl === "string" ? payload.imageUrl : "";
-  if (u.includes("/video/upload/")) return "VIDEO";
+  if (inferAboutHeroIsVideo({ heroMediaType: payload.heroMediaType as string, imageUrl: payload.imageUrl })) {
+    return "VIDEO";
+  }
   return "IMAGE";
 }
 

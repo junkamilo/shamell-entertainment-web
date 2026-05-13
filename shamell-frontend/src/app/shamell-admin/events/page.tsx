@@ -3,7 +3,6 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   Calendar,
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -31,7 +30,7 @@ type AdminEvent = {
   description: string;
   items: string[];
   price: number | null;
-  catalogImages: { id: string; imageUrl: string }[];
+  catalogImages: { id: string; imageUrl: string; mediaType?: string }[];
   isActive: boolean;
   showOnHome: boolean;
   createdAt?: string;
@@ -45,6 +44,24 @@ const DESCRIPTION_MAX_LENGTH = 5000;
 const ITEM_MAX_LENGTH = 180;
 const PAGE_SIZE = 6;
 const MAX_CATALOG_IMAGES = 12;
+
+function isVideoCatalogItem(row: { mediaType?: string }) {
+  return (row.mediaType ?? "IMAGE").toUpperCase() === "VIDEO";
+}
+
+function isVideoFile(f: File) {
+  return f.type.startsWith("video/");
+}
+
+/** MIME or filename extension — some mobile pickers leave `type` empty. */
+function isCatalogMediaFile(f: File) {
+  const t = f.type.toLowerCase();
+  if (t.startsWith("image/") || t.startsWith("video/")) return true;
+  if (!t || t === "application/octet-stream") {
+    return /\.(jpe?g|png|gif|webp|avif|heic|heif|bmp|mp4|webm|mov|mkv|m4v|avi)$/i.test(f.name);
+  }
+  return false;
+}
 
 function parseOptionalPrice(
   raw: string,
@@ -106,6 +123,21 @@ function displayEventHeading(description: string): { title: string; subtitle: st
   return { title, subtitle };
 }
 
+/** First line of description (for tooltips). */
+function firstLineOfEventDescription(description: string): string {
+  const t = description.trim();
+  if (!t) return "";
+  return t.split(/\n/)[0]?.trim() ?? t;
+}
+
+/** Short single-line label for the events data table only. */
+function eventTitleForTablePreview(description: string, maxLen = 36): string {
+  const line = firstLineOfEventDescription(description);
+  if (!line) return "No description";
+  if (line.length <= maxLen) return line;
+  return `${line.slice(0, maxLen - 1).trimEnd()}…`;
+}
+
 function formatShortDateUs(iso: string | undefined): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -113,22 +145,19 @@ function formatShortDateUs(iso: string | undefined): string {
   return d.toLocaleDateString("en-US", { day: "numeric", month: "short" }).replace(".", "");
 }
 
-type FilterTab = "all" | "upcoming" | "completed";
-
 export default function ShamellAdminEventsPage() {
   const apiBaseUrl = useMemo(() => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001", []);
 
   const [eventTypeId, setEventTypeId] = useState("");
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [page, setPage] = useState(1);
   const [viewEvent, setViewEvent] = useState<AdminEvent | null>(null);
 
   const [description, setDescription] = useState("");
   const [itemsText, setItemsText] = useState("");
   const [priceInput, setPriceInput] = useState("");
-  const [existingImages, setExistingImages] = useState<{ id: string; imageUrl: string }[]>([]);
+  const [existingImages, setExistingImages] = useState<{ id: string; imageUrl: string; mediaType?: string }[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [originalSnapshot, setOriginalSnapshot] = useState<{
     eventTypeId: string;
@@ -251,7 +280,11 @@ export default function ShamellAdminEventsPage() {
                 ? (catalogRaw as Record<string, unknown>[]).flatMap((row) => {
                     const id = row.id != null ? String(row.id) : "";
                     const imageUrl = row.imageUrl != null ? String(row.imageUrl) : "";
-                    return id && imageUrl ? [{ id, imageUrl }] : [];
+                    const mediaType =
+                      row.mediaType != null && typeof row.mediaType === "string"
+                        ? row.mediaType
+                        : undefined;
+                    return id && imageUrl ? [{ id, imageUrl, mediaType }] : [];
                   })
                 : [];
               return {
@@ -398,8 +431,8 @@ export default function ShamellAdminEventsPage() {
         if (!imgRes.ok) {
           toast({
             variant: "destructive",
-            title: "Images not saved",
-            description: parseErrorMessage(imgData, "The event was saved but image upload failed."),
+            title: "Media not saved",
+            description: parseErrorMessage(imgData, "The event was saved but catalog media upload failed."),
           });
         }
       }
@@ -445,7 +478,7 @@ export default function ShamellAdminEventsPage() {
     if (capacity <= 0) return;
     for (let i = 0; i < fileList.length && next.length < capacity; i++) {
       const f = fileList.item(i);
-      if (!f || !f.type.startsWith("image/")) continue;
+      if (!f || !isCatalogMediaFile(f)) continue;
       next.push(f);
     }
     if (next.length) setPendingFiles((prev) => [...prev, ...next]);
@@ -475,12 +508,12 @@ export default function ShamellAdminEventsPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description: parseErrorMessage(delData, "Could not delete the image."),
+          description: parseErrorMessage(delData, "Could not delete the file."),
         });
         return;
       }
       setExistingImages((prev) => prev.filter((p) => p.id !== photoId));
-      toast({ title: "Image removed" });
+      toast({ title: "Media removed" });
       await loadAllData();
     } catch {
       toast({ variant: "destructive", title: "Offline", description: "Could not reach the server." });
@@ -638,24 +671,11 @@ export default function ShamellAdminEventsPage() {
     });
   }, [events, searchQuery]);
 
-  const tabCounts = useMemo(() => {
-    const all = searchedEvents.length;
-    const upcoming = searchedEvents.filter((e) => e.isActive).length;
-    return { all, upcoming, completed: all - upcoming };
-  }, [searchedEvents]);
-
-  const filteredEvents = useMemo(() => {
-    let list = searchedEvents;
-    if (filterTab === "upcoming") list = list.filter((e) => e.isActive);
-    if (filterTab === "completed") list = list.filter((e) => !e.isActive);
-    return list;
-  }, [searchedEvents, filterTab]);
-
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, filterTab]);
+  }, [searchQuery]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredEvents.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(searchedEvents.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
 
   useEffect(() => {
@@ -663,7 +683,7 @@ export default function ShamellAdminEventsPage() {
   }, [page, safePage]);
 
   const pageOffset = (safePage - 1) * PAGE_SIZE;
-  const paginatedEvents = filteredEvents.slice(pageOffset, pageOffset + PAGE_SIZE);
+  const paginatedEvents = searchedEvents.slice(pageOffset, pageOffset + PAGE_SIZE);
 
   const stats = useMemo(() => {
     const total = events.length;
@@ -725,43 +745,166 @@ export default function ShamellAdminEventsPage() {
         ))}
       </div>
 
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-4">
+      <div className="mb-6">
         <AdminSearchInput
           value={searchQuery}
           onChange={setSearchQuery}
           placeholder="Search events..."
-          className="shamell-glass-surface mx-0 min-h-12 max-w-none flex-1 rounded-xl"
+          className="shamell-glass-surface mx-0 min-h-12 max-w-none w-full rounded-xl"
         />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end lg:shrink-0">
-          <div className="shamell-glass-surface flex flex-wrap rounded-xl p-1">
-            {(
-              [
-                ["all", "All", tabCounts.all],
-                ["upcoming", "Upcoming", tabCounts.upcoming],
-                ["completed", "Completed", tabCounts.completed],
-              ] as const
-            ).map(([id, label, count]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setFilterTab(id)}
-                className={cn(
-                  "rounded-lg px-3 py-2.5 font-brand text-[10px] tracking-[0.12em] transition sm:px-4",
-                  filterTab === id
-                    ? "bg-gold/12 text-gold shadow-inner"
-                    : "text-foreground/50 hover:text-foreground/80",
-                )}
-              >
-                {label} <span className="text-gold/45">·</span> {count}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <section className="shamell-glass-surface rounded-xl p-4 md:p-5">
-        <div className="overflow-x-auto rounded-xl border border-gold/14">
-              <table className="w-full min-w-[1080px] border-collapse text-left">
+        <div className="md:hidden space-y-3 rounded-xl border border-gold/14 p-3">
+          {isLoading ? (
+            <p className="py-10 text-center font-body text-sm text-foreground/65">Loading...</p>
+          ) : searchedEvents.length === 0 ? (
+            events.length === 0 ? (
+              <AdminCatalogEmptyState
+                title="No events yet"
+                description="Add a performance with type, description, and line items for the team."
+                tone="primary"
+                variant="embedded"
+                icon={Calendar}
+                action={{ label: "New event", onClick: openCreateModal }}
+              />
+            ) : (
+              <AdminCatalogEmptyState
+                title="No matches for your search"
+                description="Try different search words."
+                tone="muted"
+                variant="embedded"
+                icon={Calendar}
+              />
+            )
+          ) : (
+            paginatedEvents.map((item) => {
+              const titlePreview = eventTitleForTablePreview(item.description);
+              const titleFull = firstLineOfEventDescription(item.description) || "No description";
+              const bk = item.bookingCount ?? 0;
+              const deletable = canDeleteEvent(item);
+              const blockDeactivate = cannotDeactivateWhileActive(item);
+              return (
+                <article
+                  key={item.id}
+                  className={cn(
+                    "rounded-xl border border-gold/18 bg-black/20 p-4",
+                    !item.isActive && "opacity-60",
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 gap-2.5">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gold/22 bg-gold/10">
+                        <Calendar className="h-4 w-4 text-gold/85" strokeWidth={1.4} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-brand text-sm leading-snug tracking-[0.04em] text-gold line-clamp-2">
+                          <span title={titleFull !== titlePreview ? titleFull : undefined}>{titlePreview}</span>
+                        </p>
+                        <div className="mt-2">
+                          <span
+                            className={cn(
+                              "inline-flex max-w-full truncate rounded-full border px-2.5 py-1 font-body text-[11px]",
+                              pillClassForTypeName(item.eventTypeName),
+                            )}
+                          >
+                            {item.eventTypeName}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setViewEvent(item)}
+                        className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
+                        aria-label="View event"
+                      >
+                        <Eye className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => startEdit(item)}
+                        className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
+                        aria-label="Edit event"
+                      >
+                        <Pencil className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openDeleteConfirm(item)}
+                        disabled={!deletable}
+                        className={cn(
+                          "rounded-lg border p-2 transition",
+                          deletable
+                            ? "border-red-400/25 text-foreground/55 hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
+                            : "cursor-not-allowed border-gold/10 text-foreground/30",
+                        )}
+                        aria-label="Delete event permanently"
+                        title={
+                          !deletable
+                            ? bk > 0
+                              ? "Has linked bookings"
+                              : "Has linked gallery photos"
+                            : "Delete from catalog (cannot undo)"
+                        }
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-gold/10 pt-3 font-body text-xs text-foreground/70">
+                    <div>
+                      <span className="font-brand text-[9px] tracking-[0.14em] text-gold/65">ITEMS</span>
+                      <p className="mt-0.5 text-sm text-foreground/80">{item.items.length}</p>
+                    </div>
+                    <div>
+                      <span className="font-brand text-[9px] tracking-[0.14em] text-gold/65">PRICE</span>
+                      <p className="mt-0.5 text-sm text-foreground/80">{formatPriceEn(item.price)}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3 border-t border-gold/10 pt-3">
+                    <span className="font-brand text-[9px] tracking-[0.14em] text-gold/65">STATUS</span>
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => void onToggleActive(item)}
+                        disabled={togglingId === item.id || blockDeactivate}
+                        title={
+                          blockDeactivate
+                            ? "This event has bookings and cannot be turned off."
+                            : undefined
+                        }
+                        className={cn(
+                          "relative h-7 w-12 shrink-0 rounded-full border transition",
+                          item.isActive
+                            ? "border-emerald-400/45 bg-emerald-500/22"
+                            : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
+                          togglingId === item.id && "cursor-not-allowed opacity-60",
+                          blockDeactivate && "cursor-not-allowed opacity-45",
+                        )}
+                        aria-label={`${item.isActive ? "Hide" : "Show"} event`}
+                      >
+                        <span
+                          className={cn(
+                            "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
+                            item.isActive ? "left-6" : "left-1",
+                          )}
+                        />
+                      </button>
+                      <span className="font-body text-xs text-foreground/55">
+                        {item.isActive ? "Active" : "Hidden"}
+                      </span>
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto rounded-xl border border-gold/14 md:block">
+              <table className="w-full min-w-[960px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-gold/12">
                     <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
@@ -769,7 +912,6 @@ export default function ShamellAdminEventsPage() {
                     <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TYPE</th>
                     <th className="w-16 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
                     <th className="min-w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRICE</th>
-                    <th className="min-w-36 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">DATE</th>
                     <th className="min-w-36 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">
                       STATUS
                     </th>
@@ -780,8 +922,8 @@ export default function ShamellAdminEventsPage() {
                 </thead>
                 <tbody>
                   {paginatedEvents.map((item) => {
-                    const { title, subtitle } = displayEventHeading(item.description);
-                    const dateIso = item.updatedAt ?? item.createdAt;
+                    const titlePreview = eventTitleForTablePreview(item.description);
+                    const titleFull = firstLineOfEventDescription(item.description) || "No description";
                     const bk = item.bookingCount ?? 0;
                     const gal = item.galleryPhotoCount ?? 0;
                     const deletable = canDeleteEvent(item);
@@ -799,18 +941,13 @@ export default function ShamellAdminEventsPage() {
                             <Calendar className="h-4 w-4 text-gold/85" strokeWidth={1.4} />
                           </div>
                         </td>
-                        <td className="max-w-56 px-3 py-3 align-middle md:max-w-72">
-                          <p className="font-brand text-sm tracking-[0.04em] text-gold">{title}</p>
-                          {subtitle ? (
-                            <p className="mt-0.5 font-body text-xs leading-snug text-foreground/45">{subtitle}</p>
-                          ) : null}
-                          {bk > 0 || gal > 0 ? (
-                            <p className="mt-1 font-body text-[10px] text-foreground/45">
-                              {bk > 0 ? `${bk} booking(s)` : null}
-                              {bk > 0 && gal > 0 ? " · " : null}
-                              {gal > 0 ? `${gal} in gallery` : null}
-                            </p>
-                          ) : null}
+                        <td className="max-w-44 min-w-0 px-3 py-3 align-middle sm:max-w-52 md:max-w-60">
+                          <p
+                            className="truncate font-brand text-sm tracking-[0.04em] text-gold"
+                            title={titleFull !== titlePreview ? titleFull : undefined}
+                          >
+                            {titlePreview}
+                          </p>
                         </td>
                         <td className="px-3 py-3 align-middle">
                           <span
@@ -827,17 +964,6 @@ export default function ShamellAdminEventsPage() {
                         </td>
                         <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75 whitespace-nowrap">
                           {formatPriceEn(item.price)}
-                        </td>
-                        <td className="px-3 py-3 align-middle">
-                          <div className="flex items-center gap-2 font-body text-xs text-foreground/65">
-                            {!item.isActive ? (
-                              <Check className="h-3.5 w-3.5 shrink-0 text-emerald-400/90" strokeWidth={2} />
-                            ) : (
-                              <Calendar className="h-3.5 w-3.5 shrink-0 text-gold/60" strokeWidth={1.5} />
-                            )}
-                            <span>{formatShortDateUs(dateIso)}</span>
-                          </div>
-                          <p className="mt-0.5 font-body text-[10px] text-foreground/35">Last updated</p>
                         </td>
                         <td className="px-3 py-3 align-middle">
                           <div className="flex items-center gap-3">
@@ -916,9 +1042,9 @@ export default function ShamellAdminEventsPage() {
                       </tr>
                     );
                   })}
-                  {!isLoading && filteredEvents.length === 0 ? (
+                  {!isLoading && searchedEvents.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="border-b border-gold/8 p-0 align-middle">
+                      <td colSpan={7} className="border-b border-gold/8 p-0 align-middle">
                         {events.length === 0 ? (
                           <AdminCatalogEmptyState
                             title="No events yet"
@@ -931,7 +1057,7 @@ export default function ShamellAdminEventsPage() {
                         ) : (
                           <AdminCatalogEmptyState
                             title="No matches for your search"
-                            description="Try other words or switch the filter tab (All, Upcoming, Completed)."
+                            description="Try different search words."
                             tone="muted"
                             variant="embedded"
                             icon={Calendar}
@@ -946,9 +1072,9 @@ export default function ShamellAdminEventsPage() {
 
         <div className="mt-4 flex flex-col gap-3 border-t border-gold/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <p className="font-body text-xs text-foreground/50">
-                {filteredEvents.length === 0
+                {searchedEvents.length === 0
                   ? "Showing 0 of 0"
-                  : `Showing ${pageOffset + 1}-${pageOffset + paginatedEvents.length} of ${filteredEvents.length}`}
+                  : `Showing ${pageOffset + 1}-${pageOffset + paginatedEvents.length} of ${searchedEvents.length}`}
               </p>
               <div className="flex items-center gap-1">
                 <button
@@ -987,7 +1113,9 @@ export default function ShamellAdminEventsPage() {
               </div>
         </div>
 
-        {isLoading ? <p className="mt-4 text-sm text-foreground/65">Loading...</p> : null}
+        {isLoading ? (
+          <p className="mt-4 hidden text-sm text-foreground/65 md:block">Loading...</p>
+        ) : null}
       </section>
 
       <AdminModal title={editingId ? "Edit event" : "New event"} isOpen={isModalOpen} onClose={closeModal}>
@@ -1051,10 +1179,6 @@ export default function ShamellAdminEventsPage() {
 
           <label className="block">
             <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">LINE ITEMS (ONE PER LINE)</span>
-            <p className="mt-1 text-xs text-foreground/55 font-body">
-              Example bullets shown on the public site (weddings, yachts, villas…). One line = one bullet in the public
-              catalog.
-            </p>
             <textarea
               value={itemsText}
               onChange={(event) => setItemsText(event.target.value)}
@@ -1066,9 +1190,6 @@ export default function ShamellAdminEventsPage() {
 
           <label className="block">
             <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PRICE (OPTIONAL)</span>
-            <p className="mt-1 font-body text-xs text-foreground/55">
-              Reference amount for the public catalog (comma or decimal point allowed).
-            </p>
             <input
               type="text"
               inputMode="decimal"
@@ -1081,24 +1202,32 @@ export default function ShamellAdminEventsPage() {
           </label>
 
           <div className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">CATALOG IMAGES</span>
-            <p className="mt-1 font-body text-xs text-foreground/55">
-              Uploaded to the gallery and linked to this event. Up to {MAX_CATALOG_IMAGES} images. New files upload when
-              you save the form.
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">CATALOG MEDIA</span>
+            <div className="mt-2 flex flex-wrap gap-2">
               {existingImages.map((img) => (
                 <div
                   key={img.id}
                   className="relative h-20 w-20 overflow-hidden rounded-xl border border-gold/22 bg-black/40"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img.imageUrl} alt="" className="h-full w-full object-cover" />
+                  {isVideoCatalogItem(img) ? (
+                    <video
+                      src={img.imageUrl}
+                      className="h-full w-full object-cover"
+                      muted
+                      playsInline
+                      aria-hidden
+                    />
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.imageUrl} alt="" className="h-full w-full object-cover" />
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={() => void removeExistingCatalogImage(img.id)}
                     className="absolute right-1 top-1 rounded-md border border-white/25 bg-black/70 p-1 text-white transition hover:bg-red-500/80"
-                    aria-label="Remove image"
+                    aria-label="Remove media"
                   >
                     <X className="h-3.5 w-3.5" strokeWidth={2} />
                   </button>
@@ -1109,13 +1238,25 @@ export default function ShamellAdminEventsPage() {
                   key={`pending-${idx}`}
                   className="relative h-20 w-20 overflow-hidden rounded-xl border border-gold/35 bg-black/40"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={url} alt="" className="h-full w-full object-cover opacity-90" />
+                  {isVideoFile(pendingFiles[idx]!) ? (
+                    <video
+                      src={url}
+                      className="h-full w-full object-cover opacity-90"
+                      muted
+                      playsInline
+                      aria-hidden
+                    />
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="" className="h-full w-full object-cover opacity-90" />
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={() => removePendingAt(idx)}
                     className="absolute right-1 top-1 rounded-md border border-white/25 bg-black/70 p-1 text-white transition hover:bg-red-500/80"
-                    aria-label="Remove pending image"
+                    aria-label="Remove pending file"
                   >
                     <X className="h-3.5 w-3.5" strokeWidth={2} />
                   </button>
@@ -1126,7 +1267,7 @@ export default function ShamellAdminEventsPage() {
                   <Plus className="h-7 w-7" strokeWidth={1.25} aria-hidden />
                   <input
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*,video/mp4,video/quicktime,.mp4,.mov,.webm,.mkv,.m4v,.avi"
                     multiple
                     className="sr-only"
                     onChange={(event) => {
@@ -1134,7 +1275,7 @@ export default function ShamellAdminEventsPage() {
                       event.target.value = "";
                     }}
                   />
-                  <span className="sr-only">Add image</span>
+                  <span className="sr-only">Add image or video</span>
                 </label>
               ) : null}
             </div>
@@ -1222,8 +1363,20 @@ export default function ShamellAdminEventsPage() {
               <div className="mt-4 flex flex-wrap gap-2">
                 {viewEvent.catalogImages.map((img) => (
                   <div key={img.id} className="h-16 w-16 overflow-hidden rounded-lg border border-gold/20">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img.imageUrl} alt="" className="h-full w-full object-cover" />
+                    {isVideoCatalogItem(img) ? (
+                      <video
+                        src={img.imageUrl}
+                        className="h-full w-full object-cover"
+                        muted
+                        playsInline
+                        aria-hidden
+                      />
+                    ) : (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={img.imageUrl} alt="" className="h-full w-full object-cover" />
+                      </>
+                    )}
                   </div>
                 ))}
               </div>

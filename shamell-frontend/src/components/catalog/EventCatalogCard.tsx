@@ -14,6 +14,8 @@ export type EventCatalogItem = {
   contactInquiryCode?: string | null;
   price: number | null;
   heroImageUrl: string | null;
+  /** First catalog media; drives hero `<img>` vs `<video>`. */
+  heroMediaType?: "IMAGE" | "VIDEO";
 };
 
 function formatCatalogPriceAmount(value: number): string {
@@ -77,12 +79,26 @@ export function EventCatalogCard({
       <div className="relative z-10 aspect-16/10 w-full shrink-0 overflow-hidden bg-[#0a0908]">
         {service.heroImageUrl ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={service.heroImageUrl}
-              alt=""
-              className="h-full w-full object-cover transition-transform duration-[1.1s] ease-out group-hover/card:scale-[1.04]"
-            />
+            {service.heroMediaType === "VIDEO" ? (
+              <video
+                src={service.heroImageUrl}
+                className="h-full w-full object-cover transition-transform duration-[1.1s] ease-out group-hover/card:scale-[1.04]"
+                muted
+                playsInline
+                loop
+                autoPlay
+                aria-hidden
+              />
+            ) : (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={service.heroImageUrl}
+                  alt=""
+                  className="h-full w-full object-cover transition-transform duration-[1.1s] ease-out group-hover/card:scale-[1.04]"
+                />
+              </>
+            )}
             <div
               className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(6,5,4,0.15)_0%,transparent_42%,rgba(4,3,2,0.72)_100%)]"
               aria-hidden

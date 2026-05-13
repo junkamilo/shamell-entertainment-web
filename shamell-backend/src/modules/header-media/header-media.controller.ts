@@ -42,12 +42,14 @@ export class HeaderMediaController {
   @UseInterceptors(
     FilesInterceptor('images', undefined, {
       storage: memoryStorage(),
-      limits: { fileSize: 12 * 1024 * 1024 },
+      limits: { fileSize: 200 * 1024 * 1024 },
     }),
   )
   uploadAdminHeaderPhotos(@UploadedFiles() files?: Express.Multer.File[]) {
     if (!files?.length) {
-      throw new BadRequestException('At least one image file is required.');
+      throw new BadRequestException(
+        'At least one image or video file is required.',
+      );
     }
     return this.headerMediaService.uploadAdminHeaderPhotos(files);
   }

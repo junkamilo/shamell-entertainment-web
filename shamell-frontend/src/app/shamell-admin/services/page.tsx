@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
@@ -10,13 +10,16 @@ import {
   Pencil,
   SlidersHorizontal,
   Trash2,
+  Video,
   X,
 } from "lucide-react";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { AdminMediaPickControl } from "@/components/admin/AdminMediaPickControl";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminModal from "@/components/admin/AdminModal";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import { toast } from "@/hooks/use-toast";
+import { isVideoMediaFile, serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import { cn } from "@/lib/utils";
 
 type AdminServiceType = {
@@ -88,6 +91,165 @@ function formatPriceEn(value: number | null | undefined): string {
   }).format(Number(value));
 }
 
+/** List/table thumbnail: image preview, or static video glyph (no inline video in dense rows). */
+function ServiceListMediaThumb({ imageUrl, size }: { imageUrl: string | null; size: "sm" | "md" }) {
+  const dim = size === "sm" ? "h-11 w-11" : "h-14 w-14";
+  const iconClass = size === "sm" ? "h-5 w-5" : "h-6 w-6";
+  return (
+    <div
+      className={cn(
+        "shamell-glass-surface flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gold/20",
+        dim,
+      )}
+    >
+      {!imageUrl ? (
+        <span className="text-[10px] text-foreground/35">—</span>
+      ) : serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO" ? (
+        <span className="flex h-full w-full items-center justify-center bg-black/35" title="Video">
+          <Video className={cn("text-gold/90", iconClass)} strokeWidth={1.45} aria-hidden />
+        </span>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+      )}
+    </div>
+  );
+}
+
+type AdminServiceCardProps = {
+  service: AdminService;
+  togglingId: string | null;
+  deletable: boolean;
+  blockDeactivate: boolean;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggle: () => void;
+};
+
+function AdminServiceCard({
+  service,
+  togglingId,
+  deletable,
+  blockDeactivate,
+  onView,
+  onEdit,
+  onDelete,
+  onToggle,
+}: AdminServiceCardProps) {
+  const { title } = displayServiceHeading(service.description);
+  const bk = service.bookingCount ?? 0;
+  const gal = service.galleryPhotoCount ?? 0;
+
+  return (
+    <article className="shamell-glass-surface flex flex-col gap-3 rounded-xl border border-gold/14 p-4">
+      <div className="flex gap-3">
+        <ServiceListMediaThumb imageUrl={service.imageUrl} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="font-brand text-sm tracking-[0.04em] text-gold">{title}</p>
+          {bk > 0 || gal > 0 ? (
+            <p className="mt-1 font-body text-[10px] text-foreground/45">
+              {bk > 0 ? `${bk} booking(s)` : null}
+              {bk > 0 && gal > 0 ? " · " : null}
+              {gal > 0 ? `${gal} in gallery` : null}
+            </p>
+          ) : null}
+          <span
+            className={cn(
+              "mt-2 inline-flex max-w-full truncate rounded-full border px-2.5 py-1 font-body text-[11px]",
+              pillClassForTypeName(service.serviceTypeName),
+            )}
+          >
+            {service.serviceTypeName}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gold/10 pt-3">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 font-body text-xs text-foreground/70">
+          <span>
+            <span className="font-brand text-[10px] tracking-[0.12em] text-gold/65">ITEMS</span>{" "}
+            {service.items.length}
+          </span>
+          <span>
+            <span className="font-brand text-[10px] tracking-[0.12em] text-gold/65">PRECIO</span>{" "}
+            {formatPriceEn(service.price)}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggle}
+            disabled={togglingId === service.id || blockDeactivate}
+            title={
+              blockDeactivate ? "This service has bookings and cannot be turned off." : undefined
+            }
+            className={cn(
+              "relative h-7 w-12 shrink-0 rounded-full border transition",
+              service.isActive
+                ? "border-emerald-400/45 bg-emerald-500/22"
+                : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
+              togglingId === service.id && "cursor-not-allowed opacity-60",
+              blockDeactivate && "cursor-not-allowed opacity-45",
+            )}
+            aria-label={`${service.isActive ? "Hide" : "Show"} service`}
+          >
+            <span
+              className={cn(
+                "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
+                service.isActive ? "left-6" : "left-1",
+              )}
+            />
+          </button>
+          <span className="font-body text-xs text-foreground/55">
+            {service.isActive ? "Activo" : "Inactivo"}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-1 border-t border-gold/10 pt-3">
+        <button
+          type="button"
+          onClick={onView}
+          className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
+          aria-label="View service"
+        >
+          <Eye className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        <button
+          type="button"
+          onClick={onEdit}
+          className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
+          aria-label="Edit service"
+        >
+          <Pencil className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+        <button
+          type="button"
+          onClick={onDelete}
+          disabled={!deletable}
+          className={cn(
+            "rounded-lg border p-2 transition",
+            deletable
+              ? "border-red-400/25 text-foreground/55 hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
+              : "cursor-not-allowed border-gold/10 text-foreground/30",
+          )}
+          aria-label="Delete service permanently"
+          title={
+            !deletable
+              ? bk > 0
+                ? "Has linked bookings"
+                : "Has linked gallery photos"
+              : "Delete from catalog (irreversible)"
+          }
+        >
+          <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+        </button>
+      </div>
+    </article>
+  );
+}
+
 type FilterTab = "all" | "active" | "inactive";
 
 export default function ShamellAdminServicesPage() {
@@ -127,6 +289,9 @@ export default function ShamellAdminServicesPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const [isPreviewLightboxOpen, setIsPreviewLightboxOpen] = useState(false);
+  const [pendingClearMedia, setPendingClearMedia] = useState(false);
+  const [isClearingMedia, setIsClearingMedia] = useState(false);
+  const mediaFileInputRef = useRef<HTMLInputElement>(null);
 
   const parseErrorMessage = useCallback((data: unknown, fallback: string) => {
     if (typeof data !== "object" || data === null) return fallback;
@@ -144,6 +309,9 @@ export default function ShamellAdminServicesPage() {
     setExistingImageUrl(null);
     setEditingId(null);
     setOriginalSnapshot(null);
+    queueMicrotask(() => {
+      if (mediaFileInputRef.current) mediaFileInputRef.current.value = "";
+    });
   }, [serviceTypes]);
 
   const openCreateModal = () => {
@@ -155,6 +323,7 @@ export default function ShamellAdminServicesPage() {
     setIsModalOpen(false);
     setIsTypeDropdownOpen(false);
     setIsPreviewLightboxOpen(false);
+    setPendingClearMedia(false);
     resetForm();
   };
 
@@ -288,6 +457,10 @@ export default function ShamellAdminServicesPage() {
   const canSubmit =
     !isSubmitting && hasValidType && hasValidDescriptionLength && hasValidItems && hasImageIfNeeded && hasChanges;
 
+  const formPreviewMediaIsVideo =
+    Boolean(image && isVideoMediaFile(image)) ||
+    Boolean(!image && serviceCatalogMediaTypeFromUrl(existingImageUrl) === "VIDEO");
+
   const getValidationError = () => {
     if (!hasValidType) return "You must select a service type.";
     if (!parsedPrice.ok) return "Invalid price.";
@@ -295,7 +468,7 @@ export default function ShamellAdminServicesPage() {
       return `The description must be between ${DESCRIPTION_MIN_LENGTH} and ${DESCRIPTION_MAX_LENGTH} characters.`;
     }
     if (!hasValidItems) return "Add at least one line item. Each line may be up to 180 characters.";
-    if (!hasImageIfNeeded) return "You must select an image.";
+    if (!hasImageIfNeeded) return "You must select an image or video.";
     if (!hasChanges) return "No changes to save.";
     return null;
   };
@@ -360,6 +533,7 @@ export default function ShamellAdminServicesPage() {
       }
 
       const wasEditing = Boolean(editingId);
+      if (mediaFileInputRef.current) mediaFileInputRef.current.value = "";
       resetForm();
       setIsModalOpen(false);
       toast({
@@ -395,6 +569,9 @@ export default function ShamellAdminServicesPage() {
       price: service.price ?? null,
     });
     setImage(null);
+    queueMicrotask(() => {
+      if (mediaFileInputRef.current) mediaFileInputRef.current.value = "";
+    });
     setIsModalOpen(true);
   };
 
@@ -536,6 +713,58 @@ export default function ShamellAdminServicesPage() {
     }
   };
 
+  const onConfirmClearMedia = async () => {
+    if (!editingId) return;
+    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    if (!token) {
+      toast({
+        variant: "destructive",
+        title: "Sign-in required",
+        description: "You must sign in as an admin.",
+      });
+      return;
+    }
+
+    setIsClearingMedia(true);
+    try {
+      const form = new FormData();
+      form.append("clearImage", "true");
+      const response = await fetch(`${apiBaseUrl}/api/v1/services/admin/${editingId}`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: parseErrorMessage(data, "Could not remove the media."),
+        });
+        return;
+      }
+
+      setExistingImageUrl(null);
+      setImage(null);
+      setIsPreviewLightboxOpen(false);
+      setPendingClearMedia(false);
+      if (mediaFileInputRef.current) mediaFileInputRef.current.value = "";
+      toast({
+        title: "Media removed",
+        description: "The file was deleted from storage and the service was updated.",
+      });
+      await loadAllData();
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Offline",
+        description: "Could not reach the server.",
+      });
+    } finally {
+      setIsClearingMedia(false);
+    }
+  };
+
   const onHeroAction = () => openCreateModal();
 
   const searchedServices = useMemo(() => {
@@ -651,287 +880,324 @@ export default function ShamellAdminServicesPage() {
         ))}
       </div>
 
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-4">
-        <AdminSearchInput
-          value={searchQuery}
-          onChange={setSearchQuery}
-          placeholder="Search services..."
-          className="shamell-glass-surface mx-0 min-h-[3rem] max-w-none flex-1 rounded-xl"
-        />
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:shrink-0">
-          <div className="shamell-glass-surface flex rounded-xl p-1">
-            {(
-              [
-                ["all", "All", tabCounts.all],
-                ["active", "Active", tabCounts.active],
-                ["inactive", "Inactive", tabCounts.inactive],
-              ] as const
-            ).map(([id, label, count]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setFilterTab(id)}
-                className={cn(
-                  "flex-1 whitespace-nowrap rounded-lg px-3 py-2.5 font-brand text-[10px] tracking-[0.12em] transition sm:flex-none sm:px-4",
-                  filterTab === id
-                    ? "bg-gold/12 text-gold shadow-inner"
-                    : "text-foreground/50 hover:text-foreground/80",
-                )}
-              >
-                {label} <span className="text-gold/50">•</span> {count}
-              </button>
-            ))}
+      <div className="mb-6 shamell-glass-surface overflow-hidden rounded-xl">
+        <div className="flex flex-col gap-4 p-4 md:p-5 lg:flex-row lg:items-stretch lg:gap-4">
+          <AdminSearchInput
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search services..."
+            className="mx-0 min-h-12 max-w-none flex-1 rounded-xl border border-gold/22 bg-black/20"
+          />
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:shrink-0">
+            <div className="flex rounded-xl border border-gold/18 bg-black/20 p-1">
+              {(
+                [
+                  ["all", "All", tabCounts.all],
+                  ["active", "Active", tabCounts.active],
+                  ["inactive", "Inactive", tabCounts.inactive],
+                ] as const
+              ).map(([id, label, count]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setFilterTab(id)}
+                  className={cn(
+                    "flex-1 whitespace-nowrap rounded-lg px-3 py-2.5 font-brand text-[10px] tracking-[0.12em] transition sm:flex-none sm:px-4",
+                    filterTab === id
+                      ? "bg-gold/12 text-gold shadow-inner"
+                      : "text-foreground/50 hover:text-foreground/80",
+                  )}
+                >
+                  {label} <span className="text-gold/50">•</span> {count}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              aria-expanded={filtersOpen}
+              aria-controls="services-type-filters"
+              id="services-filters-toggle"
+              onClick={() => setFiltersOpen((o) => !o)}
+              className={cn(
+                "inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 font-brand text-[10px] tracking-[0.14em] transition",
+                filtersOpen
+                  ? "border-gold/50 bg-gold/10 text-gold"
+                  : "border-gold/18 text-foreground/60 hover:border-gold/35 hover:text-gold",
+              )}
+            >
+              <SlidersHorizontal className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+              Filters
+              <ChevronDown
+                className={cn("h-4 w-4 shrink-0 text-gold/80 transition-transform duration-200", filtersOpen && "rotate-180")}
+                aria-hidden
+              />
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={() => setFiltersOpen((o) => !o)}
-            className={cn(
-              "inline-flex h-12 items-center justify-center gap-2 rounded-xl border px-4 font-brand text-[10px] tracking-[0.14em] transition",
-              filtersOpen
-                ? "border-gold/50 bg-gold/10 text-gold"
-                : "border-gold/18 text-foreground/60 hover:border-gold/35 hover:text-gold",
-            )}
-          >
-            <SlidersHorizontal className="h-4 w-4" strokeWidth={1.5} />
-            Filters
-          </button>
+        </div>
+
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none",
+            filtersOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div
+              id="services-type-filters"
+              role="region"
+              aria-labelledby="services-filters-toggle"
+              className="border-t border-gold/12 px-4 pb-4 md:px-5 md:pb-5"
+            >
+              <div className="pt-4">
+                <p className="font-brand text-[10px] tracking-[0.2em] text-gold/80">SERVICE TYPE</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTypeFilterId(null)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 font-body text-xs transition",
+                      typeFilterId === null
+                        ? "border-gold/50 bg-gold/10 text-gold"
+                        : "border-gold/15 text-foreground/55 hover:border-gold/30",
+                    )}
+                  >
+                    All types
+                  </button>
+                  {serviceTypes.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setTypeFilterId((prev) => (prev === t.id ? null : t.id))}
+                      className={cn(
+                        "rounded-full border px-3 py-1.5 font-body text-xs transition",
+                        typeFilterId === t.id
+                          ? "border-gold/50 bg-gold/10 text-gold"
+                          : "border-gold/15 text-foreground/55 hover:border-gold/30",
+                      )}
+                    >
+                      {t.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      {filtersOpen ? (
-        <div className="mb-6 shamell-glass-surface rounded-xl px-4 py-4 md:px-5">
-          <p className="font-brand text-[10px] tracking-[0.2em] text-gold/80">SERVICE TYPE</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setTypeFilterId(null)}
-              className={cn(
-                "rounded-full border px-3 py-1.5 font-body text-xs transition",
-                typeFilterId === null
-                  ? "border-gold/50 bg-gold/10 text-gold"
-                  : "border-gold/15 text-foreground/55 hover:border-gold/30",
-              )}
-            >
-              All types
-            </button>
-            {serviceTypes.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTypeFilterId((prev) => (prev === t.id ? null : t.id))}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 font-body text-xs transition",
-                  typeFilterId === t.id
-                    ? "border-gold/50 bg-gold/10 text-gold"
-                    : "border-gold/15 text-foreground/55 hover:border-gold/30",
-                )}
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
       <section className="shamell-glass-surface rounded-xl p-4 md:p-5">
-        <div className="overflow-x-auto rounded-xl border border-gold/14">
-          <table className="w-full min-w-[920px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-gold/12">
-                <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
-                <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">SERVICE</th>
-                <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TYPE</th>
-                <th className="w-20 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
-                <th className="w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRECIO</th>
-                <th className="min-w-[9rem] px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">
-                  ESTADO
-                </th>
-                <th className="w-36 px-3 py-3 text-right font-brand text-[10px] tracking-[0.14em] text-gold/80">
-                  ACCIONES
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+        {filteredServices.length === 0 ? (
+          isLoading ? (
+            <p className="py-12 text-center font-body text-sm text-foreground/65">Loading...</p>
+          ) : (
+            <p className="py-12 text-center font-body text-sm text-foreground/60">No services to show.</p>
+          )
+        ) : (
+          <>
+            <div className="grid gap-3 md:hidden">
               {paginatedServices.map((service) => {
-                const { title } = displayServiceHeading(service.description);
-                const bk = service.bookingCount ?? 0;
-                const gal = service.galleryPhotoCount ?? 0;
                 const deletable = canDeleteService(service);
                 const blockDeactivate = cannotDeactivateWhileActive(service);
                 return (
-                  <tr key={service.id} className="border-b border-gold/8 transition hover:bg-gold/5">
-                    <td className="px-2 py-3 align-middle">
-                      <div className="shamell-glass-surface flex h-11 w-11 items-center justify-center overflow-hidden rounded-lg border border-gold/20">
-                        {service.imageUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={service.imageUrl}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <span className="text-[10px] text-foreground/35">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="max-w-[14rem] px-3 py-3 align-middle md:max-w-[18rem]">
-                      <p className="font-brand text-sm tracking-[0.04em] text-gold">{title}</p>
-                      {bk > 0 || gal > 0 ? (
-                        <p className="mt-1 font-body text-[10px] text-foreground/45">
-                          {bk > 0 ? `${bk} booking(s)` : null}
-                          {bk > 0 && gal > 0 ? " · " : null}
-                          {gal > 0 ? `${gal} in gallery` : null}
-                        </p>
-                      ) : null}
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full border px-2.5 py-1 font-body text-[11px]",
-                          pillClassForTypeName(service.serviceTypeName),
-                        )}
-                      >
-                        {service.serviceTypeName}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75">
-                      {service.items.length}
-                    </td>
-                    <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75">
-                      {formatPriceEn(service.price)}
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      <div className="flex items-center gap-3">
-                        <button
-                          type="button"
-                          onClick={() => void onToggleActive(service)}
-                          disabled={togglingId === service.id || blockDeactivate}
-                          title={
-                            blockDeactivate
-                              ? "This service has bookings and cannot be turned off."
-                              : undefined
-                          }
-                          className={cn(
-                            "relative h-7 w-12 shrink-0 rounded-full border transition",
-                            service.isActive
-                              ? "border-emerald-400/45 bg-emerald-500/22"
-                              : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
-                            togglingId === service.id && "cursor-not-allowed opacity-60",
-                            blockDeactivate && "cursor-not-allowed opacity-45",
-                          )}
-                          aria-label={`${service.isActive ? "Hide" : "Show"} service`}
-                        >
-                          <span
-                            className={cn(
-                              "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
-                              service.isActive ? "left-6" : "left-1",
-                            )}
-                          />
-                        </button>
-                        <span className="font-body text-xs text-foreground/55">
-                          {service.isActive ? "Activo" : "Inactivo"}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-3 align-middle">
-                      <div className="flex justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setViewService(service)}
-                          className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
-                          aria-label="View service"
-                        >
-                          <Eye className="h-4 w-4" strokeWidth={1.5} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => startEdit(service)}
-                          className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
-                          aria-label="Edit service"
-                        >
-                          <Pencil className="h-4 w-4" strokeWidth={1.5} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openDeleteConfirm(service)}
-                          disabled={!deletable}
-                          className={cn(
-                            "rounded-lg border p-2 transition",
-                            deletable
-                              ? "border-red-400/25 text-foreground/55 hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
-                              : "cursor-not-allowed border-gold/10 text-foreground/30",
-                          )}
-                          aria-label="Delete service permanently"
-                          title={
-                            !deletable
-                              ? bk > 0
-                                ? "Has linked bookings"
-                                : "Has linked gallery photos"
-                              : "Delete from catalog (irreversible)"
-                          }
-                        >
-                          <Trash2 className="h-4 w-4" strokeWidth={1.5} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <AdminServiceCard
+                    key={service.id}
+                    service={service}
+                    togglingId={togglingId}
+                    deletable={deletable}
+                    blockDeactivate={blockDeactivate}
+                    onView={() => setViewService(service)}
+                    onEdit={() => startEdit(service)}
+                    onDelete={() => openDeleteConfirm(service)}
+                    onToggle={() => void onToggleActive(service)}
+                  />
                 );
               })}
-              {!isLoading && filteredServices.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-sm text-foreground/60">
-                    No services to show.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+            </div>
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-gold/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="font-body text-xs text-foreground/50">
-            {filteredServices.length === 0
-              ? "Mostrando 0 de 0"
-              : `Mostrando ${pageOffset + 1}-${pageOffset + paginatedServices.length} de ${filteredServices.length}`}
-          </p>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              disabled={safePage <= 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="rounded-lg border border-gold/20 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-              aria-label="Previous page"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <div className="hidden overflow-x-auto rounded-xl border border-gold/14 md:block">
+              <table className="w-full min-w-[920px] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-gold/12">
+                    <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
+                    <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">SERVICE</th>
+                    <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TYPE</th>
+                    <th className="w-20 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
+                    <th className="w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRECIO</th>
+                    <th className="min-w-[9rem] px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">
+                      ESTADO
+                    </th>
+                    <th className="w-36 px-3 py-3 text-right font-brand text-[10px] tracking-[0.14em] text-gold/80">
+                      ACCIONES
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedServices.map((service) => {
+                    const { title } = displayServiceHeading(service.description);
+                    const bk = service.bookingCount ?? 0;
+                    const gal = service.galleryPhotoCount ?? 0;
+                    const deletable = canDeleteService(service);
+                    const blockDeactivate = cannotDeactivateWhileActive(service);
+                    return (
+                      <tr key={service.id} className="border-b border-gold/8 transition hover:bg-gold/5">
+                        <td className="px-2 py-3 align-middle">
+                          <ServiceListMediaThumb imageUrl={service.imageUrl} size="sm" />
+                        </td>
+                        <td className="max-w-[14rem] px-3 py-3 align-middle md:max-w-[18rem]">
+                          <p className="font-brand text-sm tracking-[0.04em] text-gold">{title}</p>
+                          {bk > 0 || gal > 0 ? (
+                            <p className="mt-1 font-body text-[10px] text-foreground/45">
+                              {bk > 0 ? `${bk} booking(s)` : null}
+                              {bk > 0 && gal > 0 ? " · " : null}
+                              {gal > 0 ? `${gal} in gallery` : null}
+                            </p>
+                          ) : null}
+                        </td>
+                        <td className="px-3 py-3 align-middle">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full border px-2.5 py-1 font-body text-[11px]",
+                              pillClassForTypeName(service.serviceTypeName),
+                            )}
+                          >
+                            {service.serviceTypeName}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75">
+                          {service.items.length}
+                        </td>
+                        <td className="px-3 py-3 align-middle font-body text-sm text-foreground/75">
+                          {formatPriceEn(service.price)}
+                        </td>
+                        <td className="px-3 py-3 align-middle">
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => void onToggleActive(service)}
+                              disabled={togglingId === service.id || blockDeactivate}
+                              title={
+                                blockDeactivate
+                                  ? "This service has bookings and cannot be turned off."
+                                  : undefined
+                              }
+                              className={cn(
+                                "relative h-7 w-12 shrink-0 rounded-full border transition",
+                                service.isActive
+                                  ? "border-emerald-400/45 bg-emerald-500/22"
+                                  : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
+                                togglingId === service.id && "cursor-not-allowed opacity-60",
+                                blockDeactivate && "cursor-not-allowed opacity-45",
+                              )}
+                              aria-label={`${service.isActive ? "Hide" : "Show"} service`}
+                            >
+                              <span
+                                className={cn(
+                                  "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
+                                  service.isActive ? "left-6" : "left-1",
+                                )}
+                              />
+                            </button>
+                            <span className="font-body text-xs text-foreground/55">
+                              {service.isActive ? "Activo" : "Inactivo"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 align-middle">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setViewService(service)}
+                              className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
+                              aria-label="View service"
+                            >
+                              <Eye className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => startEdit(service)}
+                              className="rounded-lg border border-gold/18 p-2 text-foreground/55 transition hover:border-gold/35 hover:bg-gold/10 hover:text-gold"
+                              aria-label="Edit service"
+                            >
+                              <Pencil className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => openDeleteConfirm(service)}
+                              disabled={!deletable}
+                              className={cn(
+                                "rounded-lg border p-2 transition",
+                                deletable
+                                  ? "border-red-400/25 text-foreground/55 hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
+                                  : "cursor-not-allowed border-gold/10 text-foreground/30",
+                              )}
+                              aria-label="Delete service permanently"
+                              title={
+                                !deletable
+                                  ? bk > 0
+                                    ? "Has linked bookings"
+                                    : "Has linked gallery photos"
+                                  : "Delete from catalog (irreversible)"
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        {filteredServices.length > 0 ? (
+          <div className="mt-4 flex flex-col gap-3 border-t border-gold/10 pt-4 sm:flex-row sm:items-center sm:justify-between">
+            <p className="font-body text-xs text-foreground/50">
+              Mostrando {pageOffset + 1}-{pageOffset + paginatedServices.length} de {filteredServices.length}
+            </p>
+            <div className="flex items-center gap-1">
               <button
-                key={n}
                 type="button"
-                onClick={() => setPage(n)}
-                className={cn(
-                  "min-w-[2.25rem] rounded-lg border px-2.5 py-1.5 font-brand text-xs tracking-wide transition",
-                  n === safePage
-                    ? "border-gold/55 bg-gold/12 text-gold"
-                    : "border-transparent text-foreground/50 hover:border-gold/25 hover:text-gold",
-                )}
+                disabled={safePage <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="rounded-lg border border-gold/20 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
+                aria-label="Previous page"
               >
-                {n}
+                <ChevronLeft className="h-4 w-4" />
               </button>
-            ))}
-            <button
-              type="button"
-              disabled={safePage >= totalPages}
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              className="rounded-lg border border-gold/20 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
-              aria-label="Next page"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setPage(n)}
+                  className={cn(
+                    "min-w-[2.25rem] rounded-lg border px-2.5 py-1.5 font-brand text-xs tracking-wide transition",
+                    n === safePage
+                      ? "border-gold/55 bg-gold/12 text-gold"
+                      : "border-transparent text-foreground/50 hover:border-gold/25 hover:text-gold",
+                  )}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={safePage >= totalPages}
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                className="rounded-lg border border-gold/20 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-35"
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
-        {isLoading ? <p className="mt-3 text-sm text-foreground/65">Loading...</p> : null}
+        {isLoading && filteredServices.length > 0 ? (
+          <p className="mt-3 text-sm text-foreground/65">Refreshing...</p>
+        ) : null}
       </section>
 
       <AdminModal
@@ -1023,49 +1289,81 @@ export default function ShamellAdminServicesPage() {
             />
           </label>
 
-          <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">IMAGEN</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => setImage(event.target.files?.[0] ?? null)}
-              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none file:mr-3 file:border-0 file:bg-gold/20 file:px-3 file:py-1 file:text-gold"
+          <div className="block">
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">IMAGEN O VIDEO</span>
+            <AdminMediaPickControl
+              ref={mediaFileInputRef}
+              onFileChange={(file) => setImage(file)}
+              selectedFileName={image?.name ?? null}
+              disabled={isSubmitting || isClearingMedia}
+              aria-label="Select image or video for this service"
             />
-          </label>
+          </div>
 
           {imagePreviewUrl || existingImageUrl ? (
             <div className="shamell-glass-surface rounded-xl p-4">
-              <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-xs text-gold/85">
-                  {imagePreviewUrl ? "Preview of selected image" : "Current service image"}
+                  {imagePreviewUrl
+                    ? image && isVideoMediaFile(image)
+                      ? "Preview of selected video"
+                      : "Preview of selected image"
+                    : serviceCatalogMediaTypeFromUrl(existingImageUrl) === "VIDEO"
+                      ? "Current service video"
+                      : "Current service image"}
                 </p>
-                {imagePreviewUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setImage(null);
-                      setIsPreviewLightboxOpen(false);
-                    }}
-                    className="rounded-full border border-gold/30 p-1 text-gold/85 transition hover:bg-gold/10 hover:text-gold"
-                    aria-label="Remove selected image"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                ) : null}
+                <div className="flex shrink-0 items-center gap-1">
+                  {imagePreviewUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImage(null);
+                        setIsPreviewLightboxOpen(false);
+                        if (mediaFileInputRef.current) mediaFileInputRef.current.value = "";
+                      }}
+                      className="rounded-full border border-gold/30 p-1 text-gold/85 transition hover:bg-gold/10 hover:text-gold"
+                      aria-label="Remove selected file"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
+                  {editingId && !image && existingImageUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => setPendingClearMedia(true)}
+                      disabled={isClearingMedia}
+                      className="rounded-full border border-red-400/35 p-1.5 text-red-300/90 transition hover:bg-red-500/15 disabled:opacity-45"
+                      aria-label="Delete saved media from storage"
+                      title="Remove from Cloudinary and database"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.6} />
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <div className="shamell-glass-surface overflow-hidden rounded-lg p-2">
                 <button
                   type="button"
                   onClick={() => setIsPreviewLightboxOpen(true)}
                   className="block w-full"
-                  aria-label="Open enlarged image view"
+                  aria-label="Open enlarged preview"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imagePreviewUrl ?? existingImageUrl ?? ""}
-                    alt="Vista previa"
-                    className="h-44 w-full rounded-md object-cover transition hover:opacity-90"
-                  />
+                  {formPreviewMediaIsVideo ? (
+                    <video
+                      src={imagePreviewUrl ?? existingImageUrl ?? ""}
+                      className="h-44 w-full rounded-md object-cover transition hover:opacity-90"
+                      muted
+                      playsInline
+                      controls
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imagePreviewUrl ?? existingImageUrl ?? ""}
+                      alt="Vista previa"
+                      className="h-44 w-full rounded-md object-cover transition hover:opacity-90"
+                    />
+                  )}
                 </button>
               </div>
             </div>
@@ -1107,12 +1405,21 @@ export default function ShamellAdminServicesPage() {
             >
               <X className="h-5 w-5" />
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={imagePreviewUrl ?? existingImageUrl ?? ""}
-              alt="Vista ampliada"
-              className="max-h-[82vh] w-full rounded-xl object-contain"
-            />
+            {formPreviewMediaIsVideo ? (
+              <video
+                src={imagePreviewUrl ?? existingImageUrl ?? ""}
+                className="max-h-[82vh] w-full rounded-xl object-contain"
+                controls
+                playsInline
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imagePreviewUrl ?? existingImageUrl ?? ""}
+                alt="Vista ampliada"
+                className="max-h-[82vh] w-full rounded-xl object-contain"
+              />
+            )}
           </div>
         </div>
       ) : null}
@@ -1144,8 +1451,17 @@ export default function ShamellAdminServicesPage() {
             </p>
             {viewService.imageUrl ? (
               <div className="mt-4 overflow-hidden rounded-xl border border-gold/15">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={viewService.imageUrl} alt="" className="max-h-56 w-full object-cover" />
+                {serviceCatalogMediaTypeFromUrl(viewService.imageUrl) === "VIDEO" ? (
+                  <video
+                    src={viewService.imageUrl}
+                    className="max-h-56 w-full object-cover"
+                    controls
+                    playsInline
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={viewService.imageUrl} alt="" className="max-h-56 w-full object-cover" />
+                )}
               </div>
             ) : null}
             <p className="mt-4 font-body text-sm leading-relaxed text-foreground/70">{viewService.description}</p>
@@ -1155,6 +1471,39 @@ export default function ShamellAdminServicesPage() {
           </div>
         </div>
       ) : null}
+
+      <AdminModal
+        title="Remove service media"
+        isOpen={pendingClearMedia}
+        onClose={() => {
+          if (!isClearingMedia) setPendingClearMedia(false);
+        }}
+      >
+        <div className="space-y-5 font-body text-sm text-foreground/85">
+          <p>
+            Delete this service&apos;s image or video from Cloudinary and clear it in the database? You can upload a
+            new file afterward. This cannot be undone.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setPendingClearMedia(false)}
+              disabled={isClearingMedia}
+              className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => void onConfirmClearMedia()}
+              disabled={isClearingMedia}
+              className="rounded-xl border border-red-400/45 bg-red-500/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-red-200 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isClearingMedia ? "Removing..." : "Remove media"}
+            </button>
+          </div>
+        </div>
+      </AdminModal>
 
       <AdminModal
         title="Delete service"

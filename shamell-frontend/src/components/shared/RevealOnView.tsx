@@ -17,7 +17,7 @@ export default function RevealOnView({
   children,
   className,
   delay = 0,
-  duration = 720,
+  duration = 520,
   amount = 0.22,
   style,
 }: RevealOnViewProps) {
@@ -27,19 +27,17 @@ export default function RevealOnView({
       style={style}
       initial="hidden"
       whileInView="visible"
-      viewport={{ once: false, amount }}
+      viewport={{ once: true, amount }}
       variants={{
         hidden: {
           opacity: 0,
-          scale: 0.86,
-          y: 42,
-          filter: "blur(14px)",
+          scale: 0.94,
+          y: 28,
         },
         visible: {
           opacity: 1,
           scale: 1,
           y: 0,
-          filter: "blur(0px)",
         },
       }}
       transition={{

@@ -560,13 +560,7 @@ export default function ShamellAdminGalleryPage() {
 
       <section className="shamell-glass-surface rounded-xl p-5 md:p-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Media library</h2>
-            <p className="mt-1 max-w-2xl font-body text-xs leading-relaxed text-foreground/50">
-              Each album groups what you upload to that category. Hide or show on the site with the toggle, edit to
-              switch albums or files, or delete to remove it completely.
-            </p>
-          </div>
+          <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Media library</h2>
           {isLoading ? <p className="text-xs text-foreground/60">Loading...</p> : null}
         </div>
 
@@ -582,22 +576,24 @@ export default function ShamellAdminGalleryPage() {
               >
                 <div className="pointer-events-none absolute inset-0 rounded-2xl bg-linear-to-br from-gold/6 via-transparent to-transparent opacity-90" />
                 <div className="shamell-glass-surface relative border-b border-gold/12 px-5 py-4 md:px-6">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                    <div className="min-w-0 w-full sm:flex-1 sm:pr-1">
                       <p className="font-brand text-[9px] tracking-[0.18em] text-gold/55">ALBUM</p>
-                      <h3 className="mt-1 font-brand text-xl tracking-[0.06em] text-gold md:text-2xl">{cat.name}</h3>
+                      <h3 className="mt-1 wrap-break-word font-brand text-xl tracking-[0.06em] text-gold md:text-2xl">
+                        {cat.name}
+                      </h3>
                       <p className="mt-1 font-body text-xs text-foreground/45">
                         {n === 0 ? "No files in this album" : n === 1 ? "1 file" : `${n} files`}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                    <div className="flex w-full shrink-0 items-center gap-2 sm:w-auto sm:justify-end">
                       <button
                         type="button"
                         onClick={() => openUploadToCategory(cat.id)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-gold/35 bg-gold/10 px-4 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:border-gold/55 hover:bg-gold/18"
+                        className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl border border-gold/35 bg-gold/10 px-4 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:border-gold/55 hover:bg-gold/18 sm:flex-initial sm:px-4"
                       >
-                        <Upload className="h-3.5 w-3.5" strokeWidth={1.6} />
-                        Upload here
+                        <Upload className="h-3.5 w-3.5 shrink-0" strokeWidth={1.6} />
+                        <span className="truncate sm:whitespace-normal">Upload here</span>
                       </button>
                       <button
                         type="button"
@@ -608,7 +604,7 @@ export default function ShamellAdminGalleryPage() {
                             ? `Hide album preview ${cat.name}`
                             : `Show album preview ${cat.name}`
                         }
-                        className="rounded-xl border border-gold/18 p-2.5 text-gold/85 transition hover:border-gold/40 hover:bg-gold/10"
+                        className="shrink-0 rounded-xl border border-gold/18 p-2.5 text-gold/85 transition hover:border-gold/40 hover:bg-gold/10"
                       >
                         <ChevronDown
                           className={cn("h-4 w-4 transition-transform duration-200", albumExpanded && "rotate-180")}

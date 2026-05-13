@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { AnimatePresence, motion } from "motion/react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -42,6 +44,8 @@ type Props = {
   blockedFallbackReason?: string;
   /** Earliest selectable calendar day (YYYY-MM-DD). Overrides browser-local “today” when set. */
   minSelectableIso?: string;
+  /** Overlay z-index when stacking above another modal (e.g. admin section modal at z-200). */
+  overlayZClass?: string;
 };
 
 export default function ContactDatePickerModal({
@@ -54,7 +58,23 @@ export default function ContactDatePickerModal({
   blockedReasonByIso,
   blockedFallbackReason = "This date is not available for booking.",
   minSelectableIso,
+  overlayZClass = "z-[100]",
 }: Props) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   const minDate = useMemo(() => {
     if (minSelectableIso) {
       const p = parseISOLocal(minSelectableIso);
@@ -94,8 +114,6 @@ export default function ContactDatePickerModal({
     document.addEventListener("pointerdown", onPointerDown);
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [isOpen, openTooltipIso]);
-
-  if (!isOpen) return null;
 
   const first = new Date(viewYear, viewMonth0, 1);
   const startWeekday = first.getDay();
@@ -156,184 +174,221 @@ export default function ContactDatePickerModal({
 
   const pickedOk = picked !== null && picked >= minDate && !blockedIsoDates?.has(toISOLocalDate(picked));
 
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-[color-mix(in_srgb,var(--shamell-night)_74%,transparent)] px-4 py-8 backdrop-blur-[3px]"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="contact-date-picker-title"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div
-        className="relative w-full max-w-md rounded-2xl border border-gold/35 bg-[linear-gradient(165deg,rgba(31,10,46,0.94)_0%,rgba(23,8,36,0.98)_100%)] shadow-[0_28px_90px_rgba(0,0,0,0.72)] backdrop-blur-[14px]"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 rounded-full border border-gold/25 bg-gold/5 p-2 text-gold/90 transition hover:border-gold/50 hover:bg-gold/10 hover:text-gold"
-          aria-label="Close"
+  const monthGridKey = `${viewYear}-${viewMonth0}`;
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen ? (
+        <motion.div
+          key="contact-date-picker-overlay"
+          className={cn(
+            "fixed inset-0 flex items-center justify-center bg-shamell-night/80 px-4 py-8 backdrop-blur-sm",
+            overlayZClass,
+          )}
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onClose();
+          }}
         >
-          <X className="h-4 w-4" aria-hidden />
-        </button>
-
-        <div className="border-b border-gold/18 px-5 py-4 pr-14">
-          <p
-            id="contact-date-picker-title"
-            className="font-brand text-[10px] tracking-[0.22em] text-gold/95 uppercase"
-          >
-            {title}
-          </p>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={goPrevMonth}
-              disabled={prevDisabled}
-              className="rounded-lg border border-gold/30 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-25"
-              aria-label="Previous month"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="font-brand text-sm tracking-[0.14em] text-gold text-center">{monthLabel}</span>
-            <button
-              type="button"
-              onClick={goNextMonth}
-              className="rounded-lg border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
-              aria-label="Next month"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="px-5 py-4">
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {WEEKDAYS.map((w) => (
-              <div key={w} className="py-2 text-[10px] font-brand tracking-[0.14em] text-gold/55">
-                {w}
-              </div>
-            ))}
-            {cells.map((day, idx) =>
-              day === null ? (
-                <div key={`e-${idx}`} className="aspect-square" />
-              ) : (() => {
-                const iso = cellIso(viewYear, viewMonth0, day);
-                const availBlocked = isAvailabilityBlocked(day);
-                const pastOnly = isPastOrBeforeMin(day) && !availBlocked;
-                const reasonRaw = availBlocked ? blockedReasonFor(day) : "";
-                const reasonDisplay = availBlocked ? formatBlockedDayReason(reasonRaw) : "";
-
-                if (pastOnly) {
-                  return (
-                    <div
-                      key={`${viewYear}-${viewMonth0}-${day}`}
-                      className="flex aspect-square items-center justify-center rounded-lg border border-transparent text-sm font-body text-foreground/30"
-                      aria-hidden
-                    >
-                      {day}
-                    </div>
-                  );
-                }
-
-                if (availBlocked) {
-                  const tipPinned = openTooltipIso === iso;
-                  return (
-                    <div
-                      key={`${viewYear}-${viewMonth0}-${day}`}
-                      data-calendar-blocked-tip-anchor
-                      className={cn(
-                        "group relative aspect-square",
-                        tipPinned && "z-[160]",
-                      )}
-                    >
-                      <button
-                        type="button"
-                        className={cn(
-                          "relative flex aspect-square w-full items-center justify-center rounded-lg border border-transparent text-sm font-body text-foreground/35 decoration-foreground/25 line-through",
-                          "cursor-pointer transition-colors hover:bg-gold/10 hover:text-foreground/55 md:cursor-help",
-                          tipPinned && "bg-gold/12 text-foreground/50",
-                        )}
-                        aria-label={`Day ${day}. ${reasonDisplay}`}
-                        aria-describedby={tipPinned ? `blocked-tip-${iso}` : undefined}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (
-                            typeof window !== "undefined" &&
-                            window.matchMedia("(hover: hover) and (pointer: fine)").matches
-                          ) {
-                            return;
-                          }
-                          setOpenTooltipIso((cur) => (cur === iso ? null : iso));
-                        }}
-                      >
-                        {day}
-                      </button>
-                      <div
-                        role="tooltip"
-                        id={`blocked-tip-${iso}`}
-                        className={cn(
-                          "pointer-events-none absolute left-1/2 top-full z-[140] mt-1 w-max max-w-[220px] -translate-x-1/2 rounded-lg border border-gold/35 bg-[rgba(10,4,8,0.96)] px-3 py-2 text-left font-body text-[11px] leading-snug text-foreground/90 shadow-[0_12px_40px_rgba(0,0,0,0.65)] backdrop-blur-md transition-opacity duration-150",
-                          "invisible opacity-0",
-                          "group-hover:visible group-hover:opacity-100",
-                          tipPinned && "visible opacity-100",
-                        )}
-                      >
-                        {reasonDisplay}
-                      </div>
-                    </div>
-                  );
-                }
-
-                const selectable =
-                  picked !== null &&
-                  picked.getFullYear() === viewYear &&
-                  picked.getMonth() === viewMonth0 &&
-                  picked.getDate() === day;
-
-                return (
-                  <button
-                    key={`${viewYear}-${viewMonth0}-${day}`}
-                    type="button"
-                    onClick={() => selectDay(day)}
-                    className={cn(
-                      "aspect-square rounded-lg border text-sm font-body transition-colors",
-                      selectable && "border-gold bg-gold/20 text-gold-light",
-                      !selectable && "border-gold/20 text-foreground hover:border-gold/45 hover:bg-gold/10",
-                    )}
-                  >
-                    {day}
-                  </button>
-                );
-              })(),
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gold/18 px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-gold/30 px-4 py-2.5 font-brand text-[10px] tracking-[0.14em] text-foreground/75 uppercase transition hover:border-gold/50 hover:text-gold"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!pickedOk}
-            onClick={() => {
-              if (pickedOk && picked) {
-                onConfirm(toISOLocalDate(picked));
-                onClose();
-              }
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="contact-date-picker-title"
+            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-shamell-line-soft bg-shamell-surface-raised shadow-2xl"
+            initial={{ opacity: 0, scale: 0.94, y: 18 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              transition: { type: "spring", damping: 28, stiffness: 340, mass: 0.85 },
             }}
-            className="rounded-xl border border-gold/40 bg-gold/12 px-5 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold uppercase transition hover:bg-gold/22 disabled:cursor-not-allowed disabled:opacity-40"
+            exit={{
+              opacity: 0,
+              scale: 0.97,
+              y: 10,
+              transition: { duration: 0.2, ease: [0.4, 0, 1, 1] },
+            }}
+            onClick={(e) => e.stopPropagation()}
           >
-            Apply
-          </button>
-        </div>
-      </div>
-    </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-gold/25 text-foreground/80 transition hover:bg-gold/10 hover:text-gold"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+
+            <div className="border-b border-gold/15 bg-shamell-surface-deep px-5 py-5 pr-16">
+              <p
+                id="contact-date-picker-title"
+                className="font-brand text-xs tracking-[0.22em] text-gold/95 uppercase"
+              >
+                {title}
+              </p>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  onClick={goPrevMonth}
+                  disabled={prevDisabled}
+                  className="rounded-lg border border-gold/30 p-2 text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-25"
+                  aria-label="Previous month"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <span className="text-center font-brand text-base tracking-[0.14em] text-gold">{monthLabel}</span>
+                <button
+                  type="button"
+                  onClick={goNextMonth}
+                  className="rounded-lg border border-gold/30 p-2 text-gold transition hover:bg-gold/10"
+                  aria-label="Next month"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            <div className="px-5 py-4">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={monthGridKey}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  className="grid grid-cols-7 gap-1 text-center"
+                >
+                  {WEEKDAYS.map((w) => (
+                    <div key={w} className="py-2 font-brand text-xs tracking-[0.14em] text-gold/55">
+                      {w}
+                    </div>
+                  ))}
+                  {cells.map((day, idx) =>
+                    day === null ? (
+                      <div key={`e-${idx}`} className="aspect-square" />
+                    ) : (() => {
+                      const iso = cellIso(viewYear, viewMonth0, day);
+                      const availBlocked = isAvailabilityBlocked(day);
+                      const pastOnly = isPastOrBeforeMin(day) && !availBlocked;
+                      const reasonRaw = availBlocked ? blockedReasonFor(day) : "";
+                      const reasonDisplay = availBlocked ? formatBlockedDayReason(reasonRaw) : "";
+
+                      if (pastOnly) {
+                        return (
+                          <div
+                            key={`${viewYear}-${viewMonth0}-${day}`}
+                            className="flex aspect-square items-center justify-center rounded-lg border border-transparent font-body text-base text-foreground/30"
+                            aria-hidden
+                          >
+                            {day}
+                          </div>
+                        );
+                      }
+
+                      if (availBlocked) {
+                        const tipPinned = openTooltipIso === iso;
+                        return (
+                          <div
+                            key={`${viewYear}-${viewMonth0}-${day}`}
+                            data-calendar-blocked-tip-anchor
+                            className={cn("group relative aspect-square", tipPinned && "z-[160]")}
+                          >
+                            <button
+                              type="button"
+                              className={cn(
+                                "relative flex aspect-square w-full items-center justify-center rounded-lg border border-transparent font-body text-base text-foreground/35 decoration-foreground/25 line-through",
+                                "cursor-pointer transition-colors hover:bg-gold/10 hover:text-foreground/55 md:cursor-help",
+                                tipPinned && "bg-gold/12 text-foreground/50",
+                              )}
+                              aria-label={`Day ${day}. ${reasonDisplay}`}
+                              aria-describedby={tipPinned ? `blocked-tip-${iso}` : undefined}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (
+                                  typeof window !== "undefined" &&
+                                  window.matchMedia("(hover: hover) and (pointer: fine)").matches
+                                ) {
+                                  return;
+                                }
+                                setOpenTooltipIso((cur) => (cur === iso ? null : iso));
+                              }}
+                            >
+                              {day}
+                            </button>
+                            <div
+                              role="tooltip"
+                              id={`blocked-tip-${iso}`}
+                              className={cn(
+                                "pointer-events-none absolute left-1/2 top-full z-[140] mt-1 w-max max-w-[220px] -translate-x-1/2 rounded-lg border border-gold/35 bg-[rgba(10,4,8,0.96)] px-3 py-2 text-left font-body text-[11px] leading-snug text-foreground/90 shadow-[0_12px_40px_rgba(0,0,0,0.65)] backdrop-blur-md transition-opacity duration-150",
+                                "invisible opacity-0",
+                                "group-hover:visible group-hover:opacity-100",
+                                tipPinned && "visible opacity-100",
+                              )}
+                            >
+                              {reasonDisplay}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      const selectable =
+                        picked !== null &&
+                        picked.getFullYear() === viewYear &&
+                        picked.getMonth() === viewMonth0 &&
+                        picked.getDate() === day;
+
+                      return (
+                        <button
+                          key={`${viewYear}-${viewMonth0}-${day}`}
+                          type="button"
+                          onClick={() => selectDay(day)}
+                          className={cn(
+                            "aspect-square rounded-lg border font-body text-base transition-colors",
+                            selectable && "border-gold bg-gold/20 text-gold-light",
+                            !selectable && "border-gold/20 text-foreground hover:border-gold/45 hover:bg-gold/10",
+                          )}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })(),
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gold/15 bg-shamell-surface-deep px-5 py-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-xl border border-gold/30 px-4 py-3 font-brand text-xs tracking-[0.14em] text-foreground/75 uppercase transition hover:border-gold/50 hover:text-gold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!pickedOk}
+                onClick={() => {
+                  if (pickedOk && picked) {
+                    onConfirm(toISOLocalDate(picked));
+                    onClose();
+                  }
+                }}
+                className="rounded-xl border border-gold/40 bg-gold/12 px-5 py-3 font-brand text-xs tracking-[0.14em] text-gold uppercase transition hover:bg-gold/22 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Apply
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>,
+    document.body,
   );
 }

@@ -49,6 +49,7 @@ export class EventsService {
           galleryPhotos: {
             where: { isActive: true },
             orderBy: { createdAt: 'asc' },
+            select: { imageUrl: true, mediaType: true },
           },
         },
       });
@@ -73,9 +74,9 @@ export class EventsService {
       include: {
         eventType: true,
         galleryPhotos: {
-          where: { isActive: true, mediaType: GalleryMediaType.IMAGE },
+          where: { isActive: true },
           orderBy: { createdAt: 'asc' },
-          select: { imageUrl: true },
+          select: { imageUrl: true, mediaType: true },
         },
       },
       orderBy: { createdAt: 'asc' },
@@ -89,9 +90,9 @@ export class EventsService {
       where: { isActive: true },
       include: {
         galleryPhotos: {
-          where: { isActive: true, mediaType: GalleryMediaType.IMAGE },
+          where: { isActive: true },
           orderBy: { createdAt: 'asc' },
-          select: { imageUrl: true },
+          select: { imageUrl: true, mediaType: true },
         },
         eventType: {
           include: {
@@ -146,9 +147,9 @@ export class EventsService {
       include: {
         eventType: true,
         galleryPhotos: {
-          where: { isActive: true, mediaType: GalleryMediaType.IMAGE },
+          where: { isActive: true },
           orderBy: { createdAt: 'asc' },
-          select: { imageUrl: true },
+          select: { imageUrl: true, mediaType: true },
         },
       },
     });
@@ -156,6 +157,7 @@ export class EventsService {
       throw new NotFoundException('Event not found.');
     }
     const preview = event.description.replace(/\s+/g, ' ').trim().slice(0, 280);
+    const hero = event.galleryPhotos[0];
     return {
       kind: 'event' as const,
       id: event.id,
@@ -163,7 +165,8 @@ export class EventsService {
       description: event.description,
       descriptionPreview: preview || undefined,
       items: event.items,
-      imageUrl: event.galleryPhotos[0]?.imageUrl ?? null,
+      imageUrl: hero?.imageUrl ?? null,
+      heroMediaType: hero?.mediaType ?? null,
       contactInquiryCode: event.eventType.contactInquiryCode ?? null,
     };
   }
@@ -653,7 +656,7 @@ export class EventsService {
     eventTypeId: string;
     description: string;
     items: string[];
-    galleryPhotos: { imageUrl: string }[];
+    galleryPhotos: { imageUrl: string; mediaType: GalleryMediaType }[];
     isActive: boolean;
     showOnHome: boolean;
     createdAt: Date;
@@ -667,6 +670,8 @@ export class EventsService {
     };
   }) {
     const groups = this.mapOccasionGroups(item.eventType.occasionLinks);
+    const photos = item.galleryPhotos ?? [];
+    const first = photos[0];
     return {
       id: item.id,
       eventTypeId: item.eventType.id,
@@ -674,8 +679,11 @@ export class EventsService {
       contactInquiryCode: item.eventType.contactInquiryCode,
       description: item.description,
       items: item.items,
-      images: item.galleryPhotos.map((p) => p.imageUrl),
-      heroImageUrl: item.galleryPhotos[0]?.imageUrl ?? null,
+      images: photos
+        .filter((p) => p.mediaType === GalleryMediaType.IMAGE)
+        .map((p) => p.imageUrl),
+      heroImageUrl: first?.imageUrl ?? null,
+      heroMediaType: first?.mediaType ?? null,
       showOnHome: item.showOnHome,
       lineKind: 'event' as const,
       ...groups,
@@ -699,7 +707,7 @@ export class EventsService {
       items: [] as string[],
       images: [] as string[],
       heroImageUrl: null as string | null,
-      showOnHome: false,
+      heroMediaType: null as GalleryMediaType | null,
       lineKind: 'event_type' as const,
       ...groups,
     };
@@ -734,8 +742,15 @@ export class EventsService {
     );
     const catalogImages = rows.filter(
       (p): p is { id: string; imageUrl: string; mediaType: GalleryMediaType } =>
-        'id' in p && 'mediaType' in p && p.mediaType === GalleryMediaType.IMAGE,
+        'id' in p &&
+        typeof (p as { id: unknown }).id === 'string' &&
+        'mediaType' in p,
     );
+    const first = rows[0];
+    const firstMediaType =
+      first && 'mediaType' in first && first.mediaType
+        ? first.mediaType
+        : GalleryMediaType.IMAGE;
 
     return {
       id: item.id,
@@ -747,9 +762,12 @@ export class EventsService {
       items: item.items,
       price: item.price != null ? Number(item.price) : null,
       images: imageRows.map((p) => p.imageUrl),
+      heroImageUrl: first?.imageUrl ?? null,
+      heroMediaType: first ? firstMediaType : null,
       catalogImages: catalogImages.map((p) => ({
         id: p.id,
         imageUrl: p.imageUrl,
+        mediaType: p.mediaType,
       })),
       isActive: item.isActive,
       showOnHome: item.showOnHome,

@@ -24,7 +24,7 @@ export class ServicesService {
 
   async createService(dto: CreateServiceDto, imageFile: Express.Multer.File) {
     if (!imageFile?.buffer) {
-      throw new BadRequestException('Image file is required.');
+      throw new BadRequestException('Image or video file is required.');
     }
 
     if (
@@ -37,7 +37,7 @@ export class ServicesService {
       );
     }
 
-    const imageUrl = await this.uploadImageToCloudinary(imageFile);
+    const imageUrl = await this.uploadServiceMediaToCloudinary(imageFile);
 
     try {
       const serviceType = await this.prisma.serviceType.findUnique({
@@ -112,6 +112,7 @@ export class ServicesService {
       descriptionPreview: preview || undefined,
       items: service.items,
       imageUrl: service.imageUrl,
+      heroMediaType: this.catalogHeroMediaType(service.imageUrl),
       contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
     };
   }
@@ -149,6 +150,7 @@ export class ServicesService {
       descriptionPreview: preview || undefined,
       items: service.items,
       imageUrl: service.imageUrl,
+      heroMediaType: this.catalogHeroMediaType(service.imageUrl),
       contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
     };
   }
@@ -205,9 +207,10 @@ export class ServicesService {
       await this.ensureServiceCanBeDisabled(id);
     }
 
-    let imageUrl: string | undefined;
+    let nextImageUrl: string | null | undefined = undefined;
+
     if (imageFile?.buffer) {
-      const newImageUrl = await this.uploadImageToCloudinary(imageFile);
+      const newImageUrl = await this.uploadServiceMediaToCloudinary(imageFile);
       try {
         if (existing.imageUrl) {
           await this.deleteImageFromCloudinaryByUrl(existing.imageUrl);
@@ -217,10 +220,17 @@ export class ServicesService {
           () => null,
         );
         throw new InternalServerErrorException(
-          'Cannot replace previous image in Cloudinary.',
+          'Cannot replace previous media in Cloudinary.',
         );
       }
-      imageUrl = newImageUrl;
+      nextImageUrl = newImageUrl;
+    } else if (dto.clearImage === true) {
+      if (existing.imageUrl) {
+        await this.deleteImageFromCloudinaryByUrl(existing.imageUrl).catch(
+          () => null,
+        );
+      }
+      nextImageUrl = null;
     }
 
     if (dto.serviceTypeId) {
@@ -244,7 +254,7 @@ export class ServicesService {
       ...(dto.items !== undefined ? { items: dto.items } : {}),
       ...(dto.price !== undefined ? { price: dto.price } : {}),
       ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-      ...(imageUrl ? { imageUrl } : {}),
+      ...(nextImageUrl !== undefined ? { imageUrl: nextImageUrl } : {}),
     };
 
     try {
@@ -455,6 +465,7 @@ export class ServicesService {
       items: service.items,
       price: service.price != null ? Number(service.price) : null,
       imageUrl: service.imageUrl,
+      heroMediaType: this.catalogHeroMediaType(service.imageUrl),
       isActive: service.isActive,
       createdAt: service.createdAt,
       updatedAt: service.updatedAt,
@@ -509,16 +520,30 @@ export class ServicesService {
     }
   }
 
-  private uploadImageToCloudinary(file: Express.Multer.File): Promise<string> {
+  private catalogHeroMediaType(
+    imageUrl: string | null | undefined,
+  ): 'IMAGE' | 'VIDEO' | undefined {
+    if (!imageUrl) return undefined;
+    return imageUrl.toLowerCase().includes('/video/upload/')
+      ? 'VIDEO'
+      : 'IMAGE';
+  }
+
+  private uploadServiceMediaToCloudinary(file: Express.Multer.File): Promise<string> {
+    const isVideo = file.mimetype.startsWith('video/');
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'shamell/services',
-          resource_type: 'image',
+          resource_type: isVideo ? 'video' : 'image',
         },
         (error, result) => {
           if (error || !result?.secure_url) {
-            reject(new InternalServerErrorException('Image upload failed.'));
+            reject(
+              new InternalServerErrorException(
+                `${isVideo ? 'Video' : 'Image'} upload failed.`,
+              ),
+            );
             return;
           }
           resolve(result.secure_url);
@@ -533,18 +558,22 @@ export class ServicesService {
     const publicId = this.extractCloudinaryPublicIdFromUrl(imageUrl);
     if (!publicId) {
       throw new InternalServerErrorException(
-        'Cannot resolve Cloudinary image identifier.',
+        'Cannot resolve Cloudinary media identifier.',
       );
     }
 
+    const resourceType = imageUrl.toLowerCase().includes('/video/upload/')
+      ? 'video'
+      : 'image';
+
     const destroyResult = (await cloudinary.uploader.destroy(publicId, {
-      resource_type: 'image',
+      resource_type: resourceType,
     })) as { result?: string };
     const ok =
       destroyResult.result === 'ok' || destroyResult.result === 'not found';
     if (!ok) {
       throw new InternalServerErrorException(
-        'Cloudinary image deletion failed.',
+        'Cloudinary media deletion failed.',
       );
     }
   }

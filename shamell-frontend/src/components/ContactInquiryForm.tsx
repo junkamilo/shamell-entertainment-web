@@ -23,6 +23,7 @@ import {
   type InquiryEntrySource,
   type ServiceTypeCode,
 } from "@/lib/contactInquiryConstants";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import { usePublicAvailability } from "@/hooks/use-public-availability";
 import {
   expandBlockedDateReasonsMap,
@@ -50,6 +51,7 @@ type CatalogSnapshot = {
   descriptionPreview?: string;
   items: string[];
   imageUrl?: string | null;
+  imageMediaType?: "IMAGE" | "VIDEO";
 };
 
 export type ContactLine = {
@@ -61,6 +63,8 @@ export type ContactLine = {
   items: string[];
   images: string[];
   heroImageUrl?: string | null;
+  /** First linked gallery item; VIDEO when hero is a clip. */
+  heroMediaType?: string | null;
   /** `event_type` = solo existe tipo de evento (sin fila Event); no enviar `eventId` al crear contacto. */
   lineKind?: "event" | "event_type";
   occasionSingle: { id: string; name: string }[];
@@ -113,6 +117,7 @@ type ServiceSummarySnapshot = {
   descriptionPreview?: string;
   items: string[];
   imageUrl?: string | null;
+  imageMediaType?: "IMAGE" | "VIDEO";
 };
 
 type PublicServiceOption = {
@@ -122,6 +127,7 @@ type PublicServiceOption = {
   description?: string;
   items: string[];
   imageUrl?: string | null;
+  imageMediaType?: "IMAGE" | "VIDEO";
 };
 
 function emptyWizard(initialServiceType?: ServiceTypeCode): WizardData {
@@ -577,6 +583,10 @@ export default function ContactInquiryForm({
               typeof row.heroImageUrl === "string" && row.heroImageUrl.trim().length > 0
                 ? row.heroImageUrl.trim()
                 : undefined,
+            heroMediaType:
+              typeof row.heroMediaType === "string" && row.heroMediaType.trim().length > 0
+                ? row.heroMediaType.trim()
+                : undefined,
             lineKind: row.lineKind === "event_type" ? "event_type" : "event",
             occasionSingle: mapOpts(row.occasionSingle),
             occasionBespokeProject: mapOpts(row.occasionBespokeProject),
@@ -625,7 +635,11 @@ export default function ContactInquiryForm({
                   .map((v) => (typeof v === "string" ? v.trim() : ""))
                   .filter(Boolean)
               : [],
-            imageUrl: typeof row.imageUrl === "string" && row.imageUrl.trim() ? row.imageUrl.trim() : undefined,
+            imageUrl:
+              typeof row.imageUrl === "string" && row.imageUrl.trim() ? row.imageUrl.trim() : undefined,
+            imageMediaType: serviceCatalogMediaTypeFromUrl(
+              typeof row.imageUrl === "string" ? row.imageUrl : undefined,
+            ),
           });
         }
         setServiceTypeOptions(parsed);
@@ -725,6 +739,7 @@ export default function ContactInquiryForm({
           descriptionPreview?: string;
           items?: string[];
           imageUrl?: string | null;
+          heroMediaType?: string | null;
         };
         if (cancelled) return;
         const title = typeof body.title === "string" ? body.title.trim() : "";
@@ -733,6 +748,15 @@ export default function ContactInquiryForm({
           setCatalogSnapshot(null);
           return;
         }
+        const imageUrl =
+          typeof body.imageUrl === "string" && body.imageUrl.trim() ? body.imageUrl.trim() : undefined;
+        const hero =
+          typeof body.heroMediaType === "string" ? body.heroMediaType.trim().toUpperCase() : "";
+        const imageMediaType: "IMAGE" | "VIDEO" | undefined = !imageUrl
+          ? undefined
+          : hero === "VIDEO" || serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO"
+            ? "VIDEO"
+            : "IMAGE";
         const snap: CatalogSnapshot = {
           kind: initialCatalog.kind,
           id: typeof body.id === "string" ? body.id : initialCatalog.id,
@@ -747,7 +771,8 @@ export default function ContactInquiryForm({
           items: Array.isArray(body.items)
             ? body.items.map((v) => (typeof v === "string" ? v.trim() : "")).filter(Boolean)
             : [],
-          imageUrl: typeof body.imageUrl === "string" && body.imageUrl.trim() ? body.imageUrl : undefined,
+          imageUrl,
+          imageMediaType,
         };
         setCatalogSnapshot(snap);
         setCatalogFetchError(null);
@@ -807,6 +832,7 @@ export default function ContactInquiryForm({
         descriptionPreview: catalogSnapshot.descriptionPreview,
         items: catalogSnapshot.items,
         imageUrl: catalogSnapshot.imageUrl,
+        imageMediaType: catalogSnapshot.imageMediaType,
       });
       setServiceSummaryLoading(false);
       return;
@@ -828,9 +854,19 @@ export default function ContactInquiryForm({
           descriptionPreview?: string;
           items?: string[];
           imageUrl?: string | null;
+          heroMediaType?: string | null;
         };
         if (cancelled) return null;
         if (!body || typeof body.title !== "string" || !body.title.trim()) return null;
+        const imageUrl =
+          typeof body.imageUrl === "string" && body.imageUrl.trim() ? body.imageUrl.trim() : undefined;
+        const hero =
+          typeof body.heroMediaType === "string" ? body.heroMediaType.trim().toUpperCase() : "";
+        const imageMediaType: "IMAGE" | "VIDEO" | undefined = !imageUrl
+          ? undefined
+          : hero === "VIDEO" || serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO"
+            ? "VIDEO"
+            : "IMAGE";
         return {
           id: typeof body.id === "string" ? body.id : "",
           title: body.title.trim(),
@@ -843,7 +879,8 @@ export default function ContactInquiryForm({
           items: Array.isArray(body.items)
             ? body.items.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean)
             : [],
-          imageUrl: typeof body.imageUrl === "string" && body.imageUrl.trim() ? body.imageUrl.trim() : undefined,
+          imageUrl,
+          imageMediaType,
         } as ServiceSummarySnapshot;
       })
       .then((summary) => {
@@ -1077,12 +1114,22 @@ export default function ContactInquiryForm({
   const selectedEventSummary = useMemo(() => {
     if (selectedLine) {
       const description = lineDescriptionPreview(selectedLine.description, 220);
+      const imageUrl = selectedLine.heroImageUrl ?? selectedLine.images[0] ?? undefined;
+      const imageMediaType: "IMAGE" | "VIDEO" | undefined =
+        imageUrl &&
+        typeof selectedLine.heroMediaType === "string" &&
+        selectedLine.heroMediaType.trim().toUpperCase() === "VIDEO"
+          ? "VIDEO"
+          : imageUrl
+            ? "IMAGE"
+            : undefined;
       return {
         title: selectedLine.eventTypeName,
         subtitle: readableInquiryCode(resolveServiceLineFromCatalog(selectedLine.contactInquiryCode)),
         description: description || undefined,
         items: selectedLine.items,
-        imageUrl: selectedLine.heroImageUrl ?? selectedLine.images[0] ?? undefined,
+        imageUrl,
+        imageMediaType,
       };
     }
     if (!catalogDismissed && catalogSnapshot?.kind === "event") {
@@ -1094,6 +1141,7 @@ export default function ContactInquiryForm({
         description: catalogSnapshot.descriptionPreview || undefined,
         items: catalogSnapshot.items,
         imageUrl: catalogSnapshot.imageUrl ?? undefined,
+        imageMediaType: catalogSnapshot.imageMediaType,
       };
     }
     return null;
@@ -1124,6 +1172,7 @@ export default function ContactInquiryForm({
           description: selectedService.description || inquiryCodeDescription(selectedService.inquiryCode),
           items: selectedService.items,
           imageUrl: selectedService.imageUrl ?? undefined,
+          imageMediaType: selectedService.imageMediaType,
         };
       }
     }
@@ -1134,6 +1183,7 @@ export default function ContactInquiryForm({
         description: serviceSummary.description || serviceSummary.descriptionPreview,
         items: serviceSummary.items,
         imageUrl: serviceSummary.imageUrl ?? undefined,
+        imageMediaType: serviceSummary.imageMediaType,
       };
     }
     if (!data.inquiryCode) return null;

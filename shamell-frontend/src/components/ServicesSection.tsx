@@ -12,10 +12,12 @@ type EventsApiItem = {
   contactInquiryCode?: string | null;
   price?: number | null;
   images?: string[];
+  heroImageUrl?: string | null;
+  heroMediaType?: string | null;
 };
 
 type ValidEventApiItem = Required<Pick<EventsApiItem, "id" | "eventTypeName" | "description" | "items">> &
-  Pick<EventsApiItem, "contactInquiryCode" | "price" | "images">;
+  Pick<EventsApiItem, "contactInquiryCode" | "price" | "images" | "heroImageUrl" | "heroMediaType">;
 
 const isValidEvent = (item: EventsApiItem): item is ValidEventApiItem =>
   Boolean(
@@ -57,6 +59,17 @@ const ServicesSection = () => {
                   ? rawPrice
                   : Number(rawPrice);
             const imgs = Array.isArray(item.images) ? item.images.filter((u) => typeof u === "string" && u.trim()) : [];
+            const heroUrl =
+              typeof item.heroImageUrl === "string" && item.heroImageUrl.trim()
+                ? item.heroImageUrl.trim()
+                : imgs.length > 0
+                  ? imgs[0]
+                  : null;
+            const heroMt =
+              typeof item.heroMediaType === "string" && item.heroMediaType.trim()
+                ? item.heroMediaType.trim().toUpperCase()
+                : "IMAGE";
+            const heroMediaType: "IMAGE" | "VIDEO" = heroMt === "VIDEO" ? "VIDEO" : "IMAGE";
             return {
               id: item.id,
               eventTypeName: item.eventTypeName,
@@ -64,7 +77,8 @@ const ServicesSection = () => {
               eventTypes: item.items,
               contactInquiryCode: item.contactInquiryCode ?? null,
               price: Number.isFinite(priceParsed as number) ? (priceParsed as number) : null,
-              heroImageUrl: imgs.length > 0 ? imgs[0] : null,
+              heroImageUrl: heroUrl,
+              heroMediaType,
             };
           });
 

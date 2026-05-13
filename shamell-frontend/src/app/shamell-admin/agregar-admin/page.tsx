@@ -11,6 +11,7 @@ import {
   User,
   UserPlus,
 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import { toast } from "@/hooks/use-toast";
@@ -48,7 +49,7 @@ export default function ShamellAdminAgregarAdminPage() {
   };
 
   const sendVerificationCode = useCallback(
-    async (isResend = false) => {
+    async (isRetry = false) => {
       const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
       if (!token) {
         toast({
@@ -91,8 +92,8 @@ export default function ShamellAdminAgregarAdminPage() {
         }
 
         toast({
-          title: isResend ? "Code resent" : "Code sent",
-          description: `Check the inbox for ${trimmedEmail} (Resend).`,
+          title: isRetry ? "New invitation sent" : "Invitation sent",
+          description: `Check ${trimmedEmail} for the Shamell admin invitation code.`,
         });
         setPhase(2);
         setCode("");
@@ -175,13 +176,212 @@ export default function ShamellAdminAgregarAdminPage() {
 
   const emailDisplay = email.trim().toLowerCase();
 
+  const renderAdminDetailsCard = (className?: string) => (
+    <div
+      className={cn(
+        "shamell-glass-surface flex h-full min-h-0 flex-col rounded-2xl border p-5 md:p-6",
+        phase === 1 ? "border-gold/28 ring-1 ring-gold/12" : "border-gold/14",
+        className,
+      )}
+    >
+      <div className="mb-5 flex items-center gap-3 border-b border-gold/10 pb-4">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-gold/35 bg-gold/12 font-brand text-xs text-gold">
+          1
+        </span>
+        <div>
+          <p className="font-brand text-[10px] tracking-[0.2em] text-gold/65">NEW ADMIN</p>
+          <p className="font-brand text-sm tracking-[0.12em] text-gold">Email and name</p>
+        </div>
+      </div>
+
+      <form onSubmit={onSendCodeForm} className="flex flex-1 flex-col space-y-5">
+        <label className="block">
+          <span className="flex items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
+            <Mail className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} />
+            EMAIL
+          </span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={phase === 2}
+            autoComplete="off"
+            placeholder="new.admin@example.com"
+            className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-55"
+            required
+          />
+          <p className="mt-1.5 font-body text-[11px] text-foreground/45">
+            The Shamell admin invitation code will arrive here.
+          </p>
+        </label>
+
+        <label className="block">
+          <span className="flex items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
+            <User className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} />
+            FULL NAME
+          </span>
+          <input
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            disabled={phase === 2}
+            placeholder="As shown in the admin panel"
+            className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:opacity-55"
+            required
+            minLength={2}
+          />
+        </label>
+
+        <div className="mt-auto flex flex-wrap gap-3 pt-1">
+          <button
+            type="submit"
+            disabled={isSending || phase === 2}
+            className={cn(
+              "flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-gold/45 bg-gold/18 px-4 font-brand text-sm tracking-[0.08em] text-gold transition hover:border-gold/60 hover:bg-gold/28 sm:inline-flex sm:w-auto sm:px-6",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          >
+            <Send className="h-4 w-4 shrink-0" strokeWidth={1.6} />
+            {isSending ? "Sending…" : "Send invitation"}
+          </button>
+          {phase === 2 ? (
+            <button
+              type="button"
+              onClick={() => {
+                setPhase(1);
+                setCode("");
+                setPassword("");
+              }}
+              className="shamell-glass-surface inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-gold/22 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold sm:w-auto"
+            >
+              <RotateCcw className="h-3.5 w-3.5" strokeWidth={1.5} />
+              Edit email or name
+            </button>
+          ) : null}
+        </div>
+      </form>
+    </div>
+  );
+
+  const renderCodePasswordCard = (className?: string) => (
+    <div
+      className={cn(
+        "relative flex h-full min-h-0 flex-col rounded-2xl border p-5 md:p-6",
+        phase === 2
+          ? "shamell-glass-surface border-gold/30 ring-1 ring-gold/15"
+          : "shamell-glass-surface border-gold/10 border-dashed opacity-[0.92]",
+        className,
+      )}
+    >
+      <div className="mb-4 flex items-center gap-3 border-b border-gold/10 pb-4">
+        <span
+          className={cn(
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border font-brand text-xs",
+            phase === 2
+              ? "border-gold/40 bg-gold/15 text-gold"
+              : "border-gold/15 bg-gold/8 text-foreground/40",
+          )}
+        >
+          2
+        </span>
+        <div>
+          <p className="font-brand text-[10px] tracking-[0.2em] text-gold/65">VERIFICATION</p>
+          <p className="font-brand text-sm tracking-[0.12em] text-gold">Code and password</p>
+        </div>
+      </div>
+
+      {phase === 1 ? (
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-2 py-6 text-center md:py-10">
+          <KeyRound className="h-10 w-10 text-gold/25" strokeWidth={1.2} />
+          <p className="max-w-xs font-body text-sm leading-relaxed text-foreground/50">
+            After you tap <span className="text-gold/85">Send invitation</span>, you can enter the 6-digit code and the
+            new administrator&apos;s password here.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="mb-5 flex gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 shadow-[inset_0_1px_0_rgba(52,211,153,0.08)]">
+            <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300/95" strokeWidth={1.75} />
+            <div className="min-w-0 text-left">
+              <p className="font-brand text-[10px] tracking-[0.14em] text-emerald-200/95">Valid code format</p>
+              <p className="mt-1 font-body text-xs leading-relaxed text-foreground/75">
+                We only accept the <strong className="text-gold/90">6-digit numeric code</strong> from the{" "}
+                <strong className="text-gold/90">latest email</strong> the system sent to{" "}
+                <span className="font-mono text-[11px] text-gold/85">{emailDisplay}</span>. If you send a new code,
+                always use the newest one. The server checks it against the code generated when it was sent.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={onAddAdmin} className="flex flex-1 flex-col space-y-5">
+            <label className="block">
+              <span className="flex items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
+                <KeyRound className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} />
+                VERIFICATION CODE
+              </span>
+              <input
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="• • • • • •"
+                className="mt-2 h-14 w-full rounded-xl border border-gold/35 px-4 text-center font-mono text-2xl tracking-[0.45em] text-gold placeholder:text-gold/20 placeholder:tracking-[0.2em] focus:border-gold/60 focus:outline-none focus:ring-2 focus:ring-gold/25"
+                required
+              />
+              <p className="mt-1.5 font-body text-[11px] text-foreground/45">
+                {code.length}/6 digits — must match the email you received.
+              </p>
+            </label>
+
+            <label className="block">
+              <span className="flex items-center gap-2 font-brand text-[11px] tracking-[0.2em] text-gold/95">
+                <Lock className="h-3.5 w-3.5 text-gold/70" strokeWidth={1.5} />
+                NEW ADMIN PASSWORD
+              </span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                placeholder="At least 8 characters"
+                minLength={8}
+                className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition placeholder:text-foreground/35 focus:border-gold/55 focus:ring-2 focus:ring-gold/20"
+                required
+              />
+            </label>
+
+            <div className="mt-auto flex flex-wrap gap-3 border-t border-gold/10 pt-5">
+              <button
+                type="submit"
+                disabled={isVerifying}
+                className={cn(
+                  "flex h-12 w-full items-center justify-center rounded-xl border border-gold/45 bg-gold/18 px-4 font-brand text-sm tracking-[0.08em] text-gold transition hover:border-gold/60 hover:bg-gold/28 sm:inline-flex sm:w-auto sm:px-8",
+                  "disabled:cursor-not-allowed disabled:opacity-50",
+                )}
+              >
+                {isVerifying ? "Creating…" : "Add administrator"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void sendVerificationCode(true)}
+                disabled={isSending}
+                className="shamell-glass-surface inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-gold/22 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold disabled:opacity-50 sm:w-auto"
+              >
+                Send new code
+              </button>
+            </div>
+          </form>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className="mx-auto w-full max-w-6xl">
       <AdminModuleHero
         title="Add administrator"
-        subtitle="Send the verification code by email (Resend) and finish onboarding the new administrator on this screen."
-        actionLabel="Start over"
-        onAction={resetFlow}
+        subtitle="Send the real admin invitation by email and finish onboarding the new administrator on this screen."
         bordered={false}
       />
 
@@ -233,7 +433,21 @@ export default function ShamellAdminAgregarAdminPage() {
           </div>
         </div>
 
-        <div className="grid gap-6 p-5 md:gap-8 md:p-8 lg:grid-cols-2 lg:items-stretch">
+        <div className="p-5 md:p-8 lg:hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={phase === 1 ? "admin-details" : "code-password"}
+              initial={{ opacity: 0, x: phase === 1 ? -18 : 18 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: phase === 1 ? 18 : -18 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+            >
+              {phase === 1 ? renderAdminDetailsCard() : renderCodePasswordCard()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        <div className="hidden gap-6 p-5 md:gap-8 md:p-8 lg:grid lg:grid-cols-2 lg:items-stretch">
           {/* Column: new admin details */}
           <div
             className={cn(
@@ -268,7 +482,7 @@ export default function ShamellAdminAgregarAdminPage() {
                   required
                 />
                 <p className="mt-1.5 font-body text-[11px] text-foreground/45">
-                  The verification code will arrive here (Resend).
+                  The Shamell admin invitation code will arrive here.
                 </p>
               </label>
 
@@ -299,7 +513,7 @@ export default function ShamellAdminAgregarAdminPage() {
                   )}
                 >
                   <Send className="h-4 w-4 shrink-0" strokeWidth={1.6} />
-                  {isSending ? "Sending…" : "Send verification"}
+                  {isSending ? "Sending…" : "Send invitation"}
                 </button>
                 {phase === 2 ? (
                   <button
@@ -349,8 +563,8 @@ export default function ShamellAdminAgregarAdminPage() {
               <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 px-2 py-6 text-center md:py-10">
                 <KeyRound className="h-10 w-10 text-gold/25" strokeWidth={1.2} />
                 <p className="max-w-xs font-body text-sm leading-relaxed text-foreground/50">
-                  After you tap <span className="text-gold/85">Send verification</span>, you can enter the 6-digit
-                  code and the new administrator's password here.
+                  After you tap <span className="text-gold/85">Send invitation</span>, you can enter the 6-digit
+                  code and the new administrator&apos;s password here.
                 </p>
               </div>
             ) : (
@@ -362,9 +576,8 @@ export default function ShamellAdminAgregarAdminPage() {
                     <p className="mt-1 font-body text-xs leading-relaxed text-foreground/75">
                       We only accept the <strong className="text-gold/90">6-digit numeric code</strong> from the{" "}
                       <strong className="text-gold/90">latest email</strong> the system sent to{" "}
-                      <span className="font-mono text-[11px] text-gold/85">{emailDisplay}</span>. If you resend the
-                      code, always use the newest one. The server checks it against the code generated when it was
-                      sent.
+                      <span className="font-mono text-[11px] text-gold/85">{emailDisplay}</span>. If you send a new
+                      code, always use the newest one. The server checks it against the code generated when it was sent.
                     </p>
                   </div>
                 </div>
@@ -424,7 +637,7 @@ export default function ShamellAdminAgregarAdminPage() {
                       disabled={isSending}
                       className="shamell-glass-surface inline-flex min-h-11 items-center justify-center rounded-xl border border-gold/22 px-5 font-brand text-[10px] tracking-[0.12em] text-foreground/75 transition hover:border-gold/40 hover:text-gold disabled:opacity-50"
                     >
-                      Resend code
+                      Send new code
                     </button>
                   </div>
                 </form>

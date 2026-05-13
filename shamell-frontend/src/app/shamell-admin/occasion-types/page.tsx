@@ -6,8 +6,10 @@ import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminModal from "@/components/admin/AdminModal";
+import AdminPagination from "@/components/admin/AdminPagination";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import { toast } from "@/hooks/use-toast";
+import { DEFAULT_PAGINATION_META } from "@/lib/pagination";
 import { cn } from "@/lib/utils";
 
 type OccasionRow = {
@@ -40,6 +42,8 @@ export default function ShamellAdminOccasionTypesPage() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<OccasionRow | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
   const parseErrorMessage = useCallback((data: unknown, fallback: string) => {
     if (typeof data !== "object" || data === null) return fallback;
@@ -286,6 +290,29 @@ export default function ShamellAdminOccasionTypesPage() {
     return list;
   }, [rows, searchQuery, filterTab]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterTab]);
+
+  const paginationMeta = useMemo(() => {
+    const totalItems = filtered.length;
+    const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
+    const safePage = Math.min(Math.max(1, page), totalPages);
+    return {
+      page: safePage,
+      perPage,
+      totalItems,
+      totalPages,
+      hasPrev: safePage > 1,
+      hasNext: safePage < totalPages,
+    };
+  }, [page, perPage, filtered.length]);
+
+  const pagedRows = useMemo(() => {
+    const start = (paginationMeta.page - 1) * paginationMeta.perPage;
+    return filtered.slice(start, start + paginationMeta.perPage);
+  }, [filtered, paginationMeta.page, paginationMeta.perPage]);
+
   const filterPill = (id: FilterTab, label: string) => (
     <button
       key={id}
@@ -353,93 +380,92 @@ export default function ShamellAdminOccasionTypesPage() {
             />
           )
         ) : (
-          <div className="grid gap-3">
-            {filtered.map((item) => {
-              const bk = item.bookingCount ?? 0;
-              const links = item.eventTypeLinkCount ?? 0;
-              const deletable = canDeleteOccasion(item);
-              const blockDeactivate = cannotDeactivateWhileActive(item);
-              const meta =
-                bk > 0
-                  ? links > 0
-                    ? `${bk} booking(s) · ${links} event type(s)`
-                    : `${bk} booking(s)`
-                  : links > 0
-                    ? `In ${links} event type(s) · no bookings`
-                    : "No bookings linked; you can hide or delete if you do not need it.";
-              return (
-              <div
-                key={item.id}
-                className="shamell-glass-surface flex items-center gap-3 rounded-xl border border-gold/14 px-4 py-3"
-              >
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold/30 bg-gold/10">
-                  <Sparkles className="h-4 w-4 text-gold/90" strokeWidth={1.4} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-brand text-sm tracking-wide text-gold">{item.name}</p>
-                  <p className="font-body text-[11px] text-foreground/45">
-                    {item.isActive ? "Active" : "Inactive"} · {meta}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(item)}
-                    className="rounded-lg border border-gold/22 p-2 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
-                    aria-label={`Edit ${item.name}`}
+          <>
+            <div className="grid gap-3">
+              {pagedRows.map((item) => {
+                const deletable = canDeleteOccasion(item);
+                const blockDeactivate = cannotDeactivateWhileActive(item);
+                return (
+                  <div
+                    key={item.id}
+                    className="shamell-glass-surface flex items-center gap-3 rounded-xl border border-gold/14 px-4 py-3"
                   >
-                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openDeleteConfirm(item)}
-                    disabled={!deletable}
-                    className={cn(
-                      "rounded-lg border p-2 transition",
-                      deletable
-                        ? "border-red-400/30 text-red-300/90 hover:border-red-400/50 hover:bg-red-500/10"
-                        : "cursor-not-allowed border-gold/10 text-foreground/30",
-                    )}
-                    aria-label={`Delete ${item.name}`}
-                    title={
-                      !deletable
-                        ? "Bookings are linked"
-                        : "Delete from catalog (also removes links on event types)"
-                    }
-                  >
-                    <Trash2 className="h-3.5 w-3.5" strokeWidth={1.6} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void onToggleActive(item)}
-                    disabled={togglingId === item.id || blockDeactivate}
-                    title={
-                      blockDeactivate
-                        ? "Bookings are linked; cannot turn off."
-                        : undefined
-                    }
-                    className={cn(
-                      "relative h-7 w-12 shrink-0 rounded-full border transition",
-                      item.isActive
-                        ? "border-emerald-400/45 bg-emerald-500/22"
-                        : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
-                      togglingId === item.id && "cursor-not-allowed opacity-60",
-                      blockDeactivate && "cursor-not-allowed opacity-45",
-                    )}
-                    aria-label={`${item.isActive ? "Hide" : "Show"} ${item.name}`}
-                  >
-                    <span
-                      className={cn(
-                        "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
-                        item.isActive ? "left-6" : "left-1",
-                      )}
-                    />
-                  </button>
-                </div>
-              </div>
-            );
-            })}
-          </div>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold/30 bg-gold/10">
+                      <Sparkles className="h-4 w-4 text-gold/90" strokeWidth={1.4} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-brand text-sm tracking-wide text-gold">{item.name}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(item)}
+                        className="rounded-lg border border-gold/22 p-2 text-foreground/65 transition hover:bg-gold/10 hover:text-gold"
+                        aria-label={`Edit ${item.name}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" strokeWidth={1.6} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openDeleteConfirm(item)}
+                        disabled={!deletable}
+                        className={cn(
+                          "rounded-lg border p-2 transition",
+                          deletable
+                            ? "border-red-400/30 text-red-300/90 hover:border-red-400/50 hover:bg-red-500/10"
+                            : "cursor-not-allowed border-gold/10 text-foreground/30",
+                        )}
+                        aria-label={`Delete ${item.name}`}
+                        title={
+                          !deletable
+                            ? "Bookings are linked"
+                            : "Delete from catalog (also removes links on event types)"
+                        }
+                      >
+                        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.6} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void onToggleActive(item)}
+                        disabled={togglingId === item.id || blockDeactivate}
+                        title={
+                          blockDeactivate
+                            ? "Bookings are linked; cannot turn off."
+                            : undefined
+                        }
+                        className={cn(
+                          "relative h-7 w-12 shrink-0 rounded-full border transition",
+                          item.isActive
+                            ? "border-emerald-400/45 bg-emerald-500/22"
+                            : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
+                          togglingId === item.id && "cursor-not-allowed opacity-60",
+                          blockDeactivate && "cursor-not-allowed opacity-45",
+                        )}
+                        aria-label={`${item.isActive ? "Hide" : "Show"} ${item.name}`}
+                      >
+                        <span
+                          className={cn(
+                            "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
+                            item.isActive ? "left-6" : "left-1",
+                          )}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <AdminPagination
+              className="mt-6 border-t border-gold/10 pt-4"
+              meta={paginationMeta}
+              onPageChange={setPage}
+              onPerPageChange={(next) => {
+                setPerPage(next);
+                setPage(DEFAULT_PAGINATION_META.page);
+              }}
+            />
+          </>
         )}
       </section>
 
