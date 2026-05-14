@@ -37,6 +37,11 @@ export const metadata: Metadata = {
   title: "Shamell Entertainment — Performance & Events",
   description:
     "Exclusive performance artistry for private events, galas, and bespoke productions. Explore services, gallery, and inquire.",
+  icons: {
+    icon: [{ url: "/01_bailarina.png", type: "image/png" }],
+    shortcut: "/01_bailarina.png",
+    apple: "/01_bailarina.png",
+  },
 };
 
 export default function RootLayout({
