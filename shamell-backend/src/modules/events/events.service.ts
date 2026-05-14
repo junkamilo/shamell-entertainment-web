@@ -24,6 +24,24 @@ type OccasionLinkRow = {
 export class EventsService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /** Cloudinary videos and common extensions → VIDEO even if DB `mediaType` is stale. */
+  private effectiveGalleryMediaType(
+    imageUrl: string | null | undefined,
+    mediaType?: GalleryMediaType | null,
+  ): GalleryMediaType {
+    const u = typeof imageUrl === 'string' ? imageUrl.trim() : '';
+    if (u) {
+      const lower = u.toLowerCase();
+      if (
+        lower.includes('/video/upload/') ||
+        /\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(lower)
+      ) {
+        return GalleryMediaType.VIDEO;
+      }
+    }
+    return mediaType ?? GalleryMediaType.IMAGE;
+  }
+
   async createEvent(dto: CreateEventDto) {
     const eventType = await this.prisma.eventType.findUnique({
       where: { id: dto.eventTypeId },
@@ -166,7 +184,9 @@ export class EventsService {
       descriptionPreview: preview || undefined,
       items: event.items,
       imageUrl: hero?.imageUrl ?? null,
-      heroMediaType: hero?.mediaType ?? null,
+      heroMediaType: hero
+        ? this.effectiveGalleryMediaType(hero.imageUrl, hero.mediaType)
+        : null,
       contactInquiryCode: event.eventType.contactInquiryCode ?? null,
     };
   }
@@ -683,7 +703,9 @@ export class EventsService {
         .filter((p) => p.mediaType === GalleryMediaType.IMAGE)
         .map((p) => p.imageUrl),
       heroImageUrl: first?.imageUrl ?? null,
-      heroMediaType: first?.mediaType ?? null,
+      heroMediaType: first
+        ? this.effectiveGalleryMediaType(first.imageUrl, first.mediaType)
+        : null,
       showOnHome: item.showOnHome,
       lineKind: 'event' as const,
       ...groups,
@@ -747,10 +769,12 @@ export class EventsService {
         'mediaType' in p,
     );
     const first = rows[0];
-    const firstMediaType =
-      first && 'mediaType' in first && first.mediaType
-        ? first.mediaType
-        : GalleryMediaType.IMAGE;
+    const firstMediaType = first
+      ? this.effectiveGalleryMediaType(
+          first.imageUrl,
+          'mediaType' in first && first.mediaType ? first.mediaType : null,
+        )
+      : GalleryMediaType.IMAGE;
 
     return {
       id: item.id,

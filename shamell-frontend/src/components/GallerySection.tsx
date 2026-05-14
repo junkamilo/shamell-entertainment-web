@@ -2,25 +2,93 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import RevealOnView from "@/components/shared/RevealOnView";
-import { useGalleryCategories, useGalleryPhotos } from "@/hooks/use-gallery";
+import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
+import { useGalleryCategories, useGalleryPhotos, type GalleryPhotoItem } from "@/hooks/use-gallery";
 import { cn } from "@/lib/utils";
 
-function cellLayoutClass(index: number) {
-  if (index < 2) {
-    return "col-span-1 md:col-span-3";
+/** Home preview: brick layout 3 + 2 + 3 (mockup), up to 8 images; shorter rows when fewer photos. */
+function brickRows<T>(items: T[]): T[][] {
+  const slice = items.slice(0, 8);
+  const rows: T[][] = [];
+  let offset = 0;
+  for (const rowSize of [3, 2, 3] as const) {
+    if (offset >= slice.length) break;
+    rows.push(slice.slice(offset, offset + rowSize));
+    offset += rowSize;
   }
-  if (index < 5) {
-    return "col-span-1 md:col-span-2";
-  }
-  return "col-span-2 flex justify-center md:col-span-6";
+  return rows;
+}
+
+function galleryRowClass(rowLength: number) {
+  return cn(
+    "w-full min-w-0",
+    rowLength === 3 &&
+      "grid grid-cols-3 gap-2 sm:flex sm:flex-row sm:justify-center sm:gap-4 md:gap-5 lg:gap-6",
+    rowLength === 2 &&
+      "grid grid-cols-2 gap-3 sm:flex sm:flex-row sm:justify-center sm:gap-4 md:gap-5 lg:gap-6",
+    rowLength === 1 && "flex justify-center",
+  );
+}
+
+function galleryCellClass(rowLength: number) {
+  return cn(
+    "min-w-0",
+    rowLength === 3 && "w-full sm:w-44 sm:shrink-0 md:w-52 lg:w-56 xl:w-60",
+    rowLength === 2 && "w-full sm:w-56 sm:shrink-0 md:w-60 lg:w-64",
+    rowLength === 1 &&
+      "w-full max-w-[min(100%,22rem)] px-0.5 sm:max-w-md sm:px-0 md:max-w-lg lg:max-w-xl",
+  );
+}
+
+function GalleryPreviewTile({ item }: { item: GalleryPhotoItem }) {
+  return (
+    <div
+      className={cn(
+        "shamell-gallery-card-bg group relative aspect-3/4 w-full overflow-hidden rounded-xl border border-gold/15 shadow-[inset_0_1px_0_rgba(197,165,90,0.06),inset_0_0_0_1px_rgba(255,255,255,0.04),0_8px_28px_rgba(0,0,0,0.35)] transition-[border-color,box-shadow] duration-500",
+        "group-hover:border-gold/35 group-hover:shadow-[0_16px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(197,165,90,0.1),inset_0_0_0_1px_rgba(255,255,255,0.06)]",
+      )}
+    >
+      <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(42,32,26,0.2),transparent_38%,transparent_62%,rgba(24,18,14,0.25))] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+
+      {item.mediaType === "VIDEO" ? (
+        <video
+          src={item.src}
+          className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+          muted
+          playsInline
+          preload="metadata"
+        />
+      ) : (
+        <Image
+          src={item.src}
+          alt={item.alt}
+          fill
+          sizes="(max-width: 640px) 33vw, (max-width: 1024px) 30vw, 440px"
+          loading="lazy"
+          className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+        />
+      )}
+
+      <span
+        className="pointer-events-none absolute left-1.5 top-1.5 h-4 w-4 border-l border-t border-gold/25 opacity-50 transition-opacity group-hover:opacity-90"
+        aria-hidden
+      />
+      <span
+        className="pointer-events-none absolute right-1.5 top-1.5 h-4 w-4 border-r border-t border-gold/25 opacity-50 transition-opacity group-hover:opacity-90"
+        aria-hidden
+      />
+    </div>
+  );
 }
 
 const GallerySection = () => {
   const [filter, setFilter] = useState("all");
   const { categories } = useGalleryCategories();
-  const { photos, isLoading } = useGalleryPhotos(filter, 6);
+  const { photos, isLoading } = useGalleryPhotos(filter, 8);
+  const previewPhotos = useMemo(() => photos.slice(0, 8), [photos]);
+  const rows = useMemo(() => brickRows(previewPhotos), [previewPhotos]);
 
   return (
     <section id="gallery" className="bg-transparent px-4 py-20">
@@ -38,8 +106,7 @@ const GallerySection = () => {
         </RevealOnView>
       </div>
 
-      <div className="mx-auto max-w-6xl">
-
+      <div className="mx-auto max-w-7xl px-3 sm:px-4">
         <RevealOnView delay={120} amount={0.16}>
           <div
             role="tablist"
@@ -67,57 +134,26 @@ const GallerySection = () => {
         </RevealOnView>
 
         {isLoading ? (
-          <p className="mb-6 text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">Loading gallery...</p>
+          <p className="mb-6 text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">
+            Loading gallery...
+          </p>
         ) : null}
 
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-6 md:gap-5">
-          {photos.slice(0, 6).map((item, index) => (
-            <RevealOnView
-              key={item.id}
-              className={cn("group relative", cellLayoutClass(index), index === 5 && "md:justify-center")}
-              delay={index * 70}
-              amount={0.14}
-            >
-              <div
-                className={cn(
-                  "shamell-gallery-card-bg relative aspect-3/4 w-full overflow-hidden rounded-2xl border border-gold/15 shadow-[inset_0_1px_0_rgba(197,165,90,0.06),inset_0_0_0_1px_rgba(255,255,255,0.04),0_12px_40px_rgba(0,0,0,0.38)] transition-[border-color,box-shadow] duration-500",
-                  "group-hover:border-gold/35 group-hover:shadow-[0_20px_52px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(197,165,90,0.1),inset_0_0_0_1px_rgba(255,255,255,0.06)]",
-                  index === 5 && "mx-auto max-w-sm md:max-w-md",
-                )}
-              >
-                <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(42,32,26,0.2),transparent_38%,transparent_62%,rgba(24,18,14,0.25))] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
-                {item.mediaType === "VIDEO" ? (
-                  <video
-                    src={item.src}
-                    className="h-full w-full object-contain object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-                    muted
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : (
-                  <Image
-                    src={item.src}
-                    alt={item.alt}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
-                    loading="lazy"
-                    className="object-contain object-center p-2 transition-transform duration-700 ease-out group-hover:scale-[1.02] sm:p-2.5 md:p-3"
-                  />
-                )}
-
-                <span
-                  className="pointer-events-none absolute left-2 top-2 h-5 w-5 border-l border-t border-gold/25 opacity-50 transition-opacity group-hover:opacity-90"
-                  aria-hidden
-                />
-                <span
-                  className="pointer-events-none absolute right-2 top-2 h-5 w-5 border-r border-t border-gold/25 opacity-50 transition-opacity group-hover:opacity-90"
-                  aria-hidden
-                />
-              </div>
-            </RevealOnView>
+        <RevealStaggerGrid
+          className="mx-auto flex w-full max-w-full flex-col items-stretch gap-3 sm:max-w-2xl sm:items-center sm:gap-4 md:max-w-5xl md:gap-5 lg:max-w-6xl xl:gap-6"
+          amount={0.14}
+          itemClassNames={rows.map(() => "h-auto w-full")}
+        >
+          {rows.map((row) => (
+            <div key={row.map((p) => p.id).join("-")} className={galleryRowClass(row.length)}>
+              {row.map((item) => (
+                <div key={item.id} className={galleryCellClass(row.length)}>
+                  <GalleryPreviewTile item={item} />
+                </div>
+              ))}
+            </div>
           ))}
-        </div>
+        </RevealStaggerGrid>
 
         <RevealOnView className="mt-12 flex justify-center" delay={120} amount={0.2}>
           <Link href={`/gallery?filter=${filter}`} className="btn-outline-gold font-brand md:text-xs">

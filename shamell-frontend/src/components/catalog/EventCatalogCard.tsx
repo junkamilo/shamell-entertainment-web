@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { ArrowRight, ChevronDown, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildEventLineContactHref } from "@/lib/contactInquiryConstants";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 
 export type EventCatalogItem = {
   id: string;
@@ -43,6 +44,9 @@ export function EventCatalogCard({
   currencySuffix?: string;
 }) {
   const inquireHref = buildEventLineContactHref(service.id);
+  const heroIsVideo =
+    service.heroMediaType === "VIDEO" ||
+    serviceCatalogMediaTypeFromUrl(service.heroImageUrl) === "VIDEO";
   const hasPrice = service.price != null && !Number.isNaN(Number(service.price));
   const [isTypesCollapsed, setIsTypesCollapsed] = useState(true);
   const eventTypesPanelId = useId();
@@ -79,7 +83,7 @@ export function EventCatalogCard({
       <div className="relative z-10 aspect-16/10 w-full shrink-0 overflow-hidden bg-[#0a0908]">
         {service.heroImageUrl ? (
           <>
-            {service.heroMediaType === "VIDEO" ? (
+            {heroIsVideo ? (
               <video
                 src={service.heroImageUrl}
                 className="h-full w-full object-cover transition-transform duration-[1.1s] ease-out group-hover/card:scale-[1.04]"

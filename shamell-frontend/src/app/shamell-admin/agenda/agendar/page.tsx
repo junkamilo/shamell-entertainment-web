@@ -27,6 +27,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { usePublicAvailability } from "@/hooks/use-public-availability";
 import { useAdminBookings } from "@/hooks/use-admin-bookings";
+import { useAdminContactRequests } from "@/hooks/use-admin-contact-requests";
 import {
   sanitizeIntegerInput,
   sanitizeNameInput,
@@ -54,6 +55,7 @@ function AgendaAgendarPageContent() {
   );
 
   const { createBooking, patchBooking } = useAdminBookings(false);
+  const { setStatus: setContactRequestStatus } = useAdminContactRequests(false);
 
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [services, setServices] = useState<{ id: string; serviceTypeName: string }[]>([]);
@@ -75,6 +77,7 @@ function AgendaAgendarPageContent() {
   const [guestPhone, setGuestPhone] = useState("");
   const [guestCount, setGuestCount] = useState("");
   const [notes, setNotes] = useState("");
+  const [linkedContactRequestId, setLinkedContactRequestId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [mobileSectionModal, setMobileSectionModal] = useState<
     null | "event" | "logistics" | "client"
@@ -160,6 +163,7 @@ function AgendaAgendarPageContent() {
     const qEventTypeId = searchParams.get("eventTypeId") ?? "";
     const qOccasionTypeId = searchParams.get("occasionTypeId") ?? "";
     const qGuestCount = searchParams.get("guestCount") ?? "";
+    const qContactId = searchParams.get("contactId")?.trim() ?? "";
 
     const uuidOk = (s: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s.trim());
@@ -182,6 +186,8 @@ function AgendaAgendarPageContent() {
     if (uuidOk(qEventTypeId)) setEventTypeId(qEventTypeId.trim());
     if (uuidOk(qOccasionTypeId)) setOccasionTypeId(qOccasionTypeId.trim());
     if (/^\d+$/.test(qGuestCount.trim())) setGuestCount(sanitizeIntegerInput(qGuestCount.trim()));
+    if (uuidOk(qContactId)) setLinkedContactRequestId(qContactId.trim());
+    else setLinkedContactRequestId("");
   }, [searchParams]);
 
   useEffect(() => {
@@ -336,7 +342,7 @@ function AgendaAgendarPageContent() {
     }
     setSubmitting(true);
     try {
-      const payload = {
+      const basePayload = {
         serviceId: data.serviceId,
         eventDate: parsed.toISOString(),
         location: data.location,
@@ -355,11 +361,31 @@ function AgendaAgendarPageContent() {
         },
       };
       if (isEditMode) {
-        await patchBooking(bookingId, payload);
+        await patchBooking(bookingId, basePayload);
         toast({ title: "Booking updated" });
       } else {
-        await createBooking(payload);
-        toast({ title: "Booking created" });
+        await createBooking({
+          ...basePayload,
+          ...(linkedContactRequestId
+            ? {
+                contactRequestId: linkedContactRequestId,
+                source: "ADMIN_FROM_CONTACT" as const,
+              }
+            : {}),
+        });
+        let extraDescription = "";
+        if (linkedContactRequestId) {
+          try {
+            await setContactRequestStatus(linkedContactRequestId, "RESERVED");
+          } catch {
+            extraDescription =
+              "The contact request could not be marked as reserved automatically; update it from Inbox if needed.";
+          }
+        }
+        toast({
+          title: "Booking created",
+          ...(extraDescription ? { description: extraDescription } : {}),
+        });
       }
       setNotes("");
       setGuestCount("");

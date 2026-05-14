@@ -210,7 +210,10 @@ export default function SiteHeader() {
               : "blur(8px)"
             : "blur(2px)",
         }}
-        transition={{ duration: 0.48, ease: [0.16, 1, 0.3, 1] }}
+        transition={{
+          duration: desktopEffectsEnabled ? 0.48 : 0.3,
+          ease: [0.16, 1, 0.3, 1],
+        }}
         className={cn(
           "fixed top-px left-0 right-0 z-90 transition-[background-color,border-color] duration-500 ease-out",
           headerElevated
@@ -317,33 +320,17 @@ export default function SiteHeader() {
 
           {/* Mobile */}
           <div className="flex min-h-17 w-full items-center justify-between gap-3 md:hidden">
-            <motion.div
-              whileHover={{
-                scale: 1.035,
-                y: -1,
-                filter: "drop-shadow(0 0 14px rgba(197,165,90,0.18))",
-              }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-            >
+            <div className="transition-transform duration-200 ease-out will-change-transform hover:scale-[1.03] active:scale-[0.98]">
               <Link
                 href="/#hero"
                 className="group relative flex min-w-0 shrink-0 items-center rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-gold/45"
               >
                 <HeaderBrandImage compact />
               </Link>
-            </motion.div>
+            </div>
             <div className="flex shrink-0 items-center gap-1">
               {showAdminEntry ? (
-                <motion.div
-                  whileHover={{
-                    scale: 1.025,
-                    y: -1,
-                    boxShadow: "0 0 18px rgba(197,165,90,0.16)",
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                >
+                <div className="transition-transform duration-200 ease-out will-change-transform hover:scale-[1.02] active:scale-[0.98]">
                   <Link
                     href="/shamell-admin"
                     className="flex min-h-9 min-w-24 items-center justify-center rounded-md border border-gold/40 bg-black/30 px-3 py-1.5 text-center text-gold"
@@ -353,24 +340,21 @@ export default function SiteHeader() {
                       ADMIN
                     </span>
                   </Link>
-                </motion.div>
+                </div>
               ) : null}
-              <motion.button
+              <button
                 type="button"
                 onClick={() => setIsMenuOpen((prev) => !prev)}
-                className="rounded-md border border-gold/25 p-2 text-gold transition-colors hover:border-gold/45 hover:bg-white/5"
+                className="rounded-md border border-gold/25 p-2 text-gold transition-[transform,colors] duration-200 ease-out will-change-transform hover:scale-[1.04] hover:border-gold/45 hover:bg-white/5 active:scale-[0.94]"
                 aria-expanded={isMenuOpen}
                 aria-label={isMenuOpen ? "Close menu" : "Open menu"}
-                whileHover={{ scale: 1.045, y: -1 }}
-                whileTap={{ scale: 0.94 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
               >
                 {isMenuOpen ? (
                   <X size={20} strokeWidth={1.5} />
                 ) : (
                   <Menu size={20} strokeWidth={1.5} />
                 )}
-              </motion.button>
+              </button>
             </div>
           </div>
         </div>
@@ -400,18 +384,8 @@ export default function SiteHeader() {
               transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
             >
               <div className="shamell-scrollbar mx-auto flex w-full max-w-md flex-1 flex-col gap-0 overflow-y-auto px-6 py-6">
-                {navItems.map((item, i) => (
-                  <motion.div
-                    key={item.label}
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{
-                      delay: 0.04 + i * 0.045,
-                      duration: 0.24,
-                      ease: "easeOut",
-                    }}
-                  >
+                {navItems.map((item) => (
+                  <div key={item.label}>
                     <Link
                       href={item.href}
                       onClick={() => setIsMenuOpen(false)}
@@ -424,39 +398,17 @@ export default function SiteHeader() {
                     >
                       {item.label}
                     </Link>
-                  </motion.div>
+                  </div>
                 ))}
-                <motion.a
+                <a
                   href="/contacto"
                   onClick={() => setIsMenuOpen(false)}
-                  className="btn-outline-gold mx-auto mt-6 flex min-h-12 w-full max-w-xs items-center justify-center px-4 py-3 text-center font-brand tracking-[0.2em] md:text-xs"
-                  initial={{ opacity: 0, y: -8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  whileHover={{
-                    scale: 1.02,
-                    boxShadow: "0 0 22px rgba(197,165,90,0.18)",
-                  }}
-                  whileTap={{ scale: 0.98 }}
-                  transition={{
-                    delay: 0.04 + navItems.length * 0.045,
-                    duration: 0.24,
-                    ease: "easeOut",
-                  }}
+                  className="btn-outline-gold mx-auto mt-6 flex min-h-12 w-full max-w-xs items-center justify-center px-4 py-3 text-center font-brand tracking-[0.2em] transition-transform duration-200 ease-out will-change-transform hover:scale-[1.02] hover:shadow-[0_0_22px_rgba(197,165,90,0.18)] active:scale-[0.98] md:text-xs"
                 >
                   Inquire
-                </motion.a>
+                </a>
                 {showAdminEntry ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -6 }}
-                    transition={{
-                      delay: 0.04 + (navItems.length + 1) * 0.045,
-                      duration: 0.24,
-                      ease: "easeOut",
-                    }}
-                  >
+                  <div>
                     <Link
                       href="/shamell-admin"
                       onClick={() => setIsMenuOpen(false)}
@@ -465,7 +417,7 @@ export default function SiteHeader() {
                       <FlameIcon className="h-6 w-4" />
                       ADMIN PANEL
                     </Link>
-                  </motion.div>
+                  </div>
                 ) : null}
               </div>
             </motion.nav>

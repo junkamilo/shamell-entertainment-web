@@ -524,9 +524,14 @@ export class ServicesService {
     imageUrl: string | null | undefined,
   ): 'IMAGE' | 'VIDEO' | undefined {
     if (!imageUrl) return undefined;
-    return imageUrl.toLowerCase().includes('/video/upload/')
-      ? 'VIDEO'
-      : 'IMAGE';
+    const lower = imageUrl.trim().toLowerCase();
+    if (
+      lower.includes('/video/upload/') ||
+      /\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(lower)
+    ) {
+      return 'VIDEO';
+    }
+    return 'IMAGE';
   }
 
   private uploadServiceMediaToCloudinary(file: Express.Multer.File): Promise<string> {

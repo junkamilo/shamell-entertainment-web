@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, Video } from "lucide-react";
+import { Mail } from "lucide-react";
 import FlameIcon from "@/components/FlameIcon";
 import PearlDivider from "@/components/PearlDivider";
 import { cn } from "@/lib/utils";
@@ -145,13 +145,6 @@ export default function Footer({
                   >
                     <Mail className="h-4.5 w-4.5" strokeWidth={1.75} />
                   </a>
-                  <span
-                    className="flex h-10 w-10 cursor-not-allowed items-center justify-center rounded-lg border border-white/8 text-foreground/35"
-                    aria-label="Video channel — coming soon"
-                    title="Coming soon"
-                  >
-                    <Video className="h-4.5 w-4.5" strokeWidth={1.75} />
-                  </span>
                 </div>
               </div>
             </div>

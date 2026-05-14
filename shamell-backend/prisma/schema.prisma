@@ -297,6 +297,8 @@ model ContactRequest {
   subject         String
   message         String    @db.Text
   inquiryDetails  Json?
+  /** Fixed-shape JSON for "Tell us your vision" (concierge_gate) submissions; null for other contact flows. */
+  conciergeVisionSnapshot Json? @map("concierge_vision_snapshot")
   bookings        Booking[]
   isRead          Boolean   @default(false)
   status          ContactRequestStatus @default(PENDING)

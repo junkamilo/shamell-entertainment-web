@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Experience } from "@/lib/experiencesData";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 
 type ServicesApiItem = {
   id?: string;
@@ -9,12 +10,13 @@ type ServicesApiItem = {
   description?: string;
   items?: string[];
   imageUrl?: string | null;
+  heroMediaType?: string | null;
   contactInquiryCode?: string | null;
 };
 
 type ValidServiceApiItem = Required<Pick<ServicesApiItem, "id" | "serviceTypeName" | "description" | "items">> & {
   imageUrl: string;
-} & Pick<ServicesApiItem, "contactInquiryCode">;
+} & Pick<ServicesApiItem, "contactInquiryCode" | "heroMediaType">;
 
 const isValidService = (item: ServicesApiItem): item is ValidServiceApiItem =>
   Boolean(
@@ -54,15 +56,29 @@ export function useExperiences() {
 
         const normalized = (data as ServicesApiItem[])
           .filter(isValidService)
-          .map((item) => ({
-            id: item.id,
-            slug: toSlug(item.serviceTypeName),
-            title: item.serviceTypeName,
-            description: item.description,
-            items: item.items,
-            image: item.imageUrl,
-            contactInquiryCode: item.contactInquiryCode ?? null,
-          }));
+          .map((item) => {
+            const url = item.imageUrl.trim();
+            const explicit =
+              typeof item.heroMediaType === "string" && item.heroMediaType.trim()
+                ? item.heroMediaType.trim().toUpperCase()
+                : "";
+            const heroMediaType: "IMAGE" | "VIDEO" | undefined =
+              explicit === "VIDEO" || serviceCatalogMediaTypeFromUrl(url) === "VIDEO"
+                ? "VIDEO"
+                : explicit === "IMAGE"
+                  ? "IMAGE"
+                  : undefined;
+            return {
+              id: item.id,
+              slug: toSlug(item.serviceTypeName),
+              title: item.serviceTypeName,
+              description: item.description,
+              items: item.items,
+              image: url,
+              ...(heroMediaType ? { heroMediaType } : {}),
+              contactInquiryCode: item.contactInquiryCode ?? null,
+            };
+          });
 
         setExperiences(normalized);
       })

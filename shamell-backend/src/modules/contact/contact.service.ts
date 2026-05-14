@@ -2,8 +2,10 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ContactRequestStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
@@ -12,16 +14,33 @@ import { AdminContactQueryDto } from './dto/admin-contact-query.dto';
 import { AdminPeticionesQueryDto } from './dto/admin-peticiones-query.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import {
+  BOOKING_INQUIRY_ENTRY_SOURCES,
   formatInquiryDetailsSummary,
   sanitizeInquiryDetails,
   type SanitizedInquiryDetails,
 } from './contact-inquiry-details';
+import {
+  buildBookingInquiryAckHtml,
+  buildBookingInquiryAckSubject,
+  buildBookingInquiryAckText,
+} from './booking-inquiry-ack.mail';
+import {
+  buildConciergeInquiryAckHtml,
+  buildConciergeInquiryAckSubject,
+  buildConciergeInquiryAckText,
+} from './concierge-inquiry-ack.mail';
+import { buildConciergeVisionSnapshot } from './concierge-vision-snapshot';
+import { MailService } from '../mail/mail.service';
 
 @Injectable()
 export class ContactService {
+  private readonly logger = new Logger(ContactService.name);
+
   constructor(
     private prisma: PrismaService,
     private availability: AvailabilityService,
+    private readonly mail: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   private readonly bookingFeedInclude = {
@@ -120,7 +139,7 @@ export class ContactService {
       subject?.trim() ||
       `Reservation inquiry${dto.serviceType ? ` — ${dto.serviceType}` : ''}`;
 
-    return this.prisma.contactRequest.create({
+    const created = await this.prisma.contactRequest.create({
       data: {
         ...rest,
         message: composedMessage,
@@ -131,8 +150,117 @@ export class ContactService {
           enriched === undefined
             ? undefined
             : (enriched as unknown as Prisma.InputJsonValue),
+        conciergeVisionSnapshot:
+          enriched?.entrySource === 'concierge_gate'
+            ? (buildConciergeVisionSnapshot(dto) as unknown as Prisma.InputJsonValue)
+            : undefined,
       },
     });
+
+    if (enriched?.entrySource === 'concierge_gate') {
+      await this.sendConciergeInquiryAckEmail(dto);
+    } else if (
+      enriched?.entrySource &&
+      BOOKING_INQUIRY_ENTRY_SOURCES.includes(enriched.entrySource)
+    ) {
+      await this.sendBookingInquiryAckEmail(dto);
+    }
+
+    return created;
+  }
+
+  /**
+   * Thanks the guest via MailerSend. Does not throw; logs on skip/failure.
+   */
+  private async sendConciergeInquiryAckEmail(dto: CreateContactDto): Promise<void> {
+    try {
+      const to = dto.email.trim().toLowerCase();
+      if (!to) {
+        this.logger.warn('Concierge ack email skipped: empty recipient.');
+        return;
+      }
+
+      const appPublicName =
+        this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+        'Shamell Entertainment';
+      const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
+      const siteUrl = frontendRaw?.split(',')[0]?.trim();
+
+      const toName = dto.fullName.trim() || to;
+      const recipientFirstName = toName.split(/\s+/)[0] || toName;
+
+      const templateInput = {
+        recipientFirstName,
+        appPublicName,
+        siteUrl: siteUrl || undefined,
+      };
+
+      const ok = await this.mail.sendTransactional({
+        to,
+        toName,
+        subject: buildConciergeInquiryAckSubject(appPublicName),
+        html: buildConciergeInquiryAckHtml(templateInput),
+        text: buildConciergeInquiryAckText(templateInput),
+      });
+
+      if (ok) {
+        this.logger.log(`Concierge inquiry ack email sent to ${to}`);
+      } else {
+        this.logger.warn(
+          `Concierge inquiry ack email not sent to ${to} (MailerSend disabled or failed).`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Concierge inquiry ack email unexpected error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  }
+
+  /** Acknowledges booking inquiry to the guest. Does not throw; logs on skip/failure. */
+  private async sendBookingInquiryAckEmail(dto: CreateContactDto): Promise<void> {
+    try {
+      const to = dto.email.trim().toLowerCase();
+      if (!to) {
+        this.logger.warn('Booking inquiry ack email skipped: empty recipient.');
+        return;
+      }
+
+      const appPublicName =
+        this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+        'Shamell Entertainment';
+      const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
+      const siteUrl = frontendRaw?.split(',')[0]?.trim();
+
+      const toName = dto.fullName.trim() || to;
+      const recipientFirstName = toName.split(/\s+/)[0] || toName;
+
+      const templateInput = {
+        recipientFirstName,
+        appPublicName,
+        siteUrl: siteUrl || undefined,
+      };
+
+      const ok = await this.mail.sendTransactional({
+        to,
+        toName,
+        subject: buildBookingInquiryAckSubject(appPublicName),
+        html: buildBookingInquiryAckHtml(templateInput),
+        text: buildBookingInquiryAckText(templateInput),
+      });
+
+      if (ok) {
+        this.logger.log(`Booking inquiry ack email sent to ${to}`);
+      } else {
+        this.logger.warn(
+          `Booking inquiry ack email not sent to ${to} (MailerSend disabled or failed).`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Booking inquiry ack email unexpected error: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   async findAll(query: AdminContactQueryDto) {
@@ -169,22 +297,76 @@ export class ContactService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Number(query.perPage ?? 10);
     const skip = (page - 1) * perPage;
+    const lane = query.lane === 'guidance' ? 'guidance' : 'bookings';
 
-    const [contactCountRows, bookingTotal] = await Promise.all([
+    const isOrphanContact = Prisma.sql`
+      NOT EXISTS (
+        SELECT 1
+        FROM "bookings" b
+        WHERE b."contactRequestId" = cr.id
+      )
+    `;
+    const isConciergeContact = Prisma.sql`
+      (
+        (cr."inquiryDetails"->>'entrySource') = 'concierge_gate'
+        OR LOWER(COALESCE(cr."subject", '')) LIKE '%concierge inquiry%'
+      )
+    `;
+
+    if (lane === 'guidance') {
+      const guidanceCountRows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+          SELECT COUNT(*)::bigint AS total
+          FROM "contact_requests" cr
+          WHERE ${isOrphanContact}
+            AND ${isConciergeContact}
+        `);
+      const totalItems = Number(guidanceCountRows[0]?.total ?? 0n);
+      const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
+      if (totalItems === 0) {
+        return {
+          items: [],
+          meta: {
+            page,
+            perPage,
+            totalItems,
+            totalPages,
+            hasPrev: page > 1,
+            hasNext: page < totalPages,
+          },
+        };
+      }
+
+      const feedRows = await this.prisma.$queryRaw<
+        Array<{
+          origin: 'CONTACT' | 'BOOKING_ADMIN';
+          id: string;
+          created_at: Date;
+        }>
+      >(Prisma.sql`
+        SELECT 'CONTACT'::text AS origin, cr.id AS id, cr."createdAt" AS created_at
+        FROM "contact_requests" cr
+        WHERE ${isOrphanContact}
+          AND ${isConciergeContact}
+        ORDER BY cr."createdAt" DESC
+        OFFSET ${skip}
+        LIMIT ${perPage}
+      `);
+
+      return this.hydratePeticionesPage(feedRows, page, perPage, totalItems, totalPages);
+    }
+
+    const [nonConciergeOrphanRows, bookingTotalRows] = await Promise.all([
       this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
         SELECT COUNT(*)::bigint AS total
         FROM "contact_requests" cr
-        WHERE NOT EXISTS (
-          SELECT 1
-          FROM "bookings" b
-          WHERE b."contactRequestId" = cr.id
-        )
+        WHERE ${isOrphanContact}
+          AND NOT ${isConciergeContact}
       `),
       this.prisma.booking.count(),
     ]);
-    const contactTotal = Number(contactCountRows[0]?.total ?? 0n);
-
-    const totalItems = contactTotal + bookingTotal;
+    const nonConciergeOrphanTotal = Number(nonConciergeOrphanRows[0]?.total ?? 0n);
+    const bookingTotal = bookingTotalRows;
+    const totalItems = bookingTotal + nonConciergeOrphanTotal;
     const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
     if (totalItems === 0) {
       return {
@@ -211,11 +393,8 @@ export class ContactService {
       FROM (
         SELECT 'CONTACT'::text AS origin, cr.id AS id, cr."createdAt" AS created_at
         FROM "contact_requests" cr
-        WHERE cr.id NOT IN (
-          SELECT b."contactRequestId"
-          FROM "bookings" b
-          WHERE b."contactRequestId" IS NOT NULL
-        )
+        WHERE ${isOrphanContact}
+          AND NOT ${isConciergeContact}
         UNION ALL
         SELECT 'BOOKING_ADMIN'::text AS origin, b.id AS id, b."createdAt" AS created_at
         FROM "bookings" b
@@ -225,6 +404,20 @@ export class ContactService {
       LIMIT ${perPage}
     `);
 
+    return this.hydratePeticionesPage(feedRows, page, perPage, totalItems, totalPages);
+  }
+
+  private async hydratePeticionesPage(
+    feedRows: Array<{
+      origin: 'CONTACT' | 'BOOKING_ADMIN';
+      id: string;
+      created_at: Date;
+    }>,
+    page: number,
+    perPage: number,
+    totalItems: number,
+    totalPages: number,
+  ) {
     const contactIds = feedRows
       .filter((r) => r.origin === 'CONTACT')
       .map((r) => r.id);

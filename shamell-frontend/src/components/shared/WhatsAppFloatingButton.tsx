@@ -31,6 +31,11 @@ function WhatsAppGlyph({ className }: { className?: string }) {
   );
 }
 
+/** WhatsApp Web–style greens */
+const WA_HEADER = "#128C7E";
+const WA_SEND = "#25D366";
+const WA_CHAT_BG = "#ECE5DD";
+
 export default function WhatsAppFloatingButton() {
   const pathname = usePathname() ?? "/";
   const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/shamell-admin");
@@ -52,35 +57,61 @@ export default function WhatsAppFloatingButton() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-40">
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
       {isOpen ? (
-        <div className="mb-3 w-[min(90vw,22rem)] rounded-2xl border border-gold/30 bg-[#140a1f]/95 p-3 shadow-xl shadow-black/35 backdrop-blur">
-          <div className="mb-2 flex items-center justify-between">
-            <p className="font-brand text-xs tracking-[0.15em] text-gold/90">WHATSAPP CHAT</p>
+        <div
+          className="w-[min(92vw,22rem)] overflow-hidden rounded-lg border border-black/10 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.28)]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="wa-chat-title"
+        >
+          <div
+            className="flex items-center justify-between gap-2 px-3 py-2.5"
+            style={{ backgroundColor: WA_HEADER }}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-2.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/15">
+                <WhatsAppGlyph className="h-6 w-6 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p id="wa-chat-title" className="truncate font-sans text-[15px] font-semibold text-white">
+                  WhatsApp
+                </p>
+                <p className="truncate font-sans text-xs text-white/85">Tap send to open WhatsApp with your message</p>
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              aria-label="Close WhatsApp chat"
-              className="rounded-md px-2 py-1 text-xs text-foreground/70 hover:bg-gold/10 hover:text-foreground"
+              aria-label="Close"
+              className="shrink-0 rounded px-2 py-1 font-sans text-sm text-white/95 hover:bg-white/10"
             >
-              Close
+              ✕
             </button>
           </div>
-          <textarea
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={defaultMessage || "Write your message..."}
-            rows={4}
-            className={cn(
-              "w-full resize-none rounded-lg border border-gold/20 bg-black/25 px-3 py-2 text-sm text-foreground outline-none",
-              "placeholder:text-foreground/40 focus:border-gold/45 focus:ring-2 focus:ring-gold/20",
-            )}
-          />
-          <div className="mt-3 flex justify-end gap-2">
+
+          <div className="p-3" style={{ backgroundColor: WA_CHAT_BG }}>
+            <label htmlFor="wa-compose" className="sr-only">
+              Your message
+            </label>
+            <textarea
+              id="wa-compose"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder={defaultMessage ? "Type or edit your message..." : "Type a message"}
+              rows={4}
+              className={cn(
+                "w-full resize-none rounded-lg border border-gray-300 bg-white px-3 py-2.5 font-sans text-sm text-gray-900 outline-none",
+                "placeholder:text-gray-400 focus:border-[#25D366] focus:ring-1 focus:ring-[#25D366]/40",
+              )}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-2 border-t border-gray-200 bg-[#f0f0f0] px-3 py-2.5">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="rounded-lg border border-gold/25 px-3 py-1.5 text-xs text-foreground/80 hover:bg-gold/10"
+              className="rounded px-3 py-1.5 font-sans text-sm text-gray-700 hover:bg-gray-200/80"
             >
               Cancel
             </button>
@@ -88,9 +119,11 @@ export default function WhatsAppFloatingButton() {
               type="button"
               disabled={!canSend}
               onClick={onSend}
+              style={{ backgroundColor: canSend ? WA_SEND : "#9ca3af" }}
               className={cn(
-                "rounded-lg px-3 py-1.5 text-xs font-medium text-white",
-                canSend ? "bg-emerald-600 hover:bg-emerald-500" : "cursor-not-allowed bg-emerald-900/40 text-emerald-100/50",
+                "rounded-md px-4 py-1.5 font-sans text-sm font-semibold text-white shadow-sm transition",
+                canSend && "hover:brightness-110 active:brightness-95",
+                !canSend && "cursor-not-allowed opacity-70",
               )}
             >
               Send
@@ -104,10 +137,10 @@ export default function WhatsAppFloatingButton() {
         onClick={() => setIsOpen((v) => !v)}
         aria-label={isOpen ? "Hide WhatsApp chat" : "Open WhatsApp chat"}
         className={cn(
-          "flex h-14 w-14 items-center justify-center rounded-full",
-          "border border-emerald-500/35 bg-emerald-600/95 text-white shadow-lg shadow-black/25",
-          "ring-2 ring-emerald-400/25 transition-transform hover:scale-105 hover:bg-emerald-500",
-          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300",
+          "flex h-14 w-14 shrink-0 items-center justify-center rounded-full",
+          "bg-[#25D366] text-white shadow-lg shadow-black/30",
+          "ring-2 ring-white/30 transition-transform hover:scale-105 hover:brightness-105",
+          "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
         )}
       >
         <WhatsAppGlyph className="h-7 w-7" />

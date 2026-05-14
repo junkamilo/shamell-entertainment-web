@@ -29,6 +29,7 @@ export type UnifiedPeticionRow =
 type AdminPeticionesQuery = {
   page?: number;
   perPage?: number;
+  lane?: "bookings" | "guidance";
 };
 
 export function useAdminPeticiones(enabled = true, query?: AdminPeticionesQuery) {
@@ -52,6 +53,7 @@ export function useAdminPeticiones(enabled = true, query?: AdminPeticionesQuery)
     const sp = new URLSearchParams();
     if (query?.page) sp.set("page", String(query.page));
     if (query?.perPage) sp.set("perPage", String(query.perPage));
+    if (query?.lane) sp.set("lane", query.lane);
     const qs = sp.size ? `?${sp.toString()}` : "";
 
     fetch(`${apiBase()}/api/v1/contact/peticiones${qs}`, {
@@ -87,7 +89,7 @@ export function useAdminPeticiones(enabled = true, query?: AdminPeticionesQuery)
         setError(message);
       })
       .finally(() => setIsLoading(false));
-  }, [enabled, query?.page, query?.perPage]);
+  }, [enabled, query?.page, query?.perPage, query?.lane]);
 
   useEffect(() => {
     reload();

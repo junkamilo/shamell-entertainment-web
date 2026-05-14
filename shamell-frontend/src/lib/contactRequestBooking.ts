@@ -253,3 +253,23 @@ export function buildAgendarPrefillHref(row: ContactRequest, catalog?: AgendarPr
 
   return `/shamell-admin/agenda/agendar?${sp.toString()}`;
 }
+
+/**
+ * Same prefill as {@link buildAgendarPrefillHref} plus `origin=contact`, `contactId`, and `returnTo`
+ * so Book can persist `contactRequestId` and the contact leaves the Guidance lane after booking.
+ */
+export function buildContactInboxAgendarHref(
+  row: ContactRequest,
+  catalog: AgendarPrefillCatalogMaps,
+  options?: { returnTo?: string },
+): string {
+  const href = buildAgendarPrefillHref(row, catalog);
+  const url = new URL(href, "http://localhost");
+  url.searchParams.set("origin", "contact");
+  url.searchParams.set("contactId", row.id);
+  url.searchParams.set(
+    "returnTo",
+    (options?.returnTo ?? "/shamell-admin/agenda/peticiones").trim() || "/shamell-admin/agenda/peticiones",
+  );
+  return `${url.pathname}?${url.searchParams.toString()}`;
+}

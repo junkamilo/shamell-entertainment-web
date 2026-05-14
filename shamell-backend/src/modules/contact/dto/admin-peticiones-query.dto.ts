@@ -1,8 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 const PER_PAGE_OPTIONS = [5, 10, 20, 50] as const;
+const PETICIONES_LANE = ['bookings', 'guidance'] as const;
 
 export class AdminPeticionesQueryDto {
   @ApiPropertyOptional({ minimum: 1, default: 1 })
@@ -18,4 +19,11 @@ export class AdminPeticionesQueryDto {
   @IsInt()
   @IsIn(PER_PAGE_OPTIONS)
   perPage?: number = 10;
+
+  /** `bookings`: admin bookings + non-concierge orphan contacts. `guidance`: concierge orphan contacts only. */
+  @ApiPropertyOptional({ enum: PETICIONES_LANE, default: 'bookings' })
+  @IsOptional()
+  @IsString()
+  @IsIn(PETICIONES_LANE)
+  lane?: (typeof PETICIONES_LANE)[number];
 }
