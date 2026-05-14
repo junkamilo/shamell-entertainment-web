@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
-import FlameIcon from "@/components/FlameIcon";
 import {
   ADMIN_SESSION_CHANGED_EVENT,
   isAdminLoggedIn,
@@ -21,16 +20,39 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { label: "Home", href: "/#hero", sectionId: "hero" },
-  { label: "Services", href: "/#services", sectionId: "services" },
+  { label: "HOME", href: "/#hero", sectionId: "hero" },
+  { label: "SERVICE CATALOG", href: "/#services", sectionId: "services" },
   {
-    label: "Special experiences",
+    label: "TYPES OF EVENTS",
     href: "/#experiences",
     sectionId: "experiences",
   },
-  { label: "About", href: "/#about", sectionId: "about" },
-  { label: "Gallery", href: "/#gallery", sectionId: "gallery" },
+  { label: "ABOUT", href: "/#about", sectionId: "about" },
+  { label: "GALLERY", href: "/#gallery", sectionId: "gallery" },
 ];
+
+/** DOM order on `/` — used to pick the "current" section while scrolling (last section whose top passed the activation line). */
+const homeScrollSectionIds = navItems
+  .map((item) => item.sectionId)
+  .filter((id): id is string => Boolean(id));
+
+function computeHomeActiveSectionId(): string {
+  if (typeof window === "undefined") {
+    return homeScrollSectionIds[0] ?? "hero";
+  }
+  const activationOffset = Math.min(168, Math.max(88, window.innerHeight * 0.2));
+  const y = window.scrollY + activationOffset;
+  let current = homeScrollSectionIds[0] ?? "hero";
+  for (const id of homeScrollSectionIds) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    const sectionTop = el.getBoundingClientRect().top + window.scrollY;
+    if (sectionTop <= y + 1) {
+      current = id;
+    }
+  }
+  return current;
+}
 
 function HeaderBrandImage({ compact }: { compact?: boolean }) {
   return (
@@ -130,32 +152,22 @@ export default function SiteHeader() {
   useEffect(() => {
     if (pathname !== "/") return;
 
-    const sectionIds = navItems
-      .map((item) => item.sectionId)
-      .filter((id): id is string => Boolean(id));
+    const sync = () => {
+      setActiveSection(computeHomeActiveSectionId());
+    };
 
-    const observers: IntersectionObserver[] = [];
+    sync();
+    window.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync, { passive: true });
+    window.addEventListener("hashchange", sync);
+    const t = window.setTimeout(sync, 120);
 
-    sectionIds.forEach((id) => {
-      const element = document.getElementById(id);
-      if (!element) return;
-
-      const observer = new IntersectionObserver(
-        (entries) => {
-          entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-              setActiveSection(id);
-            }
-          });
-        },
-        { rootMargin: "-35% 0px -50% 0px", threshold: 0.1 },
-      );
-
-      observer.observe(element);
-      observers.push(observer);
-    });
-
-    return () => observers.forEach((observer) => observer.disconnect());
+    return () => {
+      window.removeEventListener("scroll", sync);
+      window.removeEventListener("resize", sync);
+      window.removeEventListener("hashchange", sync);
+      window.clearTimeout(t);
+    };
   }, [pathname]);
 
   useEffect(() => {
@@ -181,6 +193,8 @@ export default function SiteHeader() {
       );
       return bySection?.href ?? "/#hero";
     }
+
+    if (pathname === "/gallery") return "/#gallery";
 
     if (pathname.startsWith("/blog")) return "/blog";
     if (pathname.startsWith("/contacto")) return "/contacto";
@@ -287,7 +301,13 @@ export default function SiteHeader() {
                     aria-label="Admin panel"
                     title="Admin"
                   >
-                    <FlameIcon className="h-5 w-3.5 shrink-0 opacity-90" />
+                    <Image
+                      src={bailarinaLogo}
+                      alt=""
+                      width={18}
+                      height={20}
+                      className="h-5 w-auto max-w-[18px] shrink-0 object-contain opacity-90"
+                    />
                     <span className="font-brand text-xs font-semibold tracking-[0.16em] lg:tracking-[0.18em]">
                       ADMIN
                     </span>
@@ -414,7 +434,13 @@ export default function SiteHeader() {
                       onClick={() => setIsMenuOpen(false)}
                       className="mx-auto mt-4 flex min-h-12 w-full max-w-xs items-center justify-center gap-2 border border-gold/35 px-4 py-3 text-center font-brand text-xs tracking-[0.18em] text-gold transition-all hover:border-gold/55 hover:bg-gold/10"
                     >
-                      <FlameIcon className="h-6 w-4" />
+                      <Image
+                        src={bailarinaLogo}
+                        alt=""
+                        width={20}
+                        height={24}
+                        className="h-6 w-auto max-w-5 shrink-0 object-contain"
+                      />
                       ADMIN PANEL
                     </Link>
                   </div>

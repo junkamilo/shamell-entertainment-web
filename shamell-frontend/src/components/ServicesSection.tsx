@@ -101,18 +101,18 @@ const ServicesSection = () => {
   }, [apiBaseUrl]);
 
   return (
-    <section id="services" className="bg-transparent px-4 pb-20 pt-0">
+    <section id="experiences" className="bg-transparent px-4 pb-20 pt-0">
       <div className="relative mx-auto mb-12 max-w-6xl text-center">
         <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2">
           <div className="h-24 w-[min(20rem,88vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(120,90,160,0.12),transparent_70%)] blur-3xl opacity-80" />
         </div>
         <RevealOnView className="relative" delay={40}>
-          <h2 className="mb-2 font-brand text-base font-semibold tracking-[0.24em] text-gold md:text-lg md:tracking-[0.26em]">
-            SPECIAL EXPERIENCES
+          <h2 className="mb-3 font-brand text-base font-semibold tracking-[0.26em] text-gold md:text-lg md:tracking-[0.28em]">
+            TYPES OF EVENTS
           </h2>
           <p className="mx-auto mb-10 max-w-2xl text-center font-body text-base font-medium leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
-            Three tiers of experience—from intimate galas to fully bespoke productions. Each level
-            includes different scope, production depth, and pricing transparency.
+            Browse performance packages by event type—each card outlines what is included, how to inquire,
+            and the visual tone you can expect for your stage or venue.
           </p>
         </RevealOnView>
       </div>
@@ -120,13 +120,13 @@ const ServicesSection = () => {
       <div className="mx-auto max-w-6xl">
         {isLoading ? (
           <p className="text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">
-            Loading event catalog...
+            Loading event types...
           </p>
         ) : null}
 
         {!isLoading && services.length === 0 ? (
           <p className="text-center font-body text-base font-medium text-foreground/85 md:text-lg md:text-foreground/88">
-            Event catalog coming soon.
+            Event types coming soon.
           </p>
         ) : null}
 

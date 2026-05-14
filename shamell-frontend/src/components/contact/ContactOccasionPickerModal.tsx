@@ -141,8 +141,9 @@ export default function ContactOccasionPickerModal({
                 type="button"
                 onClick={onClose}
                 className="rounded-xl border border-gold/30 px-4 py-3 font-brand text-xs tracking-[0.14em] text-foreground/75 uppercase transition hover:border-gold/50 hover:text-gold sm:text-sm"
+                aria-label="Dismiss without changing selection"
               >
-                Close
+                Choose
               </button>
             </div>
           </motion.div>

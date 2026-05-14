@@ -1,14 +1,11 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { buildHeroWaveClipPathD } from "@/lib/heroPearlWave";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import HeroFallbackBackground from "./HeroFallbackBackground";
-import FlameIcon from "./FlameIcon";
 
 const heroWaveClipPathId = "shamell-hero-wave-clip";
 const heroClipPath = `url(#${heroWaveClipPathId})`;
@@ -73,10 +70,6 @@ function HeroSlideMedia({
 }
 
 const HeroSection = () => {
-  const heroSectionRef = useRef<HTMLElement | null>(null);
-  const heroPinRef = useRef<HTMLDivElement | null>(null);
-  const heroContentRef = useRef<HTMLDivElement | null>(null);
-  const heroDarkOverlayRef = useRef<HTMLDivElement | null>(null);
   const apiBaseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
     [],
@@ -140,132 +133,12 @@ const HeroSection = () => {
     void load();
   }, [apiBaseUrl]);
 
-  useLayoutEffect(() => {
-    const reducedMotionQuery = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    );
-
-    const section = heroSectionRef.current;
-    const pin = heroPinRef.current;
-    const content = heroContentRef.current;
-    const darkOverlay = heroDarkOverlayRef.current;
-
-    if (!section || !pin || !content || !darkOverlay) return;
-
-    gsap.registerPlugin(ScrollTrigger);
-
-    const mm = gsap.matchMedia();
-    const ctx = gsap.context(() => {
-      const reducedMotion = prefersReducedMotion || reducedMotionQuery.matches;
-
-      gsap.set(content, { opacity: 1, y: 0, willChange: "transform, opacity" });
-      gsap.set(darkOverlay, { opacity: 0.15 });
-
-      mm.add("(max-width: 1023px)", () => {
-        const timeline = gsap.timeline({
-          scrollTrigger: {
-            trigger: pin,
-            start: "top top",
-            end: reducedMotion ? "+=38%" : "+=70%",
-            scrub: reducedMotion ? 0.2 : 0.35,
-            pin: true,
-            pinSpacing: true,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        timeline
-          .to(
-            content,
-            { opacity: 0, y: reducedMotion ? -18 : -38, ease: "none" },
-            0,
-          )
-          .to(
-            darkOverlay,
-            { opacity: reducedMotion ? 0.3 : 0.5, ease: "none" },
-            0,
-          );
-
-        return () => timeline.kill();
-      });
-
-      mm.add("(min-width: 1024px) and (max-width: 1535px)", () => {
-        const timeline = gsap.timeline({
-          scrollTrigger: {
-            trigger: pin,
-            start: "top top",
-            end: reducedMotion ? "+=45%" : "+=82%",
-            scrub: reducedMotion ? 0.2 : 0.3,
-            pin: true,
-            pinSpacing: true,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        timeline
-          .to(
-            content,
-            { opacity: 0, y: reducedMotion ? -24 : -52, ease: "none" },
-            0,
-          )
-          .to(
-            darkOverlay,
-            { opacity: reducedMotion ? 0.34 : 0.6, ease: "none" },
-            0,
-          );
-
-        return () => timeline.kill();
-      });
-
-      mm.add("(min-width: 1536px)", () => {
-        const timeline = gsap.timeline({
-          scrollTrigger: {
-            trigger: pin,
-            start: "top top",
-            end: reducedMotion ? "+=55%" : "+=110%",
-            scrub: reducedMotion ? 0.25 : 0.35,
-            pin: true,
-            pinSpacing: true,
-            anticipatePin: 1,
-            invalidateOnRefresh: true,
-          },
-        });
-
-        timeline
-          .to(
-            content,
-            { opacity: 0, y: reducedMotion ? -28 : -64, ease: "none" },
-            0,
-          )
-          .to(
-            darkOverlay,
-            { opacity: reducedMotion ? 0.36 : 0.68, ease: "none" },
-            0,
-          );
-
-        return () => timeline.kill();
-      });
-    }, section);
-
-    return () => {
-      mm.revert();
-      ctx.revert();
-      ScrollTrigger.refresh();
-    };
-  }, [prefersReducedMotion]);
-
   useEffect(() => {
     if (photos.length <= 1) return;
     const id = window.setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % photos.length);
     }, 5500);
     return () => window.clearInterval(id);
-  }, [photos.length]);
-
-  useEffect(() => {
-    if (photos.length > 0) ScrollTrigger.refresh();
   }, [photos.length]);
 
   const hasRemotePhotos = photos.length > 0;
@@ -275,11 +148,8 @@ const HeroSection = () => {
   const animateVisuals = hasHydrated && !prefersReducedMotion;
 
   return (
-    <section ref={heroSectionRef} id="hero" className="relative bg-transparent">
-      <div
-        ref={heroPinRef}
-        className="relative flex min-h-svh flex-col overflow-hidden"
-      >
+    <section id="hero" className="relative bg-transparent">
+      <div className="relative flex min-h-svh flex-col overflow-hidden">
         <svg
           width={0}
           height={0}
@@ -358,7 +228,6 @@ const HeroSection = () => {
               aria-hidden
             />
             <div
-              ref={heroDarkOverlayRef}
               className="pointer-events-none absolute inset-0 bg-black opacity-[0.15]"
               aria-hidden
             />
@@ -369,36 +238,15 @@ const HeroSection = () => {
           </motion.div>
         </div>
 
-        <div
-          ref={heroContentRef}
-          className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 pb-36 pt-24 sm:px-8 sm:pb-40 sm:pt-28 md:px-10"
-        >
+        <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 pb-36 pt-24 sm:px-8 sm:pb-40 sm:pt-28 md:px-10">
           <div className="relative w-full max-w-xl text-center md:max-w-3xl lg:max-w-4xl">
-            <div
-              className="pointer-events-none absolute -left-1 -top-1 h-10 w-10 border-l border-t border-gold/45 sm:h-12 sm:w-12 md:-left-2 md:-top-2 md:h-14 md:w-14"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute -right-1 -top-1 h-10 w-10 border-r border-t border-gold/45 sm:h-12 sm:w-12 md:-right-2 md:-top-2 md:h-14 md:w-14"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute -bottom-1 -left-1 h-10 w-10 border-b border-l border-gold/35 sm:h-12 sm:w-12 md:-bottom-2 md:-left-2 md:h-14 md:w-14"
-              aria-hidden
-            />
-            <div
-              className="pointer-events-none absolute -bottom-1 -right-1 h-10 w-10 border-b border-r border-gold/35 sm:h-12 sm:w-12 md:-bottom-2 md:-right-2 md:h-14 md:w-14"
-              aria-hidden
-            />
-
-            <div
-              className="absolute -left-px top-[18%] hidden h-28 w-px bg-linear-to-b from-gold/10 via-gold/50 to-gold/10 md:block lg:top-[22%] lg:h-32"
-              aria-hidden
-            />
-
             <div className="relative px-2 sm:px-6 md:px-10">
               <div className="shamell-hero-enter shamell-hero-enter--d1 mb-5 flex justify-center md:mb-6">
-                <FlameIcon className="h-12 w-9 text-gold drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] sm:h-14 sm:w-10" />
+                <img
+                  src="/01_bailarina.png"
+                  alt="Shamell"
+                  className="h-12 w-auto max-w-[min(100%,7rem)] object-contain drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] sm:h-14 sm:max-w-[min(100%,8rem)]"
+                />
               </div>
 
               <h1 className="shamell-hero-enter shamell-hero-enter--d2 mb-4 font-brand text-4xl tracking-[0.28em] text-gold drop-shadow-[0_4px_28px_rgba(0,0,0,0.65)] sm:text-5xl sm:tracking-[0.26em] md:mb-5 md:text-6xl md:tracking-[0.24em] lg:text-7xl">

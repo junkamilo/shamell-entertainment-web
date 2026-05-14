@@ -62,6 +62,10 @@ export type SanitizedInquiryDetails = {
   eventTypeLabel?: string;
   bespokeProjectLabels?: string[];
   bespokeRoleLabels?: string[];
+  /** Server-only: sum of Event + Service guide prices at submit time. */
+  guideInvestmentTotalUsd?: number;
+  /** Server-only: true if any selected catalog row lacked a guide price. */
+  guideInvestmentIsPartial?: boolean;
 };
 
 const MAX_STR = 200;
@@ -368,5 +372,22 @@ export function formatInquiryDetailsSummary(
     lines.push(`Occasion idea: ${details.occasionHint}`);
   if (details.visionSummary)
     lines.push(`Vision summary: ${details.visionSummary}`);
+  if (
+    details.guideInvestmentTotalUsd != null ||
+    details.guideInvestmentIsPartial
+  ) {
+    if (details.guideInvestmentTotalUsd != null) {
+      const suffix = details.guideInvestmentIsPartial
+        ? ' (partial: some catalog selections have no list price)'
+        : '';
+      lines.push(
+        `Guide investment (estimate): ${details.guideInvestmentTotalUsd} USD${suffix}`,
+      );
+    } else if (details.guideInvestmentIsPartial) {
+      lines.push(
+        'Guide investment (estimate): on request — catalog or services lack list prices.',
+      );
+    }
+  }
   return lines.join('\n');
 }

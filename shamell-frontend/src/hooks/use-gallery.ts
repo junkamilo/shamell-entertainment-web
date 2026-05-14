@@ -6,6 +6,19 @@ import {
   galleryTabs as fallbackTabs,
   type GalleryFilter,
 } from "@/lib/galleryData";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+
+function galleryMediaTypeFromItem(
+  imageUrl: string,
+  rawMediaType: unknown,
+): "IMAGE" | "VIDEO" {
+  const fromApi = String(rawMediaType ?? "")
+    .trim()
+    .toUpperCase();
+  if (fromApi === "VIDEO") return "VIDEO";
+  if (serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO") return "VIDEO";
+  return "IMAGE";
+}
 
 export type GalleryCategoryApiItem = {
   id: string;
@@ -128,7 +141,7 @@ export function useGalleryPhotos(filter: string, limit?: number) {
             src: item.imageUrl,
             alt: `${item.category.name} — gallery`,
             categorySlug: item.category.slug,
-            mediaType: item.mediaType,
+            mediaType: galleryMediaTypeFromItem(item.imageUrl, item.mediaType),
           })),
         );
       })

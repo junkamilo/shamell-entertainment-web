@@ -6,6 +6,7 @@ import HeroSection from "@/components/HeroSection";
 import SiteHeader from "@/components/SiteHeader";
 import ServicesSection from "@/components/ServicesSection";
 
+/** Home: `#services` / `#experiences` blocks; then `#about` before `#gallery` (matches header nav). */
 export default function Home() {
   return (
     <main className="relative z-10 min-h-screen text-foreground">
@@ -13,8 +14,8 @@ export default function Home() {
       <HeroSection />
       <ExperiencesSection />
       <ServicesSection />
-      <GallerySection />
       <AboutSection />
+      <GallerySection />
       <Footer />
     </main>
   );

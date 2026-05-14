@@ -14,6 +14,10 @@ import { AdminContactQueryDto } from './dto/admin-contact-query.dto';
 import { AdminPeticionesQueryDto } from './dto/admin-peticiones-query.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import {
+  computeBookingGuideInvestmentUsd,
+  type GuideInvestmentCompute,
+} from './booking-guide-investment';
+import {
   BOOKING_INQUIRY_ENTRY_SOURCES,
   formatInquiryDetailsSummary,
   sanitizeInquiryDetails,
@@ -99,10 +103,28 @@ export class ContactService {
       ...rest
     } = dto;
     const inquiryDetails = sanitizeInquiryDetails(rawInquiryDetails);
-    const enriched =
+    let enriched: SanitizedInquiryDetails | undefined =
       inquiryDetails && Object.keys(inquiryDetails).length > 0
         ? await this.enrichInquiryDetails(inquiryDetails)
         : undefined;
+
+    let guideForAck: GuideInvestmentCompute | undefined;
+    if (enriched) {
+      const guide = await computeBookingGuideInvestmentUsd(
+        this.prisma,
+        enriched,
+      );
+      if (guide.totalUsd != null || guide.isPartial) {
+        guideForAck = guide;
+        enriched = {
+          ...enriched,
+          ...(guide.totalUsd != null
+            ? { guideInvestmentTotalUsd: guide.totalUsd }
+            : {}),
+          ...(guide.isPartial ? { guideInvestmentIsPartial: true } : {}),
+        };
+      }
+    }
 
     if (eventDate) {
       const tz = this.availability.bookingTimeZone();
@@ -163,7 +185,7 @@ export class ContactService {
       enriched?.entrySource &&
       BOOKING_INQUIRY_ENTRY_SOURCES.includes(enriched.entrySource)
     ) {
-      await this.sendBookingInquiryAckEmail(dto);
+      await this.sendBookingInquiryAckEmail(dto, guideForAck);
     }
 
     return created;
@@ -218,7 +240,10 @@ export class ContactService {
   }
 
   /** Acknowledges booking inquiry to the guest. Does not throw; logs on skip/failure. */
-  private async sendBookingInquiryAckEmail(dto: CreateContactDto): Promise<void> {
+  private async sendBookingInquiryAckEmail(
+    dto: CreateContactDto,
+    guide?: GuideInvestmentCompute,
+  ): Promise<void> {
     try {
       const to = dto.email.trim().toLowerCase();
       if (!to) {
@@ -239,6 +264,7 @@ export class ContactService {
         recipientFirstName,
         appPublicName,
         siteUrl: siteUrl || undefined,
+        guideInvestment: guide,
       };
 
       const ok = await this.mail.sendTransactional({

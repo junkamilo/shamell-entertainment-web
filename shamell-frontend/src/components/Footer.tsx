@@ -1,17 +1,17 @@
+import Image from "next/image";
 import Link from "next/link";
 import { Mail } from "lucide-react";
-import FlameIcon from "@/components/FlameIcon";
 import PearlDivider from "@/components/PearlDivider";
+import bailarinaLogo from "@/public/01_bailarina.png";
 import { cn } from "@/lib/utils";
 
 const exploreLinks = [
   { label: "Home", href: "/#hero" },
-  { label: "Services", href: "/#services" },
-  { label: "Experiences", href: "/#experiences" },
+  { label: "Service catalog", href: "/#services" },
+  { label: "Types of events", href: "/#experiences" },
   { label: "About", href: "/#about" },
   { label: "Gallery", href: "/#gallery" },
   { label: "Blog", href: "/blog" },
-  { label: "Contact", href: "/contacto" },
 ] as const;
 
 function InstagramGlyph({ className }: { className?: string }) {
@@ -33,7 +33,7 @@ function InstagramGlyph({ className }: { className?: string }) {
   );
 }
 
-const socialLinkClass = cn(
+const contactLinkClass = cn(
   "flex h-10 w-10 items-center justify-center rounded-lg border border-gold/25 text-gold/80 transition-all duration-300",
   "hover:border-gold/50 hover:bg-gold/7 hover:text-gold hover:shadow-[0_0_20px_rgba(197,165,90,0.12)]",
 );
@@ -76,7 +76,14 @@ export default function Footer({
                 className="group inline-flex flex-col gap-3 transition-colors hover:text-gold-light"
               >
                 <span className="flex items-center gap-3">
-                  <FlameIcon className="h-8 w-5 shrink-0 text-gold opacity-90 transition-opacity group-hover:opacity-100" />
+                  <Image
+                    src={bailarinaLogo}
+                    alt=""
+                    width={180}
+                    height={164}
+                    className="h-8 w-auto max-w-12 shrink-0 object-contain object-left opacity-90 drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)] transition-opacity group-hover:opacity-100 sm:max-w-14"
+                    aria-hidden
+                  />
                   <span className="font-brand text-lg tracking-[0.28em] text-gold sm:text-xl">
                     SHAMELL
                   </span>
@@ -126,21 +133,21 @@ export default function Footer({
 
               <div>
                 <h2 className="mb-3 font-brand text-xs font-semibold tracking-[0.24em] text-gold/95 uppercase md:text-sm md:tracking-[0.26em]">
-                  Social
+                  Contact
                 </h2>
                 <div className="flex flex-wrap items-center gap-2.5">
                   <a
                     href="https://instagram.com/Shamellentertainment"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={socialLinkClass}
+                    className={contactLinkClass}
                     aria-label="Instagram — Shamell Entertainment"
                   >
                     <InstagramGlyph />
                   </a>
                   <a
                     href="/contacto"
-                    className={socialLinkClass}
+                    className={contactLinkClass}
                     aria-label="Send inquiry by email"
                   >
                     <Mail className="h-4.5 w-4.5" strokeWidth={1.75} />

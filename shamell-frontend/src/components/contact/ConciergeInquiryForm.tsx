@@ -4,12 +4,16 @@ import type { FormEvent, HTMLAttributes } from "react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import bailarinaLogo from "@/public/01_bailarina.png";
 import ContactDatePickerModal from "@/components/contact/ContactDatePickerModal";
+import InquirySubmitFeedbackLayer, {
+  type InquirySubmitFeedbackPhase,
+} from "@/components/contact/InquirySubmitFeedbackLayer";
 import { formatDateDisplayUs } from "@/components/contact/contactLogisticsUtils";
 
 type ConciergeFormData = {
@@ -62,16 +66,23 @@ function validateConciergeForm(data: ConciergeFormData): string | null {
 }
 
 export default function ConciergeInquiryForm() {
+  const router = useRouter();
   const [data, setData] = useState<ConciergeFormData>(emptyConciergeForm);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [submitFeedbackPhase, setSubmitFeedbackPhase] = useState<InquirySubmitFeedbackPhase>("idle");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const apiBaseUrl = useMemo(
     () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
     [],
   );
+
+  const handleConciergeSubmitComplete = useCallback(() => {
+    setData(emptyConciergeForm);
+    setSubmitFeedbackPhase("idle");
+    router.replace("/");
+  }, [router]);
 
   const updateField = (field: keyof ConciergeFormData, value: string) => {
     setData((prev) => ({ ...prev, [field]: value }));
@@ -87,6 +98,7 @@ export default function ConciergeInquiryForm() {
     }
 
     setIsSubmitting(true);
+    setSubmitFeedbackPhase("sending");
     setError(null);
     try {
       const guestCount = data.guestCount.trim() ? Number(data.guestCount) : undefined;
@@ -116,46 +128,17 @@ export default function ConciergeInquiryForm() {
       const resData = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(nestApiErrorMessage(resData, "Could not send your concierge inquiry. Please try again."));
+        setSubmitFeedbackPhase("idle");
         return;
       }
-      setSuccess(true);
-      setData(emptyConciergeForm);
+      setSubmitFeedbackPhase("done");
     } catch {
       setError("Cannot reach the server. Check that the API is running.");
+      setSubmitFeedbackPhase("idle");
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  if (success) {
-    return (
-      <div className="mx-auto max-w-3xl rounded-2xl border border-emerald-400/25 bg-emerald-400/8 px-6 py-10 text-center">
-        <CheckCircle2 className="mx-auto mb-4 h-10 w-10 text-emerald-300" strokeWidth={1.5} aria-hidden />
-        <h1 className="font-brand text-3xl tracking-[0.12em] text-gold uppercase">
-          Concierge request received
-        </h1>
-        <p className="mx-auto mt-4 max-w-xl font-body text-sm leading-relaxed text-foreground/72">
-          Thank you. Shamell&apos;s team will review your vision and recommend the best experience
-          for your event.
-        </p>
-        <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-          <button
-            type="button"
-            onClick={() => setSuccess(false)}
-            className="border border-gold/45 bg-black/25 px-5 py-3 font-brand text-xs tracking-[0.16em] text-gold uppercase transition-colors hover:border-gold hover:bg-gold/10"
-          >
-            Send another inquiry
-          </button>
-          <Link
-            href="/contacto?mode=booking"
-            className="border border-white/15 bg-white/5 px-5 py-3 font-brand text-xs tracking-[0.16em] text-foreground/85 uppercase transition-colors hover:border-gold/45 hover:text-gold"
-          >
-            Continue to booking form
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="relative w-full">
@@ -307,7 +290,7 @@ export default function ConciergeInquiryForm() {
           </p>
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || submitFeedbackPhase !== "idle"}
             className="inline-flex min-h-12 items-center justify-center border border-gold/55 bg-gold/10 px-7 py-3 font-brand text-xs tracking-[0.18em] text-gold uppercase transition-colors hover:border-gold hover:bg-gold/15 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? (
@@ -329,6 +312,7 @@ export default function ConciergeInquiryForm() {
           onClose={() => setDatePickerOpen(false)}
           onConfirm={(iso) => updateField("eventDate", iso)}
         />
+        <InquirySubmitFeedbackLayer phase={submitFeedbackPhase} onAccept={handleConciergeSubmitComplete} />
       </div>
     </div>
   );

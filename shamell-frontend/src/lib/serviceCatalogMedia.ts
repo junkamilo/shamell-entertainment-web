@@ -8,8 +8,10 @@ export function serviceCatalogMediaTypeFromUrl(
   const u = typeof url === "string" ? url.trim() : "";
   if (!u) return undefined;
   const lower = u.toLowerCase();
-  if (lower.includes("/video/upload/")) return "VIDEO";
-  if (/\.(mp4|webm|mov|m4v|ogv)(\?|#|$)/i.test(lower)) return "VIDEO";
+  if (lower.includes("/video/upload/") || lower.includes("/video/fetch/")) {
+    return "VIDEO";
+  }
+  if (/\.(mp4|webm|mov|m4v|ogv|m3u8)(\?|#|\/|$)/i.test(lower)) return "VIDEO";
   return "IMAGE";
 }
 
