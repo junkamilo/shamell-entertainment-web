@@ -73,8 +73,8 @@ export default function AdminLoginPage() {
             className="mb-4 h-14 w-auto sm:h-16"
             priority
           />
-          <h1 className="mb-2 font-brand text-2xl tracking-[0.14em] text-gold sm:text-3xl md:text-4xl md:tracking-[0.16em]">
-            ADMIN LOGIN
+          <h1 className="mb-2 font-brand text-2xl tracking-[0.12em] text-gold sm:text-3xl md:text-4xl md:tracking-[0.14em]">
+            Shamell admin login
           </h1>
         </div>
 
