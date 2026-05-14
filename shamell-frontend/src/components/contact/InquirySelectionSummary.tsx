@@ -2,115 +2,31 @@
 
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatCatalogPriceWithSuffix } from "@/lib/formatCatalogPrice";
 
-export type SummaryCardData = {
-  title: string;
-  subtitle?: string;
-  description?: string;
-  items?: string[];
-  imageUrl?: string | null;
-  /** When set to VIDEO, `imageUrl` is played as muted inline video. */
-  imageMediaType?: "IMAGE" | "VIDEO";
-};
+export type InquiryPricingPreviewLine = { name: string; price: number | null };
 
-function SummaryCard({
-  data,
-  emptyLabel,
-}: {
-  data: SummaryCardData | null;
-  emptyLabel: string;
-}) {
-  if (!data) {
-    return (
-      <div className="min-w-0 overflow-hidden rounded-xl border border-gold/25 bg-black/25 px-4 py-4 md:px-5 md:py-5">
-        <p className="font-brand text-sm tracking-[0.2em] text-gold/80 uppercase sm:text-base">Pending</p>
-        <p className="mt-2 wrap-break-word font-body text-base leading-relaxed text-foreground/75 md:text-lg">{emptyLabel}</p>
-      </div>
-    );
-  }
+/** Occasion rows are name-only (no catalog price on occasion types). */
+export type InquiryPreviewOccasionLine = { name: string };
 
-  const topItems = (data.items ?? []).filter(Boolean).slice(0, 3);
-
-  return (
-    <div className="min-w-0 overflow-hidden rounded-xl border border-gold/30 bg-[linear-gradient(165deg,rgba(21,12,24,0.92),rgba(8,6,10,0.98))]">
-      {data.imageUrl ? (
-        <div className="relative aspect-video w-full min-w-0 overflow-hidden border-b border-gold/20">
-          {data.imageMediaType === "VIDEO" ? (
-            <video
-              src={data.imageUrl}
-              className="h-full w-full object-cover"
-              muted
-              playsInline
-              loop
-              autoPlay
-              aria-hidden
-            />
-          ) : (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={data.imageUrl} alt="" className="h-full w-full object-cover" />
-            </>
-          )}
-          <div
-            className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_35%,rgba(3,2,4,0.72)_100%)]"
-            aria-hidden
-          />
-        </div>
-      ) : null}
-      <div className="min-w-0 px-4 py-4 md:px-5 md:py-5">
-        <p className="wrap-break-word font-brand text-base tracking-[0.14em] text-gold uppercase sm:text-lg">{data.title}</p>
-        {data.subtitle ? (
-          <p className="mt-1 wrap-break-word font-body text-base tracking-[0.14em] text-gold/70 uppercase sm:text-lg">{data.subtitle}</p>
-        ) : null}
-        {data.description ? (
-          <p className="mt-2 wrap-break-word font-body text-base leading-relaxed text-foreground/80 line-clamp-3 md:text-lg">
-            {data.description}
-          </p>
-        ) : null}
-        {topItems.length > 0 ? (
-          <ul className="mt-3 space-y-1.5">
-            {topItems.map((item, i) => (
-              <li key={`${item}-${i}`} className="wrap-break-word font-body text-base text-foreground/75 md:text-lg">
-                <span className="mr-2 text-gold/80">✦</span>
-                {item}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function PlusDivider({ stackCards }: { stackCards: boolean }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-center text-gold/75 font-brand text-lg",
-        stackCards ? "py-1" : "hidden md:flex",
-      )}
-      aria-hidden
-    >
-      +
-    </div>
-  );
+function formatLinePrice(price: number | null): string {
+  return formatCatalogPriceWithSuffix(price) ?? "On request";
 }
 
 export default function InquirySelectionSummary({
-  eventCard,
-  occasionCard,
-  serviceCard,
-  serviceCards,
-  loadingService,
+  eventLine,
+  occasionLines,
+  serviceLines,
+  guideInvestment,
+  loadingService = false,
   stackCards = false,
 }: {
-  eventCard: SummaryCardData | null;
-  occasionCard: SummaryCardData | null;
-  serviceCard: SummaryCardData | null;
-  /** When set (2+ entries), renders stacked previews instead of a single `serviceCard`. */
-  serviceCards?: SummaryCardData[] | null;
+  eventLine: InquiryPricingPreviewLine | null;
+  occasionLines: InquiryPreviewOccasionLine[];
+  serviceLines: InquiryPricingPreviewLine[];
+  /** When set, shows estimated total from event + service guide prices (matches server ack email logic). */
+  guideInvestment?: { totalUsd: number | null; isPartial: boolean } | null;
   loadingService?: boolean;
-  /** Narrow sidebar (e.g. checkout column): single column of cards + vertical dividers. */
   stackCards?: boolean;
 }) {
   return (
@@ -120,48 +36,116 @@ export default function InquirySelectionSummary({
         stackCards ? "mb-0" : "mb-6",
       )}
     >
-      <p className="text-center font-brand text-sm tracking-[0.24em] text-gold/95 uppercase sm:text-base md:text-lg">
-        Your Selection Summary
+      <p className="text-center font-brand text-base tracking-[0.24em] text-gold/95 uppercase sm:text-lg md:text-xl">
+        Pricing preview
       </p>
-      <p className="mt-2 text-center font-body text-base leading-relaxed text-foreground/72 md:text-lg md:leading-relaxed">
-        This preview updates as you choose an event, occasion, and service.
+      <p className="mt-3 text-center font-body text-base leading-relaxed text-foreground/72 sm:text-lg">
+        Typical investment shown is a guide only. Final proposals depend on your date, venue, production scope, and
+        travel — we align every quote with Shamell&apos;s standards.
       </p>
 
       <div
         className={cn(
-          "mt-4 grid min-w-0 w-full gap-3",
-          stackCards
-            ? "grid-cols-1"
-            : "mx-auto max-w-[1180px] grid-cols-1 md:grid-cols-[1fr_auto_1fr_auto_1fr] md:items-stretch md:justify-center",
+          "relative mt-5 space-y-4 rounded-xl border border-gold/20 bg-black/25 px-4 py-4 sm:px-5 sm:py-5",
+          loadingService && "opacity-90",
         )}
       >
-        <SummaryCard data={eventCard} emptyLabel="Select an event to preview image and details." />
-        <PlusDivider stackCards={stackCards} />
-        <SummaryCard data={occasionCard} emptyLabel="Select an occasion type to continue." />
-        <PlusDivider stackCards={stackCards} />
-        <div className={cn("relative min-w-0", loadingService && "opacity-90")}>
-          {serviceCards && serviceCards.length > 0 ? (
-            <div className="space-y-3">
-              {serviceCards.map((card, idx) => (
-                <SummaryCard
-                  key={`${card.title}-${idx}`}
-                  data={card}
-                  emptyLabel="Service details will appear from your inquiry type."
-                />
-              ))}
+        {loadingService ? (
+          <div className="absolute right-3 top-3 inline-flex items-center gap-2 rounded-full border border-gold/35 bg-black/60 px-3 py-2">
+            <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gold" aria-hidden />
+            <span className="font-brand text-xs tracking-[0.14em] text-gold/85 uppercase sm:text-sm">
+              Loading
+            </span>
+          </div>
+        ) : null}
+
+        <div>
+          <p className="font-brand text-xs tracking-[0.22em] text-gold/80 uppercase sm:text-sm md:text-base">
+            Event offering
+          </p>
+          {eventLine ? (
+            <div className="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-gold/15 pb-3">
+              <p className="min-w-0 flex-1 font-brand text-base tracking-[0.12em] text-foreground/95 uppercase sm:text-lg">
+                {eventLine.name}
+              </p>
+              <p className="shrink-0 font-body text-base text-gold/90 tabular-nums sm:text-lg">
+                {formatLinePrice(eventLine.price)}
+              </p>
             </div>
           ) : (
-            <SummaryCard data={serviceCard} emptyLabel="Service details will appear from your inquiry type." />
+            <p className="mt-2 font-body text-base text-foreground/55 sm:text-lg">
+              Select a catalog offering to see its guide price.
+            </p>
           )}
-          {loadingService ? (
-            <div className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-full border border-gold/35 bg-black/60 px-2.5 py-1.5">
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-gold" />
-              <span className="font-brand text-sm tracking-[0.14em] text-gold/85 uppercase">Loading</span>
-            </div>
-          ) : null}
         </div>
+
+        <div>
+          <p className="font-brand text-xs tracking-[0.22em] text-gold/80 uppercase sm:text-sm md:text-base">Occasion</p>
+          {occasionLines.length > 0 ? (
+            <ul className="mt-2 space-y-2 border-b border-gold/15 pb-3">
+              {occasionLines.map((row, idx) => (
+                <li
+                  key={`${row.name}-${idx}`}
+                  className="font-body text-base leading-snug text-foreground/90 sm:text-lg"
+                >
+                  {row.name}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 font-body text-base text-foreground/55 sm:text-lg">
+              Select an occasion type to see it here.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <p className="font-brand text-xs tracking-[0.22em] text-gold/80 uppercase sm:text-sm md:text-base">
+            Service types
+          </p>
+          {serviceLines.length > 0 ? (
+            <ul className="mt-2 space-y-2.5">
+              {serviceLines.map((row, idx) => (
+                <li
+                  key={`${row.name}-${idx}`}
+                  className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b border-gold/10 pb-2 last:border-0 last:pb-0"
+                >
+                  <span className="min-w-0 flex-1 font-body text-base text-foreground/90 sm:text-lg">{row.name}</span>
+                  <span className="shrink-0 font-body text-base text-gold/85 tabular-nums sm:text-lg">
+                    {formatLinePrice(row.price)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 font-body text-base text-foreground/55 sm:text-lg">
+              Service selections and guide prices appear here when you choose service types.
+            </p>
+          )}
+        </div>
+
+        {guideInvestment ? (
+          <div className="border-t-2 border-gold/35 pt-5">
+            <p className="font-brand text-xs tracking-[0.22em] text-gold/90 uppercase sm:text-sm md:text-base">
+              Estimated guide investment
+            </p>
+            <p className="mt-2 font-body text-xl font-medium tabular-nums text-gold/95 sm:text-2xl">
+              {guideInvestment.totalUsd != null
+                ? formatCatalogPriceWithSuffix(guideInvestment.totalUsd)
+                : "On request"}
+            </p>
+            {guideInvestment.isPartial ? (
+              <p className="mt-2 font-body text-sm leading-relaxed text-foreground/60 sm:text-base">
+                Some selections are priced on request; the total above includes only items with a published guide
+                price.
+              </p>
+            ) : null}
+            <p className="mt-3 font-body text-sm leading-relaxed text-foreground/55 sm:text-base">
+              Non-binding guide — final proposals depend on date, venue, production scope, and travel.
+            </p>
+          </div>
+        ) : null}
       </div>
     </section>
   );
 }
-

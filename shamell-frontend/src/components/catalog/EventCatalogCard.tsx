@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { ArrowRight, ChevronDown, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buildEventLineContactHref } from "@/lib/contactInquiryConstants";
+import { formatCatalogPriceAmount } from "@/lib/formatCatalogPrice";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 
 export type EventCatalogItem = {
@@ -18,13 +19,6 @@ export type EventCatalogItem = {
   /** First catalog media; drives hero `<img>` vs `<video>`. */
   heroMediaType?: "IMAGE" | "VIDEO";
 };
-
-function formatCatalogPriceAmount(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(Number(value));
-}
 
 const inquireLinkClass = cn(
   "relative inline-flex min-h-12 flex-1 items-center justify-center gap-2 overflow-hidden border border-gold/35 bg-black/40 px-5 py-3 font-brand text-xs font-semibold tracking-[0.16em] text-gold uppercase md:min-h-12 md:tracking-[0.18em]",

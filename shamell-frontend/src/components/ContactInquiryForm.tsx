@@ -4,13 +4,20 @@ import type { HTMLAttributes } from "react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Eye, Loader2 } from "lucide-react";
 import RevealFromDepth from "@/components/shared/RevealFromDepth";
 import bailarinaLogo from "@/public/01_bailarina.png";
-import InquirySelectionSummary, { type SummaryCardData } from "@/components/contact/InquirySelectionSummary";
+import InquirySelectionSummary, {
+  type InquiryPreviewOccasionLine,
+  type InquiryPricingPreviewLine,
+} from "@/components/contact/InquirySelectionSummary";
+import CatalogOfferingDetailModal from "@/components/contact/CatalogOfferingDetailModal";
 import ContactOccasionPickerModal from "@/components/contact/ContactOccasionPickerModal";
 import ContactDatePickerModal from "@/components/contact/ContactDatePickerModal";
 import ContactTimePickerModal from "@/components/contact/ContactTimePickerModal";
+import InquirySubmitFeedbackLayer, {
+  type InquirySubmitFeedbackPhase,
+} from "@/components/contact/InquirySubmitFeedbackLayer";
 import {
   formatDateDisplayUs,
   formatTimeDisplayUs,
@@ -37,6 +44,7 @@ import {
   timeBoundsForDateISO,
 } from "@/lib/bookingAvailability";
 import { cn } from "@/lib/utils";
+import { formatCatalogPriceWithSuffix } from "@/lib/formatCatalogPrice";
 
 export type ContactInquiryFormProps = {
   initialServiceType?: ServiceTypeCode;
@@ -71,6 +79,7 @@ export type ContactLine = {
   heroImageUrl?: string | null;
   /** First linked gallery item; VIDEO when hero is a clip. */
   heroMediaType?: string | null;
+  price?: number | null;
   /** `event_type` = solo existe tipo de evento (sin fila Event); no enviar `eventId` al crear contacto. */
   lineKind?: "event" | "event_type";
   occasionSingle: { id: string; name: string }[];
@@ -135,6 +144,7 @@ type PublicServiceOption = {
   items: string[];
   imageUrl?: string | null;
   imageMediaType?: "IMAGE" | "VIDEO";
+  price?: number | null;
 };
 
 const SERVICE_OPTION_UUID_RE =
@@ -387,13 +397,6 @@ function readableInquiryCode(code: string): string {
   return code.replace(/_/g, " ").trim();
 }
 
-function inquiryCodeDescription(code: ServiceTypeCode): string {
-  if (code === "VIP_EVENT") return "For premium social and private events.";
-  if (code === "PRIVATE_GALA") return "For gala-style and formal private occasions.";
-  if (code === "BESPOKE") return "For custom collaborations and tailored productions.";
-  return "General inquiries and flexible event requests.";
-}
-
 function inferInquiryCodeFromService(
   contactInquiryCode: string | null | undefined,
   title: string,
@@ -423,7 +426,7 @@ export default function ContactInquiryForm({
   const [phaseIndex, setPhaseIndex] = useState(0);
   const [stepError, setStepError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [submitFeedbackPhase, setSubmitFeedbackPhase] = useState<InquirySubmitFeedbackPhase>("idle");
   const [apiError, setApiError] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [occasionPickerOpen, setOccasionPickerOpen] = useState(false);
@@ -441,6 +444,12 @@ export default function ContactInquiryForm({
   const [contactLines, setContactLines] = useState<ContactLine[]>([]);
   const [linesLoading, setLinesLoading] = useState(true);
   const [linesError, setLinesError] = useState<string | null>(null);
+
+  const [detailModal, setDetailModal] = useState<
+    | { kind: "contactLine"; line: ContactLine }
+    | { kind: "service"; option: PublicServiceOption }
+    | null
+  >(null);
 
   /** Avoid re-jumping phases when contact-lines refetch; reset when `eventId` leaves the URL. */
   const skipServiceAppliedForEventIdRef = useRef<string | undefined>(undefined);
@@ -634,6 +643,12 @@ export default function ContactInquiryForm({
                 ? row.heroMediaType.trim()
                 : undefined,
             lineKind: row.lineKind === "event_type" ? "event_type" : "event",
+            price: (() => {
+              const raw = row.price;
+              if (raw == null || raw === "") return null;
+              const n = typeof raw === "number" ? raw : Number(raw);
+              return Number.isFinite(n) ? n : null;
+            })(),
             occasionSingle: mapOpts(row.occasionSingle),
             occasionBespokeProject: mapOpts(row.occasionBespokeProject),
             occasionBespokeRole: mapOpts(row.occasionBespokeRole),
@@ -686,6 +701,12 @@ export default function ContactInquiryForm({
             imageMediaType: serviceCatalogMediaTypeFromUrl(
               typeof row.imageUrl === "string" ? row.imageUrl : undefined,
             ),
+            price: (() => {
+              const raw = row.price;
+              if (raw == null || raw === "") return null;
+              const n = typeof raw === "number" ? raw : Number(raw);
+              return Number.isFinite(n) ? n : null;
+            })(),
           });
         }
         setServiceTypeOptions(parsed);
@@ -968,8 +989,18 @@ export default function ContactInquiryForm({
     setData((prev) => ({ ...prev, [key]: value }));
     setStepError(null);
     setApiError(null);
-    setSuccess(false);
+    setSubmitFeedbackPhase("idle");
   }, []);
+
+  const handleInquirySubmitComplete = useCallback(() => {
+    setData(emptyWizard(initialServiceType));
+    setPhaseIndex(0);
+    setCatalogSnapshot(null);
+    setCatalogDismissed(false);
+    setCatalogFetchError(null);
+    setSubmitFeedbackPhase("idle");
+    router.replace("/");
+  }, [initialServiceType, router]);
 
   const validationOpts = useMemo(
     () => ({ catalogDismissed, catalogSnapshot, hadServiceTypeInUrl }),
@@ -1071,6 +1102,7 @@ export default function ContactInquiryForm({
       return;
     }
     setApiError(null);
+    setSubmitFeedbackPhase("sending");
     setIsSubmitting(true);
     try {
       const activeCatalog = catalogDismissed ? null : catalogSnapshot;
@@ -1097,17 +1129,13 @@ export default function ContactInquiryForm({
             ? resData.message
             : "Could not send your inquiry. Please try again.";
         setApiError(msg);
+        setSubmitFeedbackPhase("idle");
         return;
       }
-      setSuccess(true);
-      setData(emptyWizard(initialServiceType));
-      setPhaseIndex(0);
-      setCatalogSnapshot(null);
-      setCatalogDismissed(false);
-      setCatalogFetchError(null);
-      router.replace(pathname, { scroll: false });
+      setSubmitFeedbackPhase("done");
     } catch {
       setApiError("Cannot reach the server. Check that the API is running.");
+      setSubmitFeedbackPhase("idle");
     } finally {
       setIsSubmitting(false);
     }
@@ -1144,7 +1172,7 @@ export default function ContactInquiryForm({
   const logisticsUsesBespokeDeadlineRule = isBespoke(data.inquiryCode) || lineHasBespokeGroups;
 
   const logisticsPickerTriggerClass =
-    "mt-2 flex min-h-[48px] w-full items-center justify-between gap-3 rounded-xl border border-gold/40 bg-black/30 px-4 py-3 text-left text-sm text-foreground outline-none transition hover:border-gold focus:border-gold focus:ring-1 focus:ring-gold/30";
+    "mt-2 flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border border-gold/40 bg-black/30 px-4 py-3.5 text-left text-base text-foreground outline-none transition hover:border-gold focus:border-gold focus:ring-1 focus:ring-gold/30 sm:min-h-14 sm:px-5 sm:py-4 sm:text-lg";
 
   const occasionSingleLabel =
     selectedLine?.occasionSingle.find((o) => o.id === data.occasionTypeId)?.name ?? "";
@@ -1157,130 +1185,102 @@ export default function ContactInquiryForm({
     .map((id) => selectedLine?.occasionBespokeRole.find((o) => o.id === id)?.name ?? id)
     .join(", ");
 
-  const selectedEventSummary = useMemo(() => {
+  const pricingPreviewEventLine = useMemo((): InquiryPricingPreviewLine | null => {
     if (selectedLine) {
-      const description = lineDescriptionPreview(selectedLine.description, 220);
-      const imageUrl = selectedLine.heroImageUrl ?? selectedLine.images[0] ?? undefined;
+      return { name: selectedLine.eventTypeName, price: selectedLine.price ?? null };
+    }
+    if (!catalogDismissed && catalogSnapshot?.kind === "event") {
+      return { name: catalogSnapshot.title, price: null };
+    }
+    return null;
+  }, [selectedLine, catalogDismissed, catalogSnapshot]);
+
+  const pricingPreviewServiceLines = useMemo((): InquiryPricingPreviewLine[] => {
+    const fromOpts = data.serviceOptionIds
+      .map((id) => serviceTypeOptions.find((s) => s.id === id))
+      .filter((s): s is PublicServiceOption => Boolean(s));
+    if (fromOpts.length > 0) {
+      return fromOpts.map((o) => ({ name: o.title, price: o.price ?? null }));
+    }
+    return data.serviceOptionIds
+      .filter((id): id is ServiceTypeCode => isValidInquiryCode(id))
+      .map((code) => ({ name: readableInquiryCode(code), price: null as number | null }));
+  }, [data.serviceOptionIds, serviceTypeOptions]);
+
+  const pricingPreviewOccasionLines = useMemo((): InquiryPreviewOccasionLine[] => {
+    const lines: InquiryPreviewOccasionLine[] = [];
+    if (occasionSingleLabel.trim()) lines.push({ name: occasionSingleLabel });
+    if (reviewProjectLabels.trim()) {
+      reviewProjectLabels
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((name) => lines.push({ name }));
+    }
+    if (reviewRoleLabels.trim()) {
+      reviewRoleLabels
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .forEach((name) => lines.push({ name }));
+    }
+    return lines;
+  }, [occasionSingleLabel, reviewProjectLabels, reviewRoleLabels]);
+
+  const pricingGuidePreview = useMemo(() => {
+    const hasEvent = pricingPreviewEventLine != null;
+    const hasServices = pricingPreviewServiceLines.length > 0;
+    if (!hasEvent && !hasServices) {
+      return null;
+    }
+    let sum = 0;
+    let partial = false;
+    if (pricingPreviewEventLine) {
+      const p = pricingPreviewEventLine.price;
+      if (p == null || Number.isNaN(Number(p))) partial = true;
+      else sum += Number(p);
+    }
+    for (const row of pricingPreviewServiceLines) {
+      const p = row.price;
+      if (p == null || Number.isNaN(Number(p))) partial = true;
+      else sum += Number(p);
+    }
+    const totalUsd = sum > 0 ? Math.round(sum * 100) / 100 : null;
+    return { totalUsd, isPartial: partial };
+  }, [pricingPreviewEventLine, pricingPreviewServiceLines]);
+
+  const catalogDetailModalProps = useMemo(() => {
+    if (!detailModal) return null;
+    if (detailModal.kind === "contactLine") {
+      const line = detailModal.line;
+      const imageUrl = line.heroImageUrl ?? line.images[0] ?? undefined;
       const imageMediaType: "IMAGE" | "VIDEO" | undefined =
         imageUrl &&
-        typeof selectedLine.heroMediaType === "string" &&
-        selectedLine.heroMediaType.trim().toUpperCase() === "VIDEO"
+        typeof line.heroMediaType === "string" &&
+        line.heroMediaType.trim().toUpperCase() === "VIDEO"
           ? "VIDEO"
           : imageUrl
             ? "IMAGE"
             : undefined;
       return {
-        title: selectedLine.eventTypeName,
-        subtitle: readableInquiryCode(resolveServiceLineFromCatalog(selectedLine.contactInquiryCode)),
-        description: description || undefined,
-        items: selectedLine.items,
-        imageUrl,
+        title: line.eventTypeName,
+        description: line.description,
+        items: line.items,
+        imageUrl: imageUrl ?? null,
         imageMediaType,
+        price: line.price ?? null,
       };
     }
-    if (!catalogDismissed && catalogSnapshot?.kind === "event") {
-      return {
-        title: catalogSnapshot.title,
-        subtitle: catalogSnapshot.contactInquiryCode
-          ? readableInquiryCode(resolveServiceLineFromCatalog(catalogSnapshot.contactInquiryCode))
-          : undefined,
-        description: catalogSnapshot.descriptionPreview || undefined,
-        items: catalogSnapshot.items,
-        imageUrl: catalogSnapshot.imageUrl ?? undefined,
-        imageMediaType: catalogSnapshot.imageMediaType,
-      };
-    }
-    return null;
-  }, [selectedLine, catalogDismissed, catalogSnapshot]);
-
-  const selectedOccasionSummary = useMemo(() => {
-    const names: string[] = [];
-    if (occasionSingleLabel) names.push(occasionSingleLabel);
-    if (reviewProjectLabels) names.push(...reviewProjectLabels.split(", ").filter(Boolean));
-    if (reviewRoleLabels) names.push(...reviewRoleLabels.split(", ").filter(Boolean));
-    const uniq = [...new Set(names)];
-    if (uniq.length === 0) return null;
+    const o = detailModal.option;
     return {
-      title: uniq[0],
-      subtitle: uniq.length > 1 ? `${uniq.length} selected` : "Occasion type",
-      description: uniq.length > 1 ? uniq.slice(1).join(" • ") : undefined,
-      items: [],
+      title: o.title,
+      description: o.description ?? "",
+      items: o.items,
+      imageUrl: o.imageUrl ?? null,
+      imageMediaType: o.imageMediaType,
+      price: o.price ?? null,
     };
-  }, [occasionSingleLabel, reviewProjectLabels, reviewRoleLabels]);
-
-  const selectedServiceSummary = useMemo(() => {
-    const selectedOpts = data.serviceOptionIds
-      .map((id) => serviceTypeOptions.find((s) => s.id === id))
-      .filter((s): s is PublicServiceOption => Boolean(s));
-    if (selectedOpts.length === 1) {
-      const selectedService = selectedOpts[0];
-      return {
-        title: selectedService.title,
-        subtitle: readableInquiryCode(selectedService.inquiryCode),
-        description: selectedService.description || inquiryCodeDescription(selectedService.inquiryCode),
-        items: selectedService.items,
-        imageUrl: selectedService.imageUrl ?? undefined,
-        imageMediaType: selectedService.imageMediaType,
-      };
-    }
-    if (selectedOpts.length === 0 && data.serviceOptionIds.length > 0) {
-      const staticCodes = data.serviceOptionIds.filter((id): id is ServiceTypeCode => isValidInquiryCode(id));
-      if (staticCodes.length === 1) {
-        const c = staticCodes[0];
-        return {
-          title: readableInquiryCode(c),
-          subtitle: "Service type",
-          description: inquiryCodeDescription(c),
-          items: [],
-        };
-      }
-    }
-    if (serviceSummary) {
-      return {
-        title: serviceSummary.title,
-        subtitle: readableInquiryCode(data.inquiryCode),
-        description: serviceSummary.description || serviceSummary.descriptionPreview,
-        items: serviceSummary.items,
-        imageUrl: serviceSummary.imageUrl ?? undefined,
-        imageMediaType: serviceSummary.imageMediaType,
-      };
-    }
-    if (!data.inquiryCode) return null;
-    return {
-      title: readableInquiryCode(data.inquiryCode),
-      subtitle: "Service type",
-      description: "Select a service option to preview image, description, and included items.",
-      items: [],
-    };
-  }, [serviceSummary, data.inquiryCode, data.serviceOptionIds, serviceTypeOptions]);
-
-  const servicePreviewCards = useMemo((): SummaryCardData[] | null => {
-    const selectedOpts = data.serviceOptionIds
-      .map((id) => serviceTypeOptions.find((s) => s.id === id))
-      .filter((s): s is PublicServiceOption => Boolean(s));
-    if (selectedOpts.length > 1) {
-      return selectedOpts.map((o) => ({
-        title: o.title,
-        subtitle: readableInquiryCode(o.inquiryCode),
-        description: o.description || inquiryCodeDescription(o.inquiryCode),
-        items: o.items.slice(0, 4),
-        imageUrl: o.imageUrl ?? undefined,
-        imageMediaType: o.imageMediaType,
-      }));
-    }
-    if (selectedOpts.length === 0 && data.serviceOptionIds.length > 1) {
-      const staticCodes = data.serviceOptionIds.filter((id): id is ServiceTypeCode => isValidInquiryCode(id));
-      if (staticCodes.length > 1) {
-        return staticCodes.map((code) => ({
-          title: readableInquiryCode(code),
-          subtitle: "Service type",
-          description: inquiryCodeDescription(code),
-          items: [],
-        }));
-      }
-    }
-    return null;
-  }, [data.serviceOptionIds, serviceTypeOptions]);
+  }, [detailModal]);
 
   return (
     <div className="w-full max-w-none text-left">
@@ -1402,7 +1402,7 @@ export default function ContactInquiryForm({
         </ol>
       </nav>
 
-      <div className="flex min-h-0 flex-col gap-6 lg:max-h-[calc(100vh-8rem)] lg:min-h-0 lg:flex-row lg:items-stretch lg:gap-8">
+      <div className="relative flex min-h-0 flex-col gap-6 lg:max-h-[calc(100vh-8rem)] lg:min-h-0 lg:flex-row lg:items-stretch lg:gap-8">
         <div className="min-w-0 flex-1 lg:flex lg:min-h-0 lg:flex-col">
           <div className="rounded border border-gold/25 bg-black/20 p-5 md:p-6 lg:flex lg:h-full lg:min-h-0 lg:max-h-full lg:flex-1 lg:flex-col lg:overflow-hidden">
             <div className="shamell-scrollbar min-h-0 overflow-x-hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto lg:pr-1">
@@ -1410,7 +1410,8 @@ export default function ContactInquiryForm({
         {currentPhase === "service" ? (
           <div className="space-y-4">
             <p className="font-body text-lg leading-relaxed text-foreground/80 md:text-xl md:leading-relaxed">
-              Which catalog offering best matches what you are planning?
+              Which catalog offering best matches what you are planning? Tap the eye to read the full description,
+              inclusions, and guide investment.
             </p>
             {catalogSnapshot?.kind === "service" && !catalogDismissed ? (
               <p className="font-body text-base leading-relaxed text-foreground/65 md:text-lg">
@@ -1421,27 +1422,52 @@ export default function ContactInquiryForm({
             <div className="space-y-3">
               {contactLines.map((line) => {
                 const checked = data.contactLineId === line.id;
+                const rowId = `inquiry-contact-line-${line.id}`;
+                const priceLabel = formatCatalogPriceWithSuffix(line.price ?? null);
                 return (
-                  <label
+                  <div
                     key={line.id}
-                    className={`flex cursor-pointer flex-col gap-1 rounded border p-4 transition-colors ${
+                    className={`flex overflow-hidden rounded border transition-colors ${
                       checked ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/45"
                     }`}
                   >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="radio"
-                        name="contactLine"
-                        value={line.id}
-                        checked={checked}
-                        onChange={() => selectContactLine(line)}
-                        className="mt-1 border-gold/50 text-gold focus:ring-gold"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">{line.eventTypeName}</span>
+                    <label htmlFor={rowId} className="flex min-w-0 flex-1 cursor-pointer flex-col gap-1 p-4">
+                      <div className="flex items-start gap-3">
+                        <input
+                          id={rowId}
+                          type="radio"
+                          name="contactLine"
+                          value={line.id}
+                          checked={checked}
+                          onChange={() => selectContactLine(line)}
+                          className="mt-1 border-gold/50 text-gold focus:ring-gold"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">
+                            {line.eventTypeName}
+                          </span>
+                          <p className="mt-1 font-body text-sm text-foreground/65">
+                            {priceLabel ? `Guide from ${priceLabel}` : "Typical investment on request"}
+                          </p>
+                          {line.description.trim() ? (
+                            <p className="mt-1 line-clamp-2 font-body text-sm text-foreground/55">
+                              {lineDescriptionPreview(line.description, 140)}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
+                    </label>
+                    <div className="flex shrink-0 flex-col justify-stretch border-l border-gold/25 bg-black/15">
+                      <button
+                        type="button"
+                        className="inline-flex min-h-13 min-w-13 flex-1 items-center justify-center text-gold transition hover:bg-gold/10 sm:min-h-11 sm:min-w-11"
+                        aria-label={`View details for ${line.eventTypeName}`}
+                        onClick={() => setDetailModal({ kind: "contactLine", line })}
+                      >
+                        <Eye className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+                      </button>
                     </div>
-                  </label>
+                  </div>
                 );
               })}
             </div>
@@ -1556,59 +1582,113 @@ export default function ContactInquiryForm({
         {currentPhase === "serviceType" ? (
           <div className="space-y-4">
             <p className="font-body text-base leading-relaxed text-foreground/75 md:text-lg">
-              Select all service types that apply to this inquiry (one or more).
+              Select all service types that apply to this inquiry (one or more). Tap the eye to read the full
+              offering.
             </p>
             <div className="grid gap-3">
-              {(serviceTypeOptions.length > 0
-                ? serviceTypeOptions.map((row) => ({
-                    id: row.id,
-                    code: row.inquiryCode,
-                    label: row.title,
-                    key: row.id,
-                  }))
-                : SERVICE_TYPE_CODES.map((code) => ({
-                    id: code,
-                    code,
-                    label: readableInquiryCode(code),
-                    key: code,
-                  }))).map(({ id, label, key }) => {
-                const checked = data.serviceOptionIds.includes(id);
-                return (
-                  <label
-                    key={key}
-                    className={`flex cursor-pointer flex-col gap-1 rounded border p-4 transition-colors ${
-                      checked ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/45"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => {
-                          setData((prev) => {
-                            const has = prev.serviceOptionIds.includes(id);
-                            const serviceOptionIds = has
-                              ? prev.serviceOptionIds.filter((x) => x !== id)
-                              : [...prev.serviceOptionIds, id];
-                            const inquiryCode = mergedInquiryCodeFromSelections(
-                              serviceOptionIds,
-                              serviceTypeOptions,
-                            );
-                            return { ...prev, serviceOptionIds, inquiryCode };
-                          });
-                          setStepError(null);
-                        }}
-                        className="mt-1 border-gold/50 text-gold focus:ring-gold"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">
-                          {label}
-                        </span>
+              {serviceTypeOptions.length > 0
+                ? serviceTypeOptions.map((row) => {
+                    const checked = data.serviceOptionIds.includes(row.id);
+                    const chkId = `inquiry-service-opt-${row.id}`;
+                    const priceLabel = formatCatalogPriceWithSuffix(row.price ?? null);
+                    return (
+                      <div
+                        key={row.id}
+                        className={`flex overflow-hidden rounded border transition-colors ${
+                          checked ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/45"
+                        }`}
+                      >
+                        <label htmlFor={chkId} className="flex min-w-0 flex-1 cursor-pointer flex-col gap-1 p-4">
+                          <div className="flex items-start gap-3">
+                            <input
+                              id={chkId}
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => {
+                                setData((prev) => {
+                                  const has = prev.serviceOptionIds.includes(row.id);
+                                  const serviceOptionIds = has
+                                    ? prev.serviceOptionIds.filter((x) => x !== row.id)
+                                    : [...prev.serviceOptionIds, row.id];
+                                  const inquiryCode = mergedInquiryCodeFromSelections(
+                                    serviceOptionIds,
+                                    serviceTypeOptions,
+                                  );
+                                  return { ...prev, serviceOptionIds, inquiryCode };
+                                });
+                                setStepError(null);
+                              }}
+                              className="mt-1 border-gold/50 text-gold focus:ring-gold"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">
+                                {row.title}
+                              </span>
+                              <p className="mt-1 font-body text-sm text-foreground/65">
+                                {priceLabel ? `Guide from ${priceLabel}` : "Typical investment on request"}
+                              </p>
+                            </div>
+                          </div>
+                        </label>
+                        <div className="flex shrink-0 flex-col border-l border-gold/25 bg-black/15">
+                          <button
+                            type="button"
+                            className="inline-flex min-h-13 min-w-13 flex-1 items-center justify-center text-gold transition hover:bg-gold/10 sm:min-h-11 sm:min-w-11"
+                            aria-label={`View details for ${row.title}`}
+                            onClick={() => setDetailModal({ kind: "service", option: row })}
+                          >
+                            <Eye className="h-5 w-5" strokeWidth={1.5} aria-hidden />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  </label>
-                );
-              })}
+                    );
+                  })
+                : SERVICE_TYPE_CODES.map((code) => {
+                    const id = code;
+                    const label = readableInquiryCode(code);
+                    const checked = data.serviceOptionIds.includes(id);
+                    const chkId = `inquiry-service-fallback-${code}`;
+                    return (
+                      <label
+                        key={code}
+                        htmlFor={chkId}
+                        className={`flex cursor-pointer flex-col gap-1 rounded border p-4 transition-colors ${
+                          checked ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/45"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            id={chkId}
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              setData((prev) => {
+                                const has = prev.serviceOptionIds.includes(id);
+                                const serviceOptionIds = has
+                                  ? prev.serviceOptionIds.filter((x) => x !== id)
+                                  : [...prev.serviceOptionIds, id];
+                                const inquiryCode = mergedInquiryCodeFromSelections(
+                                  serviceOptionIds,
+                                  serviceTypeOptions,
+                                );
+                                return { ...prev, serviceOptionIds, inquiryCode };
+                              });
+                              setStepError(null);
+                            }}
+                            className="mt-1 border-gold/50 text-gold focus:ring-gold"
+                          />
+                          <div className="min-w-0 flex-1">
+                            <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">
+                              {label}
+                            </span>
+                            <p className="mt-1 font-body text-xs text-foreground/50">
+                              Detailed catalog pricing loads when services are available from the server.
+                            </p>
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
             </div>
           </div>
         ) : null}
@@ -1648,18 +1728,20 @@ export default function ContactInquiryForm({
 
         {currentPhase === "logistics" ? (
           <div className="space-y-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
-                <span className="font-brand text-gold text-sm tracking-[0.14em]">
+                <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
                   {logisticsUsesBespokeDeadlineRule ? "Key date (if any)" : "Event date"}{" "}
                   {isGalaOrVip(data.inquiryCode) ? (
                     <span className="text-red-300">*</span>
                   ) : (
-                    <span className="text-foreground/40 font-body normal-case">(optional)</span>
+                    <span className="font-body text-sm normal-case text-foreground/45 sm:text-base">
+                      (optional)
+                    </span>
                   )}
                 </span>
                 {logisticsUsesBespokeDeadlineRule ? (
-                  <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">
+                  <p className="mt-1 font-body text-sm text-foreground/55 sm:text-base">
                     Optional if you provide a deadline note below.
                   </p>
                 ) : null}
@@ -1668,10 +1750,14 @@ export default function ContactInquiryForm({
                   onClick={() => setDatePickerOpen(true)}
                   className={logisticsPickerTriggerClass}
                 >
-                  <span className={data.eventDate ? "text-foreground font-body" : "text-foreground/45 font-body"}>
+                  <span
+                    className={`font-body ${data.eventDate ? "text-foreground" : "text-foreground/50"} sm:text-lg`}
+                  >
                     {data.eventDate ? formatDateDisplayUs(data.eventDate) : "Select date"}
                   </span>
-                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold/75">CALENDAR</span>
+                  <span className="shrink-0 font-brand text-[11px] tracking-[0.14em] text-gold/80 sm:text-xs sm:tracking-[0.16em]">
+                    CALENDAR
+                  </span>
                 </button>
               </div>
               <Field
@@ -1683,46 +1769,52 @@ export default function ContactInquiryForm({
                 onChange={(v) => update("guestCount", v)}
                 hint="Optional · whole number"
                 inputMode="numeric"
-                inputClassName="rounded-xl"
+                inputClassName="rounded-xl py-3.5 text-base sm:py-4 sm:text-lg"
+                labelClassName="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]"
+                hintClassName="mt-1 font-body text-sm text-foreground/55 sm:text-base"
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
-                <span className="font-brand text-gold text-sm tracking-[0.14em]">
+                <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
                   Performance start{" "}
-                  <span className="text-foreground/40 font-body normal-case">(optional)</span>
+                  <span className="font-body text-sm normal-case text-foreground/45 sm:text-base">(optional)</span>
                 </span>
-                <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">12-hour US format</p>
+                <p className="mt-1 font-body text-sm text-foreground/55 sm:text-base">12-hour US format</p>
                 <button
                   type="button"
                   onClick={() => setTimePickerWhich("start")}
                   className={logisticsPickerTriggerClass}
                 >
                   <span
-                    className={
-                      data.eventTimeStart ? "text-foreground font-body" : "text-foreground/45 font-body"
-                    }
+                    className={`font-body sm:text-lg ${data.eventTimeStart ? "text-foreground" : "text-foreground/50"}`}
                   >
                     {data.eventTimeStart ? formatTimeDisplayUs(data.eventTimeStart) : "Select start time"}
                   </span>
-                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold/75">TIME</span>
+                  <span className="shrink-0 font-brand text-[11px] tracking-[0.14em] text-gold/80 sm:text-xs sm:tracking-[0.16em]">
+                    TIME
+                  </span>
                 </button>
               </div>
               <div>
-                <span className="font-brand text-gold text-sm tracking-[0.14em]">
+                <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
                   Performance end{" "}
-                  <span className="text-foreground/40 font-body normal-case">(optional)</span>
+                  <span className="font-body text-sm normal-case text-foreground/45 sm:text-base">(optional)</span>
                 </span>
-                <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">Must be after start time</p>
+                <p className="mt-1 font-body text-sm text-foreground/55 sm:text-base">Must be after start time</p>
                 <button
                   type="button"
                   onClick={() => setTimePickerWhich("end")}
                   className={logisticsPickerTriggerClass}
                 >
-                  <span className={data.eventTimeEnd ? "text-foreground font-body" : "text-foreground/45 font-body"}>
+                  <span
+                    className={`font-body sm:text-lg ${data.eventTimeEnd ? "text-foreground" : "text-foreground/50"}`}
+                  >
                     {data.eventTimeEnd ? formatTimeDisplayUs(data.eventTimeEnd) : "Select end time"}
                   </span>
-                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold/75">TIME</span>
+                  <span className="shrink-0 font-brand text-[11px] tracking-[0.14em] text-gold/80 sm:text-xs sm:tracking-[0.16em]">
+                    TIME
+                  </span>
                 </button>
               </div>
             </div>
@@ -1732,12 +1824,14 @@ export default function ContactInquiryForm({
               value={data.location}
               onChange={(v) => update("location", v)}
               hint="Optional — helps us quote travel and logistics."
-              inputClassName="rounded-xl"
+              inputClassName="rounded-xl py-3.5 text-base sm:py-4 sm:text-lg"
+              labelClassName="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]"
+              hintClassName="mt-1 font-body text-sm text-foreground/55 sm:text-base"
             />
             <label className="block">
-              <span className="font-brand text-gold text-sm tracking-[0.14em]">
+              <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
                 Event address{" "}
-                <span className="text-foreground/40 font-body normal-case">(optional)</span>
+                <span className="font-body text-sm normal-case text-foreground/45 sm:text-base">(optional)</span>
               </span>
               <textarea
                 name="eventAddress"
@@ -1746,18 +1840,18 @@ export default function ContactInquiryForm({
                 rows={2}
                 maxLength={400}
                 placeholder="Street, suite, venue name…"
-                className="mt-2 w-full resize-y rounded-xl border border-gold/40 bg-black/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold min-h-[72px]"
+                className="mt-2 min-h-[88px] w-full resize-y rounded-xl border border-gold/40 bg-black/30 px-4 py-3.5 font-body text-base text-foreground outline-none placeholder:text-foreground/45 focus:border-gold sm:min-h-[96px] sm:px-5 sm:py-4 sm:text-lg"
               />
-              <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">
+              <p className="mt-1.5 font-body text-sm text-foreground/55 sm:text-base">
                 {data.eventAddress.length}/400 — street or venue address (city can go above)
               </p>
             </label>
             {logisticsUsesBespokeDeadlineRule ? (
               <div>
                 <label className="block">
-                  <span className="font-brand text-gold text-sm tracking-[0.14em]">
+                  <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
                     Project deadline or date window <span className="text-red-300">*</span>
-                    <span className="text-foreground/50 font-body normal-case text-xs sm:text-sm">
+                    <span className="font-body text-sm normal-case text-foreground/50 sm:text-base">
                       {" "}
                       (required if no key date)
                     </span>
@@ -1766,15 +1860,17 @@ export default function ContactInquiryForm({
                     value={data.projectDeadlineNote}
                     onChange={(e) => update("projectDeadlineNote", e.target.value)}
                     rows={3}
-                    className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[88px]"
+                    className="mt-2 min-h-[100px] w-full resize-y border border-gold/40 bg-black/30 px-4 py-3.5 font-body text-base text-foreground outline-none focus:border-gold sm:px-5 sm:py-4 sm:text-lg"
                   />
                 </label>
               </div>
             ) : null}
             <div>
-              <span className="font-brand text-gold text-sm tracking-[0.14em]">Venue setting</span>
-              <div className="mt-2 flex flex-wrap gap-4 text-sm font-body">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
+                Venue setting
+              </span>
+              <div className="mt-2 flex flex-wrap gap-4 font-body text-base sm:text-lg">
+                <label className="flex cursor-pointer items-center gap-2.5">
                   <input
                     type="radio"
                     name="venueIndoor"
@@ -1784,7 +1880,7 @@ export default function ContactInquiryForm({
                   />
                   Prefer not to say
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2.5">
                   <input
                     type="radio"
                     name="venueIndoor"
@@ -1794,7 +1890,7 @@ export default function ContactInquiryForm({
                   />
                   Indoor
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2.5">
                   <input
                     type="radio"
                     name="venueIndoor"
@@ -1858,19 +1954,21 @@ export default function ContactInquiryForm({
         ) : null}
 
         {currentPhase === "review" ? (
-          <div className="space-y-4 text-sm font-body">
-            <p className="text-foreground/75">Please confirm before sending.</p>
-            <ul className="space-y-2 rounded border border-gold/20 bg-black/30 p-4 text-foreground/85">
+          <div className="space-y-4 font-body text-base leading-relaxed text-foreground/90 sm:text-lg">
+            <p className="text-foreground/80">Please confirm before sending.</p>
+            <ul className="space-y-3 rounded border border-gold/20 bg-black/30 p-4 text-foreground/90 sm:p-5 sm:space-y-4">
               {data.contactLineId ? (
                 <li>
-                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">CATALOG LINE</span>
+                  <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">
+                    CATALOG LINE
+                  </span>
                   <br />
                   {selectedLine?.eventTypeName ?? data.contactLineId}
                 </li>
               ) : null}
               {data.serviceOptionIds.length > 0 || data.inquiryCode ? (
                 <li>
-                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">SERVICE</span>
+                  <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">SERVICE</span>
                   <br />
                   {data.serviceOptionIds.length > 0
                     ? data.serviceOptionIds
@@ -1886,14 +1984,16 @@ export default function ContactInquiryForm({
               ) : null}
               {data.occasionTypeId ? (
                 <li>
-                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">OCCASION</span>
+                  <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">
+                    OCCASION
+                  </span>
                   <br />
                   {occasionSingleLabel || data.occasionTypeId}
                 </li>
               ) : null}
               {data.occasionTypeIdsProject.length > 0 || data.occasionTypeIdsRole.length > 0 ? (
                 <li>
-                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">PROJECT</span>
+                  <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">PROJECT</span>
                   <br />
                   {reviewProjectLabels || "—"}
                   {reviewRoleLabels ? (
@@ -1906,13 +2006,15 @@ export default function ContactInquiryForm({
               ) : null}
               {data.experienceAddons.length > 0 ? (
                 <li>
-                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">ADD-ONS</span>
+                  <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">ADD-ONS</span>
                   <br />
                   {data.experienceAddons.join(", ")}
                 </li>
               ) : null}
               <li>
-                <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">LOGISTICS</span>
+                <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">
+                  LOGISTICS
+                </span>
                 <br />
                 {data.eventDate ? `Date: ${formatDateDisplayUs(data.eventDate)}` : "Date: —"}
                 {data.eventTimeStart || data.eventTimeEnd ? (
@@ -1940,24 +2042,26 @@ export default function ContactInquiryForm({
               </li>
               {data.projectDeadlineNote.trim() ? (
                 <li>
-                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">DEADLINE / WINDOW</span>
+                  <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">
+                    DEADLINE / WINDOW
+                  </span>
                   <br />
                   {data.projectDeadlineNote}
                 </li>
               ) : null}
               <li>
-                <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">MESSAGE</span>
+                <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">MESSAGE</span>
                 <br />
                 <span className="whitespace-pre-wrap">{data.message}</span>
               </li>
               <li>
-                <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">CONTACT</span>
+                <span className="text-gold font-brand text-sm tracking-[0.14em] sm:text-base md:text-lg">CONTACT</span>
                 <br />
                 {data.fullName} · {data.email}
                 {data.phone ? ` · ${data.phone}` : ""}
               </li>
             </ul>
-            <p className="text-sm text-foreground/50">
+            <p className="text-sm leading-relaxed text-foreground/55 sm:text-base">
               Use the step tabs above to edit any section, or Back below. Your selection preview is below the form.
             </p>
           </div>
@@ -1971,14 +2075,6 @@ export default function ContactInquiryForm({
         {apiError ? (
           <p className="mt-4 text-sm text-red-300" role="alert">
             {apiError}
-          </p>
-        ) : null}
-        {success ? (
-          <p
-            className="mt-4 rounded border border-gold/40 bg-gold/10 px-4 py-3 text-sm text-gold-light font-body"
-            role="status"
-          >
-            Thank you — your inquiry was sent successfully. We will get back to you shortly.
           </p>
         ) : null}
 
@@ -2020,7 +2116,7 @@ export default function ContactInquiryForm({
             <button
               type="submit"
               className="btn-outline-gold flex-1 min-w-40 justify-center gap-2 font-brand disabled:opacity-60 disabled:pointer-events-none"
-              disabled={isSubmitting}
+              disabled={isSubmitting || submitFeedbackPhase !== "idle"}
             >
               {isSubmitting ? (
                 <>
@@ -2040,10 +2136,10 @@ export default function ContactInquiryForm({
         <aside className="w-full min-w-0 shrink-0 lg:flex lg:min-h-0 lg:w-[min(100%,420px)] lg:flex-col xl:w-[480px]">
           <div className="shamell-scrollbar min-h-0 lg:flex lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1 lg:pb-2">
             <InquirySelectionSummary
-              eventCard={selectedEventSummary}
-              occasionCard={selectedOccasionSummary}
-              serviceCard={servicePreviewCards ? null : selectedServiceSummary}
-              serviceCards={servicePreviewCards}
+              eventLine={pricingPreviewEventLine}
+              occasionLines={pricingPreviewOccasionLines}
+              serviceLines={pricingPreviewServiceLines}
+              guideInvestment={pricingGuidePreview}
               loadingService={serviceSummaryLoading}
               stackCards={isLg}
             />
@@ -2090,6 +2186,49 @@ export default function ContactInquiryForm({
         timeClamp={startTimeClamp}
         blockedRanges={occupiedRanges}
       />
+      {detailModal && catalogDetailModalProps ? (
+        <CatalogOfferingDetailModal
+          isOpen
+          onClose={() => setDetailModal(null)}
+          {...catalogDetailModalProps}
+          showCloseButton={
+            detailModal.kind !== "contactLine" || data.contactLineId === detailModal.line.id
+          }
+          primaryAction={
+            detailModal.kind === "contactLine"
+              ? {
+                  label: data.contactLineId === detailModal.line.id ? "Selected" : "Add",
+                  disabled: data.contactLineId === detailModal.line.id,
+                  onClick: () => {
+                    selectContactLine(detailModal.line);
+                    setDetailModal(null);
+                  },
+                }
+              : detailModal.kind === "service"
+                ? {
+                    label: data.serviceOptionIds.includes(detailModal.option.id) ? "Remove" : "Add",
+                    onClick: () => {
+                      const opt = detailModal.option;
+                      setData((prev) => {
+                        const has = prev.serviceOptionIds.includes(opt.id);
+                        const serviceOptionIds = has
+                          ? prev.serviceOptionIds.filter((x) => x !== opt.id)
+                          : [...prev.serviceOptionIds, opt.id];
+                        const inquiryCode = mergedInquiryCodeFromSelections(
+                          serviceOptionIds,
+                          serviceTypeOptions,
+                        );
+                        return { ...prev, serviceOptionIds, inquiryCode };
+                      });
+                      setStepError(null);
+                      setDetailModal(null);
+                    },
+                  }
+                : undefined
+          }
+        />
+      ) : null}
+      <InquirySubmitFeedbackLayer phase={submitFeedbackPhase} onAccept={handleInquirySubmitComplete} />
     </div>
   );
 }
@@ -2105,6 +2244,8 @@ function Field({
   min,
   inputMode,
   inputClassName,
+  labelClassName,
+  hintClassName,
 }: {
   label: string;
   name: string;
@@ -2116,11 +2257,15 @@ function Field({
   min?: number;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   inputClassName?: string;
+  labelClassName?: string;
+  hintClassName?: string;
 }) {
   return (
     <div>
       <label className="block" htmlFor={name}>
-        <span className="font-brand text-gold text-sm tracking-[0.14em]">
+        <span
+          className={labelClassName ?? "font-brand text-gold text-sm tracking-[0.14em]"}
+        >
           {label}{" "}
           {required ? <span className="text-red-300">*</span> : null}
           {!required && !hint ? (
@@ -2139,7 +2284,15 @@ function Field({
           className={`mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-base text-foreground outline-none focus:border-gold ${inputClassName ?? ""}`}
         />
       </label>
-      {hint ? <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">{hint}</p> : null}
+      {hint ? (
+        <p
+          className={
+            hintClassName ?? "mt-1 text-xs text-foreground/45 font-body sm:text-sm"
+          }
+        >
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -266,7 +266,7 @@
     }
   }
 
-  /* Special experiences (ExperienceCard) — distinct motion from service catalog */
+  /* Service catalog cards (ExperienceCard) — distinct motion from event-type catalog */
   .animate-shamell-xp-curtain-in {
     opacity: 0;
     animation: shamell-xp-curtain-in 1.05s cubic-bezier(0.33, 1, 0.32, 1) forwards;

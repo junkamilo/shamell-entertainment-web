@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -22,7 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import FlameIcon from "@/components/FlameIcon";
+import bailarinaLogo from "@/public/01_bailarina.png";
 import {
   ADMIN_ACCESS_TOKEN_KEY,
   ADMIN_USER_KEY,
@@ -124,15 +125,22 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
   const navInner = (
     <>
       <div
-        className={`border-b border-gold/20 px-3 py-4 lg:px-4 ${
+        className={`border-b border-gold/20 px-3 py-4 max-lg:pt-[max(1rem,env(safe-area-inset-top,0px))] lg:px-4 ${
           sidebarCollapsed ? "flex flex-col items-center gap-3 py-5" : "flex items-center justify-between gap-3"
         }`}
       >
         <div
           className={`flex min-w-0 items-center gap-3 ${sidebarCollapsed ? "flex-col gap-2" : "flex-1"}`}
         >
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-gold/40 bg-gold/10">
-            <FlameIcon className="h-8 w-6 text-gold" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-gold/40 bg-gold/10">
+            <Image
+              src={bailarinaLogo}
+              alt=""
+              width={180}
+              height={164}
+              className="h-8 w-auto max-w-[2.35rem] object-contain object-center"
+              aria-hidden
+            />
           </div>
           {!sidebarCollapsed ? (
             <div className="min-w-0">
@@ -145,7 +153,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gold/30 text-gold transition hover:bg-gold/10 lg:hidden"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-gold/30 text-gold transition hover:bg-gold/10 max-lg:min-h-12 max-lg:min-w-12 lg:hidden"
             aria-label="Close sidebar"
             onClick={() => setSidebarOpen(false)}
           >
@@ -166,7 +174,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
         </div>
       </div>
 
-      <nav className="shamell-scrollbar flex flex-1 flex-col gap-1 overflow-y-auto px-3 py-4">
+      <nav className="shamell-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         {navItems.map((item) => {
           const active =
             item.href === "/shamell-admin/agenda"
@@ -192,7 +200,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
         })}
       </nav>
 
-      <div className="border-t border-gold/20 p-4">
+      <div className="shrink-0 border-t border-gold/20 p-4 max-lg:pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
         {!sidebarCollapsed ? (
           <div className="admin-panel mb-3 flex items-center gap-3 rounded-md px-3 py-2">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/20 font-brand text-xs text-gold">
@@ -236,7 +244,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
   );
 
   return (
-    <div className="admin-theme flex h-screen min-h-0 overflow-hidden bg-transparent text-foreground">
+    <div className="admin-theme flex h-dvh min-h-0 overflow-hidden bg-transparent text-foreground">
       {sidebarOpen ? (
         <button
           type="button"
@@ -247,15 +255,15 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
       ) : null}
 
       <aside
-        className={`shamell-admin-sidebar fixed left-0 top-0 z-50 flex h-screen flex-col border-r border-shamell-line-soft transition-all duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
+        className={`shamell-admin-sidebar fixed left-0 top-0 z-50 flex max-h-dvh flex-col border-r border-shamell-line-soft transition-all duration-200 max-lg:h-dvh lg:sticky lg:top-0 lg:h-screen lg:max-h-none lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        } ${sidebarCollapsed ? "w-20" : "w-64"}`}
+        } ${sidebarCollapsed ? "w-20" : "w-[min(100%,18rem)] max-sm:w-[min(100%,17rem)] sm:w-64"}`}
       >
         {navInner}
       </aside>
 
       <div className="shamell-admin-bg flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="admin-theme-main-header sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 px-4">
+        <header className="admin-theme-main-header sticky top-0 z-30 flex shrink-0 items-center gap-3 px-4 max-lg:min-h-[calc(3.5rem+env(safe-area-inset-top,0))] max-lg:pt-[env(safe-area-inset-top,0px)] lg:h-14">
           <button
             type="button"
             className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gold/30 text-gold transition hover:bg-gold/10 lg:hidden"
@@ -283,7 +291,9 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-5 md:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-5 md:p-8 max-lg:pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]">
+          {children}
+        </main>
       </div>
     </div>
   );

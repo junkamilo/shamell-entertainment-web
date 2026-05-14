@@ -676,6 +676,7 @@ export class EventsService {
     eventTypeId: string;
     description: string;
     items: string[];
+    price: unknown;
     galleryPhotos: { imageUrl: string; mediaType: GalleryMediaType }[];
     isActive: boolean;
     showOnHome: boolean;
@@ -708,6 +709,7 @@ export class EventsService {
         : null,
       showOnHome: item.showOnHome,
       lineKind: 'event' as const,
+      price: item.price != null ? Number(item.price) : null,
       ...groups,
     };
   }
@@ -731,6 +733,7 @@ export class EventsService {
       heroImageUrl: null as string | null,
       heroMediaType: null as GalleryMediaType | null,
       lineKind: 'event_type' as const,
+      price: null as null,
       ...groups,
     };
   }

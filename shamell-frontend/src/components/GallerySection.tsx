@@ -46,7 +46,7 @@ function GalleryPreviewTile({ item }: { item: GalleryPhotoItem }) {
   return (
     <div
       className={cn(
-        "shamell-gallery-card-bg group relative aspect-3/4 w-full overflow-hidden rounded-xl border border-gold/15 shadow-[inset_0_1px_0_rgba(197,165,90,0.06),inset_0_0_0_1px_rgba(255,255,255,0.04),0_8px_28px_rgba(0,0,0,0.35)] transition-[border-color,box-shadow] duration-500",
+        "shamell-gallery-card-bg group relative aspect-3/4 w-full overflow-visible rounded-xl border border-gold/15 shadow-[inset_0_1px_0_rgba(197,165,90,0.06),inset_0_0_0_1px_rgba(255,255,255,0.04),0_8px_28px_rgba(0,0,0,0.35)] transition-[border-color,box-shadow] duration-500",
         "group-hover:border-gold/35 group-hover:shadow-[0_16px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(197,165,90,0.1),inset_0_0_0_1px_rgba(255,255,255,0.06)]",
       )}
     >
@@ -54,11 +54,15 @@ function GalleryPreviewTile({ item }: { item: GalleryPhotoItem }) {
 
       {item.mediaType === "VIDEO" ? (
         <video
+          key={item.id}
           src={item.src}
-          className="h-full w-full object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+          className="absolute inset-0 z-1 h-full w-full rounded-xl object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+          autoPlay
+          loop
           muted
           playsInline
-          preload="metadata"
+          preload="auto"
+          aria-label={item.alt}
         />
       ) : (
         <Image
@@ -67,7 +71,7 @@ function GalleryPreviewTile({ item }: { item: GalleryPhotoItem }) {
           fill
           sizes="(max-width: 640px) 33vw, (max-width: 1024px) 30vw, 440px"
           loading="lazy"
-          className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+          className="rounded-xl object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
         />
       )}
 
