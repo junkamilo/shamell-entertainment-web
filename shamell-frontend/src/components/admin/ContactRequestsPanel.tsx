@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronUp,
@@ -20,7 +21,7 @@ import { formatContactSubjectForAdmin } from "@/lib/adminContactDisplay";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import {
   buildAdminBookingPayloadFromContactRequest,
-  buildAgendarPrefillHref,
+  buildContactInboxAgendarHref,
   contactClientCommentFromRequest,
 } from "@/lib/contactRequestBooking";
 import { useAdminContactRequests, type ContactRequest } from "@/hooks/use-admin-contact-requests";
@@ -203,17 +204,12 @@ function RequestCard({
   const manualAgendarHref = useMemo(
     () => {
       if (contact) {
-        const raw = buildAgendarPrefillHref(contact, {
+        return buildContactInboxAgendarHref(contact, {
           serviceByInquiryCode,
           eventTypeContactCodeById,
           inquiryCodeByCatalogLineId,
           fallbackServiceId,
         });
-        const url = new URL(raw, "http://localhost");
-        url.searchParams.set("origin", "contact");
-        url.searchParams.set("contactId", contact.id);
-        url.searchParams.set("returnTo", "/shamell-admin/agenda/peticiones");
-        return `${url.pathname}?${url.searchParams.toString()}`;
       }
       return booking ? bookingEditHref(booking, bookingTz) : "/shamell-admin/agenda/agendar";
     },
@@ -226,7 +222,7 @@ function RequestCard({
   return (
     <article
       className={cn(
-        "shamell-glass-surface rounded-xl px-4 py-3 transition-colors",
+        "shamell-glass-surface min-w-0 rounded-xl px-4 py-3 transition-colors",
         isReserved
           ? "border-emerald-400/30 ring-1 ring-emerald-400/15"
           : isCancelled
@@ -282,18 +278,18 @@ function RequestCard({
       </button>
 
       {expanded ? (
-        <div className="mt-4 space-y-3 border-t border-gold/10 pt-4 pl-0 md:pl-12">
-          <dl className="grid gap-2 text-xs sm:grid-cols-2">
+        <div className="mt-4 min-w-0 space-y-3 border-t border-gold/10 pt-4 pl-0 md:pl-12">
+          <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
             {(contact?.phone || booking?.guestPhone) ? (
               <>
                 <dt className="font-brand text-[10px] tracking-widest text-gold/60">PHONE</dt>
-                <dd className="text-foreground/80">{contact?.phone || booking?.guestPhone}</dd>
+                <dd className="min-w-0 wrap-break-word text-foreground/80">{contact?.phone || booking?.guestPhone}</dd>
               </>
             ) : null}
             {(contact?.eventDate || booking?.eventDate) ? (
               <>
                 <dt className="font-brand text-[10px] tracking-widest text-gold/60">EVENT DATE</dt>
-                <dd className="text-foreground/80">
+                <dd className="min-w-0 wrap-break-word text-foreground/80">
                   {contact
                     ? formatEventCalendarDate(contact.eventDate || "")
                     : formatBookingCalendarDate(booking?.eventDate || "", bookingTz)}
@@ -303,20 +299,26 @@ function RequestCard({
             {(contact?.location || booking?.location) ? (
               <>
                 <dt className="font-brand text-[10px] tracking-widest text-gold/60">LOCATION</dt>
-                <dd className="text-foreground/80">{contact?.location || booking?.location}</dd>
+                <dd className="min-w-0 wrap-break-word text-foreground/80">{contact?.location || booking?.location}</dd>
               </>
             ) : null}
           </dl>
           {contact ? <InquiryDetailsReadable rows={inquiryRows} /> : null}
-          <div>
-            <p className="mb-1 font-brand text-[10px] tracking-widest text-gold/60">
-              {inquiryRows.length > 0 ? "CLIENT COMMENT" : "MESSAGE / NOTES"}
-            </p>
-            <p className="shamell-glass-surface whitespace-pre-wrap rounded-lg p-3 font-body text-sm leading-relaxed text-foreground/80">
-              {clientComment}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+          {!(
+            contact &&
+            contactIsConciergeInquiry(contact) &&
+            inquiryRows.length > 0
+          ) ? (
+            <div className="min-w-0">
+              <p className="mb-1 font-brand text-[10px] tracking-widest text-gold/60">
+                {inquiryRows.length > 0 ? "CLIENT COMMENT" : "MESSAGE / NOTES"}
+              </p>
+              <p className="shamell-glass-surface shamell-scrollbar max-h-48 min-w-0 overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-lg p-3 font-body text-sm leading-relaxed text-foreground/80">
+                {clientComment}
+              </p>
+            </div>
+          ) : null}
+          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
             {contactRow ? (
               <button
                 type="button"
@@ -326,7 +328,7 @@ function RequestCard({
                   onReserveFromContact(contactRow.contact);
                 }}
                 className={cn(
-                  "inline-flex items-center justify-center gap-2 rounded-md border px-3 py-2 font-brand text-[10px] tracking-widest transition disabled:opacity-50",
+                  "inline-flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2.5 font-brand text-[10px] tracking-widest transition disabled:opacity-50 sm:w-auto sm:py-2",
                   contactRow.state === "RESERVED"
                     ? "border-emerald-400/45 text-emerald-200"
                     : "border-gold/35 text-gold hover:bg-gold/10",
@@ -338,7 +340,7 @@ function RequestCard({
             ) : null}
             <Link
               href={manualAgendarHref}
-              className="rounded-md border border-gold/20 px-3 py-2 font-brand text-[10px] tracking-widest text-foreground/65 transition hover:border-gold/35 hover:text-gold"
+              className="inline-flex w-full items-center justify-center rounded-md border border-gold/20 px-3 py-2.5 text-center font-brand text-[10px] tracking-widest text-foreground/65 transition hover:border-gold/35 hover:text-gold sm:w-auto sm:py-2"
             >
               Edit
             </Link>
@@ -350,7 +352,7 @@ function RequestCard({
                 if (contact) onCancel();
                 else if (booking) onCancelBooking(booking);
               }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-red-300/35 px-3 py-2 font-brand text-[10px] tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-red-300/35 px-3 py-2.5 font-brand text-[10px] tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50 sm:w-auto sm:py-2"
             >
               <XCircle className="h-3.5 w-3.5" strokeWidth={1.5} />
               Cancel
@@ -363,19 +365,19 @@ function RequestCard({
                 if (contact) onRemove();
                 else if (booking) onRemoveBooking(booking);
               }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-red-400/35 px-3 py-2 font-brand text-[10px] tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-red-400/35 px-3 py-2.5 font-brand text-[10px] tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50 sm:w-auto sm:py-2"
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
               Delete
             </button>
           </div>
-          <p className="font-body text-[10px] leading-relaxed text-foreground/40">
-            {contact && contactIsConciergeInquiry(contact)
-              ? "This is a CONCIERGE INQUIRY: contact the client first, then convert it once the experience is clear."
-              : contact && contactIsBookingInquiry(contact)
+          {!(contact && contactIsConciergeInquiry(contact)) ? (
+            <p className="wrap-break-word font-body text-[10px] leading-relaxed text-foreground/40">
+              {contact && contactIsBookingInquiry(contact)
                 ? "This request is a BOOKING INQUIRY: confirm the booking manually after you contact the client."
                 : "Bookings created from Book appear here as reserved (green)."}
-          </p>
+            </p>
+          ) : null}
         </div>
       ) : null}
     </article>
@@ -395,11 +397,14 @@ export default function ContactRequestsPanel({
   heroTitle = "Inbox",
   heroSubtitle = "",
 }: ContactRequestsPanelProps) {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
+  const [activeLane, setActiveLane] = useState<"bookings" | "guidance">("bookings");
   const { rows: unifiedRows, meta: unifiedMeta, isLoading, error, reload: reloadPeticiones } = useAdminPeticiones(true, {
     page,
     perPage,
+    lane: activeLane,
   });
   const {
     reload: reloadContacts,
@@ -427,6 +432,10 @@ export default function ContactRequestsPanel({
   const [fallbackServiceId, setFallbackServiceId] = useState<string | undefined>(undefined);
 
   const bookingTz = useMemo(() => process.env.NEXT_PUBLIC_BOOKING_TZ ?? "America/New_York", []);
+
+  useEffect(() => {
+    setExpandedId(null);
+  }, [activeLane]);
 
   const pendingCount = useMemo(
     () =>
@@ -535,6 +544,18 @@ export default function ContactRequestsPanel({
 
   const onReserveFromContact = useCallback(
     async (row: ContactRequest) => {
+      if (contactIsConciergeInquiry(row)) {
+        router.push(
+          buildContactInboxAgendarHref(row, {
+            serviceByInquiryCode,
+            eventTypeContactCodeById,
+            inquiryCodeByCatalogLineId,
+            fallbackServiceId,
+          }),
+        );
+        return;
+      }
+
       const built = buildAdminBookingPayloadFromContactRequest(
         row,
         serviceByInquiryCode,
@@ -572,7 +593,19 @@ export default function ContactRequestsPanel({
         setReservingContactId(null);
       }
     },
-    [bookingTz, createBooking, eventTypeContactCodeById, fallbackServiceId, inquiryCodeByCatalogLineId, reloadBookings, reloadContacts, reloadPeticiones, serviceByInquiryCode, setStatus],
+    [
+      bookingTz,
+      createBooking,
+      eventTypeContactCodeById,
+      fallbackServiceId,
+      inquiryCodeByCatalogLineId,
+      reloadBookings,
+      reloadContacts,
+      reloadPeticiones,
+      router,
+      serviceByInquiryCode,
+      setStatus,
+    ],
   );
 
   const onCancelContact = useCallback(
@@ -705,7 +738,7 @@ export default function ContactRequestsPanel({
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto w-full min-w-0 max-w-6xl">
       <AdminBackButton href="/shamell-admin/agenda" label="Back" className="mb-4" />
       <AdminModuleHero
         title={heroTitle}
@@ -714,6 +747,37 @@ export default function ContactRequestsPanel({
         actionHref="/shamell-admin/agenda/mi-agenda"
         bordered={false}
       />
+
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setActiveLane("bookings");
+            setPage(1);
+          }}
+          className={
+            activeLane === "bookings"
+              ? "rounded-full border border-gold/40 bg-gold/12 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-gold sm:px-4 sm:py-1.5"
+              : "rounded-full border border-gold/18 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold sm:px-4 sm:py-1.5"
+          }
+        >
+          BOOKINGS & REQUESTS
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setActiveLane("guidance");
+            setPage(1);
+          }}
+          className={
+            activeLane === "guidance"
+              ? "rounded-full border border-gold/40 bg-gold/12 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-gold sm:px-4 sm:py-1.5"
+              : "rounded-full border border-gold/18 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold sm:px-4 sm:py-1.5"
+          }
+        >
+          GUIDANCE
+        </button>
+      </div>
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3 text-[11px] text-foreground/55">
@@ -747,7 +811,7 @@ export default function ContactRequestsPanel({
       </div>
 
       <section className="shamell-glass-surface rounded-2xl p-5 md:p-7">
-        <div className="space-y-3">
+        <div className="min-w-0 space-y-3">
           {isLoading && unifiedRows.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-16 text-sm text-foreground/50">
               <Loader2 className="h-5 w-5 animate-spin text-gold" />
@@ -757,7 +821,9 @@ export default function ContactRequestsPanel({
 
           {!isLoading && unifiedRows.length === 0 && !error ? (
             <p className="shamell-glass-surface rounded-xl py-12 text-center font-body text-sm text-foreground/50">
-              No requests or bookings to show yet.
+              {activeLane === "guidance"
+                ? "No concierge guidance requests in this inbox yet."
+                : "No bookings or open contact requests in this view yet."}
             </p>
           ) : null}
 

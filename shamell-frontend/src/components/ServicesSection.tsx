@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { EventCatalogCard, type EventCatalogItem } from "@/components/catalog/EventCatalogCard";
 import RevealOnView from "@/components/shared/RevealOnView";
+import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 
 type EventsApiItem = {
   id?: string;
@@ -65,11 +67,13 @@ const ServicesSection = () => {
                 : imgs.length > 0
                   ? imgs[0]
                   : null;
-            const heroMt =
+            const explicitMt =
               typeof item.heroMediaType === "string" && item.heroMediaType.trim()
                 ? item.heroMediaType.trim().toUpperCase()
-                : "IMAGE";
-            const heroMediaType: "IMAGE" | "VIDEO" = heroMt === "VIDEO" ? "VIDEO" : "IMAGE";
+                : "";
+            const inferredFromUrl = serviceCatalogMediaTypeFromUrl(heroUrl);
+            const heroMediaType: "IMAGE" | "VIDEO" =
+              explicitMt === "VIDEO" || inferredFromUrl === "VIDEO" ? "VIDEO" : "IMAGE";
             return {
               id: item.id,
               eventTypeName: item.eventTypeName,
@@ -126,13 +130,11 @@ const ServicesSection = () => {
           </p>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:gap-10">
+        <RevealStaggerGrid className="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:gap-10" amount={0.18}>
           {services.map((service, index) => (
-            <RevealOnView key={service.id} className="h-full" delay={index * 80} amount={0.18}>
-              <EventCatalogCard service={service} index={index} />
-            </RevealOnView>
+            <EventCatalogCard key={service.id} service={service} index={index} />
           ))}
-        </div>
+        </RevealStaggerGrid>
       </div>
     </section>
   );

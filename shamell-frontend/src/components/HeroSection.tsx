@@ -32,10 +32,9 @@ function headerHeroMediaType(
   imageUrl: string,
   raw: unknown,
 ): "IMAGE" | "VIDEO" {
-  if (raw === "VIDEO" || raw === "IMAGE") return raw;
-  return serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO"
-    ? "VIDEO"
-    : "IMAGE";
+  if (serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO") return "VIDEO";
+  if (raw === "VIDEO") return "VIDEO";
+  return "IMAGE";
 }
 
 function HeroSlideMedia({
@@ -76,7 +75,6 @@ function HeroSlideMedia({
 const HeroSection = () => {
   const heroSectionRef = useRef<HTMLElement | null>(null);
   const heroPinRef = useRef<HTMLDivElement | null>(null);
-  const heroImageLayerRef = useRef<HTMLDivElement | null>(null);
   const heroContentRef = useRef<HTMLDivElement | null>(null);
   const heroDarkOverlayRef = useRef<HTMLDivElement | null>(null);
   const apiBaseUrl = useMemo(
@@ -87,25 +85,18 @@ const HeroSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
-  const [enableAmbientHeroMotion, setEnableAmbientHeroMotion] = useState(false);
 
   useEffect(() => {
     setHasHydrated(true);
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const largeViewportQuery = window.matchMedia("(min-width: 1536px)");
     const syncMotionPreference = () =>
       setPrefersReducedMotion(mediaQuery.matches);
-    const syncAmbientMotion = () =>
-      setEnableAmbientHeroMotion(largeViewportQuery.matches);
 
     syncMotionPreference();
-    syncAmbientMotion();
     mediaQuery.addEventListener("change", syncMotionPreference);
-    largeViewportQuery.addEventListener("change", syncAmbientMotion);
 
     return () => {
       mediaQuery.removeEventListener("change", syncMotionPreference);
-      largeViewportQuery.removeEventListener("change", syncAmbientMotion);
     };
   }, []);
 
@@ -156,11 +147,10 @@ const HeroSection = () => {
 
     const section = heroSectionRef.current;
     const pin = heroPinRef.current;
-    const imageLayer = heroImageLayerRef.current;
     const content = heroContentRef.current;
     const darkOverlay = heroDarkOverlayRef.current;
 
-    if (!section || !pin || !imageLayer || !content || !darkOverlay) return;
+    if (!section || !pin || !content || !darkOverlay) return;
 
     gsap.registerPlugin(ScrollTrigger);
 
@@ -168,12 +158,6 @@ const HeroSection = () => {
     const ctx = gsap.context(() => {
       const reducedMotion = prefersReducedMotion || reducedMotionQuery.matches;
 
-      gsap.set(imageLayer, {
-        scale: 1,
-        yPercent: 0,
-        transformOrigin: "center center",
-        willChange: "transform",
-      });
       gsap.set(content, { opacity: 1, y: 0, willChange: "transform, opacity" });
       gsap.set(darkOverlay, { opacity: 0.15 });
 
@@ -192,15 +176,6 @@ const HeroSection = () => {
         });
 
         timeline
-          .to(
-            imageLayer,
-            {
-              scale: reducedMotion ? 1.12 : 1.45,
-              yPercent: reducedMotion ? -0.5 : -2,
-              ease: "none",
-            },
-            0,
-          )
           .to(
             content,
             { opacity: 0, y: reducedMotion ? -18 : -38, ease: "none" },
@@ -231,15 +206,6 @@ const HeroSection = () => {
 
         timeline
           .to(
-            imageLayer,
-            {
-              scale: reducedMotion ? 1.18 : 1.62,
-              yPercent: reducedMotion ? -1 : -3,
-              ease: "none",
-            },
-            0,
-          )
-          .to(
             content,
             { opacity: 0, y: reducedMotion ? -24 : -52, ease: "none" },
             0,
@@ -268,15 +234,6 @@ const HeroSection = () => {
         });
 
         timeline
-          .to(
-            imageLayer,
-            {
-              scale: reducedMotion ? 1.22 : 1.9,
-              yPercent: reducedMotion ? -1 : -4,
-              ease: "none",
-            },
-            0,
-          )
           .to(
             content,
             { opacity: 0, y: reducedMotion ? -28 : -64, ease: "none" },
@@ -316,7 +273,6 @@ const HeroSection = () => {
     ? photos[activeIndex % photos.length]
     : null;
   const animateVisuals = hasHydrated && !prefersReducedMotion;
-  const animateAmbientHero = animateVisuals && enableAmbientHeroMotion;
 
   return (
     <section ref={heroSectionRef} id="hero" className="relative bg-transparent">
@@ -347,21 +303,14 @@ const HeroSection = () => {
           <motion.div
             className="absolute inset-0"
             initial={false}
-            animate={
-              hasHydrated
-                ? { opacity: 1, scale: 1 }
-                : { opacity: 0, scale: 1.12 }
-            }
+            animate={hasHydrated ? { opacity: 1 } : { opacity: 0 }}
             transition={
               prefersReducedMotion
                 ? { duration: 0 }
                 : { duration: 1.15, ease: [0.16, 1, 0.3, 1] }
             }
           >
-            <div
-              ref={heroImageLayerRef}
-              className="absolute -inset-y-28 left-0 right-0 min-h-full min-w-full"
-            >
+            <div className="absolute -inset-y-28 left-0 right-0 min-h-full min-w-full">
               <div className="absolute inset-0">
                 {hasRemotePhotos ? (
                   <div className="relative h-full w-full">
@@ -370,46 +319,15 @@ const HeroSection = () => {
                         <motion.div
                           key={`${activePhoto.id}-${activeIndex}`}
                           className="absolute inset-0"
-                          initial={
-                            animateVisuals
-                              ? {
-                                  opacity: 0,
-                                  scale: 1.12,
-                                }
-                              : { opacity: 1 }
-                          }
-                          animate={{
-                            opacity: 1,
-                            scale: 1,
-                          }}
-                          exit={
-                            animateVisuals
-                              ? { opacity: 0, scale: 1.08 }
-                              : { opacity: 0 }
-                          }
+                          initial={animateVisuals ? { opacity: 0 } : { opacity: 1 }}
+                          animate={{ opacity: 1 }}
+                          exit={animateVisuals ? { opacity: 0 } : { opacity: 0 }}
                           transition={{
-                            opacity: { duration: 0.9, ease: "easeOut" },
-                            scale: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
+                            duration: 0.9,
+                            ease: "easeOut",
                           }}
                         >
-                          <motion.div
-                            className="absolute inset-0"
-                            animate={
-                              animateAmbientHero
-                                ? { scale: [1.03, 1.06] }
-                                : { scale: 1.03 }
-                            }
-                            transition={
-                              animateAmbientHero
-                                ? {
-                                    duration: 18,
-                                    ease: "easeInOut",
-                                    repeat: Infinity,
-                                    repeatType: "reverse",
-                                  }
-                                : undefined
-                            }
-                          >
+                          <div className="absolute inset-0">
                             <HeroSlideMedia
                               url={activePhoto.imageUrl}
                               isVideo={activePhoto.mediaType === "VIDEO"}
@@ -422,32 +340,15 @@ const HeroSection = () => {
                               objectPosition={`${clampPercent(activePhoto.focalMobileX, clampPercent(activePhoto.focalX, 50))}% ${clampPercent(activePhoto.focalMobileY, clampPercent(activePhoto.focalY, 35))}%`}
                               className="absolute inset-0 h-full w-full object-cover md:hidden"
                             />
-                          </motion.div>
+                          </div>
                         </motion.div>
                       ) : null}
                     </AnimatePresence>
                   </div>
                 ) : (
-                  <motion.div
-                    className="absolute inset-0"
-                    animate={
-                      animateAmbientHero
-                        ? { scale: [1.03, 1.06] }
-                        : { scale: 1.03 }
-                    }
-                    transition={
-                      animateAmbientHero
-                        ? {
-                            duration: 18,
-                            ease: "easeInOut",
-                            repeat: Infinity,
-                            repeatType: "reverse",
-                          }
-                        : undefined
-                    }
-                  >
+                  <div className="absolute inset-0">
                     <HeroFallbackBackground />
-                  </motion.div>
+                  </div>
                 )}
               </div>
             </div>

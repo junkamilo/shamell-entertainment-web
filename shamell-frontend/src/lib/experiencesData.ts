@@ -10,6 +10,8 @@ export type Experience = {
   description: string;
   items: string[];
   image: StaticImageData | string;
+  /** From API when catalog media is a clip (Cloudinary video, etc.). */
+  heroMediaType?: "IMAGE" | "VIDEO";
   /** From API: prefill for /contacto form */
   contactInquiryCode?: string | null;
 };

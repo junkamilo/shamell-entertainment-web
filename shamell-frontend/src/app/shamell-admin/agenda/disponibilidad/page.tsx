@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, Trash2 } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import AdminAccordionSingleSelect, {
   type AdminAccordionSingleOption,
 } from "@/components/admin/AdminAccordionSingleSelect";
@@ -16,6 +17,10 @@ import { useAdminAvailability } from "@/hooks/use-admin-availability";
 import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
 
 const WEEKDAY_LABEL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const CLOSURE_WEEKDAY_OPTIONS: AdminAccordionSingleOption[] = WEEKDAY_LABEL.map((label, i) => ({
+  id: String(i),
+  label,
+}));
 const CLOSURE_KIND_OPTIONS: AdminAccordionSingleOption[] = [
   { id: "SPECIFIC_DATE", label: "Single date" },
   { id: "DATE_RANGE", label: "Date range (from / through)" },
@@ -132,18 +137,18 @@ export default function AgendaDisponibilidadPage() {
   }, [timePickerTarget, weeklyDraft]);
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
+    <div className="mx-auto w-full min-w-0 max-w-4xl">
       <AdminBackButton href="/shamell-admin/agenda" label="Back" className="mb-4" />
       <AdminModuleHero title="Availability" bordered={false} />
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
+      <div className="mb-6 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-3">
         <button
           type="button"
           onClick={() => setActivePanel("weekly")}
           className={
             activePanel === "weekly"
-              ? "rounded-full border border-gold/40 bg-gold/12 px-4 py-1.5 font-brand text-[10px] tracking-[0.14em] text-gold"
-              : "rounded-full border border-gold/18 px-4 py-1.5 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold"
+              ? "rounded-full border border-gold/40 bg-gold/12 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-gold sm:px-4 sm:py-1.5"
+              : "rounded-full border border-gold/18 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold sm:px-4 sm:py-1.5"
           }
         >
           WEEKLY HOURS
@@ -153,16 +158,27 @@ export default function AgendaDisponibilidadPage() {
           onClick={() => setActivePanel("closures")}
           className={
             activePanel === "closures"
-              ? "rounded-full border border-gold/40 bg-gold/12 px-4 py-1.5 font-brand text-[10px] tracking-[0.14em] text-gold"
-              : "rounded-full border border-gold/18 px-4 py-1.5 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold"
+              ? "rounded-full border border-gold/40 bg-gold/12 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-gold sm:px-4 sm:py-1.5"
+              : "rounded-full border border-gold/18 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold sm:px-4 sm:py-1.5"
           }
         >
           CLOSURES
         </button>
       </div>
 
-      {activePanel === "weekly" ? (
-        <section className="shamell-glass-surface mb-10 rounded-2xl p-5 md:p-7">
+      <AnimatePresence mode="wait">
+        {activePanel === "weekly" ? (
+          <motion.section
+            key="avail-weekly"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+            }}
+            exit={{ opacity: 0, y: -12, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
+            className="shamell-glass-surface mb-10 overflow-visible rounded-2xl p-4 sm:p-5 md:p-7"
+          >
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gold/10 pb-4">
           <h2 className="font-brand text-[11px] tracking-[0.18em] text-gold">WEEKLY HOURS</h2>
           {error ? <span className="text-xs text-red-300">{error}</span> : null}
@@ -175,61 +191,67 @@ export default function AgendaDisponibilidadPage() {
         ) : (
           <form onSubmit={onSaveWeekly} className="mt-6 space-y-4">
             {rows.map((row) => (
-              <div
+              <motion.div
                 key={row.weekday}
-                className="shamell-glass-surface flex flex-col gap-3 rounded-xl px-4 py-3 md:flex-row md:items-center"
+                layout
+                transition={{ layout: { type: "spring", damping: 28, stiffness: 320 } }}
+                className="shamell-glass-surface flex flex-col gap-3 rounded-xl px-3 py-3 sm:px-4 md:flex-row md:items-center md:gap-5"
               >
-                <div className="min-w-32 font-brand text-[11px] tracking-wide text-gold/90">
-                  {WEEKDAY_LABEL[row.weekday] ?? row.weekday}
+                <div className="flex min-w-0 items-center justify-between gap-3 md:block md:w-36 md:shrink-0">
+                  <div className="min-w-0 font-brand text-[11px] tracking-wide text-gold/90">
+                    {WEEKDAY_LABEL[row.weekday] ?? row.weekday}
+                  </div>
+                  <label className="flex shrink-0 items-center gap-2 font-body text-xs text-foreground/70 md:mt-2">
+                    <input
+                      type="checkbox"
+                      className="shamell-admin-checkbox"
+                      checked={row.isClosed}
+                      onChange={(e) =>
+                        setWeeklyDraft((prev) =>
+                          prev.map((w) =>
+                            w.weekday === row.weekday
+                              ? {
+                                  ...w,
+                                  isClosed: e.target.checked,
+                                  startTime: e.target.checked ? null : w.startTime ?? "09:00",
+                                  endTime: e.target.checked ? null : w.endTime ?? "21:00",
+                                }
+                              : w,
+                          ),
+                        )
+                      }
+                    />
+                    Closed
+                  </label>
                 </div>
-                <label className="flex items-center gap-2 font-body text-xs text-foreground/70">
-                  <input
-                    type="checkbox"
-                    className="shamell-admin-checkbox"
-                    checked={row.isClosed}
-                    onChange={(e) =>
-                      setWeeklyDraft((prev) =>
-                        prev.map((w) =>
-                          w.weekday === row.weekday
-                            ? {
-                                ...w,
-                                isClosed: e.target.checked,
-                                startTime: e.target.checked ? null : w.startTime ?? "09:00",
-                                endTime: e.target.checked ? null : w.endTime ?? "21:00",
-                              }
-                            : w,
-                        ),
-                      )
-                    }
-                  />
-                  Closed
-                </label>
                 {!row.isClosed ? (
-                  <div className="flex flex-wrap items-center gap-2 md:flex-1">
+                  <div className="grid min-w-0 w-full grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_1fr] sm:items-center md:flex-1">
                     <button
                       type="button"
                       onClick={() => setTimePickerTarget({ weekday: row.weekday, field: "start" })}
-                      className="shamell-glass-trigger min-w-[110px] rounded-lg border border-gold/25 px-3 py-1.5 text-left font-body text-xs text-foreground"
+                      className="shamell-glass-trigger w-full min-w-0 rounded-lg border border-gold/25 px-3 py-2 text-left font-body text-xs text-foreground sm:py-1.5"
                     >
                       {row.startTime ? formatTimeDisplayUs(row.startTime) : "Choose time"}
                     </button>
-                    <span className="text-foreground/40">—</span>
+                    <span className="hidden text-center text-foreground/40 sm:block" aria-hidden>
+                      —
+                    </span>
                     <button
                       type="button"
                       onClick={() => setTimePickerTarget({ weekday: row.weekday, field: "end" })}
-                      className="shamell-glass-trigger min-w-[110px] rounded-lg border border-gold/25 px-3 py-1.5 text-left font-body text-xs text-foreground"
+                      className="shamell-glass-trigger w-full min-w-0 rounded-lg border border-gold/25 px-3 py-2 text-left font-body text-xs text-foreground sm:py-1.5"
                     >
                       {row.endTime ? formatTimeDisplayUs(row.endTime) : "Choose time"}
                     </button>
                   </div>
                 ) : null}
-              </div>
+              </motion.div>
             ))}
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-col gap-2 pt-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <button
                 type="submit"
                 disabled={savingWeekly}
-                className="rounded-full border border-gold/35 px-5 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50"
+                className="w-full rounded-full border border-gold/35 px-5 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50 sm:w-auto sm:py-2"
               >
                 {savingWeekly ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
                 SAVE HOURS
@@ -237,24 +259,38 @@ export default function AgendaDisponibilidadPage() {
               <button
                 type="button"
                 onClick={() => reload()}
-                className="rounded-full border border-gold/15 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/30 hover:text-gold"
+                className="w-full rounded-full border border-gold/15 px-4 py-2.5 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/30 hover:text-gold sm:w-auto sm:py-2"
               >
                 RELOAD
               </button>
             </div>
           </form>
         )}
-        </section>
-      ) : null}
+          </motion.section>
+        ) : (
+          <motion.section
+            key="avail-closures"
+            initial={{ opacity: 0, y: 18 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+            }}
+            exit={{ opacity: 0, y: -12, transition: { duration: 0.2, ease: [0.4, 0, 1, 1] } }}
+            className="shamell-glass-surface overflow-visible rounded-2xl p-4 sm:p-5 md:p-7"
+          >
+        <div className="border-b border-gold/10 pb-4">
+          <h2 className="font-brand text-[10px] leading-snug tracking-[0.16em] text-gold sm:text-[11px] sm:tracking-[0.18em]">
+            <span className="block sm:hidden">CLOSURES</span>
+            <span className="hidden sm:block">CLOSURES (time off / single day / weekly recurring)</span>
+          </h2>
+          <p className="mt-1 font-body text-[11px] leading-relaxed text-foreground/50 sm:hidden">
+            Single date, date range, or the same weekday every week.
+          </p>
+        </div>
 
-      {activePanel === "closures" ? (
-        <section className="shamell-glass-surface rounded-2xl p-5 md:p-7">
-        <h2 className="border-b border-gold/10 pb-4 font-brand text-[11px] tracking-[0.18em] text-gold">
-          CLOSURES (time off / single day / weekly recurring)
-        </h2>
-
-        <form onSubmit={onAddClosure} className="mt-6 grid gap-4 md:grid-cols-2">
-          <label className="block md:col-span-2">
+        <form onSubmit={onAddClosure} className="mt-6 grid gap-4 overflow-visible md:grid-cols-2">
+          <label className="block overflow-visible md:col-span-2">
             <span className="font-brand text-[10px] tracking-widest text-gold/65">TYPE</span>
             <AdminAccordionSingleSelect
               options={CLOSURE_KIND_OPTIONS}
@@ -306,19 +342,16 @@ export default function AgendaDisponibilidadPage() {
               </label>
             </>
           ) : (
-            <label className="block">
+            <label className="block md:col-span-2">
               <span className="font-brand text-[10px] tracking-widest text-gold/65">DAY OF WEEK</span>
-              <select
-                value={closureWeekday}
-                onChange={(e) => setClosureWeekday(Number(e.target.value))}
-                className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 font-body text-sm text-foreground outline-none focus:border-gold"
-              >
-                {WEEKDAY_LABEL.map((label, i) => (
-                  <option key={label} value={i}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+              <AdminAccordionSingleSelect
+                options={CLOSURE_WEEKDAY_OPTIONS}
+                value={String(closureWeekday)}
+                onChange={(id) => setClosureWeekday(Number(id))}
+                className="mt-2"
+                showNoneOption={false}
+                ariaLabel="Select day of week for recurring closure"
+              />
             </label>
           )}
           <label className="block md:col-span-2">
@@ -335,7 +368,7 @@ export default function AgendaDisponibilidadPage() {
             <button
               type="submit"
               disabled={addingClosure}
-              className="rounded-full border border-gold/35 px-5 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50"
+              className="w-full rounded-full border border-gold/35 px-5 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50 sm:w-auto sm:py-2"
             >
               {addingClosure ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
               ADD CLOSURE
@@ -352,24 +385,24 @@ export default function AgendaDisponibilidadPage() {
           {(snapshot?.closures ?? []).map((c) => (
             <li
               key={c.id}
-              className="shamell-glass-surface flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3"
+              className="shamell-glass-surface flex flex-col gap-3 rounded-xl px-3 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4 sm:px-4"
             >
-              <div>
-                <p className="font-brand text-xs tracking-wide text-gold">
+              <div className="min-w-0 flex-1">
+                <p className="wrap-break-word font-brand text-xs tracking-wide text-gold">
                   {c.kind === "SPECIFIC_DATE"
                     ? `Date: ${c.date ?? "—"}`
                     : c.kind === "DATE_RANGE"
                       ? `Range: ${c.startDate ?? "—"} through ${c.endDate ?? "—"}`
                       : `Every ${WEEKDAY_LABEL[c.weekday ?? 0] ?? "—"}`}
                 </p>
-                {c.note ? <p className="mt-1 font-body text-xs text-foreground/55">{c.note}</p> : null}
+                {c.note ? <p className="mt-1 wrap-break-word font-body text-xs text-foreground/55">{c.note}</p> : null}
               </div>
               <button
                 type="button"
                 onClick={() => {
                   setConfirmClosureId(c.id);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/35 px-3 py-2 font-brand text-[10px] tracking-widest text-red-200/90 hover:bg-red-500/10"
+                className="inline-flex w-full shrink-0 items-center justify-center gap-1.5 rounded-lg border border-red-400/35 px-3 py-2.5 font-brand text-[10px] tracking-widest text-red-200/90 hover:bg-red-500/10 sm:w-auto sm:py-2"
               >
                 <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
                 REMOVE
@@ -378,8 +411,9 @@ export default function AgendaDisponibilidadPage() {
           ))}
         </ul>
 
-        </section>
-      ) : null}
+          </motion.section>
+        )}
+      </AnimatePresence>
 
       <ContactTimePickerModal
         isOpen={Boolean(timePickerTarget)}

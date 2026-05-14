@@ -2,6 +2,7 @@
 
 import ExperienceCard from "@/components/experiences/ExperienceCard";
 import RevealOnView from "@/components/shared/RevealOnView";
+import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
 import { useExperiences } from "@/hooks/use-experiences";
 
 const ExperiencesSection = () => {
@@ -31,13 +32,11 @@ const ExperiencesSection = () => {
             Loading special experiences...
           </p>
         ) : (
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
+          <RevealStaggerGrid className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8" amount={0.18}>
             {experiences.map((experience, index) => (
-              <RevealOnView key={experience.id} className="h-full" delay={index * 80} amount={0.18}>
-                <ExperienceCard experience={experience} index={index} />
-              </RevealOnView>
+              <ExperienceCard key={experience.id} experience={experience} index={index} />
             ))}
-          </div>
+          </RevealStaggerGrid>
         )}
       </div>
 

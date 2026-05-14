@@ -1,4 +1,5 @@
 import type { SanitizedInquiryDetails } from '../contact/contact-inquiry-details';
+import { buildEmailLogoWordmarkHtml, plainTextBrandLead } from '../mail/email-html-branding';
 
 export type BookingConfirmationTemplateInput = {
   recipientName: string;
@@ -16,6 +17,8 @@ export type BookingConfirmationTemplateInput = {
   guestCount?: number | null;
   appPublicName: string;
   frontendBaseUrl?: string;
+  /** Warmer copy when the guest booking originated from the admin inbox flow. */
+  emailVariant?: 'default' | 'inbox_from_contact';
 };
 
 function escapeHtml(text: string): string {
@@ -121,6 +124,14 @@ export function buildBookingConfirmationHtml(input: BookingConfirmationTemplateI
     .filter(Boolean)
     .join('');
 
+  const logoBlock = buildEmailLogoWordmarkHtml(input.frontendBaseUrl);
+  const variant = input.emailVariant ?? 'default';
+  const introSecond =
+    variant === 'inbox_from_contact' ?
+      `<p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">We are pleased to confirm your reservation is on file. We look forward to seeing you on the agreed date and at the venue below.</p>
+            <p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">Here is a summary of what we have scheduled:</p>`
+    : `<p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">Your booking has been scheduled successfully. Here are the details:</p>`;
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -131,10 +142,11 @@ export function buildBookingConfirmationHtml(input: BookingConfirmationTemplateI
       <td align="center">
         <table role="presentation" width="100%" style="max-width:560px;background:linear-gradient(165deg,rgba(31,10,46,0.96) 0%,rgba(23,8,36,0.98) 100%);border:1px solid rgba(212,175,55,0.28);border-radius:16px;padding:28px 24px;">
           <tr><td>
+            ${logoBlock}
             <p style="margin:0;font-family:Georgia,serif;font-size:12px;letter-spacing:0.18em;text-transform:uppercase;color:#d4af37;">${app}</p>
             <h1 style="margin:16px 0 8px;font-family:Georgia,serif;font-size:22px;line-height:1.25;color:#fff8e6;font-weight:600;">Your reservation is confirmed</h1>
             <p style="margin:0;font-size:15px;line-height:1.7;color:#d6cfbd;">Hi ${safeName},</p>
-            <p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">Your booking has been scheduled successfully. Here are the details:</p>
+            ${introSecond}
             <div style="margin:20px 0;padding:16px;border-radius:12px;border:1px solid rgba(212,175,55,0.22);background:rgba(0,0,0,0.2);">
               <p style="margin:0;font-size:15px;line-height:1.6;color:#fff8e6;"><strong>When</strong></p>
               <p style="margin:6px 0 0;font-size:16px;line-height:1.5;color:#f5edd8;">${escapeHtml(dateLine)}</p>
@@ -163,12 +175,22 @@ export function buildBookingConfirmationText(input: BookingConfirmationTemplateI
     input.eventTimeStart,
     input.eventTimeEnd,
   );
+  const variant = input.emailVariant ?? 'default';
+  const introLines =
+    variant === 'inbox_from_contact' ?
+      [
+        'We are pleased to confirm your reservation is on file. We look forward to seeing you on the agreed date and at the venue below.',
+        '',
+        'Here is a summary of what we have scheduled:',
+      ]
+    : ['Your booking has been scheduled successfully.', '', 'Details:'];
   const lines = [
+    plainTextBrandLead(input.frontendBaseUrl?.trim()),
     `${input.appPublicName} — Your reservation is confirmed`,
     '',
     `Hi ${input.recipientName.trim() || 'Guest'},`,
     '',
-    'Your booking has been scheduled successfully.',
+    ...introLines,
     '',
     `When: ${dateLine}`,
     ...(hasTimes ? [`Time: ${timeLine}`] : []),

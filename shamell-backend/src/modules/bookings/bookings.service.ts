@@ -452,6 +452,10 @@ export class BookingsService {
         guestCount: booking.guestCount,
         appPublicName,
         frontendBaseUrl,
+        emailVariant:
+          booking.source === BookingSource.ADMIN_FROM_CONTACT
+            ? 'inbox_from_contact'
+            : 'default',
       };
 
       const subject = buildBookingConfirmationSubject(appPublicName);

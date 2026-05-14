@@ -16,6 +16,8 @@ export type ContactRequest = {
   subject: string;
   message: string;
   inquiryDetails?: unknown | null;
+  /** Server-built 9-field concierge form snapshot when `entrySource` is concierge_gate. */
+  conciergeVisionSnapshot?: unknown | null;
   isRead: boolean;
   status?: "PENDING" | "RESERVED" | "CANCELLED";
   createdAt: string;

@@ -3,8 +3,12 @@
 import type { HTMLAttributes } from "react";
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import InquirySelectionSummary from "@/components/contact/InquirySelectionSummary";
+import Image from "next/image";
+import { ChevronDown, Loader2 } from "lucide-react";
+import RevealFromDepth from "@/components/shared/RevealFromDepth";
+import bailarinaLogo from "@/public/01_bailarina.png";
+import InquirySelectionSummary, { type SummaryCardData } from "@/components/contact/InquirySelectionSummary";
+import ContactOccasionPickerModal from "@/components/contact/ContactOccasionPickerModal";
 import ContactDatePickerModal from "@/components/contact/ContactDatePickerModal";
 import ContactTimePickerModal from "@/components/contact/ContactTimePickerModal";
 import {
@@ -24,6 +28,7 @@ import {
   type ServiceTypeCode,
 } from "@/lib/contactInquiryConstants";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { usePublicAvailability } from "@/hooks/use-public-availability";
 import {
   expandBlockedDateReasonsMap,
@@ -31,6 +36,7 @@ import {
   isoDateInTzNow,
   timeBoundsForDateISO,
 } from "@/lib/bookingAvailability";
+import { cn } from "@/lib/utils";
 
 export type ContactInquiryFormProps = {
   initialServiceType?: ServiceTypeCode;
@@ -89,7 +95,8 @@ type WizardData = {
   contactLineKind: "event" | "event_type";
   eventTypeId: string;
   inquiryCode: ServiceTypeCode | "";
-  serviceOptionId: string;
+  /** Selected catalog service rows (UUIDs) or static `SERVICE_TYPE_CODES` ids when API list is empty. */
+  serviceOptionIds: string[];
   occasionTypeId: string;
   occasionTypeIdsProject: string[];
   occasionTypeIdsRole: string[];
@@ -130,13 +137,31 @@ type PublicServiceOption = {
   imageMediaType?: "IMAGE" | "VIDEO";
 };
 
+const SERVICE_OPTION_UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** When multiple catalog services are selected, drive gala/VIP/bespoke rules from the strictest matching code. */
+function mergedInquiryCodeFromSelections(ids: string[], options: PublicServiceOption[]): ServiceTypeCode | "" {
+  const codes = new Set<ServiceTypeCode>();
+  for (const id of ids) {
+    const opt = options.find((o) => o.id === id);
+    if (opt && isValidInquiryCode(opt.inquiryCode)) codes.add(opt.inquiryCode);
+    else if (isValidInquiryCode(id)) codes.add(id);
+  }
+  if (codes.has("VIP_EVENT")) return "VIP_EVENT";
+  if (codes.has("PRIVATE_GALA")) return "PRIVATE_GALA";
+  if (codes.has("BESPOKE")) return "BESPOKE";
+  if (codes.has("GENERAL")) return "GENERAL";
+  return "";
+}
+
 function emptyWizard(initialServiceType?: ServiceTypeCode): WizardData {
   return {
     contactLineId: "",
     contactLineKind: "event",
     eventTypeId: "",
     inquiryCode: initialServiceType ?? "",
-    serviceOptionId: "",
+    serviceOptionIds: [],
     occasionTypeId: "",
     occasionTypeIdsProject: [],
     occasionTypeIdsRole: [],
@@ -214,11 +239,11 @@ function validatePhase(
     }
     case "serviceType": {
       if (serviceCatalogActive && isValidInquiryCode(d.inquiryCode)) return null;
-      if (!serviceCatalogActive && d.serviceOptionId.trim().length === 0) {
-        return "Please select a specific service option.";
+      if (!serviceCatalogActive && d.serviceOptionIds.length === 0) {
+        return "Please select at least one service option.";
       }
       if (!isValidInquiryCode(d.inquiryCode)) {
-        return "Please select the service type that best matches your request.";
+        return "Please select at least one valid service type for your request.";
       }
       return null;
     }
@@ -292,6 +317,7 @@ function buildInquiryDetails(
   d: WizardData,
   entrySource: InquiryEntrySource,
   activeCatalog: CatalogSnapshot | null,
+  serviceTypeOptions: PublicServiceOption[],
 ): Record<string, unknown> | undefined {
   const out: Record<string, unknown> = { entrySource };
 
@@ -333,6 +359,20 @@ function buildInquiryDetails(
 
   if (d.venueIndoor === "indoor") out.venueIndoor = true;
   if (d.venueIndoor === "outdoor") out.venueIndoor = false;
+
+  if (d.serviceOptionIds.length) {
+    const allUuid = d.serviceOptionIds.every((id) => SERVICE_OPTION_UUID_RE.test(id));
+    if (allUuid) out.serviceIds = d.serviceOptionIds;
+    const labels = d.serviceOptionIds
+      .map((id) => {
+        const opt = serviceTypeOptions.find((o) => o.id === id);
+        if (opt) return opt.title.trim();
+        if (isValidInquiryCode(id)) return readableInquiryCode(id);
+        return id.trim();
+      })
+      .filter(Boolean);
+    if (labels.length) out.serviceLabels = labels;
+  }
 
   return out;
 }
@@ -377,6 +417,7 @@ export default function ContactInquiryForm({
   const router = useRouter();
   const pathname = usePathname() ?? "/contacto";
   const searchParams = useSearchParams();
+  const isLg = useMediaQuery("(min-width: 1024px)");
 
   const [data, setData] = useState<WizardData>(() => emptyWizard(initialServiceType));
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -385,6 +426,7 @@ export default function ContactInquiryForm({
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [occasionPickerOpen, setOccasionPickerOpen] = useState(false);
   const [timePickerWhich, setTimePickerWhich] = useState<null | "start" | "end">(null);
   const [occupiedRanges, setOccupiedRanges] = useState<Array<{ startMinutes: number; endMinutes: number }>>([]);
 
@@ -409,6 +451,10 @@ export default function ContactInquiryForm({
   useEffect(() => {
     setPhaseIndex((i) => Math.min(i, Math.max(0, flow.length - 1)));
   }, [flow]);
+
+  useEffect(() => {
+    if (currentPhase !== "detail") setOccasionPickerOpen(false);
+  }, [currentPhase]);
 
   const apiBaseUrl = useMemo(
     () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
@@ -653,11 +699,11 @@ export default function ContactInquiryForm({
   }, [apiBaseUrl]);
 
   useEffect(() => {
-    if (data.serviceOptionId || !data.inquiryCode || serviceTypeOptions.length === 0) return;
+    if (data.serviceOptionIds.length > 0 || !data.inquiryCode || serviceTypeOptions.length === 0) return;
     const firstByCode = serviceTypeOptions.find((s) => s.inquiryCode === data.inquiryCode);
     if (!firstByCode) return;
-    setData((prev) => ({ ...prev, serviceOptionId: firstByCode.id }));
-  }, [data.serviceOptionId, data.inquiryCode, serviceTypeOptions]);
+    setData((prev) => ({ ...prev, serviceOptionIds: [firstByCode.id] }));
+  }, [data.serviceOptionIds.join("|"), data.inquiryCode, serviceTypeOptions]);
 
   useEffect(() => {
     if (!initialEventId) skipServiceAppliedForEventIdRef.current = undefined;
@@ -673,7 +719,7 @@ export default function ContactInquiryForm({
       contactLineKind: line.lineKind ?? "event",
       eventTypeId: line.eventTypeId,
       inquiryCode: hadServiceTypeInUrl ? prev.inquiryCode : "",
-      serviceOptionId: "",
+      serviceOptionIds: [],
       occasionTypeId: "",
       occasionTypeIdsProject: [],
       occasionTypeIdsRole: [],
@@ -810,7 +856,7 @@ export default function ContactInquiryForm({
       contactLineKind: line.lineKind ?? "event",
       eventTypeId: line.eventTypeId,
       inquiryCode: hadServiceTypeInUrl ? prev.inquiryCode : "",
-      serviceOptionId: "",
+      serviceOptionIds: [],
       occasionTypeId: "",
       occasionTypeIdsProject: [],
       occasionTypeIdsRole: [],
@@ -1005,7 +1051,7 @@ export default function ContactInquiryForm({
       contactLineKind: line.lineKind ?? "event",
       eventTypeId: line.eventTypeId,
       inquiryCode: hadServiceTypeInUrl ? prev.inquiryCode : "",
-      serviceOptionId: "",
+      serviceOptionIds: [],
       occasionTypeId: "",
       occasionTypeIdsProject: [],
       occasionTypeIdsRole: [],
@@ -1028,7 +1074,7 @@ export default function ContactInquiryForm({
     setIsSubmitting(true);
     try {
       const activeCatalog = catalogDismissed ? null : catalogSnapshot;
-      const inquiryDetails = buildInquiryDetails(data, entrySource, activeCatalog);
+      const inquiryDetails = buildInquiryDetails(data, entrySource, activeCatalog, serviceTypeOptions);
       const res = await fetch(`${apiBaseUrl}/api/v1/contact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1163,16 +1209,29 @@ export default function ContactInquiryForm({
   }, [occasionSingleLabel, reviewProjectLabels, reviewRoleLabels]);
 
   const selectedServiceSummary = useMemo(() => {
-    if (data.serviceOptionId) {
-      const selectedService = serviceTypeOptions.find((s) => s.id === data.serviceOptionId);
-      if (selectedService) {
+    const selectedOpts = data.serviceOptionIds
+      .map((id) => serviceTypeOptions.find((s) => s.id === id))
+      .filter((s): s is PublicServiceOption => Boolean(s));
+    if (selectedOpts.length === 1) {
+      const selectedService = selectedOpts[0];
+      return {
+        title: selectedService.title,
+        subtitle: readableInquiryCode(selectedService.inquiryCode),
+        description: selectedService.description || inquiryCodeDescription(selectedService.inquiryCode),
+        items: selectedService.items,
+        imageUrl: selectedService.imageUrl ?? undefined,
+        imageMediaType: selectedService.imageMediaType,
+      };
+    }
+    if (selectedOpts.length === 0 && data.serviceOptionIds.length > 0) {
+      const staticCodes = data.serviceOptionIds.filter((id): id is ServiceTypeCode => isValidInquiryCode(id));
+      if (staticCodes.length === 1) {
+        const c = staticCodes[0];
         return {
-          title: selectedService.title,
-          subtitle: readableInquiryCode(selectedService.inquiryCode),
-          description: selectedService.description || inquiryCodeDescription(selectedService.inquiryCode),
-          items: selectedService.items,
-          imageUrl: selectedService.imageUrl ?? undefined,
-          imageMediaType: selectedService.imageMediaType,
+          title: readableInquiryCode(c),
+          subtitle: "Service type",
+          description: inquiryCodeDescription(c),
+          items: [],
         };
       }
     }
@@ -1193,16 +1252,67 @@ export default function ContactInquiryForm({
       description: "Select a service option to preview image, description, and included items.",
       items: [],
     };
-  }, [serviceSummary, data.inquiryCode, data.serviceOptionId, serviceTypeOptions]);
+  }, [serviceSummary, data.inquiryCode, data.serviceOptionIds, serviceTypeOptions]);
+
+  const servicePreviewCards = useMemo((): SummaryCardData[] | null => {
+    const selectedOpts = data.serviceOptionIds
+      .map((id) => serviceTypeOptions.find((s) => s.id === id))
+      .filter((s): s is PublicServiceOption => Boolean(s));
+    if (selectedOpts.length > 1) {
+      return selectedOpts.map((o) => ({
+        title: o.title,
+        subtitle: readableInquiryCode(o.inquiryCode),
+        description: o.description || inquiryCodeDescription(o.inquiryCode),
+        items: o.items.slice(0, 4),
+        imageUrl: o.imageUrl ?? undefined,
+        imageMediaType: o.imageMediaType,
+      }));
+    }
+    if (selectedOpts.length === 0 && data.serviceOptionIds.length > 1) {
+      const staticCodes = data.serviceOptionIds.filter((id): id is ServiceTypeCode => isValidInquiryCode(id));
+      if (staticCodes.length > 1) {
+        return staticCodes.map((code) => ({
+          title: readableInquiryCode(code),
+          subtitle: "Service type",
+          description: inquiryCodeDescription(code),
+          items: [],
+        }));
+      }
+    }
+    return null;
+  }, [data.serviceOptionIds, serviceTypeOptions]);
 
   return (
-    <div className="mx-auto max-w-5xl text-left">
-      <h1 className="font-brand text-gold text-center text-3xl md:text-5xl tracking-[0.14em] mb-4">
-        BOOKING INQUIRY
-      </h1>
-      <p className="font-elegant text-foreground/80 text-lg text-center mb-10">
-        Step-by-step — tell us about your event or project. We respond as soon as possible.
-      </p>
+    <div className="w-full max-w-none text-left">
+      <header className="mb-10 px-0 pt-2 text-center sm:mb-12 sm:pt-4">
+        <RevealFromDepth delay={0}>
+          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center sm:mb-8 sm:h-24 sm:w-24">
+            <Image
+              src={bailarinaLogo}
+              alt="Shamell bailarina"
+              className="h-full w-auto object-contain drop-shadow-[0_0_18px_rgba(197,165,90,0.2)]"
+              priority
+            />
+          </div>
+        </RevealFromDepth>
+        <RevealFromDepth delay={110}>
+          <p className="mb-3 font-brand text-xs tracking-[0.28em] text-[#c5a059]/90 uppercase">
+            Begin your Shamell experience
+          </p>
+        </RevealFromDepth>
+        <RevealFromDepth delay={220}>
+          <h1 className="mx-auto max-w-4xl font-brand text-3xl tracking-[0.14em] text-gold uppercase md:text-5xl">
+            <span className="block leading-tight">Booking</span>
+            <span className="mt-1 block leading-tight md:mt-1.5">inquiry</span>
+          </h1>
+        </RevealFromDepth>
+        <RevealFromDepth delay={340}>
+          <p className="mx-auto mt-5 max-w-2xl font-elegant text-lg leading-relaxed text-[#d1d1d1]/95 md:mt-6 md:text-xl">
+            Every celebration is different. Tell us about yours step by step — we review each inquiry
+            personally and respond as soon as possible.
+          </p>
+        </RevealFromDepth>
+      </header>
 
       {initialCatalog && !catalogDismissed ? (
         <div
@@ -1221,18 +1331,18 @@ export default function ContactInquiryForm({
           {!catalogLoading && catalogSnapshot ? (
             <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
               <div>
-                <p className="text-[10px] font-brand uppercase tracking-[0.14em] text-gold/90">Catalog context</p>
+                <p className="text-xs font-brand uppercase tracking-[0.14em] text-gold/90 sm:text-sm">Catalog context</p>
                 <p className="mt-1">
                   You are inquiring about:{" "}
                   <span className="font-medium text-foreground">{catalogSnapshot.title}</span>
                   {catalogSnapshot.descriptionPreview ? (
-                    <span className="mt-1 block text-xs text-foreground/60 line-clamp-2">
+                    <span className="mt-1 block text-sm text-foreground/60 line-clamp-2">
                       {catalogSnapshot.descriptionPreview}
                     </span>
                   ) : null}
                 </p>
                 {!hadServiceTypeInUrl && catalogSnapshot.contactInquiryCode ? (
-                  <p className="mt-2 text-xs text-foreground/55">
+                  <p className="mt-2 text-sm text-foreground/55">
                     Inquiry type was suggested from this catalog entry; change your selection in step 1 if needed.
                   </p>
                 ) : null}
@@ -1240,7 +1350,7 @@ export default function ContactInquiryForm({
               <button
                 type="button"
                 onClick={dismissCatalogContext}
-                className="shrink-0 self-start rounded border border-white/20 bg-black/30 px-3 py-1.5 text-[10px] font-brand uppercase tracking-[0.12em] text-foreground/80 transition-colors hover:border-gold/40 hover:text-gold"
+                className="shrink-0 self-start rounded border border-white/20 bg-black/30 px-3 py-2 text-xs font-brand uppercase tracking-[0.12em] text-foreground/80 transition-colors hover:border-gold/40 hover:text-gold sm:text-sm"
               >
                 Remove context
               </button>
@@ -1255,7 +1365,7 @@ export default function ContactInquiryForm({
           Loading offerings…
         </p>
       ) : null}
-      {linesError ? <p className="mb-6 text-center text-xs text-amber-200/85">{linesError}</p> : null}
+      {linesError ? <p className="mb-6 text-center text-sm text-amber-200/85">{linesError}</p> : null}
 
       <nav aria-label="Form progress" className="mb-8">
         <ol className="flex flex-wrap justify-center gap-1.5 sm:gap-2">
@@ -1276,7 +1386,7 @@ export default function ContactInquiryForm({
                       ? "Remove catalog context below to change the catalog offering."
                       : undefined
                   }
-                  className={`rounded border px-2 py-1 text-[9px] font-brand tracking-[0.12em] uppercase transition-colors sm:text-[10px] ${
+                  className={`rounded border px-2 py-1.5 text-xs font-brand tracking-[0.12em] uppercase transition-colors sm:text-sm ${
                     i === phaseIndex
                       ? "border-gold bg-gold/15 text-gold-light"
                       : stepReachable
@@ -1292,22 +1402,24 @@ export default function ContactInquiryForm({
         </ol>
       </nav>
 
-      <div className="rounded border border-gold/25 bg-black/20 p-5 md:p-6">
+      <div className="flex min-h-0 flex-col gap-6 lg:max-h-[calc(100vh-8rem)] lg:min-h-0 lg:flex-row lg:items-stretch lg:gap-8">
+        <div className="min-w-0 flex-1 lg:flex lg:min-h-0 lg:flex-col">
+          <div className="rounded border border-gold/25 bg-black/20 p-5 md:p-6 lg:flex lg:h-full lg:min-h-0 lg:max-h-full lg:flex-1 lg:flex-col lg:overflow-hidden">
+            <div className="shamell-scrollbar min-h-0 overflow-x-hidden lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto lg:pr-1">
+            <div className="my-0 w-full shrink-0 py-6 lg:my-auto">
         {currentPhase === "service" ? (
           <div className="space-y-4">
-            <p className="text-sm text-foreground/75 font-body">
+            <p className="font-body text-lg leading-relaxed text-foreground/80 md:text-xl md:leading-relaxed">
               Which catalog offering best matches what you are planning?
             </p>
             {catalogSnapshot?.kind === "service" && !catalogDismissed ? (
-              <p className="text-xs text-foreground/55 font-body">
+              <p className="font-body text-base leading-relaxed text-foreground/65 md:text-lg">
                 You opened this form from a performance experience — continue with the suggested inquiry type, or pick
                 an event catalog line below if you are booking a full event tier.
               </p>
             ) : null}
             <div className="space-y-3">
               {contactLines.map((line) => {
-                const code = resolveServiceLineFromCatalog(line.contactInquiryCode);
-                const preview = lineDescriptionPreview(line.description);
                 const checked = data.contactLineId === line.id;
                 return (
                   <label
@@ -1326,13 +1438,7 @@ export default function ContactInquiryForm({
                         className="mt-1 border-gold/50 text-gold focus:ring-gold"
                       />
                       <div className="min-w-0 flex-1">
-                        <span className="font-brand text-xs tracking-[0.14em] text-gold">{line.eventTypeName}</span>
-                        <span className="mt-1 block font-body text-[10px] uppercase tracking-wider text-gold/50">
-                          {code.replace(/_/g, " ")}
-                        </span>
-                        {preview ? (
-                          <p className="mt-2 text-xs text-foreground/60 font-body leading-relaxed">{preview}</p>
-                        ) : null}
+                        <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">{line.eventTypeName}</span>
                       </div>
                     </div>
                   </label>
@@ -1340,7 +1446,7 @@ export default function ContactInquiryForm({
               })}
             </div>
             {hadServiceTypeInUrl && isValidInquiryCode(data.inquiryCode) ? (
-              <p className="text-xs text-foreground/50 font-body">
+              <p className="font-body text-base leading-relaxed text-foreground/60 md:text-lg">
                 Inquiry type <span className="text-gold/90">{data.inquiryCode.replace(/_/g, " ")}</span> was set from
                 your link. Select a catalog line above when it matches your booking, or continue if you are only
                 inquiring about performances.
@@ -1352,21 +1458,29 @@ export default function ContactInquiryForm({
         {currentPhase === "detail" ? (
           <div className="space-y-5">
             {(selectedLine?.occasionSingle.length ?? 0) > 0 ? (
-              <>
-                <p className="text-sm text-foreground/75 font-body">What kind of occasion are you hosting?</p>
-                <select
-                  value={data.occasionTypeId}
-                  onChange={(e) => update("occasionTypeId", e.target.value)}
-                  className="w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold"
+              <div className="mx-auto w-full max-w-lg text-center">
+                <p className="font-body text-base leading-relaxed text-foreground/80 md:text-lg">
+                  What kind of occasion are you hosting?
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setOccasionPickerOpen(true)}
+                  className={cn(
+                    logisticsPickerTriggerClass,
+                    "mx-auto mt-3 block max-w-md text-base md:text-lg",
+                  )}
                 >
-                  <option value="">Select occasion</option>
-                  {(selectedLine?.occasionSingle ?? []).map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.name}
-                    </option>
-                  ))}
-                </select>
-              </>
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate font-body",
+                      !data.occasionTypeId ? "text-foreground/55" : "font-medium text-foreground",
+                    )}
+                  >
+                    {occasionSingleLabel || "Select occasion"}
+                  </span>
+                  <ChevronDown className="h-5 w-5 shrink-0 text-gold/80" strokeWidth={2} aria-hidden />
+                </button>
+              </div>
             ) : null}
 
             {(selectedLine?.occasionSingle.length ?? 0) === 0 ? (
@@ -1424,7 +1538,7 @@ export default function ContactInquiryForm({
             (selectedLine?.occasionBespokeRole.length ?? 0) > 0 ? (
               <div>
                 <label className="block">
-                  <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                  <span className="font-brand text-gold text-sm tracking-[0.14em]">
                     Timeline / deadline notes <span className="text-foreground/40 font-body">(optional here)</span>
                   </span>
                   <textarea
@@ -1441,8 +1555,8 @@ export default function ContactInquiryForm({
 
         {currentPhase === "serviceType" ? (
           <div className="space-y-4">
-            <p className="text-sm text-foreground/75 font-body">
-              Select the service type that best matches this inquiry.
+            <p className="font-body text-base leading-relaxed text-foreground/75 md:text-lg">
+              Select all service types that apply to this inquiry (one or more).
             </p>
             <div className="grid gap-3">
               {(serviceTypeOptions.length > 0
@@ -1450,17 +1564,15 @@ export default function ContactInquiryForm({
                     id: row.id,
                     code: row.inquiryCode,
                     label: row.title,
-                    description: row.description || inquiryCodeDescription(row.inquiryCode),
                     key: row.id,
                   }))
                 : SERVICE_TYPE_CODES.map((code) => ({
                     id: code,
                     code,
                     label: readableInquiryCode(code),
-                    description: inquiryCodeDescription(code),
                     key: code,
-                  }))).map(({ id, code, label, description, key }) => {
-                const checked = data.serviceOptionId === id;
+                  }))).map(({ id, label, key }) => {
+                const checked = data.serviceOptionIds.includes(id);
                 return (
                   <label
                     key={key}
@@ -1470,23 +1582,28 @@ export default function ContactInquiryForm({
                   >
                     <div className="flex items-start gap-3">
                       <input
-                        type="radio"
-                        name="serviceTypeCode"
-                        value={id}
+                        type="checkbox"
                         checked={checked}
                         onChange={() => {
-                          update("serviceOptionId", id);
-                          update("inquiryCode", code);
+                          setData((prev) => {
+                            const has = prev.serviceOptionIds.includes(id);
+                            const serviceOptionIds = has
+                              ? prev.serviceOptionIds.filter((x) => x !== id)
+                              : [...prev.serviceOptionIds, id];
+                            const inquiryCode = mergedInquiryCodeFromSelections(
+                              serviceOptionIds,
+                              serviceTypeOptions,
+                            );
+                            return { ...prev, serviceOptionIds, inquiryCode };
+                          });
+                          setStepError(null);
                         }}
                         className="mt-1 border-gold/50 text-gold focus:ring-gold"
                       />
                       <div className="min-w-0 flex-1">
-                        <span className="font-brand text-xs tracking-[0.14em] text-gold">
+                        <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">
                           {label}
                         </span>
-                        <p className="mt-1 text-xs text-foreground/60 font-body leading-relaxed">
-                          {description}
-                        </p>
                       </div>
                     </div>
                   </label>
@@ -1519,8 +1636,8 @@ export default function ContactInquiryForm({
                       className="mt-1 border-gold/50 text-gold focus:ring-gold"
                     />
                     <div>
-                      <span className="font-brand text-xs tracking-[0.12em] text-gold">{o.label}</span>
-                      {o.note ? <p className="mt-1 text-xs text-foreground/60 font-body">{o.note}</p> : null}
+                      <span className="font-brand text-sm tracking-[0.12em] text-gold">{o.label}</span>
+                      {o.note ? <p className="mt-1 text-sm text-foreground/60 font-body">{o.note}</p> : null}
                     </div>
                   </div>
                 </label>
@@ -1533,7 +1650,7 @@ export default function ContactInquiryForm({
           <div className="space-y-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                <span className="font-brand text-gold text-sm tracking-[0.14em]">
                   {logisticsUsesBespokeDeadlineRule ? "Key date (if any)" : "Event date"}{" "}
                   {isGalaOrVip(data.inquiryCode) ? (
                     <span className="text-red-300">*</span>
@@ -1542,7 +1659,7 @@ export default function ContactInquiryForm({
                   )}
                 </span>
                 {logisticsUsesBespokeDeadlineRule ? (
-                  <p className="mt-1 text-[10px] text-foreground/45 font-body">
+                  <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">
                     Optional if you provide a deadline note below.
                   </p>
                 ) : null}
@@ -1554,7 +1671,7 @@ export default function ContactInquiryForm({
                   <span className={data.eventDate ? "text-foreground font-body" : "text-foreground/45 font-body"}>
                     {data.eventDate ? formatDateDisplayUs(data.eventDate) : "Select date"}
                   </span>
-                  <span className="shrink-0 font-brand text-[10px] tracking-[0.14em] text-gold/75">CALENDAR</span>
+                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold/75">CALENDAR</span>
                 </button>
               </div>
               <Field
@@ -1571,11 +1688,11 @@ export default function ContactInquiryForm({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                <span className="font-brand text-gold text-sm tracking-[0.14em]">
                   Performance start{" "}
                   <span className="text-foreground/40 font-body normal-case">(optional)</span>
                 </span>
-                <p className="mt-1 text-[10px] text-foreground/45 font-body">12-hour US format</p>
+                <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">12-hour US format</p>
                 <button
                   type="button"
                   onClick={() => setTimePickerWhich("start")}
@@ -1588,15 +1705,15 @@ export default function ContactInquiryForm({
                   >
                     {data.eventTimeStart ? formatTimeDisplayUs(data.eventTimeStart) : "Select start time"}
                   </span>
-                  <span className="shrink-0 font-brand text-[10px] tracking-[0.14em] text-gold/75">TIME</span>
+                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold/75">TIME</span>
                 </button>
               </div>
               <div>
-                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                <span className="font-brand text-gold text-sm tracking-[0.14em]">
                   Performance end{" "}
                   <span className="text-foreground/40 font-body normal-case">(optional)</span>
                 </span>
-                <p className="mt-1 text-[10px] text-foreground/45 font-body">Must be after start time</p>
+                <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">Must be after start time</p>
                 <button
                   type="button"
                   onClick={() => setTimePickerWhich("end")}
@@ -1605,7 +1722,7 @@ export default function ContactInquiryForm({
                   <span className={data.eventTimeEnd ? "text-foreground font-body" : "text-foreground/45 font-body"}>
                     {data.eventTimeEnd ? formatTimeDisplayUs(data.eventTimeEnd) : "Select end time"}
                   </span>
-                  <span className="shrink-0 font-brand text-[10px] tracking-[0.14em] text-gold/75">TIME</span>
+                  <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold/75">TIME</span>
                 </button>
               </div>
             </div>
@@ -1618,7 +1735,7 @@ export default function ContactInquiryForm({
               inputClassName="rounded-xl"
             />
             <label className="block">
-              <span className="font-brand text-gold text-xs tracking-[0.14em]">
+              <span className="font-brand text-gold text-sm tracking-[0.14em]">
                 Event address{" "}
                 <span className="text-foreground/40 font-body normal-case">(optional)</span>
               </span>
@@ -1631,16 +1748,16 @@ export default function ContactInquiryForm({
                 placeholder="Street, suite, venue name…"
                 className="mt-2 w-full resize-y rounded-xl border border-gold/40 bg-black/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold min-h-[72px]"
               />
-              <p className="mt-1 text-[10px] text-foreground/45 font-body">
+              <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">
                 {data.eventAddress.length}/400 — street or venue address (city can go above)
               </p>
             </label>
             {logisticsUsesBespokeDeadlineRule ? (
               <div>
                 <label className="block">
-                  <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                  <span className="font-brand text-gold text-sm tracking-[0.14em]">
                     Project deadline or date window <span className="text-red-300">*</span>
-                    <span className="text-foreground/50 font-body normal-case text-[10px]">
+                    <span className="text-foreground/50 font-body normal-case text-xs sm:text-sm">
                       {" "}
                       (required if no key date)
                     </span>
@@ -1655,7 +1772,7 @@ export default function ContactInquiryForm({
               </div>
             ) : null}
             <div>
-              <span className="font-brand text-gold text-xs tracking-[0.14em]">Venue setting</span>
+              <span className="font-brand text-gold text-sm tracking-[0.14em]">Venue setting</span>
               <div className="mt-2 flex flex-wrap gap-4 text-sm font-body">
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input
@@ -1696,7 +1813,7 @@ export default function ContactInquiryForm({
           <div className="space-y-5">
             <div>
               <label className="block">
-                <span className="font-brand text-gold text-xs tracking-[0.14em]">
+                <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
                   Main description <span className="text-red-300">*</span>
                 </span>
                 <textarea
@@ -1704,10 +1821,10 @@ export default function ContactInquiryForm({
                   onChange={(e) => update("message", e.target.value)}
                   rows={6}
                   required
-                  className="mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold resize-y min-h-[140px]"
+                  className="mt-2 min-h-[160px] w-full resize-y border border-gold/40 bg-black/30 px-4 py-3.5 font-body text-base leading-relaxed text-foreground outline-none transition-colors placeholder:text-foreground/45 focus:border-gold sm:min-h-[180px] sm:px-5 sm:py-4 sm:text-lg"
                 />
               </label>
-              <p className="mt-1 text-[10px] text-foreground/40 text-right">{data.message.length}/4000</p>
+              <p className="mt-1 text-right text-sm text-foreground/40 sm:text-base">{data.message.length}/4000</p>
             </div>
           </div>
         ) : null}
@@ -1746,28 +1863,37 @@ export default function ContactInquiryForm({
             <ul className="space-y-2 rounded border border-gold/20 bg-black/30 p-4 text-foreground/85">
               {data.contactLineId ? (
                 <li>
-                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">CATALOG LINE</span>
+                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">CATALOG LINE</span>
                   <br />
                   {selectedLine?.eventTypeName ?? data.contactLineId}
                 </li>
               ) : null}
-              {data.serviceOptionId ? (
+              {data.serviceOptionIds.length > 0 || data.inquiryCode ? (
                 <li>
-                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">SERVICE</span>
+                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">SERVICE</span>
                   <br />
-                  {serviceTypeOptions.find((s) => s.id === data.serviceOptionId)?.title ?? "—"}
+                  {data.serviceOptionIds.length > 0
+                    ? data.serviceOptionIds
+                        .map((sid) => {
+                          const opt = serviceTypeOptions.find((s) => s.id === sid);
+                          if (opt) return opt.title;
+                          return isValidInquiryCode(sid) ? readableInquiryCode(sid) : sid;
+                        })
+                        .filter(Boolean)
+                        .join(" · ")
+                    : readableInquiryCode(data.inquiryCode)}
                 </li>
               ) : null}
               {data.occasionTypeId ? (
                 <li>
-                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">OCCASION</span>
+                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">OCCASION</span>
                   <br />
                   {occasionSingleLabel || data.occasionTypeId}
                 </li>
               ) : null}
               {data.occasionTypeIdsProject.length > 0 || data.occasionTypeIdsRole.length > 0 ? (
                 <li>
-                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">PROJECT</span>
+                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">PROJECT</span>
                   <br />
                   {reviewProjectLabels || "—"}
                   {reviewRoleLabels ? (
@@ -1780,13 +1906,13 @@ export default function ContactInquiryForm({
               ) : null}
               {data.experienceAddons.length > 0 ? (
                 <li>
-                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">ADD-ONS</span>
+                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">ADD-ONS</span>
                   <br />
                   {data.experienceAddons.join(", ")}
                 </li>
               ) : null}
               <li>
-                <span className="text-gold font-brand text-[10px] tracking-[0.14em]">LOGISTICS</span>
+                <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">LOGISTICS</span>
                 <br />
                 {data.eventDate ? `Date: ${formatDateDisplayUs(data.eventDate)}` : "Date: —"}
                 {data.eventTimeStart || data.eventTimeEnd ? (
@@ -1814,24 +1940,24 @@ export default function ContactInquiryForm({
               </li>
               {data.projectDeadlineNote.trim() ? (
                 <li>
-                  <span className="text-gold font-brand text-[10px] tracking-[0.14em]">DEADLINE / WINDOW</span>
+                  <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">DEADLINE / WINDOW</span>
                   <br />
                   {data.projectDeadlineNote}
                 </li>
               ) : null}
               <li>
-                <span className="text-gold font-brand text-[10px] tracking-[0.14em]">MESSAGE</span>
+                <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">MESSAGE</span>
                 <br />
                 <span className="whitespace-pre-wrap">{data.message}</span>
               </li>
               <li>
-                <span className="text-gold font-brand text-[10px] tracking-[0.14em]">CONTACT</span>
+                <span className="text-gold font-brand text-xs sm:text-sm tracking-[0.14em]">CONTACT</span>
                 <br />
                 {data.fullName} · {data.email}
                 {data.phone ? ` · ${data.phone}` : ""}
               </li>
             </ul>
-            <p className="text-xs text-foreground/50">
+            <p className="text-sm text-foreground/50">
               Use the step tabs above to edit any section, or Back below. Your selection preview is below the form.
             </p>
           </div>
@@ -1857,7 +1983,7 @@ export default function ContactInquiryForm({
         ) : null}
 
         {currentPhase !== "review" ? (
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={goBack}
@@ -1870,14 +1996,14 @@ export default function ContactInquiryForm({
                   ? "Remove catalog context to go back and change offering."
                   : undefined
               }
-              className="border border-gold/35 px-4 py-2.5 text-xs font-brand tracking-[0.14em] text-gold hover:bg-gold/10 disabled:opacity-40 disabled:pointer-events-none"
+              className="border border-gold/35 px-4 py-2.5 text-sm font-brand tracking-[0.14em] text-gold hover:bg-gold/10 disabled:opacity-40 disabled:pointer-events-none"
             >
               Back
             </button>
             <button
               type="button"
               onClick={goNext}
-              className="btn-outline-gold flex-1 min-w-32 justify-center px-4 py-2.5 text-xs font-brand tracking-[0.14em]"
+              className="btn-outline-gold min-w-40 justify-center px-4 py-2.5 text-sm font-brand tracking-[0.14em] sm:min-w-48"
             >
               {currentPhase === "contact" ? "Continue to review" : "Continue"}
             </button>
@@ -1887,7 +2013,7 @@ export default function ContactInquiryForm({
             <button
               type="button"
               onClick={goBack}
-              className="border border-gold/35 px-4 py-2.5 text-xs font-brand tracking-[0.14em] text-gold hover:bg-gold/10"
+              className="border border-gold/35 px-4 py-2.5 text-sm font-brand tracking-[0.14em] text-gold hover:bg-gold/10"
             >
               Back
             </button>
@@ -1907,17 +2033,35 @@ export default function ContactInquiryForm({
             </button>
           </form>
         )}
+            </div>
+            </div>
+          </div>
+        </div>
+        <aside className="w-full min-w-0 shrink-0 lg:flex lg:min-h-0 lg:w-[min(100%,420px)] lg:flex-col xl:w-[480px]">
+          <div className="shamell-scrollbar min-h-0 lg:flex lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-x-hidden lg:overflow-y-auto lg:pr-1 lg:pb-2">
+            <InquirySelectionSummary
+              eventCard={selectedEventSummary}
+              occasionCard={selectedOccasionSummary}
+              serviceCard={servicePreviewCards ? null : selectedServiceSummary}
+              serviceCards={servicePreviewCards}
+              loadingService={serviceSummaryLoading}
+              stackCards={isLg}
+            />
+          </div>
+        </aside>
       </div>
 
-      <div className="mt-8">
-        <InquirySelectionSummary
-          eventCard={selectedEventSummary}
-          occasionCard={selectedOccasionSummary}
-          serviceCard={selectedServiceSummary}
-          loadingService={serviceSummaryLoading}
-        />
-      </div>
-
+      <ContactOccasionPickerModal
+        isOpen={occasionPickerOpen}
+        title="What kind of occasion?"
+        options={(selectedLine?.occasionSingle ?? []).map((o) => ({ id: o.id, name: o.name }))}
+        selectedId={data.occasionTypeId}
+        onClose={() => setOccasionPickerOpen(false)}
+        onSelect={(id) => {
+          update("occasionTypeId", id);
+          setStepError(null);
+        }}
+      />
       <ContactDatePickerModal
         isOpen={datePickerOpen}
         title={logisticsUsesBespokeDeadlineRule ? "Key date" : "Event date"}
@@ -1976,7 +2120,7 @@ function Field({
   return (
     <div>
       <label className="block" htmlFor={name}>
-        <span className="font-brand text-gold text-xs tracking-[0.14em]">
+        <span className="font-brand text-gold text-sm tracking-[0.14em]">
           {label}{" "}
           {required ? <span className="text-red-300">*</span> : null}
           {!required && !hint ? (
@@ -1992,10 +2136,10 @@ function Field({
           inputMode={inputMode}
           onChange={(e) => onChange(e.target.value)}
           required={required}
-          className={`mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-foreground outline-none focus:border-gold ${inputClassName ?? ""}`}
+          className={`mt-2 w-full border border-gold/40 bg-black/30 px-4 py-3 text-base text-foreground outline-none focus:border-gold ${inputClassName ?? ""}`}
         />
       </label>
-      {hint ? <p className="mt-1 text-[10px] text-foreground/45 font-body">{hint}</p> : null}
+      {hint ? <p className="mt-1 text-xs sm:text-sm text-foreground/45 font-body">{hint}</p> : null}
     </div>
   );
 }
