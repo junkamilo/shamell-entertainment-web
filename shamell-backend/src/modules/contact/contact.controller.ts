@@ -13,6 +13,7 @@ import {
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ContactService } from './contact.service';
 import { AdminContactQueryDto } from './dto/admin-contact-query.dto';
+import { AdminPeticionesBadgeQueryDto } from './dto/admin-peticiones-badge-query.dto';
 import { AdminPeticionesQueryDto } from './dto/admin-peticiones-query.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactStatusDto } from './dto/update-contact-status.dto';
@@ -41,6 +42,15 @@ export class ContactController {
   @UseGuards(AdminJwtGuard)
   findAllPeticiones(@Query() query: AdminPeticionesQueryDto) {
     return this.contactService.findAllPeticiones(query);
+  }
+
+  @Get('peticiones/badge')
+  @ApiOperation({
+    summary: 'Count unified inbox items since timestamp (admin badge)',
+  })
+  @UseGuards(AdminJwtGuard)
+  countPeticionesBadge(@Query() query: AdminPeticionesBadgeQueryDto) {
+    return this.contactService.countPeticionesBadge(query);
   }
 
   @Get(':id')

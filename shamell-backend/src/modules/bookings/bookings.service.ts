@@ -5,7 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BookingSource, BookingStatus, Prisma } from '@prisma/client';
+import {
+  BookingSource,
+  BookingStatus,
+  ContactRequestStatus,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
 import {
@@ -46,6 +51,14 @@ const bookingInclude = {
 type BookingWithRelations = Prisma.BookingGetPayload<{
   include: typeof bookingInclude;
 }>;
+
+type PrismaTx = Prisma.TransactionClient;
+
+export type CreateFromPublicBookingInquiryOptions = {
+  tx?: PrismaTx;
+  /** When true, caller sends confirmation after the surrounding transaction commits. */
+  skipConfirmationEmail?: boolean;
+};
 
 @Injectable()
 export class BookingsService {
@@ -334,6 +347,15 @@ export class BookingsService {
         where: { id: dto.contactRequestId },
       });
       if (!contact) throw new BadRequestException('Invalid contactRequestId.');
+      const existingForContact = await this.prisma.booking.findFirst({
+        where: { contactRequestId: dto.contactRequestId },
+        select: { id: true },
+      });
+      if (existingForContact) {
+        throw new BadRequestException(
+          'This request already has a calendar booking.',
+        );
+      }
     }
 
     const detailsRaw = dto.bookingDetails
@@ -396,10 +418,16 @@ export class BookingsService {
    * Materializes a confirmed calendar booking from a public booking-inquiry contact row.
    * Returns null when required catalog/guest fields are missing (contact stays inbox-only).
    */
+  /** Sends booking confirmation email; safe to call after a transaction commits. */
+  async notifyBookingCreated(booking: BookingWithRelations): Promise<void> {
+    await this.sendBookingCreatedConfirmation(booking);
+  }
+
   async createFromPublicBookingInquiry(
     contactRequestId: string,
     dto: CreateContactDto,
     enriched: SanitizedInquiryDetails,
+    options?: CreateFromPublicBookingInquiryOptions,
   ): Promise<BookingWithRelations | null> {
     const phone = dto.phone?.trim();
     const location = dto.location?.trim();
@@ -466,7 +494,8 @@ export class BookingsService {
 
     const notes = extractClientCommentFromContactMessage(dto.message);
 
-    const created = await this.prisma.booking.create({
+    const db = options?.tx ?? this.prisma;
+    const created = await db.booking.create({
       data: {
         serviceId,
         eventTypeId: eventTypeId ?? null,
@@ -487,7 +516,9 @@ export class BookingsService {
       include: bookingInclude,
     });
 
-    await this.sendBookingCreatedConfirmation(created);
+    if (!options?.skipConfirmationEmail) {
+      await this.sendBookingCreatedConfirmation(created);
+    }
     this.logger.log(
       `Booking ${created.id} created from public inquiry ${contactRequestId}`,
     );
@@ -701,7 +732,7 @@ export class BookingsService {
       );
     }
 
-    return this.prisma.booking.update({
+    const updated = await this.prisma.booking.update({
       where: { id },
       data: {
         ...(dto.serviceId !== undefined ? { serviceId: dto.serviceId } : {}),
@@ -729,12 +760,50 @@ export class BookingsService {
       },
       include: bookingInclude,
     });
+
+    if (
+      dto.status === BookingStatus.CANCELLED &&
+      existing.contactRequestId
+    ) {
+      await this.cancelLinkedContactRequest(existing.contactRequestId);
+    }
+
+    return updated;
   }
 
-  async removeAdmin(id: string) {
-    await this.findOneAdmin(id);
-    await this.prisma.booking.delete({ where: { id } });
+  async removeAdmin(id: string, options?: { purgeContact?: boolean }) {
+    const existing = await this.findOneAdmin(id);
+    const contactRequestId = existing.contactRequestId;
+
+    await this.prisma.$transaction(async (tx) => {
+      if (contactRequestId) {
+        await tx.contactRequest.update({
+          where: { id: contactRequestId },
+          data: {
+            status: ContactRequestStatus.CANCELLED,
+            isRead: true,
+          },
+        });
+      }
+      await tx.booking.delete({ where: { id } });
+      if (options?.purgeContact && contactRequestId) {
+        await tx.contactRequest.delete({ where: { id: contactRequestId } });
+      }
+    });
+
     return { ok: true };
+  }
+
+  private async cancelLinkedContactRequest(
+    contactRequestId: string,
+  ): Promise<void> {
+    await this.prisma.contactRequest.update({
+      where: { id: contactRequestId },
+      data: {
+        status: ContactRequestStatus.CANCELLED,
+        isRead: true,
+      },
+    });
   }
 }
 

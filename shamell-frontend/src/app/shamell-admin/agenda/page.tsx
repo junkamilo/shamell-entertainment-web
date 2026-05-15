@@ -56,36 +56,15 @@ export default function AgendaHubPage() {
     const loadBadge = async () => {
       try {
         const lastSeen = readPeticionesLastSeenAt();
-        const [contactRes, bookingsRes] = await Promise.all([
-          fetch(`${apiBaseUrl}/api/v1/contact`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          fetch(`${apiBaseUrl}/api/v1/bookings/admin`, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-        ]);
-        const contactJson = await contactRes.json().catch(() => []);
-        const bookingsJson = await bookingsRes.json().catch(() => []);
+        const sp = new URLSearchParams({ lane: "bookings" });
+        if (lastSeen > 0) sp.set("since", String(lastSeen));
+        const res = await fetch(`${apiBaseUrl}/api/v1/contact/peticiones/badge?${sp}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = (await res.json().catch(() => ({}))) as { count?: number };
         if (cancelled) return;
-        const contactRows = Array.isArray(contactJson)
-          ? contactJson
-          : Array.isArray((contactJson as { items?: unknown }).items)
-            ? ((contactJson as { items: unknown[] }).items ?? [])
-            : [];
-        const bookingRows = Array.isArray(bookingsJson)
-          ? bookingsJson
-          : Array.isArray((bookingsJson as { items?: unknown }).items)
-            ? ((bookingsJson as { items: unknown[] }).items ?? [])
-            : [];
-        const contactCount = contactRows.filter((r) => {
-          const created = Date.parse(String((r as { createdAt?: string }).createdAt ?? ""));
-          return Number.isFinite(created) && created > lastSeen;
-        }).length;
-        const bookingCount = bookingRows.filter((r) => {
-          const created = Date.parse(String((r as { createdAt?: string }).createdAt ?? ""));
-          return Number.isFinite(created) && created > lastSeen;
-        }).length;
-        setPeticionesBadge(contactCount + bookingCount);
+        const count = typeof json.count === "number" && Number.isFinite(json.count) ? json.count : 0;
+        setPeticionesBadge(count);
       } catch {
         if (!cancelled) setPeticionesBadge(0);
       }

@@ -4,7 +4,9 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
-const FALLBACK_PHONE = "573013183474";
+/** E.164 digits for wa.me (US +1 239 452-1062). Override with NEXT_PUBLIC_WHATSAPP_PHONE. */
+const FALLBACK_PHONE = "12394521062";
+const FALLBACK_PHONE_DISPLAY = "+1 (239) 452-1062";
 
 function normalizePhoneDigits(raw: string | undefined): string {
   const trimmed = raw?.trim() ?? FALLBACK_PHONE;
@@ -40,6 +42,8 @@ export default function WhatsAppFloatingButton() {
   const pathname = usePathname() ?? "/";
   const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/shamell-admin");
   const phoneDigits = normalizePhoneDigits(process.env.NEXT_PUBLIC_WHATSAPP_PHONE);
+  const phoneDisplay =
+    process.env.NEXT_PUBLIC_WHATSAPP_PHONE_DISPLAY?.trim() || FALLBACK_PHONE_DISPLAY;
   const defaultMessage = process.env.NEXT_PUBLIC_WHATSAPP_MESSAGE?.trim() ?? "";
 
   const [isOpen, setIsOpen] = useState(false);
@@ -77,7 +81,10 @@ export default function WhatsAppFloatingButton() {
                 <p id="wa-chat-title" className="truncate font-sans text-[15px] font-semibold text-white">
                   WhatsApp
                 </p>
-                <p className="truncate font-sans text-xs text-white/85">Tap send to open WhatsApp with your message</p>
+                <p className="truncate font-sans text-xs font-medium text-white/95">{phoneDisplay}</p>
+                <p className="truncate font-sans text-[11px] text-white/75">
+                  Tap send to open WhatsApp with your message
+                </p>
               </div>
             </div>
             <button
