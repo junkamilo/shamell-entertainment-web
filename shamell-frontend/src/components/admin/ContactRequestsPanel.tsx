@@ -245,25 +245,27 @@ function RequestCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <span className="font-brand text-sm tracking-wide text-gold">
+            <span className="font-brand text-base tracking-wide text-gold sm:text-lg">
               {contact?.fullName || booking?.guestFullName || booking?.user?.fullName || "Client"}
             </span>
             {isReserved ? (
-              <span className="rounded border border-emerald-400/45 px-1.5 py-0.5 font-brand text-[9px] tracking-widest text-emerald-200">
+              <span className="rounded border border-emerald-400/45 px-2 py-0.5 font-brand text-[10px] tracking-widest text-emerald-200 sm:text-xs">
                 RESERVED
               </span>
             ) : isCancelled ? (
-              <span className="rounded border border-red-400/45 px-1.5 py-0.5 font-brand text-[9px] tracking-widest text-red-200">
+              <span className="rounded border border-red-400/45 px-2 py-0.5 font-brand text-[10px] tracking-widest text-red-200 sm:text-xs">
                 CANCELED
               </span>
             ) : (
-              <span className="rounded border border-gold/40 px-1.5 py-0.5 font-brand text-[9px] tracking-widest text-gold">
+              <span className="rounded border border-gold/40 px-2 py-0.5 font-brand text-[10px] tracking-widest text-gold sm:text-xs">
                 NEW
               </span>
             )}
           </div>
-          <p className="truncate text-xs text-foreground/55">{contact?.email || booking?.guestEmail || booking?.user?.email}</p>
-          <p className="mt-1 line-clamp-2 font-body text-xs text-foreground/65">
+          <p className="truncate text-sm text-foreground/60 sm:text-base">
+            {contact?.email || booking?.guestEmail || booking?.user?.email}
+          </p>
+          <p className="mt-1 line-clamp-2 font-body text-sm text-foreground/70 sm:text-base">
             {contact
               ? formatContactSubjectForAdmin(contact.subject)
               : booking?.event?.name ||
@@ -271,7 +273,7 @@ function RequestCard({
                   bookingServiceDisplayLine(booking) ||
                   "Admin booking"}
           </p>
-          <p className="mt-1 font-brand text-[10px] tracking-widest text-foreground/40">
+          <p className="mt-1 font-brand text-xs tracking-widest text-foreground/45 sm:text-sm">
             {formatRequestDate(row.createdAt)}
           </p>
         </div>
@@ -283,18 +285,18 @@ function RequestCard({
       </button>
 
       {expanded ? (
-        <div className="mt-4 min-w-0 space-y-3 border-t border-gold/10 pt-4 pl-0 md:pl-12">
-          <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+        <div className="mt-4 min-w-0 space-y-4 border-t border-gold/10 pt-4 pl-0 md:pl-12">
+          <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-3 sm:text-base">
             {(contact?.phone || booking?.guestPhone) ? (
               <>
-                <dt className="font-brand text-[10px] tracking-widest text-gold/60">PHONE</dt>
-                <dd className="min-w-0 wrap-break-word text-foreground/80">{contact?.phone || booking?.guestPhone}</dd>
+                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">PHONE</dt>
+                <dd className="min-w-0 wrap-break-word font-body text-foreground/85">{contact?.phone || booking?.guestPhone}</dd>
               </>
             ) : null}
             {(contact?.eventDate || booking?.eventDate) ? (
               <>
-                <dt className="font-brand text-[10px] tracking-widest text-gold/60">EVENT DATE</dt>
-                <dd className="min-w-0 wrap-break-word text-foreground/80">
+                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">EVENT DATE</dt>
+                <dd className="min-w-0 wrap-break-word font-body text-foreground/85">
                   {contact
                     ? formatEventCalendarDate(contact.eventDate || "")
                     : formatBookingCalendarDate(booking?.eventDate || "", bookingTz)}
@@ -303,14 +305,14 @@ function RequestCard({
             ) : null}
             {(contact?.location || booking?.location) ? (
               <>
-                <dt className="font-brand text-[10px] tracking-widest text-gold/60">CITY / VENUE</dt>
-                <dd className="min-w-0 wrap-break-word text-foreground/80">{contact?.location || booking?.location}</dd>
+                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">CITY / VENUE</dt>
+                <dd className="min-w-0 wrap-break-word font-body text-foreground/85">{contact?.location || booking?.location}</dd>
               </>
             ) : null}
           </dl>
           {inquiryRows.length > 0 ? <InquiryDetailsReadable rows={inquiryRows} /> : null}
           {showLegacyBookingHint ? (
-            <p className="font-body text-[10px] leading-relaxed text-foreground/45">
+            <p className="font-body text-xs leading-relaxed text-foreground/50 sm:text-sm">
               No structured form snapshot on this booking; showing catalog fields only.
             </p>
           ) : null}
@@ -320,10 +322,10 @@ function RequestCard({
             inquiryRows.length > 0
           ) ? (
             <div className="min-w-0">
-              <p className="mb-1 font-brand text-[10px] tracking-widest text-gold/60">
+              <p className="mb-2 font-brand text-xs tracking-widest text-gold/65 sm:text-sm">
                 {inquiryRows.length > 0 ? "CLIENT COMMENT" : "MESSAGE / NOTES"}
               </p>
-              <p className="shamell-glass-surface shamell-scrollbar max-h-48 min-w-0 overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-lg p-3 font-body text-sm leading-relaxed text-foreground/80">
+              <p className="shamell-glass-surface shamell-scrollbar max-h-56 min-w-0 overflow-y-auto whitespace-pre-wrap wrap-break-word rounded-lg p-4 font-body text-base leading-relaxed text-foreground/85 sm:max-h-64 sm:p-5 sm:text-lg sm:leading-relaxed">
                 {clientComment}
               </p>
             </div>
@@ -343,7 +345,7 @@ function RequestCard({
                   onReserveFromContact(contactRow.contact);
                 }}
                 className={cn(
-                  "inline-flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2.5 font-brand text-[10px] tracking-widest transition disabled:opacity-50 sm:w-auto sm:py-2",
+                  "inline-flex w-full items-center justify-center gap-2 rounded-md border px-3 py-3 font-brand text-xs tracking-widest transition disabled:opacity-50 sm:w-auto sm:py-2.5 sm:text-sm",
                   contactRow.state === "RESERVED"
                     ? "border-emerald-400/45 text-emerald-200"
                     : "border-gold/35 text-gold hover:bg-gold/10",
@@ -355,7 +357,7 @@ function RequestCard({
             ) : null}
             <Link
               href={manualAgendarHref}
-              className="inline-flex w-full items-center justify-center rounded-md border border-gold/20 px-3 py-2.5 text-center font-brand text-[10px] tracking-widest text-foreground/65 transition hover:border-gold/35 hover:text-gold sm:w-auto sm:py-2"
+              className="inline-flex w-full items-center justify-center rounded-md border border-gold/20 px-3 py-3 text-center font-brand text-xs tracking-widest text-foreground/70 transition hover:border-gold/35 hover:text-gold sm:w-auto sm:py-2.5 sm:text-sm"
             >
               Edit
             </Link>
@@ -367,9 +369,9 @@ function RequestCard({
                 if (contact) onCancel();
                 else if (booking) onCancelBooking(booking);
               }}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-red-300/35 px-3 py-2.5 font-brand text-[10px] tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50 sm:w-auto sm:py-2"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-red-300/35 px-3 py-3 font-brand text-xs tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50 sm:w-auto sm:py-2.5 sm:text-sm"
             >
-              <XCircle className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <XCircle className="h-4 w-4" strokeWidth={1.5} />
               Cancel
             </button>
             <button
@@ -380,14 +382,14 @@ function RequestCard({
                 if (contact) onRemove();
                 else if (booking) onRemoveBooking(booking);
               }}
-              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-red-400/35 px-3 py-2.5 font-brand text-[10px] tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50 sm:w-auto sm:py-2"
+              className="inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-red-400/35 px-3 py-3 font-brand text-xs tracking-widest text-red-200/90 transition hover:bg-red-500/10 disabled:opacity-50 sm:w-auto sm:py-2.5 sm:text-sm"
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
               Delete
             </button>
           </div>
           {!(contact && contactIsConciergeInquiry(contact)) ? (
-            <p className="wrap-break-word font-body text-[10px] leading-relaxed text-foreground/40">
+            <p className="wrap-break-word font-body text-xs leading-relaxed text-foreground/50 sm:text-sm">
               {contact && contactIsBookingInquiry(contact)
                 ? "Booking inquiry from the public form: use Reserve only if a calendar booking was not created automatically (missing phone or catalog match)."
                 : "Bookings from the public form or Book appear here as reserved (green)."}

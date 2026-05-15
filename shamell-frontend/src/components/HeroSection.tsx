@@ -253,8 +253,8 @@ const HeroSection = () => {
                 SHAMELL
               </h1>
 
-              <p className="shamell-hero-enter shamell-hero-enter--d3 mx-auto mb-10 max-w-md font-elegant text-lg font-medium italic leading-relaxed tracking-wide text-gold-light/95 sm:mb-12 sm:text-xl md:max-w-lg md:text-xl">
-                Exclusive Performance Artistry
+              <p className="shamell-hero-enter shamell-hero-enter--d3 mx-auto mb-10 max-w-lg font-elegant text-xl font-medium italic leading-relaxed tracking-wide text-gold-light/95 sm:mb-12 sm:max-w-xl sm:text-2xl sm:leading-relaxed md:max-w-2xl md:text-3xl md:leading-snug lg:text-4xl">
+                Exclusive Belly Dance Performance Artistry
               </p>
 
               <div className="shamell-hero-enter shamell-hero-enter--d4 mx-auto w-full max-w-md md:max-w-xl">

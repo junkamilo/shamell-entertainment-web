@@ -107,10 +107,10 @@ const ServicesSection = () => {
           <div className="h-24 w-[min(20rem,88vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(120,90,160,0.12),transparent_70%)] blur-3xl opacity-80" />
         </div>
         <RevealOnView className="relative" delay={40}>
-          <h2 className="mb-3 font-brand text-base font-semibold tracking-[0.26em] text-gold md:text-lg md:tracking-[0.28em]">
+          <h2 className="mb-4 font-brand text-2xl font-semibold tracking-[0.14em] text-gold md:mb-5 md:text-4xl md:tracking-[0.16em]">
             TYPES OF EVENTS
           </h2>
-          <p className="mx-auto mb-10 max-w-2xl text-center font-body text-base font-medium leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
+          <p className="mx-auto mb-10 max-w-3xl text-center font-body text-lg font-medium leading-relaxed text-foreground/88 sm:text-xl sm:leading-relaxed md:text-2xl md:leading-[1.65] md:text-foreground/90">
             Browse performance packages by event type—each card outlines what is included, how to inquire,
             and the visual tone you can expect for your stage or venue.
           </p>

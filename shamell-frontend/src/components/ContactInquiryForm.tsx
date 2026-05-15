@@ -1400,11 +1400,13 @@ export default function ContactInquiryForm({
                           <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">
                             {line.eventTypeName}
                           </span>
-                          <p className="mt-1 font-body text-sm text-foreground/65">
-                            {priceLabel ? `Guide from ${priceLabel}` : "Typical investment on request"}
-                          </p>
+                          {priceLabel ? (
+                            <p className="mt-1 font-body text-sm text-foreground/65 sm:text-base">
+                              Guide from {priceLabel}
+                            </p>
+                          ) : null}
                           {line.description.trim() ? (
-                            <p className="mt-1 line-clamp-2 font-body text-sm text-foreground/55">
+                            <p className="mt-2 line-clamp-3 font-body text-base leading-relaxed text-foreground/78 sm:text-lg sm:leading-relaxed">
                               {lineDescriptionPreview(line.description, 140)}
                             </p>
                           ) : null}
@@ -1571,9 +1573,11 @@ export default function ContactInquiryForm({
                               <span className="font-brand text-base tracking-[0.14em] text-gold sm:text-lg md:text-xl">
                                 {row.title}
                               </span>
-                              <p className="mt-1 font-body text-sm text-foreground/65">
-                                {priceLabel ? `Guide from ${priceLabel}` : "Typical investment on request"}
-                              </p>
+                              {priceLabel ? (
+                                <p className="mt-1 font-body text-sm text-foreground/65 sm:text-base">
+                                  Guide from {priceLabel}
+                                </p>
+                              ) : null}
                             </div>
                           </div>
                         </label>
@@ -1678,20 +1682,9 @@ export default function ContactInquiryForm({
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
-                  {logisticsUsesBespokeDeadlineRule ? "Key date (if any)" : "Event date"}{" "}
-                  {isGalaOrVip(data.inquiryCode) ? (
-                    <span className="text-red-300">*</span>
-                  ) : (
-                    <span className="font-body text-sm normal-case text-foreground/45 sm:text-base">
-                      (optional)
-                    </span>
-                  )}
+                  {logisticsUsesBespokeDeadlineRule ? "Key date (if any)" : "Event date"}
+                  {isGalaOrVip(data.inquiryCode) ? <span className="text-red-300"> *</span> : null}
                 </span>
-                {logisticsUsesBespokeDeadlineRule ? (
-                  <p className="mt-1 font-body text-sm text-foreground/55 sm:text-base">
-                    Optional if you provide a deadline note below.
-                  </p>
-                ) : null}
                 <button
                   type="button"
                   onClick={() => setDatePickerOpen(true)}
@@ -1714,20 +1707,16 @@ export default function ContactInquiryForm({
                 min={0}
                 value={data.guestCount}
                 onChange={(v) => update("guestCount", v)}
-                hint="Optional · whole number"
                 inputMode="numeric"
                 inputClassName="rounded-xl py-3.5 text-base sm:py-4 sm:text-lg"
                 labelClassName="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]"
-                hintClassName="mt-1 font-body text-sm text-foreground/55 sm:text-base"
               />
             </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
-                  Performance start{" "}
-                  <span className="font-body text-sm normal-case text-foreground/45 sm:text-base">(optional)</span>
+                  Performance start
                 </span>
-                <p className="mt-1 font-body text-sm text-foreground/55 sm:text-base">12-hour US format</p>
                 <button
                   type="button"
                   onClick={() => setTimePickerWhich("start")}
@@ -1745,10 +1734,8 @@ export default function ContactInquiryForm({
               </div>
               <div>
                 <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
-                  Performance end{" "}
-                  <span className="font-body text-sm normal-case text-foreground/45 sm:text-base">(optional)</span>
+                  Performance end
                 </span>
-                <p className="mt-1 font-body text-sm text-foreground/55 sm:text-base">Must be after start time</p>
                 <button
                   type="button"
                   onClick={() => setTimePickerWhich("end")}
@@ -1770,15 +1757,12 @@ export default function ContactInquiryForm({
               name="location"
               value={data.location}
               onChange={(v) => update("location", v)}
-              hint="Optional — helps us quote travel and logistics."
               inputClassName="rounded-xl py-3.5 text-base sm:py-4 sm:text-lg"
               labelClassName="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]"
-              hintClassName="mt-1 font-body text-sm text-foreground/55 sm:text-base"
             />
             <label className="block">
               <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
-                Event address{" "}
-                <span className="font-body text-sm normal-case text-foreground/45 sm:text-base">(optional)</span>
+                Event address
               </span>
               <textarea
                 name="eventAddress"
@@ -1789,8 +1773,8 @@ export default function ContactInquiryForm({
                 placeholder="Street, suite, venue name…"
                 className="mt-2 min-h-[88px] w-full resize-y rounded-xl border border-gold/40 bg-black/30 px-4 py-3.5 font-body text-base text-foreground outline-none placeholder:text-foreground/45 focus:border-gold sm:min-h-[96px] sm:px-5 sm:py-4 sm:text-lg"
               />
-              <p className="mt-1.5 font-body text-sm text-foreground/55 sm:text-base">
-                {data.eventAddress.length}/400 — street or venue address (city can go above)
+              <p className="mt-1.5 text-end font-body text-sm text-foreground/45 sm:text-base">
+                {data.eventAddress.length}/400
               </p>
             </label>
             {logisticsUsesBespokeDeadlineRule ? (
@@ -2260,11 +2244,8 @@ function Field({
         <span
           className={labelClassName ?? "font-brand text-gold text-sm tracking-[0.14em]"}
         >
-          {label}{" "}
-          {required ? <span className="text-red-300">*</span> : null}
-          {!required && !hint ? (
-            <span className="text-foreground/40 font-body normal-case">(optional)</span>
-          ) : null}
+          {label}
+          {required ? <span className="text-red-300"> *</span> : null}
         </span>
         <input
           id={name}
