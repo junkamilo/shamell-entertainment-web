@@ -190,42 +190,47 @@ export class ContactService {
         return duplicate;
       }
 
+      const preparedBooking =
+        await this.bookings.preparePublicBookingInquiry(dto, enriched);
+
       let bookingForNotify: Awaited<
-        ReturnType<BookingsService['createFromPublicBookingInquiry']>
-      > = null;
+        ReturnType<BookingsService['insertPublicBookingInquiry']>
+      > | null = null;
 
-      const materialized = await this.prisma.$transaction(async (tx) => {
-        const created = await tx.contactRequest.create({
-          data: {
-            ...rest,
-            message: composedMessage,
-            subject: resolvedSubject,
-            status: ContactRequestStatus.PENDING,
-            eventDate: new Date(eventDate),
-            inquiryDetails: enriched as unknown as Prisma.InputJsonValue,
-          },
-        });
+      const materialized = await this.prisma.$transaction(
+        async (tx) => {
+          const created = await tx.contactRequest.create({
+            data: {
+              ...rest,
+              message: composedMessage,
+              subject: resolvedSubject,
+              status: ContactRequestStatus.PENDING,
+              eventDate: new Date(eventDate),
+              inquiryDetails: enriched as unknown as Prisma.InputJsonValue,
+            },
+          });
 
-        const booking = await this.bookings.createFromPublicBookingInquiry(
-          created.id,
-          dto,
-          enriched,
-          { tx, skipConfirmationEmail: true },
-        );
+          if (!preparedBooking) {
+            return created;
+          }
 
-        if (!booking) {
-          return created;
-        }
+          const booking = await this.bookings.insertPublicBookingInquiry(
+            created.id,
+            preparedBooking,
+            { tx, skipConfirmationEmail: true },
+          );
 
-        bookingForNotify = booking;
-        return tx.contactRequest.update({
-          where: { id: created.id },
-          data: {
-            status: ContactRequestStatus.RESERVED,
-            isRead: true,
-          },
-        });
-      });
+          bookingForNotify = booking;
+          return tx.contactRequest.update({
+            where: { id: created.id },
+            data: {
+              status: ContactRequestStatus.RESERVED,
+              isRead: true,
+            },
+          });
+        },
+        { maxWait: 10_000, timeout: 15_000 },
+      );
 
       await this.sendBookingInquiryAckEmail(dto, guideForAck);
       if (bookingForNotify) {
