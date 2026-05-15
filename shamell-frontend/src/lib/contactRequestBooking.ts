@@ -26,6 +26,47 @@ function trimUuid(v: unknown): string | undefined {
   return UUID_RE.test(t) ? t : undefined;
 }
 
+/** Valid service UUIDs from `inquiryDetails.serviceIds` (order preserved, deduped). */
+export function parseInquiryServiceIds(inquiryDetails: unknown): string[] {
+  if (!inquiryDetails || typeof inquiryDetails !== "object" || Array.isArray(inquiryDetails)) {
+    return [];
+  }
+  const raw = (inquiryDetails as Record<string, unknown>).serviceIds;
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    const id = trimUuid(item);
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
+}
+
+/**
+ * Primary service for admin booking: client's first `serviceIds` entry when present,
+ * otherwise catalog/code resolution (matches Agenda → Agendar and backend validation).
+ */
+function resolvePrimaryServiceIdForContactRequest(
+  row: ContactRequest,
+  serviceByInquiryCode: Map<string, string>,
+  eventTypeContactCodeById?: Map<string, string>,
+  inquiryCodeByCatalogLineId?: Map<string, string>,
+  fallbackServiceId?: string,
+): string | null {
+  const fromInquiry = parseInquiryServiceIds(row.inquiryDetails);
+  if (fromInquiry.length > 0) return fromInquiry[0];
+  return resolveServiceIdForContactRequest(
+    row,
+    serviceByInquiryCode,
+    eventTypeContactCodeById,
+    inquiryCodeByCatalogLineId,
+    fallbackServiceId,
+  );
+}
+
 function safeInquiryTime(inquiryDetails: unknown, key: "eventTimeStart" | "eventTimeEnd"): string {
   if (!inquiryDetails || typeof inquiryDetails !== "object") return "";
   const v = (inquiryDetails as Record<string, unknown>)[key];
@@ -111,7 +152,8 @@ export function buildAdminBookingPayloadFromContactRequest(
   inquiryCodeByCatalogLineId?: Map<string, string>,
   fallbackServiceId?: string,
 ): ContactRequestBookingBuild {
-  const serviceId = resolveServiceIdForContactRequest(
+  const inquiryServiceIds = parseInquiryServiceIds(row.inquiryDetails);
+  const serviceId = resolvePrimaryServiceIdForContactRequest(
     row,
     serviceByInquiryCode,
     eventTypeContactCodeById,
@@ -181,6 +223,9 @@ export function buildAdminBookingPayloadFromContactRequest(
   const bookingDetails: Record<string, unknown> = { ...details };
   bookingDetails.eventTimeStart = start;
   bookingDetails.eventTimeEnd = end;
+  if (inquiryServiceIds.length > 0) {
+    bookingDetails.serviceIds = inquiryServiceIds;
+  }
 
   const payload: CreateAdminBookingPayload = {
     serviceId,
@@ -230,7 +275,11 @@ export function buildAgendarPrefillHref(row: ContactRequest, catalog?: AgendarPr
       ? (row.inquiryDetails as Record<string, unknown>)
       : null;
 
-  if (catalog?.serviceByInquiryCode.size) {
+  const inquiryServiceIds = parseInquiryServiceIds(row.inquiryDetails);
+  if (inquiryServiceIds.length > 0) {
+    sp.set("serviceId", inquiryServiceIds[0]);
+    sp.set("serviceIds", inquiryServiceIds.join(","));
+  } else if (catalog?.serviceByInquiryCode.size) {
     const sid = resolveServiceIdForContactRequest(
       row,
       catalog.serviceByInquiryCode,
