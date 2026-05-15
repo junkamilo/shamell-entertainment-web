@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailParams, MailerSend, Recipient, Sender } from 'mailersend';
 import nodemailer from 'nodemailer';
+import type SMTPTransport from 'nodemailer/lib/smtp-transport';
+
+/** SMTP options plus Node connect `family` (IPv4) — not in @types/nodemailer but supported at runtime. */
+type SmtpTransportOptions = SMTPTransport.Options & { family?: 4 | 6 };
 
 export type TransactionalMailPayload = {
   to: string;
@@ -160,12 +164,15 @@ export class MailService {
     }
 
     try {
-      const transporter = nodemailer.createTransport({
+      const smtpOptions: SmtpTransportOptions = {
         host,
         port,
         secure,
         auth: { user, pass },
-      });
+        // Force IPv4 (Render often fails ENETUNREACH on Gmail SMTP over IPv6).
+        family: 4,
+      };
+      const transporter = nodemailer.createTransport(smtpOptions);
 
       await transporter.sendMail({
         from: `"${fromName.replace(/"/g, '')}" <${fromAddress}>`,
