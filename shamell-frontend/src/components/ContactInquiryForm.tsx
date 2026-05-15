@@ -1091,8 +1091,11 @@ export default function ContactInquiryForm({
     setStepError(null);
   };
 
+  const submitInFlightRef = useRef(false);
+
   const onSubmit = async (ev: FormEvent) => {
     ev.preventDefault();
+    if (submitInFlightRef.current) return;
     const errContact = validatePhase("contact", data, contactLines, validationOpts);
     const errExp = validatePhase("expectations", data, contactLines, validationOpts);
     const errLog =
@@ -1102,6 +1105,7 @@ export default function ContactInquiryForm({
       return;
     }
     setApiError(null);
+    submitInFlightRef.current = true;
     setSubmitFeedbackPhase("sending");
     setIsSubmitting(true);
     try {
@@ -1137,6 +1141,7 @@ export default function ContactInquiryForm({
       setApiError("Cannot reach the server. Check that the API is running.");
       setSubmitFeedbackPhase("idle");
     } finally {
+      submitInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };

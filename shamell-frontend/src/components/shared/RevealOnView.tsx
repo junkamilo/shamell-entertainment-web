@@ -1,7 +1,8 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
+import { motion, useInView } from "motion/react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
@@ -24,10 +25,21 @@ export default function RevealOnView({
   amount = 0.22,
   style,
 }: RevealOnViewProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [bfcacheKey, setBfcacheKey] = useState(0);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const useLiteVariants = isMobile;
   const effectiveDuration = isMobile ? Math.min(duration, 440) : duration;
+  const isInView = useInView(ref, { once: true, amount });
+
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setBfcacheKey((k) => k + 1);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   if (prefersReducedMotion) {
     return (
@@ -49,11 +61,12 @@ export default function RevealOnView({
 
   return (
     <motion.div
+      key={bfcacheKey}
+      ref={ref}
       className={cn(className)}
       style={style}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount }}
+      animate={isInView ? "visible" : "hidden"}
       variants={variants}
       transition={{
         delay: delay / 1000,

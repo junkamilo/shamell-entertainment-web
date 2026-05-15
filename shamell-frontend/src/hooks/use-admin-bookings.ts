@@ -22,6 +22,7 @@ export type AdminBookingRow = {
   guestFullName?: string | null;
   guestEmail?: string | null;
   guestPhone?: string | null;
+  guestCount?: number | null;
   user?: { fullName: string; email: string } | null;
   service?: { id: string; serviceType?: { name: string } };
   eventType?: { id?: string; name: string } | null;

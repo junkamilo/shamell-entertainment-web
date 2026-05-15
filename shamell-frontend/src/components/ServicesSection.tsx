@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { EventCatalogCard, type EventCatalogItem } from "@/components/catalog/EventCatalogCard";
 import RevealOnView from "@/components/shared/RevealOnView";
-import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
+import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 
 type EventsApiItem = {
@@ -130,11 +130,11 @@ const ServicesSection = () => {
           </p>
         ) : null}
 
-        <RevealStaggerGrid className="grid grid-cols-1 gap-10 lg:grid-cols-3 lg:gap-10" amount={0.18}>
+        <CatalogCardCarousel ariaLabel="Types of events">
           {services.map((service, index) => (
             <EventCatalogCard key={service.id} service={service} index={index} />
           ))}
-        </RevealStaggerGrid>
+        </CatalogCardCarousel>
       </div>
     </section>
   );

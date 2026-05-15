@@ -16,5 +16,6 @@ import { BookingsService } from './bookings.service';
   ],
   controllers: [BookingsController],
   providers: [BookingsService, AdminJwtGuard],
+  exports: [BookingsService],
 })
 export class BookingsModule {}

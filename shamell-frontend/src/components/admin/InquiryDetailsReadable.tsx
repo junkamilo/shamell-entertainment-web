@@ -130,6 +130,10 @@ const KNOWN_KEYS = new Set([
   "sourceCatalogKind",
   "sourceCatalogId",
   "sourceCatalogTitle",
+  "serviceIds",
+  "serviceLabels",
+  "guideInvestmentTotalUsd",
+  "guideInvestmentIsPartial",
 ]);
 
 /**
@@ -233,6 +237,24 @@ export function buildInquiryDetailRows(
   const addons = stringArrayField(d.experienceAddons);
   if (addons.length) {
     push("Experience add-ons", addons.map(labelExperienceAddon).join(" · "));
+  }
+
+  const serviceLabels = stringArrayField(d.serviceLabels);
+  if (serviceLabels.length) {
+    push("Services selected", serviceLabels.join(" · "));
+  } else if (!admin) {
+    const serviceIds = stringArrayField(d.serviceIds);
+    if (serviceIds.length) push("Service ids", serviceIds.join(", "));
+  }
+
+  if (d.guideInvestmentTotalUsd !== undefined && d.guideInvestmentTotalUsd !== null) {
+    const n = Number(d.guideInvestmentTotalUsd);
+    if (Number.isFinite(n) && n >= 0) {
+      push("Guide investment (USD)", `$${Math.round(n).toLocaleString("en-US")}`);
+    }
+  }
+  if (d.guideInvestmentIsPartial === true) {
+    push("Guide estimate", "Partial (catalog incomplete)");
   }
 
   const start = typeof d.eventTimeStart === "string" ? d.eventTimeStart.trim() : "";

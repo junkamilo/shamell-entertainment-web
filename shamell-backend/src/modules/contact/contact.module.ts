@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AvailabilityModule } from '../availability/availability.module';
+import { BookingsModule } from '../bookings/bookings.module';
 import { MailModule } from '../mail/mail.module';
 import { ContactController } from './contact.controller';
 import { ContactService } from './contact.service';
@@ -10,6 +11,7 @@ import { AdminJwtGuard } from './guards/admin-jwt.guard';
 @Module({
   imports: [
     AvailabilityModule,
+    BookingsModule,
     MailModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'change-me-in-production',

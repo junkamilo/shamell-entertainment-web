@@ -18,6 +18,11 @@ import {
   type SanitizedInquiryDetails,
 } from '../contact/contact-inquiry-details';
 import type { AdminBookingQueryDto } from './dto/admin-booking-query.dto';
+import type { CreateContactDto } from '../contact/dto/create-contact.dto';
+import {
+  bookingDetailsForPublicInquiry,
+  resolvePrimaryServiceIdForInquiry,
+} from '../contact/contact-inquiry-booking';
 import type { CreateAdminBookingDto } from './dto/create-admin-booking.dto';
 import type { UpdateAdminBookingDto } from './dto/update-admin-booking.dto';
 import {
@@ -388,6 +393,108 @@ export class BookingsService {
   }
 
   /**
+   * Materializes a confirmed calendar booking from a public booking-inquiry contact row.
+   * Returns null when required catalog/guest fields are missing (contact stays inbox-only).
+   */
+  async createFromPublicBookingInquiry(
+    contactRequestId: string,
+    dto: CreateContactDto,
+    enriched: SanitizedInquiryDetails,
+  ): Promise<BookingWithRelations | null> {
+    const phone = dto.phone?.trim();
+    const location = dto.location?.trim();
+    const guestFullName = dto.fullName.trim();
+    const guestEmail = dto.email.trim().toLowerCase();
+    if (!phone || !location || !dto.eventDate?.trim()) {
+      this.logger.warn(
+        `Public inquiry ${contactRequestId}: booking skipped (phone, location, or eventDate missing).`,
+      );
+      return null;
+    }
+
+    const serviceId = await resolvePrimaryServiceIdForInquiry(
+      this.prisma,
+      enriched,
+      dto.serviceType,
+    );
+    if (!serviceId) {
+      this.logger.warn(
+        `Public inquiry ${contactRequestId}: booking skipped (no catalog service resolved).`,
+      );
+      return null;
+    }
+
+    const detailsAligned = bookingDetailsForPublicInquiry(enriched, serviceId);
+    this.validateBookingTimeRange(detailsAligned);
+
+    const tz = this.availability.bookingTimeZone();
+    let minuteOfDay = 12 * 60;
+    if (
+      detailsAligned.eventTimeStart &&
+      /^\d{2}:\d{2}$/.test(detailsAligned.eventTimeStart.trim())
+    ) {
+      minuteOfDay = parseHHMM(
+        detailsAligned.eventTimeStart.trim(),
+        'eventTimeStart',
+      );
+    }
+    const eventInstant = utcInstantForWallClock(
+      dto.eventDate.trim(),
+      minuteOfDay,
+      tz,
+    );
+    if (Number.isNaN(eventInstant.getTime())) {
+      this.logger.warn(
+        `Public inquiry ${contactRequestId}: booking skipped (invalid event date/time).`,
+      );
+      return null;
+    }
+
+    await this.availability.assertDateTimeAllowed(eventInstant);
+    await this.assertNoDuplicateSlot(eventInstant, detailsAligned);
+
+    const detailsEnriched = await this.enrichBookingDetails(detailsAligned);
+
+    const eventTypeId = trimUuidField(detailsAligned.eventTypeId);
+    const occasionTypeId = trimUuidField(detailsAligned.occasionTypeId);
+    const eventId = trimUuidField(detailsAligned.eventId);
+
+    let guestCount: number | null = null;
+    if (detailsAligned.guestCount !== undefined && detailsAligned.guestCount > 0) {
+      guestCount = detailsAligned.guestCount;
+    }
+
+    const notes = extractClientCommentFromContactMessage(dto.message);
+
+    const created = await this.prisma.booking.create({
+      data: {
+        serviceId,
+        eventTypeId: eventTypeId ?? null,
+        occasionTypeId: occasionTypeId ?? null,
+        eventId: eventId ?? null,
+        eventDate: eventInstant,
+        location,
+        guestCount,
+        notes: notes || null,
+        status: BookingStatus.CONFIRMED,
+        bookingDetails: detailsEnriched as unknown as Prisma.InputJsonValue,
+        source: BookingSource.CLIENT_REGISTERED,
+        contactRequestId,
+        guestFullName,
+        guestEmail,
+        guestPhone: phone,
+      },
+      include: bookingInclude,
+    });
+
+    await this.sendBookingCreatedConfirmation(created);
+    this.logger.log(
+      `Booking ${created.id} created from public inquiry ${contactRequestId}`,
+    );
+    return created;
+  }
+
+  /**
    * Sends guest/client confirmation email (MailerSend). Never throws; logs on failure.
    */
   private async sendBookingCreatedConfirmation(
@@ -629,4 +736,21 @@ export class BookingsService {
     await this.prisma.booking.delete({ where: { id } });
     return { ok: true };
   }
+}
+
+const UUID_FIELD =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function trimUuidField(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const t = value.trim();
+  return UUID_FIELD.test(t) ? t : undefined;
+}
+
+const CONTACT_MESSAGE_SEPARATOR = '\n\n---\n\n';
+
+function extractClientCommentFromContactMessage(message: string): string {
+  const i = message.indexOf(CONTACT_MESSAGE_SEPARATOR);
+  if (i === -1) return message.trim();
+  return message.slice(i + CONTACT_MESSAGE_SEPARATOR.length).trim();
 }

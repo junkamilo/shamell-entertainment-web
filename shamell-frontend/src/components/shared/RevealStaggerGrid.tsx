@@ -1,8 +1,8 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { Children, isValidElement } from "react";
-import { motion } from "motion/react";
+import { Children, isValidElement, useEffect, useRef, useState } from "react";
+import { motion, useInView } from "motion/react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
@@ -36,9 +36,20 @@ export default function RevealStaggerGrid({
   itemClassNames,
   style,
 }: RevealStaggerGridProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [bfcacheKey, setBfcacheKey] = useState(0);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const durationSec = (isMobile ? Math.min(itemDuration, 440) : itemDuration) / 1000;
+  const isInView = useInView(ref, { once: true, amount });
+
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) setBfcacheKey((k) => k + 1);
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, []);
 
   const itemVariants = isMobile
     ? {
@@ -60,12 +71,13 @@ export default function RevealStaggerGrid({
 
   return (
     <motion.div
+      key={bfcacheKey}
+      ref={ref}
       className={cn(className)}
       style={style}
       variants={containerVariants}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount }}
+      animate={isInView ? "visible" : "hidden"}
     >
       {Children.map(children, (child, index) => {
         if (!isValidElement(child)) return child;
