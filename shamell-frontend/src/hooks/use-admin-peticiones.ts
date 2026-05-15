@@ -16,6 +16,8 @@ export type UnifiedPeticionRow =
       id: string;
       createdAt: string;
       state: "PENDING" | "RESERVED" | "CANCELLED";
+      /** True when a calendar booking is already linked to this contact row. */
+      hasLinkedBooking?: boolean;
       contact: ContactRequest;
     }
   | {

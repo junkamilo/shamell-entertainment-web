@@ -332,7 +332,12 @@ function RequestCard({
             {contactRow ? (
               <button
                 type="button"
-                disabled={busy || reserving || contactRow.state !== "PENDING"}
+                disabled={
+                  busy ||
+                  reserving ||
+                  contactRow.state !== "PENDING" ||
+                  Boolean(row.origin === "CONTACT" && row.hasLinkedBooking)
+                }
                 onClick={(e) => {
                   e.stopPropagation();
                   onReserveFromContact(contactRow.contact);
@@ -435,7 +440,9 @@ export default function ContactRequestsPanel({
     id: string;
     title: string;
     description: string;
+    linkedContactId?: string;
   }>(null);
+  const [purgeLinkedInquiryOnDelete, setPurgeLinkedInquiryOnDelete] = useState(true);
   const [serviceByInquiryCode, setServiceByInquiryCode] = useState<Map<string, string>>(new Map());
   const [eventTypeContactCodeById, setEventTypeContactCodeById] = useState<Map<string, string>>(new Map());
   const [inquiryCodeByCatalogLineId, setInquiryCodeByCatalogLineId] = useState<Map<string, string>>(new Map());
@@ -594,9 +601,12 @@ export default function ContactRequestsPanel({
         reloadBookings();
         reloadPeticiones();
       } catch (e) {
+        const message = e instanceof Error ? e.message : "Try again or open Book to enter it manually.";
         toast({
-          title: "Could not create booking",
-          description: e instanceof Error ? e.message : "Try again or open Book to enter it manually.",
+          title: message.includes("already has a calendar booking")
+            ? "Booking already exists"
+            : "Could not create booking",
+          description: message,
           variant: "destructive",
         });
       } finally {
@@ -715,21 +725,32 @@ export default function ContactRequestsPanel({
         });
         return;
       }
+      const unified = unifiedRows.find(
+        (r) => r.origin === "BOOKING_ADMIN" && r.booking.id === row.id,
+      );
+      const linkedContactId =
+        unified?.origin === "BOOKING_ADMIN" ? unified.linkedContact?.id : undefined;
+      setPurgeLinkedInquiryOnDelete(Boolean(linkedContactId));
       setConfirmDelete({
         kind: "BOOKING",
         id: row.id,
+        linkedContactId,
         title: "Delete canceled booking",
-        description: "This will permanently delete the canceled booking.",
+        description: linkedContactId
+          ? "This will permanently delete the canceled booking. You can also remove the linked inquiry so it does not reappear in the inbox."
+          : "This will permanently delete the canceled booking.",
       });
     },
-    [],
+    [unifiedRows],
   );
 
   const confirmRemoveBooking = useCallback(
-    async (id: string) => {
+    async (id: string, linkedContactId?: string, purgeLinked?: boolean) => {
       setBusyId(id);
       try {
-        await removeBooking(id);
+        await removeBooking(id, {
+          purgeContact: Boolean(purgeLinked && linkedContactId),
+        });
         setExpandedId((cur) => (cur === id ? null : cur));
         toast({ title: "Booking deleted" });
         reloadBookings();
@@ -876,6 +897,20 @@ export default function ContactRequestsPanel({
       >
         <div className="space-y-4">
           <p className="text-sm text-foreground/75">{confirmDelete?.description}</p>
+          {confirmDelete?.kind === "BOOKING" && confirmDelete.linkedContactId ? (
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-gold/15 bg-black/20 px-3 py-2.5">
+              <input
+                type="checkbox"
+                checked={purgeLinkedInquiryOnDelete}
+                onChange={(e) => setPurgeLinkedInquiryOnDelete(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-gold"
+              />
+              <span className="font-body text-sm leading-snug text-foreground/80">
+                Also delete the linked inquiry (recommended — prevents it from showing again in the
+                inbox)
+              </span>
+            </label>
+          ) : null}
           <p className="text-xs text-foreground/50">You cannot undo this action.</p>
           <div className="flex flex-wrap items-center justify-end gap-2 pt-2">
             <button
@@ -894,7 +929,11 @@ export default function ContactRequestsPanel({
                 if (payload.kind === "CONTACT") {
                   await confirmRemoveContact(payload.id);
                 } else {
-                  await confirmRemoveBooking(payload.id);
+                  await confirmRemoveBooking(
+                    payload.id,
+                    payload.linkedContactId,
+                    purgeLinkedInquiryOnDelete,
+                  );
                 }
               }}
               className="rounded-md border border-red-400/45 px-4 py-2 font-brand text-[10px] tracking-[0.14em] text-red-200 hover:bg-red-500/10"

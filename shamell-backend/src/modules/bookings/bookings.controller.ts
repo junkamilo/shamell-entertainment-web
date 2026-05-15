@@ -74,7 +74,12 @@ export class BookingsController {
   @UseGuards(AdminJwtGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete booking (admin)' })
-  removeAdmin(@Param('id', new ParseUUIDPipe()) id: string) {
-    return this.bookingsService.removeAdmin(id);
+  removeAdmin(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Query('purgeContact') purgeContact?: string,
+  ) {
+    return this.bookingsService.removeAdmin(id, {
+      purgeContact: purgeContact === 'true' || purgeContact === '1',
+    });
   }
 }

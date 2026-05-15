@@ -6,7 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ContactRequestStatus, Prisma } from '@prisma/client';
+import {
+  BookingStatus,
+  ContactRequest,
+  ContactRequestStatus,
+  Prisma,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
 import { parseHHMM, utcInstantForWallClock } from '../availability/booking-tz';
@@ -40,6 +45,9 @@ import { BookingsService } from '../bookings/bookings.service';
 @Injectable()
 export class ContactService {
   private readonly logger = new Logger(ContactService.name);
+
+  /** Window to treat duplicate public booking inquiries as idempotent. */
+  private static readonly BOOKING_INQUIRY_DEDUPE_MS = 15 * 60 * 1000;
 
   constructor(
     private prisma: PrismaService,
@@ -164,34 +172,68 @@ export class ContactService {
       !!entrySource &&
       (BOOKING_INQUIRY_ENTRY_SOURCES as readonly string[]).includes(entrySource);
 
-    if (isBookingInquiry && eventDate && dto.email?.trim()) {
-      const recentDuplicate = await this.prisma.contactRequest.findFirst({
-        where: {
-          email: dto.email.trim().toLowerCase(),
-          eventDate: new Date(eventDate),
-          createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      if (recentDuplicate) {
-        const linkedBooking = await this.prisma.booking.findFirst({
-          where: { contactRequestId: recentDuplicate.id },
-          select: { id: true },
-        });
-        if (linkedBooking) {
-          this.logger.log(
-            `Duplicate booking inquiry ignored for ${dto.email} (contact ${recentDuplicate.id}).`,
-          );
-          return recentDuplicate;
-        }
-      }
-    }
-
     const resolvedSubject =
       subject?.trim() ||
       (isBookingInquiry
         ? `Booking inquiry${dto.serviceType ? ` — ${dto.serviceType}` : ''}`
         : `Reservation inquiry${dto.serviceType ? ` — ${dto.serviceType}` : ''}`);
+
+    if (isBookingInquiry && eventDate && dto.email?.trim() && enriched) {
+      const duplicate = await this.findBookingInquiryDuplicate(
+        dto.email.trim(),
+        eventDate.trim(),
+      );
+      if (duplicate) {
+        this.logger.log(
+          `Duplicate booking inquiry ignored for ${dto.email} (contact ${duplicate.id}).`,
+        );
+        return duplicate;
+      }
+
+      let bookingForNotify: Awaited<
+        ReturnType<BookingsService['createFromPublicBookingInquiry']>
+      > = null;
+
+      const materialized = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.contactRequest.create({
+          data: {
+            ...rest,
+            message: composedMessage,
+            subject: resolvedSubject,
+            status: ContactRequestStatus.PENDING,
+            eventDate: new Date(eventDate),
+            inquiryDetails: enriched as unknown as Prisma.InputJsonValue,
+          },
+        });
+
+        const booking = await this.bookings.createFromPublicBookingInquiry(
+          created.id,
+          dto,
+          enriched,
+          { tx, skipConfirmationEmail: true },
+        );
+
+        if (!booking) {
+          return created;
+        }
+
+        bookingForNotify = booking;
+        return tx.contactRequest.update({
+          where: { id: created.id },
+          data: {
+            status: ContactRequestStatus.RESERVED,
+            isRead: true,
+          },
+        });
+      });
+
+      await this.sendBookingInquiryAckEmail(dto, guideForAck);
+      if (bookingForNotify) {
+        await this.bookings.notifyBookingCreated(bookingForNotify);
+      }
+
+      return materialized;
+    }
 
     const created = await this.prisma.contactRequest.create({
       data: {
@@ -213,31 +255,139 @@ export class ContactService {
 
     if (enriched?.entrySource === 'concierge_gate') {
       await this.sendConciergeInquiryAckEmail(dto);
-    } else if (isBookingInquiry && enriched) {
-      await this.sendBookingInquiryAckEmail(dto, guideForAck);
-      try {
-        const booking = await this.bookings.createFromPublicBookingInquiry(
-          created.id,
-          dto,
-          enriched,
-        );
-        if (booking) {
-          return this.prisma.contactRequest.update({
-            where: { id: created.id },
-            data: {
-              status: ContactRequestStatus.RESERVED,
-              isRead: true,
-            },
-          });
-        }
-      } catch (err) {
-        this.logger.error(
-          `Public inquiry ${created.id}: could not materialize booking — ${err instanceof Error ? err.message : String(err)}`,
-        );
-      }
     }
 
     return created;
+  }
+
+  /**
+   * Returns an existing contact row when this public booking inquiry is a duplicate
+   * (same guest/day or recent contact with an active booking).
+   */
+  private async findBookingInquiryDuplicate(
+    email: string,
+    eventDateIso: string,
+  ): Promise<ContactRequest | null> {
+    const emailNorm = email.trim().toLowerCase();
+    const eventDateObj = new Date(eventDateIso);
+    const since = new Date(Date.now() - ContactService.BOOKING_INQUIRY_DEDUPE_MS);
+    const tz = this.availability.bookingTimeZone();
+    const dayStart = utcInstantForWallClock(eventDateIso, 0, tz);
+    const dayEnd = utcInstantForWallClock(eventDateIso, 23 * 60 + 59, tz);
+
+    const activeBooking = await this.prisma.booking.findFirst({
+      where: {
+        guestEmail: emailNorm,
+        status: { not: BookingStatus.CANCELLED },
+        eventDate: { gte: dayStart, lte: dayEnd },
+      },
+      orderBy: { createdAt: 'desc' },
+      select: { contactRequestId: true },
+    });
+    if (activeBooking?.contactRequestId) {
+      const contact = await this.prisma.contactRequest.findUnique({
+        where: { id: activeBooking.contactRequestId },
+      });
+      if (contact) return contact;
+    }
+
+    const recentContact = await this.prisma.contactRequest.findFirst({
+      where: {
+        email: emailNorm,
+        eventDate: eventDateObj,
+        createdAt: { gte: since },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!recentContact) return null;
+
+    const linkedBooking = await this.prisma.booking.findFirst({
+      where: {
+        contactRequestId: recentContact.id,
+        status: { not: BookingStatus.CANCELLED },
+      },
+      select: { id: true },
+    });
+    if (linkedBooking) return recentContact;
+
+    return null;
+  }
+
+  private peticionesSqlFragments() {
+    const isOrphanContact = Prisma.sql`
+      NOT EXISTS (
+        SELECT 1
+        FROM "bookings" b
+        WHERE b."contactRequestId" = cr.id
+      )
+    `;
+    const isShadowedBookingInquiryContact = Prisma.sql`
+      NOT (
+        (cr."inquiryDetails"->>'entrySource') IN ('contact_page', 'home_service_card', 'inquire_section')
+        AND EXISTS (
+          SELECT 1
+          FROM "bookings" b
+          WHERE LOWER(TRIM(b."guestEmail")) = LOWER(TRIM(cr.email))
+            AND cr."eventDate" IS NOT NULL
+            AND DATE(b."eventDate") = DATE(cr."eventDate")
+            AND b."createdAt" BETWEEN cr."createdAt" - INTERVAL '30 minutes'
+              AND cr."createdAt" + INTERVAL '30 minutes'
+        )
+      )
+    `;
+    const isConciergeContact = Prisma.sql`
+      (
+        (cr."inquiryDetails"->>'entrySource') = 'concierge_gate'
+        OR LOWER(COALESCE(cr."subject", '')) LIKE '%concierge inquiry%'
+      )
+    `;
+    return { isOrphanContact, isShadowedBookingInquiryContact, isConciergeContact };
+  }
+
+  async countPeticionesBadge(query: {
+    since?: number;
+    lane?: string;
+  }): Promise<{ count: number }> {
+    const lane = query.lane === 'guidance' ? 'guidance' : 'bookings';
+    const since =
+      query.since != null && Number.isFinite(query.since) && query.since > 0
+        ? new Date(query.since)
+        : null;
+    const { isOrphanContact, isShadowedBookingInquiryContact, isConciergeContact } =
+      this.peticionesSqlFragments();
+    const sinceFilter = since
+      ? Prisma.sql`WHERE unified.created_at > ${since}`
+      : Prisma.empty;
+
+    if (lane === 'guidance') {
+      const rows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+        SELECT COUNT(*)::bigint AS total
+        FROM (
+          SELECT cr."createdAt" AS created_at
+          FROM "contact_requests" cr
+          WHERE ${isOrphanContact}
+            AND ${isConciergeContact}
+        ) unified
+        ${sinceFilter}
+      `);
+      return { count: Number(rows[0]?.total ?? 0n) };
+    }
+
+    const rows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+      SELECT COUNT(*)::bigint AS total
+      FROM (
+        SELECT cr."createdAt" AS created_at
+        FROM "contact_requests" cr
+        WHERE ${isOrphanContact}
+          AND ${isShadowedBookingInquiryContact}
+          AND NOT ${isConciergeContact}
+        UNION ALL
+        SELECT b."createdAt" AS created_at
+        FROM "bookings" b
+      ) unified
+      ${sinceFilter}
+    `);
+    return { count: Number(rows[0]?.total ?? 0n) };
   }
 
   /**
@@ -374,34 +524,8 @@ export class ContactService {
     const skip = (page - 1) * perPage;
     const lane = query.lane === 'guidance' ? 'guidance' : 'bookings';
 
-    const isOrphanContact = Prisma.sql`
-      NOT EXISTS (
-        SELECT 1
-        FROM "bookings" b
-        WHERE b."contactRequestId" = cr.id
-      )
-    `;
-    /** Hides stray inbox rows when a calendar booking exists for the same guest/day (legacy unlinked bookings). */
-    const isShadowedBookingInquiryContact = Prisma.sql`
-      NOT (
-        (cr."inquiryDetails"->>'entrySource') IN ('contact_page', 'home_service_card', 'inquire_section')
-        AND EXISTS (
-          SELECT 1
-          FROM "bookings" b
-          WHERE LOWER(TRIM(b."guestEmail")) = LOWER(TRIM(cr.email))
-            AND cr."eventDate" IS NOT NULL
-            AND DATE(b."eventDate") = DATE(cr."eventDate")
-            AND b."createdAt" BETWEEN cr."createdAt" - INTERVAL '30 minutes'
-              AND cr."createdAt" + INTERVAL '30 minutes'
-        )
-      )
-    `;
-    const isConciergeContact = Prisma.sql`
-      (
-        (cr."inquiryDetails"->>'entrySource') = 'concierge_gate'
-        OR LOWER(COALESCE(cr."subject", '')) LIKE '%concierge inquiry%'
-      )
-    `;
+    const { isOrphanContact, isShadowedBookingInquiryContact, isConciergeContact } =
+      this.peticionesSqlFragments();
 
     if (lane === 'guidance') {
       const guidanceCountRows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
@@ -520,6 +644,7 @@ export class ContactService {
     const [contactRows, bookingRows] = await Promise.all([
       this.prisma.contactRequest.findMany({
         where: { id: { in: contactIds } },
+        include: { _count: { select: { bookings: true } } },
       }),
       this.prisma.booking.findMany({
         where: { id: { in: bookingIds } },
@@ -545,6 +670,9 @@ export class ContactService {
     const contactById = new Map(
       [...contactRows, ...linkedContactRows].map((row) => [row.id, row]),
     );
+    const hasLinkedBookingByContactId = new Map(
+      contactRows.map((row) => [row.id, row._count.bookings > 0]),
+    );
     const bookingById = new Map(bookingRows.map((row) => [row.id, row]));
     const pageItems = feedRows
       .map((row) => {
@@ -556,6 +684,7 @@ export class ContactService {
             id: contact.id,
             createdAt: contact.createdAt,
             state: contact.status,
+            hasLinkedBooking: hasLinkedBookingByContactId.get(contact.id) ?? false,
             contact,
           };
         }

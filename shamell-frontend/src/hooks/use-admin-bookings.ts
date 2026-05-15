@@ -170,8 +170,11 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
   );
 
   const removeBooking = useCallback(
-    async (id: string) => {
-      const res = await fetch(`${apiBase()}/api/v1/bookings/admin/${id}`, {
+    async (id: string, options?: { purgeContact?: boolean }) => {
+      const sp = new URLSearchParams();
+      if (options?.purgeContact) sp.set("purgeContact", "true");
+      const qs = sp.size > 0 ? `?${sp}` : "";
+      const res = await fetch(`${apiBase()}/api/v1/bookings/admin/${id}${qs}`, {
         method: "DELETE",
         headers: authHeaders(),
       });
