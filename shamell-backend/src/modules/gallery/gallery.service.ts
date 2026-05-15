@@ -12,6 +12,10 @@ import { CreateGalleryCategoryDto } from './dto/create-gallery-category.dto';
 import { CreateGalleryPhotoDto } from './dto/create-gallery-photo.dto';
 import { UpdateGalleryCategoryDto } from './dto/update-gallery-category.dto';
 import { UpdateGalleryPhotoDto } from './dto/update-gallery-photo.dto';
+import {
+  isLikelyRasterImageByMagic,
+  tryNormalizeGalleryImage,
+} from './gallery-image-normalize';
 
 type PhotoWithCategory = {
   id: string;
@@ -185,7 +189,8 @@ export class GalleryService {
 
     const createdPhotos: PhotoWithCategory[] = [];
     for (const file of mediaFiles) {
-      const upload = await this.uploadMediaToCloudinary(file);
+      const prepared = await this.prepareMulterFileForCloudinary(file);
+      const upload = await this.uploadMediaToCloudinary(prepared);
       try {
         const created = await this.prisma.galleryPhoto.create({
           data: {
@@ -264,7 +269,8 @@ export class GalleryService {
       mediaType: GalleryMediaType;
     } | null = null;
     if (imageFile) {
-      newUpload = await this.uploadMediaToCloudinary(imageFile);
+      const prepared = await this.prepareMulterFileForCloudinary(imageFile);
+      newUpload = await this.uploadMediaToCloudinary(prepared);
     }
 
     try {
@@ -352,11 +358,58 @@ export class GalleryService {
     if (!mediaFile?.buffer) {
       throw new BadRequestException('Media file is required.');
     }
-    const isImage = mediaFile.mimetype.startsWith('image/');
-    const isVideo = mediaFile.mimetype.startsWith('video/');
-    if (!isImage && !isVideo) {
-      throw new BadRequestException('Only image and video files are allowed.');
+    const mime = (mediaFile.mimetype ?? '').toLowerCase();
+    const isVideo = mime.startsWith('video/');
+    const isImage = mime.startsWith('image/');
+    const isOctet = mime === 'application/octet-stream';
+    if (isVideo || isImage) {
+      return;
     }
+    if (isOctet && isLikelyRasterImageByMagic(mediaFile.buffer)) {
+      return;
+    }
+    throw new BadRequestException(
+      'Only image and video files are allowed. Unrecognized type: try JPEG/PNG/WebP, or ensure the file is not corrupted.',
+    );
+  }
+
+  /**
+   * Normalizes raster images when possible (JPEG for Cloudinary); videos pass through unchanged.
+   */
+  private async prepareMulterFileForCloudinary(file: Express.Multer.File): Promise<{
+    buffer: Buffer;
+    mimetype: string;
+    originalname: string;
+  }> {
+    const mime = (file.mimetype ?? '').toLowerCase();
+    if (mime.startsWith('video/')) {
+      return {
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+        originalname: file.originalname,
+      };
+    }
+    const normalized = await tryNormalizeGalleryImage(file.buffer);
+    if (normalized) {
+      const base = file.originalname.replace(/\.[^/.]+$/, '') || 'upload';
+      return {
+        buffer: normalized,
+        mimetype: 'image/jpeg',
+        originalname: `${base}.jpg`,
+      };
+    }
+    if (mime.startsWith('image/')) {
+      return {
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+        originalname: file.originalname,
+      };
+    }
+    return {
+      buffer: file.buffer,
+      mimetype: 'image/jpeg',
+      originalname: file.originalname,
+    };
   }
 
   private async ensureReferencesAreValid(dto: {
@@ -417,13 +470,18 @@ export class GalleryService {
     }
   }
 
-  private uploadMediaToCloudinary(file: Express.Multer.File): Promise<{
+  private uploadMediaToCloudinary(prepared: {
+    buffer: Buffer;
+    mimetype: string;
+    originalname: string;
+  }): Promise<{
     secureUrl: string;
     publicId: string;
     mediaType: GalleryMediaType;
   }> {
     return new Promise((resolve, reject) => {
-      const isVideo = file.mimetype.startsWith('video/');
+      const mime = (prepared.mimetype ?? '').toLowerCase();
+      const isVideo = mime.startsWith('video/');
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'shamell/gallery',
@@ -431,7 +489,15 @@ export class GalleryService {
         },
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
-            reject(new InternalServerErrorException('Media upload failed.'));
+            const detail =
+              error && typeof (error as { message?: string }).message === 'string'
+                ? (error as { message: string }).message
+                : 'Unknown error';
+            reject(
+              new BadRequestException(
+                `Media upload failed (Cloudinary): ${detail}`,
+              ),
+            );
             return;
           }
           resolve({
@@ -444,7 +510,7 @@ export class GalleryService {
         },
       );
 
-      uploadStream.end(file.buffer);
+      uploadStream.end(prepared.buffer);
     });
   }
 

@@ -11,7 +11,6 @@ const exploreLinks = [
   { label: "Types of events", href: "/#experiences" },
   { label: "About", href: "/#about" },
   { label: "Gallery", href: "/#gallery" },
-  { label: "Blog", href: "/blog" },
 ] as const;
 
 function InstagramGlyph({ className }: { className?: string }) {

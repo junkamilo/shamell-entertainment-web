@@ -17,6 +17,7 @@ import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminModal from "@/components/admin/AdminModal";
 import AdminSearchInput from "@/components/admin/AdminSearchInput";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { GALLERY_CATCHALL_SLUG, GALLERY_UPLOAD_MAX_FILES } from "@/lib/galleryConstants";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -81,7 +82,7 @@ export default function ShamellAdminGalleryPage() {
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [originalCategoryId, setOriginalCategoryId] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const parseErrorMessage = useCallback((data: unknown, fallback: string) => {
     if (typeof data !== "object" || data === null) return fallback;
@@ -160,13 +161,23 @@ export default function ShamellAdminGalleryPage() {
 
   const activeCategories = useMemo(() => categories.filter((c) => c.isActive), [categories]);
 
+  const sortedActiveCategories = useMemo(
+    () =>
+      [...activeCategories].sort((a, b) => {
+        if (a.slug === GALLERY_CATCHALL_SLUG) return -1;
+        if (b.slug === GALLERY_CATCHALL_SLUG) return 1;
+        return a.name.localeCompare(b.name, "es");
+      }),
+    [activeCategories],
+  );
+
   const categoriesForLibrary = useMemo(() => {
     if (listCategoryFilter) {
-      const one = activeCategories.find((c) => c.id === listCategoryFilter);
+      const one = sortedActiveCategories.find((c) => c.id === listCategoryFilter);
       return one ? [one] : [];
     }
-    return [...activeCategories].sort((a, b) => a.name.localeCompare(b.name, "es"));
-  }, [activeCategories, listCategoryFilter]);
+    return sortedActiveCategories;
+  }, [sortedActiveCategories, listCategoryFilter]);
 
   const countByCategory = useMemo(() => {
     const m: Record<string, number> = {};
@@ -196,32 +207,33 @@ export default function ShamellAdminGalleryPage() {
   const resetPhotoForm = useCallback(() => {
     setEditingPhotoId(null);
     setOriginalCategoryId(null);
-    setImageFile(null);
+    setImageFiles([]);
     setSelectedCategoryId((current) => {
       if (current) return current;
-      const first = activeCategories[0]?.id ?? "";
+      const first = sortedActiveCategories[0]?.id ?? "";
       return first;
     });
-  }, [activeCategories]);
+  }, [sortedActiveCategories]);
 
   const openUploadToCategory = (categoryId: string) => {
     setEditingPhotoId(null);
     setOriginalCategoryId(null);
-    setImageFile(null);
+    setImageFiles([]);
     const id =
       categoryId && activeCategories.some((c) => c.id === categoryId)
         ? categoryId
-        : (activeCategories[0]?.id ?? "");
+        : (sortedActiveCategories[0]?.id ?? "");
     setSelectedCategoryId(id);
     setIsPhotoModalOpen(true);
   };
 
   const openPhotoCreate = () => {
-    const preferred =
-      listCategoryFilter && activeCategories.some((c) => c.id === listCategoryFilter)
-        ? listCategoryFilter
-        : (activeCategories[0]?.id ?? "");
-    openUploadToCategory(preferred);
+    if (listCategoryFilter && activeCategories.some((c) => c.id === listCategoryFilter)) {
+      openUploadToCategory(listCategoryFilter);
+      return;
+    }
+    const catchAll = activeCategories.find((c) => c.slug === GALLERY_CATCHALL_SLUG);
+    openUploadToCategory(catchAll?.id ?? sortedActiveCategories[0]?.id ?? "");
   };
 
   const toggleAlbumExpanded = (categoryId: string) => {
@@ -237,17 +249,18 @@ export default function ShamellAdminGalleryPage() {
     setEditingPhotoId(photo.id);
     setSelectedCategoryId(photo.category.id);
     setOriginalCategoryId(photo.category.id);
-    setImageFile(null);
+    setImageFiles([]);
     setIsPhotoModalOpen(true);
   };
 
   const selectedCategoryName = activeCategories.find((c) => c.id === selectedCategoryId)?.name;
+  const selectedCategorySlug = activeCategories.find((c) => c.id === selectedCategoryId)?.slug;
 
   const canSubmitPhoto = useMemo(() => {
     if (!selectedCategoryId) return false;
-    if (!editingPhotoId) return Boolean(imageFile);
-    return Boolean(imageFile) || selectedCategoryId !== (originalCategoryId ?? "");
-  }, [selectedCategoryId, editingPhotoId, imageFile, originalCategoryId]);
+    if (!editingPhotoId) return imageFiles.length > 0;
+    return imageFiles.length > 0 || selectedCategoryId !== (originalCategoryId ?? "");
+  }, [selectedCategoryId, editingPhotoId, imageFiles, originalCategoryId]);
 
   const onSubmitPhoto = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -270,16 +283,25 @@ export default function ShamellAdminGalleryPage() {
       return;
     }
 
-    if (!editingPhotoId && !imageFile) {
+    if (!editingPhotoId && imageFiles.length === 0) {
       toast({
         variant: "destructive",
         title: "File required",
-        description: "Select an image or video to upload.",
+        description: "Select one or more images or videos to upload.",
       });
       return;
     }
 
-    if (editingPhotoId && !imageFile && selectedCategoryId === (originalCategoryId ?? "")) {
+    if (!editingPhotoId && imageFiles.length > GALLERY_UPLOAD_MAX_FILES) {
+      toast({
+        variant: "destructive",
+        title: "Too many files",
+        description: `You can upload at most ${GALLERY_UPLOAD_MAX_FILES} files per batch.`,
+      });
+      return;
+    }
+
+    if (editingPhotoId && imageFiles.length === 0 && selectedCategoryId === (originalCategoryId ?? "")) {
       toast({
         variant: "destructive",
         title: "No changes",
@@ -296,8 +318,12 @@ export default function ShamellAdminGalleryPage() {
       const method = editingPhotoId ? "PATCH" : "POST";
       const body = new FormData();
       body.append("categoryId", selectedCategoryId);
-      if (imageFile) {
-        body.append("media", imageFile);
+      if (editingPhotoId) {
+        if (imageFiles[0]) body.append("media", imageFiles[0]);
+      } else {
+        for (const f of imageFiles) {
+          body.append("media", f);
+        }
       }
 
       const response = await fetch(endpoint, {
@@ -316,11 +342,16 @@ export default function ShamellAdminGalleryPage() {
       }
 
       const catLabel = activeCategories.find((c) => c.id === selectedCategoryId)?.name ?? "the category";
+      const createdCount = Array.isArray((data as { items?: unknown }).items)
+        ? (data as { items: unknown[] }).items.length
+        : 0;
       toast({
         title: editingPhotoId ? "Media updated" : "Upload complete",
         description: editingPhotoId
           ? `Changes were applied in “${catLabel}”.`
-          : `The file was saved in category “${catLabel}”.`,
+          : createdCount > 0
+            ? `${createdCount} file(s) saved in category “${catLabel}”.`
+            : `The file was saved in category “${catLabel}”.`,
       });
       setIsPhotoModalOpen(false);
       resetPhotoForm();
@@ -528,7 +559,7 @@ export default function ShamellAdminGalleryPage() {
                 </span>
               </button>
               <div className="mx-3 border-t border-gold/12" />
-              {activeCategories.map((c) => {
+              {sortedActiveCategories.map((c) => {
                 const n = countByCategory[c.id] ?? 0;
                 const selected = listCategoryFilter === c.id;
                 return (
@@ -738,8 +769,9 @@ export default function ShamellAdminGalleryPage() {
             <p className="flex items-start gap-2 font-body text-xs leading-relaxed text-foreground/75">
               <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-gold" strokeWidth={1.5} />
               <span>
-                <strong className="text-gold/95">Important:</strong> the file is linked to the category selected
-                below. You can switch albums when editing and replace the file if needed.
+                <strong className="text-gold/95">Important:</strong> files are saved to the category you select
+                below. New uploads: select up to {GALLERY_UPLOAD_MAX_FILES} files at once. When editing, only one
+                replacement file applies.
               </span>
             </p>
           </div>
@@ -747,7 +779,7 @@ export default function ShamellAdminGalleryPage() {
           <div>
             <p className="font-brand text-[11px] tracking-[0.2em] text-gold/95">1 · DESTINATION CATEGORY</p>
             <div className="mt-3 grid max-h-52 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
-              {activeCategories.map((c) => {
+              {sortedActiveCategories.map((c) => {
                 const selected = selectedCategoryId === c.id;
                 return (
                   <button
@@ -777,6 +809,12 @@ export default function ShamellAdminGalleryPage() {
             ) : (
               <p className="mt-3 text-xs text-amber-300/90">Select a category to continue.</p>
             )}
+            {selectedCategorySlug === GALLERY_CATCHALL_SLUG ? (
+              <p className="mt-2 max-w-xl font-body text-xs leading-relaxed text-foreground/55">
+                This «All» album is for general uploads. On the public site these photos appear under the{" "}
+                <span className="text-gold/90">All</span> filter only; this album is not listed as a separate tab.
+              </p>
+            ) : null}
           </div>
 
           <label className="block">
@@ -785,17 +823,46 @@ export default function ShamellAdminGalleryPage() {
               <Upload className="mx-auto h-8 w-8 text-gold/50" strokeWidth={1.3} />
               <p className="mt-2 font-body text-xs text-foreground/55">
                 {editingPhotoId
-                  ? "Optional: new file (replaces the current one)."
-                  : "Image or video — required."}
+                  ? "Optional: one new file (replaces the current one)."
+                  : `Images or videos — select up to ${GALLERY_UPLOAD_MAX_FILES} files at once.`}
               </p>
               <input
                 type="file"
                 accept="image/*,video/*"
-                onChange={(event) => setImageFile(event.target.files?.[0] ?? null)}
+                multiple={!editingPhotoId}
+                onChange={(event) => {
+                  const list = event.target.files;
+                  if (!list?.length) {
+                    setImageFiles([]);
+                    return;
+                  }
+                  if (editingPhotoId) {
+                    setImageFiles([list[0]]);
+                  } else {
+                    setImageFiles(Array.from(list));
+                  }
+                }}
                 className="mt-4 w-full max-w-xs cursor-pointer rounded-lg border border-gold/20 px-3 py-2 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-gold/20 file:px-3 file:py-1.5 file:text-gold"
               />
-              {imageFile ? (
-                <p className="mt-2 font-mono text-[10px] text-foreground/50">{imageFile.name}</p>
+              {imageFiles.length > 0 ? (
+                <div className="mt-3 w-full max-w-md text-left">
+                  <p className="font-body text-xs text-foreground/60">
+                    {imageFiles.length} file(s) selected
+                    {!editingPhotoId && imageFiles.length > GALLERY_UPLOAD_MAX_FILES
+                      ? ` — max ${GALLERY_UPLOAD_MAX_FILES} per batch. Remove extras before uploading.`
+                      : null}
+                  </p>
+                  <ul className="mt-1 max-h-24 overflow-y-auto font-mono text-[10px] text-foreground/45">
+                    {imageFiles.slice(0, 12).map((f) => (
+                      <li key={`${f.name}-${f.size}`} className="truncate">
+                        {f.name}
+                      </li>
+                    ))}
+                    {imageFiles.length > 12 ? (
+                      <li className="text-foreground/35">…and {imageFiles.length - 12} more</li>
+                    ) : null}
+                  </ul>
+                </div>
               ) : null}
             </div>
           </label>

@@ -23,6 +23,7 @@ import { CreateGalleryCategoryDto } from './dto/create-gallery-category.dto';
 import { CreateGalleryPhotoDto } from './dto/create-gallery-photo.dto';
 import { UpdateGalleryCategoryDto } from './dto/update-gallery-category.dto';
 import { UpdateGalleryPhotoDto } from './dto/update-gallery-photo.dto';
+import { GALLERY_UPLOAD_MAX_FILES } from './gallery.constants';
 import { GalleryService } from './gallery.service';
 
 @Controller('gallery')
@@ -83,7 +84,7 @@ export class GalleryController {
   @HttpCode(HttpStatus.CREATED)
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(
-    FilesInterceptor('media', 1, {
+    FilesInterceptor('media', GALLERY_UPLOAD_MAX_FILES, {
       storage: memoryStorage(),
       limits: { fileSize: 200 * 1024 * 1024 },
     }),
@@ -94,6 +95,11 @@ export class GalleryController {
   ) {
     if (!mediaFiles?.length) {
       throw new BadRequestException('At least one media file is required.');
+    }
+    if (mediaFiles.length > GALLERY_UPLOAD_MAX_FILES) {
+      throw new BadRequestException(
+        `At most ${GALLERY_UPLOAD_MAX_FILES} files per request.`,
+      );
     }
     return this.galleryService.createPhoto(dto, mediaFiles);
   }

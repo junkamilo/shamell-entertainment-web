@@ -6,6 +6,7 @@ import {
   galleryTabs as fallbackTabs,
   type GalleryFilter,
 } from "@/lib/galleryData";
+import { GALLERY_CATCHALL_SLUG } from "@/lib/galleryConstants";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 
 function galleryMediaTypeFromItem(
@@ -84,6 +85,7 @@ export function useGalleryCategories() {
 
         const mapped = (data as GalleryCategoryApiItem[])
           .filter((item) => item?.slug && item?.name)
+          .filter((item) => item.slug !== GALLERY_CATCHALL_SLUG)
           .map((item) => ({
             id: item.slug,
             label: item.name,

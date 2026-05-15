@@ -9,10 +9,10 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client } from 'google-auth-library';
-import { EmailParams, MailerSend, Recipient, Sender } from 'mailersend';
 import { compare, hash } from 'bcryptjs';
 import { createHash, randomBytes, randomInt } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MailService } from '../mail/mail.service';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -30,6 +30,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {
     const googleClientId = this.config.get<string>('GOOGLE_CLIENT_ID')?.trim();
     this.googleClient = googleClientId
@@ -188,14 +189,8 @@ export class AuthService {
   }
 
   async inviteAdmin(inviterId: string, dto: InviteAdminDto) {
-    const mailerSendKey = this.config.get<string>('MAILERSEND_API_KEY')?.trim();
-    const fromEmail = this.config.get<string>('MAILERSEND_FROM_EMAIL')?.trim();
-    const fromName = this.config.get<string>('MAILERSEND_FROM_NAME')?.trim();
-
-    if (!mailerSendKey || !fromEmail) {
-      throw new BadRequestException(
-        'Email delivery is not configured. Set MAILERSEND_API_KEY and MAILERSEND_FROM_EMAIL.',
-      );
+    if (!this.mail.isConfigured()) {
+      throw new BadRequestException(this.mail.getMissingConfigMessage());
     }
 
     const inviter = await this.prisma.user.findUnique({
@@ -251,27 +246,20 @@ export class AuthService {
       code,
     });
 
-    try {
-      const mailerSend = new MailerSend({ apiKey: mailerSendKey });
-      const emailParams = new EmailParams()
-        .setFrom(new Sender(fromEmail, fromName || appName))
-        .setTo([new Recipient(email, fullName)])
-        .setSubject(`${appName} — código para crear tu cuenta de administrador`)
-        .setText(emailText)
-        .setHtml(emailHtml);
+    const subject = `${appName} — código para crear tu cuenta de administrador`;
+    const result = await this.mail.sendTransactional({
+      to: email,
+      toName: fullName,
+      subject,
+      html: emailHtml,
+      text: emailText,
+    });
 
-      await mailerSend.email.send(emailParams);
-    } catch (err) {
+    if (!result.ok) {
       await this.prisma.adminInvite
         .delete({ where: { id: invite.id } })
         .catch(() => null);
-      if (
-        err instanceof InternalServerErrorException ||
-        err instanceof BadRequestException
-      ) {
-        throw err;
-      }
-      const raw = this.mailerSendErrorMessage(err);
+      const raw = result.errorText ?? '';
       if (
         /domain|sender|from|verified|verification|unauthorized|forbidden/i.test(
           raw,
@@ -279,6 +267,16 @@ export class AuthService {
       ) {
         throw new BadRequestException(
           'MailerSend no pudo enviar el correo. Verifica que MAILERSEND_FROM_EMAIL pertenezca a un dominio/remitente verificado y que MAILERSEND_API_KEY tenga permisos para enviar emails.',
+        );
+      }
+      if (
+        this.mail.getTransport() === 'smtp' &&
+        /invalid|auth|credential|535|534|password|login failed|eauth|certificate|self signed|socket|ECONNREFUSED|ETIMEDOUT/i.test(
+          raw,
+        )
+      ) {
+        throw new BadRequestException(
+          'No se pudo enviar el correo por SMTP. Revisa SMTP_USER, SMTP_PASS, SMTP_HOST y que SMTP_FROM_EMAIL coincida con la cuenta (p. ej. Gmail con contraseña de aplicación).',
         );
       }
       throw new InternalServerErrorException(
@@ -496,39 +494,6 @@ export class AuthService {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
-  }
-
-  private mailerSendErrorMessage(error: unknown): string {
-    if (!error || typeof error !== 'object') {
-      return '';
-    }
-
-    const maybeResponse = error as {
-      response?: { data?: unknown; body?: unknown };
-      body?: unknown;
-    };
-    const payload =
-      maybeResponse.response?.data ??
-      maybeResponse.response?.body ??
-      maybeResponse.body;
-
-    if (typeof payload === 'string') {
-      return payload.trim();
-    }
-
-    if (payload && typeof payload === 'object') {
-      try {
-        return JSON.stringify(payload);
-      } catch {
-        return '';
-      }
-    }
-
-    if (error instanceof Error && error.message.trim()) {
-      return error.message.trim();
-    }
-
-    return '';
   }
 
   private async verifyGoogleIdToken(
