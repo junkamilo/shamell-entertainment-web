@@ -388,7 +388,7 @@ export class BookingsService {
   }
 
   /**
-   * Sends guest/client confirmation email (MailerSend or SMTP). Never throws; logs on failure.
+   * Sends guest/client confirmation email (MailerSend). Never throws; logs on failure.
    */
   private async sendBookingCreatedConfirmation(
     booking: BookingWithRelations,
