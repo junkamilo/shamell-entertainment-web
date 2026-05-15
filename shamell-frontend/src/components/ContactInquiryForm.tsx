@@ -1314,51 +1314,6 @@ export default function ContactInquiryForm({
         </RevealFromDepth>
       </header>
 
-      {initialCatalog && !catalogDismissed ? (
-        <div
-          className="mb-6 rounded border border-gold/30 bg-gold/5 px-4 py-3 text-left text-sm font-body text-foreground/85"
-          role="status"
-        >
-          {catalogLoading ? (
-            <p className="flex items-center gap-2 text-foreground/70">
-              <Loader2 className="h-4 w-4 shrink-0 animate-spin text-gold" aria-hidden />
-              Loading what you selected from the site…
-            </p>
-          ) : null}
-          {!catalogLoading && catalogFetchError && !catalogSnapshot ? (
-            <p className="text-amber-200/90">{catalogFetchError}</p>
-          ) : null}
-          {!catalogLoading && catalogSnapshot ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-              <div>
-                <p className="text-xs font-brand uppercase tracking-[0.14em] text-gold/90 sm:text-sm">Catalog context</p>
-                <p className="mt-1">
-                  You are inquiring about:{" "}
-                  <span className="font-medium text-foreground">{catalogSnapshot.title}</span>
-                  {catalogSnapshot.descriptionPreview ? (
-                    <span className="mt-1 block text-sm text-foreground/60 line-clamp-2">
-                      {catalogSnapshot.descriptionPreview}
-                    </span>
-                  ) : null}
-                </p>
-                {!hadServiceTypeInUrl && catalogSnapshot.contactInquiryCode ? (
-                  <p className="mt-2 text-sm text-foreground/55">
-                    Inquiry type was suggested from this catalog entry; change your selection in step 1 if needed.
-                  </p>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={dismissCatalogContext}
-                className="shrink-0 self-start rounded border border-white/20 bg-black/30 px-3 py-2 text-xs font-brand uppercase tracking-[0.12em] text-foreground/80 transition-colors hover:border-gold/40 hover:text-gold sm:text-sm"
-              >
-                Remove context
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
       {linesLoading ? (
         <p className="mb-6 flex items-center justify-center gap-2 text-sm text-foreground/65">
           <Loader2 className="h-4 w-4 animate-spin text-gold" aria-hidden />
@@ -1383,7 +1338,7 @@ export default function ContactInquiryForm({
                   disabled={stepDisabled}
                   title={
                     offeringNavLocked
-                      ? "Remove catalog context below to change the catalog offering."
+                      ? "Remove catalog context below the form to change the catalog offering."
                       : undefined
                   }
                   className={`rounded border px-2 py-1.5 text-xs font-brand tracking-[0.12em] uppercase transition-colors sm:text-sm ${
@@ -1413,12 +1368,6 @@ export default function ContactInquiryForm({
               Which catalog offering best matches what you are planning? Tap the eye to read the full description,
               inclusions, and guide investment.
             </p>
-            {catalogSnapshot?.kind === "service" && !catalogDismissed ? (
-              <p className="font-body text-base leading-relaxed text-foreground/65 md:text-lg">
-                You opened this form from a performance experience — continue with the suggested inquiry type, or pick
-                an event catalog line below if you are booking a full event tier.
-              </p>
-            ) : null}
             <div className="space-y-3">
               {contactLines.map((line) => {
                 const checked = data.contactLineId === line.id;
@@ -1471,13 +1420,6 @@ export default function ContactInquiryForm({
                 );
               })}
             </div>
-            {hadServiceTypeInUrl && isValidInquiryCode(data.inquiryCode) ? (
-              <p className="font-body text-base leading-relaxed text-foreground/60 md:text-lg">
-                Inquiry type <span className="text-gold/90">{data.inquiryCode.replace(/_/g, " ")}</span> was set from
-                your link. Select a catalog line above when it matches your booking, or continue if you are only
-                inquiring about performances.
-              </p>
-            ) : null}
           </div>
         ) : null}
 
@@ -2146,6 +2088,53 @@ export default function ContactInquiryForm({
           </div>
         </aside>
       </div>
+
+      {initialCatalog && !catalogDismissed ? (
+        <div
+          className="mt-6 rounded border border-gold/30 bg-gold/5 px-5 py-4 text-left text-base font-body text-foreground/85 md:px-6 md:py-5 md:text-lg"
+          role="status"
+        >
+          {catalogLoading ? (
+            <p className="flex items-center gap-2 text-base text-foreground/70 md:text-lg">
+              <Loader2 className="h-5 w-5 shrink-0 animate-spin text-gold md:h-6 md:w-6" aria-hidden />
+              Loading what you selected from the site…
+            </p>
+          ) : null}
+          {!catalogLoading && catalogFetchError && !catalogSnapshot ? (
+            <p className="text-base text-amber-200/90 md:text-lg">{catalogFetchError}</p>
+          ) : null}
+          {!catalogLoading && catalogSnapshot ? (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div>
+                <p className="text-sm font-brand uppercase tracking-[0.14em] text-gold/90 sm:text-base md:text-lg">
+                  Catalog context
+                </p>
+                <p className="mt-2 text-base leading-snug text-foreground/90 md:text-lg md:leading-snug">
+                  You are inquiring about:{" "}
+                  <span className="font-semibold text-foreground md:text-xl">{catalogSnapshot.title}</span>
+                  {catalogSnapshot.descriptionPreview ? (
+                    <span className="mt-2 block text-base leading-relaxed text-foreground/65 line-clamp-2 md:text-lg">
+                      {catalogSnapshot.descriptionPreview}
+                    </span>
+                  ) : null}
+                </p>
+                {!hadServiceTypeInUrl && catalogSnapshot.contactInquiryCode ? (
+                  <p className="mt-3 text-base leading-relaxed text-foreground/55 md:text-lg">
+                    Inquiry type was suggested from this catalog entry; change your selection in step 1 if needed.
+                  </p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={dismissCatalogContext}
+                className="shrink-0 self-start rounded border border-white/20 bg-black/30 px-4 py-2.5 text-sm font-brand uppercase tracking-[0.12em] text-foreground/85 transition-colors hover:border-gold/40 hover:text-gold sm:text-base md:px-5 md:py-3"
+              >
+                Remove context
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <ContactOccasionPickerModal
         isOpen={occasionPickerOpen}

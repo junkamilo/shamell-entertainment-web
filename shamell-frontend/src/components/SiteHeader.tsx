@@ -196,7 +196,6 @@ export default function SiteHeader() {
 
     if (pathname === "/gallery") return "/#gallery";
 
-    if (pathname.startsWith("/blog")) return "/blog";
     if (pathname.startsWith("/contacto")) return "/contacto";
 
     return "";

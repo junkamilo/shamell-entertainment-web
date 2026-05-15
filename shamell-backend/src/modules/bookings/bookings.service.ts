@@ -388,7 +388,7 @@ export class BookingsService {
   }
 
   /**
-   * Sends guest/client confirmation email (MailerSend). Never throws; logs on failure.
+   * Sends guest/client confirmation email (MailerSend or SMTP). Never throws; logs on failure.
    */
   private async sendBookingCreatedConfirmation(
     booking: BookingWithRelations,
@@ -462,7 +462,7 @@ export class BookingsService {
       const html = buildBookingConfirmationHtml(templateInput);
       const text = buildBookingConfirmationText(templateInput);
 
-      const sent = await this.mail.sendTransactional({
+      const { ok: sent } = await this.mail.sendTransactional({
         to: toEmail,
         toName: recipientName,
         subject,
