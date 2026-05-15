@@ -192,7 +192,7 @@ export class ContactService {
   }
 
   /**
-   * Thanks the guest via transactional mail (MailerSend or SMTP). Does not throw; logs on skip/failure.
+   * Thanks the guest via MailerSend. Does not throw; logs on skip/failure.
    */
   private async sendConciergeInquiryAckEmail(dto: CreateContactDto): Promise<void> {
     try {
@@ -229,7 +229,7 @@ export class ContactService {
         this.logger.log(`Concierge inquiry ack email sent to ${to}`);
       } else {
         this.logger.warn(
-          `Concierge inquiry ack email not sent to ${to} (mail transport disabled or failed).`,
+          `Concierge inquiry ack email not sent to ${to} (MailerSend disabled or failed).`,
         );
       }
     } catch (err) {
@@ -279,7 +279,7 @@ export class ContactService {
         this.logger.log(`Booking inquiry ack email sent to ${to}`);
       } else {
         this.logger.warn(
-          `Booking inquiry ack email not sent to ${to} (mail transport disabled or failed).`,
+          `Booking inquiry ack email not sent to ${to} (MailerSend disabled or failed).`,
         );
       }
     } catch (err) {

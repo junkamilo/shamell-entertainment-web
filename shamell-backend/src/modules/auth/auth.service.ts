@@ -269,16 +269,6 @@ export class AuthService {
           'MailerSend no pudo enviar el correo. Verifica que MAILERSEND_FROM_EMAIL pertenezca a un dominio/remitente verificado y que MAILERSEND_API_KEY tenga permisos para enviar emails.',
         );
       }
-      if (
-        this.mail.getTransport() === 'smtp' &&
-        /invalid|auth|credential|535|534|password|login failed|eauth|certificate|self signed|socket|ECONNREFUSED|ETIMEDOUT/i.test(
-          raw,
-        )
-      ) {
-        throw new BadRequestException(
-          'No se pudo enviar el correo por SMTP. Revisa SMTP_USER, SMTP_PASS, SMTP_HOST y que SMTP_FROM_EMAIL coincida con la cuenta (p. ej. Gmail con contraseña de aplicación).',
-        );
-      }
       throw new InternalServerErrorException(
         raw || 'Failed to send verification email.',
       );
