@@ -35,6 +35,7 @@ import {
 } from './concierge-inquiry-ack.mail';
 import { buildConciergeVisionSnapshot } from './concierge-vision-snapshot';
 import { MailService } from '../mail/mail.service';
+import { BookingsService } from '../bookings/bookings.service';
 
 @Injectable()
 export class ContactService {
@@ -45,6 +46,7 @@ export class ContactService {
     private availability: AvailabilityService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
+    private readonly bookings: BookingsService,
   ) {}
 
   private readonly bookingFeedInclude = {
@@ -157,9 +159,39 @@ export class ContactService {
       ? `${summaryBlock}\n\n---\n\n${trimmedMessage}`
       : trimmedMessage;
 
+    const entrySource = enriched?.entrySource;
+    const isBookingInquiry =
+      !!entrySource &&
+      (BOOKING_INQUIRY_ENTRY_SOURCES as readonly string[]).includes(entrySource);
+
+    if (isBookingInquiry && eventDate && dto.email?.trim()) {
+      const recentDuplicate = await this.prisma.contactRequest.findFirst({
+        where: {
+          email: dto.email.trim().toLowerCase(),
+          eventDate: new Date(eventDate),
+          createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (recentDuplicate) {
+        const linkedBooking = await this.prisma.booking.findFirst({
+          where: { contactRequestId: recentDuplicate.id },
+          select: { id: true },
+        });
+        if (linkedBooking) {
+          this.logger.log(
+            `Duplicate booking inquiry ignored for ${dto.email} (contact ${recentDuplicate.id}).`,
+          );
+          return recentDuplicate;
+        }
+      }
+    }
+
     const resolvedSubject =
       subject?.trim() ||
-      `Reservation inquiry${dto.serviceType ? ` — ${dto.serviceType}` : ''}`;
+      (isBookingInquiry
+        ? `Booking inquiry${dto.serviceType ? ` — ${dto.serviceType}` : ''}`
+        : `Reservation inquiry${dto.serviceType ? ` — ${dto.serviceType}` : ''}`);
 
     const created = await this.prisma.contactRequest.create({
       data: {
@@ -181,11 +213,28 @@ export class ContactService {
 
     if (enriched?.entrySource === 'concierge_gate') {
       await this.sendConciergeInquiryAckEmail(dto);
-    } else if (
-      enriched?.entrySource &&
-      BOOKING_INQUIRY_ENTRY_SOURCES.includes(enriched.entrySource)
-    ) {
+    } else if (isBookingInquiry && enriched) {
       await this.sendBookingInquiryAckEmail(dto, guideForAck);
+      try {
+        const booking = await this.bookings.createFromPublicBookingInquiry(
+          created.id,
+          dto,
+          enriched,
+        );
+        if (booking) {
+          return this.prisma.contactRequest.update({
+            where: { id: created.id },
+            data: {
+              status: ContactRequestStatus.RESERVED,
+              isRead: true,
+            },
+          });
+        }
+      } catch (err) {
+        this.logger.error(
+          `Public inquiry ${created.id}: could not materialize booking — ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
     }
 
     return created;
@@ -332,6 +381,21 @@ export class ContactService {
         WHERE b."contactRequestId" = cr.id
       )
     `;
+    /** Hides stray inbox rows when a calendar booking exists for the same guest/day (legacy unlinked bookings). */
+    const isShadowedBookingInquiryContact = Prisma.sql`
+      NOT (
+        (cr."inquiryDetails"->>'entrySource') IN ('contact_page', 'home_service_card', 'inquire_section')
+        AND EXISTS (
+          SELECT 1
+          FROM "bookings" b
+          WHERE LOWER(TRIM(b."guestEmail")) = LOWER(TRIM(cr.email))
+            AND cr."eventDate" IS NOT NULL
+            AND DATE(b."eventDate") = DATE(cr."eventDate")
+            AND b."createdAt" BETWEEN cr."createdAt" - INTERVAL '30 minutes'
+              AND cr."createdAt" + INTERVAL '30 minutes'
+        )
+      )
+    `;
     const isConciergeContact = Prisma.sql`
       (
         (cr."inquiryDetails"->>'entrySource') = 'concierge_gate'
@@ -386,6 +450,7 @@ export class ContactService {
         SELECT COUNT(*)::bigint AS total
         FROM "contact_requests" cr
         WHERE ${isOrphanContact}
+          AND ${isShadowedBookingInquiryContact}
           AND NOT ${isConciergeContact}
       `),
       this.prisma.booking.count(),
@@ -420,6 +485,7 @@ export class ContactService {
         SELECT 'CONTACT'::text AS origin, cr.id AS id, cr."createdAt" AS created_at
         FROM "contact_requests" cr
         WHERE ${isOrphanContact}
+          AND ${isShadowedBookingInquiryContact}
           AND NOT ${isConciergeContact}
         UNION ALL
         SELECT 'BOOKING_ADMIN'::text AS origin, b.id AS id, b."createdAt" AS created_at
@@ -461,7 +527,24 @@ export class ContactService {
       }),
     ]);
 
-    const contactById = new Map(contactRows.map((row) => [row.id, row]));
+    const linkedContactIds = [
+      ...new Set(
+        bookingRows
+          .map((b) => b.contactRequestId)
+          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+      ),
+    ].filter((id) => !contactIds.includes(id));
+
+    const linkedContactRows =
+      linkedContactIds.length > 0
+        ? await this.prisma.contactRequest.findMany({
+            where: { id: { in: linkedContactIds } },
+          })
+        : [];
+
+    const contactById = new Map(
+      [...contactRows, ...linkedContactRows].map((row) => [row.id, row]),
+    );
     const bookingById = new Map(bookingRows.map((row) => [row.id, row]));
     const pageItems = feedRows
       .map((row) => {
@@ -478,12 +561,16 @@ export class ContactService {
         }
         const booking = bookingById.get(row.id);
         if (!booking) return null;
+        const linkedContact = booking.contactRequestId
+          ? (contactById.get(booking.contactRequestId) ?? null)
+          : null;
         return {
           origin: 'BOOKING_ADMIN' as const,
           id: booking.id,
           createdAt: booking.createdAt,
           status: booking.status,
           booking,
+          ...(linkedContact ? { linkedContact } : {}),
         };
       })
       .filter((x): x is NonNullable<typeof x> => Boolean(x));

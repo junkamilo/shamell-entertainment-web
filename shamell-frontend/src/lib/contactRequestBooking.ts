@@ -1,6 +1,7 @@
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
-import type { CreateAdminBookingPayload } from "@/hooks/use-admin-bookings";
-import { buildInquiryDetailRows } from "@/components/admin/InquiryDetailsReadable";
+import type { AdminBookingRow, CreateAdminBookingPayload } from "@/hooks/use-admin-bookings";
+import { buildInquiryDetailRows, type InquiryDetailRow } from "@/components/admin/InquiryDetailsReadable";
+import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
 import { hhmmToMinutes } from "@/components/contact/contactLogisticsUtils";
 import { utcInstantForWallClock } from "@/lib/bookingAvailability";
 
@@ -8,6 +9,78 @@ export const CONTACT_MESSAGE_SEPARATOR = "\n\n---\n\n";
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** JSON snapshot for inbox FORM DETAILS (contact row, booking row, or linked contact). */
+export function structuredDetailsForPeticionRow(
+  contact: ContactRequest | null,
+  booking: AdminBookingRow | null,
+  linkedContact?: ContactRequest | null,
+): unknown {
+  if (contact?.inquiryDetails) return contact.inquiryDetails;
+  if (
+    booking?.bookingDetails &&
+    typeof booking.bookingDetails === "object" &&
+    !Array.isArray(booking.bookingDetails) &&
+    Object.keys(booking.bookingDetails).length > 0
+  ) {
+    return booking.bookingDetails;
+  }
+  if (linkedContact?.inquiryDetails) return linkedContact.inquiryDetails;
+  return null;
+}
+
+export function eventAddressFromInquiryDetails(details: unknown): string | undefined {
+  if (!details || typeof details !== "object" || Array.isArray(details)) return undefined;
+  const v = (details as Record<string, unknown>).eventAddress;
+  if (typeof v !== "string") return undefined;
+  const t = v.trim();
+  return t.length > 0 ? t : undefined;
+}
+
+/** Relational fallback when a booking has no `bookingDetails` snapshot (legacy / manual Agendar). */
+export function buildLegacyBookingInquiryRows(
+  booking: AdminBookingRow,
+  bookingTz: string,
+): InquiryDetailRow[] {
+  const rows: InquiryDetailRow[] = [];
+  const serviceLine = bookingServiceDisplayLine(booking);
+  if (serviceLine) rows.push({ label: "Service", value: serviceLine });
+  if (booking.eventType?.name) rows.push({ label: "Event type", value: booking.eventType.name });
+  if (booking.occasionType?.name) rows.push({ label: "Occasion type", value: booking.occasionType.name });
+  if (booking.event?.name) rows.push({ label: "Event", value: booking.event.name });
+
+  const details =
+    booking.bookingDetails && typeof booking.bookingDetails === "object" && !Array.isArray(booking.bookingDetails)
+      ? (booking.bookingDetails as Record<string, unknown>)
+      : null;
+  const start =
+    typeof details?.eventTimeStart === "string" && /^\d{2}:\d{2}$/.test(details.eventTimeStart.trim())
+      ? details.eventTimeStart.trim()
+      : "";
+  const end =
+    typeof details?.eventTimeEnd === "string" && /^\d{2}:\d{2}$/.test(details.eventTimeEnd.trim())
+      ? details.eventTimeEnd.trim()
+      : "";
+  if (start || end) {
+    rows.push({ label: "Requested time", value: `${start || "—"} – ${end || "—"}` });
+  } else if (booking.eventDate) {
+    const wall = new Intl.DateTimeFormat("en-US", {
+      timeZone: bookingTz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(new Date(booking.eventDate));
+    const hour = wall.find((p) => p.type === "hour")?.value ?? "00";
+    const minute = wall.find((p) => p.type === "minute")?.value ?? "00";
+    rows.push({ label: "Requested time", value: `${hour}:${minute}` });
+  }
+
+  if (booking.guestCount != null && booking.guestCount > 0) {
+    rows.push({ label: "Guests (approx.)", value: String(Math.round(booking.guestCount)) });
+  }
+
+  return rows;
+}
 
 /** Client-facing comment (below structured summary) for display and booking notes. */
 export function contactClientCommentFromRequest(full: string, inquiryDetails: unknown): string {
@@ -24,6 +97,25 @@ function trimUuid(v: unknown): string | undefined {
   if (typeof v !== "string") return undefined;
   const t = v.trim();
   return UUID_RE.test(t) ? t : undefined;
+}
+
+/** Valid service UUIDs from `inquiryDetails.serviceIds` (order preserved, deduped). */
+export function parseInquiryServiceIds(inquiryDetails: unknown): string[] {
+  if (!inquiryDetails || typeof inquiryDetails !== "object" || Array.isArray(inquiryDetails)) {
+    return [];
+  }
+  const raw = (inquiryDetails as Record<string, unknown>).serviceIds;
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    const id = trimUuid(item);
+    if (id && !seen.has(id)) {
+      seen.add(id);
+      out.push(id);
+    }
+  }
+  return out;
 }
 
 function safeInquiryTime(inquiryDetails: unknown, key: "eventTimeStart" | "eventTimeEnd"): string {
@@ -111,13 +203,16 @@ export function buildAdminBookingPayloadFromContactRequest(
   inquiryCodeByCatalogLineId?: Map<string, string>,
   fallbackServiceId?: string,
 ): ContactRequestBookingBuild {
-  const serviceId = resolveServiceIdForContactRequest(
-    row,
-    serviceByInquiryCode,
-    eventTypeContactCodeById,
-    inquiryCodeByCatalogLineId,
-    fallbackServiceId,
-  );
+  const inquiryServiceIds = parseInquiryServiceIds(row.inquiryDetails);
+  const serviceId =
+    inquiryServiceIds[0] ??
+    resolveServiceIdForContactRequest(
+      row,
+      serviceByInquiryCode,
+      eventTypeContactCodeById,
+      inquiryCodeByCatalogLineId,
+      fallbackServiceId,
+    );
   if (!serviceId) {
     return {
       ok: false,
@@ -181,6 +276,13 @@ export function buildAdminBookingPayloadFromContactRequest(
   const bookingDetails: Record<string, unknown> = { ...details };
   bookingDetails.eventTimeStart = start;
   bookingDetails.eventTimeEnd = end;
+  if (inquiryServiceIds.length > 0) {
+    bookingDetails.serviceIds = inquiryServiceIds;
+  } else {
+    // Drop stale/non-UUID serviceIds from stored inquiryDetails so top-level serviceId
+    // (catalog resolution) does not fail backend order validation in production.
+    delete bookingDetails.serviceIds;
+  }
 
   const payload: CreateAdminBookingPayload = {
     serviceId,
@@ -230,7 +332,11 @@ export function buildAgendarPrefillHref(row: ContactRequest, catalog?: AgendarPr
       ? (row.inquiryDetails as Record<string, unknown>)
       : null;
 
-  if (catalog?.serviceByInquiryCode.size) {
+  const inquiryServiceIds = parseInquiryServiceIds(row.inquiryDetails);
+  if (inquiryServiceIds.length > 0) {
+    sp.set("serviceId", inquiryServiceIds[0]);
+    sp.set("serviceIds", inquiryServiceIds.join(","));
+  } else if (catalog?.serviceByInquiryCode.size) {
     const sid = resolveServiceIdForContactRequest(
       row,
       catalog.serviceByInquiryCode,

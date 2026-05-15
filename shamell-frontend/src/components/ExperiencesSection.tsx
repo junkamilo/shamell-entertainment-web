@@ -2,7 +2,7 @@
 
 import ExperienceCard from "@/components/experiences/ExperienceCard";
 import RevealOnView from "@/components/shared/RevealOnView";
-import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
+import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
 import { useExperiences } from "@/hooks/use-experiences";
 
 const ExperiencesSection = () => {
@@ -32,11 +32,11 @@ const ExperiencesSection = () => {
             Loading service catalog...
           </p>
         ) : (
-          <RevealStaggerGrid className="grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8" amount={0.18}>
+          <CatalogCardCarousel ariaLabel="Service catalog">
             {experiences.map((experience, index) => (
               <ExperienceCard key={experience.id} experience={experience} index={index} />
             ))}
-          </RevealStaggerGrid>
+          </CatalogCardCarousel>
         )}
       </div>
 

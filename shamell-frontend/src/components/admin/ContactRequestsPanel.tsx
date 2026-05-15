@@ -22,11 +22,13 @@ import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import {
   buildAdminBookingPayloadFromContactRequest,
   buildContactInboxAgendarHref,
+  buildLegacyBookingInquiryRows,
   contactClientCommentFromRequest,
+  structuredDetailsForPeticionRow,
 } from "@/lib/contactRequestBooking";
 import { useAdminContactRequests, type ContactRequest } from "@/hooks/use-admin-contact-requests";
 import { useAdminBookings, type AdminBookingRow } from "@/hooks/use-admin-bookings";
-import { useAdminPeticiones } from "@/hooks/use-admin-peticiones";
+import { useAdminPeticiones, type UnifiedPeticionRow } from "@/hooks/use-admin-peticiones";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
@@ -74,22 +76,6 @@ function isoDateFromInstantInTimeZone(instantIso: string, tz: string): string {
     ? `${year}-${month}-${day}`
     : instantIso.slice(0, 10);
 }
-
-type UnifiedPeticionRow =
-  | {
-      origin: "CONTACT";
-      id: string;
-      createdAt: string;
-      state: "PENDING" | "RESERVED" | "CANCELLED";
-      contact: ContactRequest;
-    }
-  | {
-      origin: "BOOKING_ADMIN";
-      id: string;
-      createdAt: string;
-      status: string;
-      booking: AdminBookingRow;
-    };
 
 function contactIsBookingInquiry(row: ContactRequest): boolean {
   const subject = row.subject?.toLowerCase() ?? "";
@@ -193,14 +179,33 @@ function RequestCard({
   const contact = row.origin === "CONTACT" ? row.contact : null;
   const contactRow = row.origin === "CONTACT" ? row : null;
   const booking = row.origin === "BOOKING_ADMIN" ? row.booking : null;
-  const inquiryRows = useMemo(
-    () => (contact ? buildInquiryDetailRows(contact.inquiryDetails) : []),
-    [contact],
+  const linkedContact = row.origin === "BOOKING_ADMIN" ? (row.linkedContact ?? null) : null;
+
+  const structuredDetails = useMemo(
+    () => structuredDetailsForPeticionRow(contact, booking, linkedContact),
+    [contact, booking, linkedContact],
   );
+
+  const inquiryRows = useMemo(() => {
+    const fromJson = buildInquiryDetailRows(structuredDetails);
+    if (fromJson.length > 0) return fromJson;
+    if (booking) return buildLegacyBookingInquiryRows(booking, bookingTz);
+    return [];
+  }, [structuredDetails, booking, bookingTz]);
+
+  const showLegacyBookingHint = Boolean(
+    booking && buildInquiryDetailRows(structuredDetails).length === 0 && inquiryRows.length > 0,
+  );
+
   const clientComment = useMemo(() => {
-    if (!contact) return booking?.notes?.trim() || "No notes.";
-    return contactClientCommentFromRequest(contact.message, contact.inquiryDetails);
-  }, [booking?.notes, contact]);
+    if (contact) {
+      return contactClientCommentFromRequest(contact.message, contact.inquiryDetails);
+    }
+    if (linkedContact) {
+      return contactClientCommentFromRequest(linkedContact.message, linkedContact.inquiryDetails);
+    }
+    return booking?.notes?.trim() || "No notes.";
+  }, [booking?.notes, contact, linkedContact]);
   const manualAgendarHref = useMemo(
     () => {
       if (contact) {
@@ -298,15 +303,20 @@ function RequestCard({
             ) : null}
             {(contact?.location || booking?.location) ? (
               <>
-                <dt className="font-brand text-[10px] tracking-widest text-gold/60">LOCATION</dt>
+                <dt className="font-brand text-[10px] tracking-widest text-gold/60">CITY / VENUE</dt>
                 <dd className="min-w-0 wrap-break-word text-foreground/80">{contact?.location || booking?.location}</dd>
               </>
             ) : null}
           </dl>
-          {contact ? <InquiryDetailsReadable rows={inquiryRows} /> : null}
+          {inquiryRows.length > 0 ? <InquiryDetailsReadable rows={inquiryRows} /> : null}
+          {showLegacyBookingHint ? (
+            <p className="font-body text-[10px] leading-relaxed text-foreground/45">
+              No structured form snapshot on this booking; showing catalog fields only.
+            </p>
+          ) : null}
           {!(
-            contact &&
-            contactIsConciergeInquiry(contact) &&
+            (contact ?? linkedContact) &&
+            contactIsConciergeInquiry((contact ?? linkedContact)!) &&
             inquiryRows.length > 0
           ) ? (
             <div className="min-w-0">
@@ -374,8 +384,8 @@ function RequestCard({
           {!(contact && contactIsConciergeInquiry(contact)) ? (
             <p className="wrap-break-word font-body text-[10px] leading-relaxed text-foreground/40">
               {contact && contactIsBookingInquiry(contact)
-                ? "This request is a BOOKING INQUIRY: confirm the booking manually after you contact the client."
-                : "Bookings created from Book appear here as reserved (green)."}
+                ? "Booking inquiry from the public form: use Reserve only if a calendar booking was not created automatically (missing phone or catalog match)."
+                : "Bookings from the public form or Book appear here as reserved (green)."}
             </p>
           ) : null}
         </div>

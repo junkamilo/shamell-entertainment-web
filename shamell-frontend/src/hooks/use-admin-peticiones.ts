@@ -24,6 +24,7 @@ export type UnifiedPeticionRow =
       createdAt: string;
       status: string;
       booking: AdminBookingRow;
+      linkedContact?: ContactRequest | null;
     };
 
 type AdminPeticionesQuery = {
