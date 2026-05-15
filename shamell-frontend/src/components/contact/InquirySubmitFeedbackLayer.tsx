@@ -112,10 +112,10 @@ export default function InquirySubmitFeedbackLayer({ phase, onAccept }: Props) {
                   />
                 </motion.div>
               </div>
-              <p className="mt-8 font-brand text-xs tracking-[0.22em] text-gold/90 uppercase">
+              <p className="mt-8 font-brand text-sm tracking-[0.2em] text-gold/90 uppercase sm:text-base sm:tracking-[0.22em]">
                 Sending your request
               </p>
-              <p className="mt-2 max-w-sm font-body text-sm leading-relaxed text-foreground/70">
+              <p className="mt-3 max-w-sm font-body text-base leading-relaxed text-foreground/75 sm:text-lg sm:leading-relaxed">
                 Please wait while we deliver your inquiry to Shamell&apos;s team.
               </p>
             </motion.div>
@@ -125,7 +125,7 @@ export default function InquirySubmitFeedbackLayer({ phase, onAccept }: Props) {
               role="dialog"
               aria-modal="true"
               aria-labelledby="inquiry-submit-feedback-title"
-              className="w-full max-w-md rounded-2xl border border-gold/35 bg-[rgba(12,6,18,0.96)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:p-8"
+              className="w-full max-w-lg rounded-2xl border border-gold/35 bg-[rgba(12,6,18,0.96)] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:p-8 md:p-10"
               initial={{ opacity: 0, scale: 0.94, y: 16 }}
               animate={{
                 opacity: 1,
@@ -137,20 +137,20 @@ export default function InquirySubmitFeedbackLayer({ phase, onAccept }: Props) {
             >
               <h2
                 id="inquiry-submit-feedback-title"
-                className="text-center font-brand text-xl tracking-[0.14em] text-gold uppercase sm:text-2xl"
+                className="text-center font-brand text-2xl tracking-[0.14em] text-gold uppercase sm:text-3xl sm:tracking-[0.16em]"
               >
                 Request received
               </h2>
-              <p className="mt-4 text-center font-body text-sm leading-relaxed text-foreground/75 sm:text-base">
+              <p className="mt-5 text-center font-body text-lg leading-relaxed text-foreground/82 sm:text-xl sm:leading-relaxed">
                 Your message is on its way. Shamell&apos;s team will get back to you as soon as possible.
               </p>
-              <p className="mt-2 text-center font-body text-xs text-foreground/50">
+              <p className="mt-3 text-center font-body text-base leading-relaxed text-foreground/58 sm:text-lg">
                 You will be taken to the home page in a few seconds, or tap Accept to continue now.
               </p>
               <button
                 type="button"
                 onClick={handleAccept}
-                className="btn-outline-gold mt-8 w-full justify-center py-3 font-brand text-xs tracking-[0.18em] uppercase"
+                className="btn-outline-gold mt-8 w-full justify-center py-3.5 font-brand text-sm tracking-[0.18em] uppercase sm:mt-10 sm:py-4 sm:text-base sm:tracking-[0.2em]"
               >
                 Accept
               </button>

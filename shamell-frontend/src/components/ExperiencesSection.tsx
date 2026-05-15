@@ -15,10 +15,10 @@ const ExperiencesSection = () => {
           <div className="h-28 w-[min(22rem,90vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.14),transparent_72%)] blur-3xl opacity-70" />
         </div>
         <RevealOnView className="relative" delay={40}>
-          <h2 className="mb-3 font-brand text-base font-semibold tracking-[0.26em] text-gold md:text-lg md:tracking-[0.28em]">
+          <h2 className="mb-4 font-brand text-2xl font-semibold tracking-[0.14em] text-gold md:mb-5 md:text-4xl md:tracking-[0.16em]">
             SERVICE CATALOG
           </h2>
-          <p className="mx-auto max-w-3xl text-center font-body text-base font-medium leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed md:text-foreground/90">
+          <p className="mx-auto max-w-3xl text-center font-body text-lg font-medium leading-relaxed text-foreground/88 sm:text-xl sm:leading-relaxed md:text-2xl md:leading-[1.65] md:text-foreground/90">
             Signature experiences crafted to elevate the atmosphere with visual impact, refined
             staging, and expressive artistry.
           </p>

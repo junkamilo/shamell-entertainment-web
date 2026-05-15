@@ -47,7 +47,7 @@ export default function ConciergeGate() {
         </h1>
       </RevealFromDepth>
       <RevealFromDepth delay={340}>
-        <p className="mx-auto mt-5 max-w-2xl font-elegant text-lg leading-relaxed text-foreground/78 md:text-xl">
+        <p className="mx-auto mt-5 max-w-2xl px-1 font-elegant text-xl leading-[1.65] text-foreground/88 sm:text-2xl sm:leading-relaxed md:text-3xl">
           Every celebration is different. Tell us whether you are ready to request a specific
           experience, or if you would like Shamell&apos;s team to guide the first step.
         </p>
@@ -58,21 +58,21 @@ export default function ConciergeGate() {
           <RevealFromDepth key={card.href} delay={480 + index * 120} className="h-full">
             <Link
               href={card.href}
-              className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gold/25 bg-black/35 p-6 transition-all duration-300 hover:-translate-y-1 hover:border-gold/60 hover:bg-gold/8 hover:shadow-[0_22px_55px_rgba(0,0,0,0.35)]"
+              className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gold/25 bg-black/35 p-6 sm:p-7 transition-all duration-300 hover:-translate-y-1 hover:border-gold/60 hover:bg-gold/8 hover:shadow-[0_22px_55px_rgba(0,0,0,0.35)]"
             >
               <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-gold/60 to-transparent opacity-60" />
-              <p className="font-brand text-[10px] tracking-[0.22em] text-gold/75 uppercase">
+              <p className="font-brand text-xs tracking-[0.2em] text-gold/80 uppercase sm:text-sm">
                 {card.eyebrow}
               </p>
-              <h2 className="mt-4 font-brand text-xl tracking-[0.08em] text-gold-light uppercase">
+              <h2 className="mt-3 font-brand text-[1.65rem] leading-snug tracking-[0.06em] text-gold-light uppercase sm:mt-4 sm:text-3xl md:text-[2rem]">
                 {card.title}
               </h2>
-              <p className="mt-4 min-h-20 font-body text-sm leading-relaxed text-foreground/68">
+              <p className="mt-4 font-body text-2xl leading-[1.6] text-foreground/90 sm:text-[1.75rem] sm:leading-relaxed md:text-3xl">
                 {card.body}
               </p>
-              <span className="mt-6 inline-flex items-center gap-2 font-brand text-[11px] tracking-[0.16em] text-gold uppercase">
+              <span className="mt-6 inline-flex items-center gap-2 font-brand text-sm tracking-[0.14em] text-gold uppercase sm:text-base">
                 {card.cta}
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden />
+                <ArrowRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-1 sm:h-5 sm:w-5" aria-hidden />
               </span>
             </Link>
           </RevealFromDepth>

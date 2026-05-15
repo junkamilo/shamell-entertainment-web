@@ -89,7 +89,7 @@ export default function CatalogOfferingDetailModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
-            className="flex max-h-[min(88dvh,42rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gold/35 bg-[linear-gradient(180deg,rgba(18,10,22,0.98),rgba(6,4,8,0.99))] shadow-[0_28px_90px_rgba(0,0,0,0.65)] sm:max-h-[min(85dvh,44rem)] sm:max-w-xl"
+            className="flex max-h-[min(92dvh,44rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-gold/35 bg-[linear-gradient(180deg,rgba(18,10,22,0.98),rgba(6,4,8,0.99))] shadow-[0_28px_90px_rgba(0,0,0,0.65)] sm:max-h-[min(90dvh,46rem)] sm:max-w-xl"
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{
               opacity: 1,
@@ -117,15 +117,27 @@ export default function CatalogOfferingDetailModal({
             <div className="shamell-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {imageUrl ? (
                 <motion.div
-                  className="relative max-h-[38vh] w-full shrink-0 overflow-hidden bg-black/50 sm:max-h-[40vh]"
+                  className="relative flex w-full shrink-0 items-center justify-center overflow-hidden border-b border-gold/15 px-2 py-3 sm:px-3 sm:py-4"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.05, duration: 0.25 }}
                 >
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(45,18,58,0.98)_0%,rgba(22,10,34,0.9)_20%,rgba(12,6,20,0.85)_50%,rgba(22,10,34,0.9)_80%,rgba(45,18,58,0.98)_100%)]"
+                    aria-hidden
+                  />
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_95%_at_50%_42%,rgba(197,165,90,0.14)_0%,transparent_58%)]"
+                    aria-hidden
+                  />
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(31,10,46,0.4)_0%,transparent_30%,transparent_70%,rgba(6,4,10,0.5)_100%)]"
+                    aria-hidden
+                  />
                   {heroIsVideo ? (
                     <video
                       src={imageUrl}
-                      className="h-full max-h-[38vh] w-full object-cover sm:max-h-[40vh]"
+                      className="relative z-10 mx-auto block max-h-[min(48dvh,28rem)] w-full max-w-full object-contain object-center sm:max-h-[min(52dvh,32rem)]"
                       muted
                       playsInline
                       loop
@@ -134,12 +146,12 @@ export default function CatalogOfferingDetailModal({
                     />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={imageUrl} alt="" className="h-full max-h-[38vh] w-full object-cover sm:max-h-[40vh]" />
+                    <img
+                      src={imageUrl}
+                      alt={title}
+                      className="relative z-10 mx-auto block max-h-[min(48dvh,28rem)] w-auto max-w-full object-contain object-center sm:max-h-[min(52dvh,32rem)]"
+                    />
                   )}
-                  <div
-                    className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(4,2,6,0.75)_100%)]"
-                    aria-hidden
-                  />
                 </motion.div>
               ) : null}
 
