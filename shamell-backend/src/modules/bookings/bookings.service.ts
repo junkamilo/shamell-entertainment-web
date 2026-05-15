@@ -60,6 +60,22 @@ export type CreateFromPublicBookingInquiryOptions = {
   skipConfirmationEmail?: boolean;
 };
 
+/** Pre-validated payload for a single `booking.create` inside a short transaction. */
+export type PublicBookingInquiryPrepared = {
+  serviceId: string;
+  eventTypeId: string | null;
+  occasionTypeId: string | null;
+  eventId: string | null;
+  eventDate: Date;
+  location: string;
+  guestCount: number | null;
+  notes: string | null;
+  bookingDetails: Prisma.InputJsonValue;
+  guestFullName: string;
+  guestEmail: string;
+  guestPhone: string;
+};
+
 @Injectable()
 export class BookingsService {
   private readonly logger = new Logger(BookingsService.name);
@@ -423,19 +439,21 @@ export class BookingsService {
     await this.sendBookingCreatedConfirmation(booking);
   }
 
-  async createFromPublicBookingInquiry(
-    contactRequestId: string,
+  /**
+   * Validates catalog/availability and builds insert payload (run outside Prisma transactions).
+   */
+  async preparePublicBookingInquiry(
     dto: CreateContactDto,
     enriched: SanitizedInquiryDetails,
-    options?: CreateFromPublicBookingInquiryOptions,
-  ): Promise<BookingWithRelations | null> {
+    logContextId = 'pending',
+  ): Promise<PublicBookingInquiryPrepared | null> {
     const phone = dto.phone?.trim();
     const location = dto.location?.trim();
     const guestFullName = dto.fullName.trim();
     const guestEmail = dto.email.trim().toLowerCase();
     if (!phone || !location || !dto.eventDate?.trim()) {
       this.logger.warn(
-        `Public inquiry ${contactRequestId}: booking skipped (phone, location, or eventDate missing).`,
+        `Public inquiry ${logContextId}: booking skipped (phone, location, or eventDate missing).`,
       );
       return null;
     }
@@ -447,7 +465,7 @@ export class BookingsService {
     );
     if (!serviceId) {
       this.logger.warn(
-        `Public inquiry ${contactRequestId}: booking skipped (no catalog service resolved).`,
+        `Public inquiry ${logContextId}: booking skipped (no catalog service resolved).`,
       );
       return null;
     }
@@ -473,7 +491,7 @@ export class BookingsService {
     );
     if (Number.isNaN(eventInstant.getTime())) {
       this.logger.warn(
-        `Public inquiry ${contactRequestId}: booking skipped (invalid event date/time).`,
+        `Public inquiry ${logContextId}: booking skipped (invalid event date/time).`,
       );
       return null;
     }
@@ -494,24 +512,46 @@ export class BookingsService {
 
     const notes = extractClientCommentFromContactMessage(dto.message);
 
+    return {
+      serviceId,
+      eventTypeId: eventTypeId ?? null,
+      occasionTypeId: occasionTypeId ?? null,
+      eventId: eventId ?? null,
+      eventDate: eventInstant,
+      location,
+      guestCount,
+      notes: notes || null,
+      bookingDetails: detailsEnriched as unknown as Prisma.InputJsonValue,
+      guestFullName,
+      guestEmail,
+      guestPhone: phone,
+    };
+  }
+
+  /** Inserts a prepared public-inquiry booking (keep inside a short transaction). */
+  async insertPublicBookingInquiry(
+    contactRequestId: string,
+    prepared: PublicBookingInquiryPrepared,
+    options?: CreateFromPublicBookingInquiryOptions,
+  ): Promise<BookingWithRelations> {
     const db = options?.tx ?? this.prisma;
     const created = await db.booking.create({
       data: {
-        serviceId,
-        eventTypeId: eventTypeId ?? null,
-        occasionTypeId: occasionTypeId ?? null,
-        eventId: eventId ?? null,
-        eventDate: eventInstant,
-        location,
-        guestCount,
-        notes: notes || null,
+        serviceId: prepared.serviceId,
+        eventTypeId: prepared.eventTypeId,
+        occasionTypeId: prepared.occasionTypeId,
+        eventId: prepared.eventId,
+        eventDate: prepared.eventDate,
+        location: prepared.location,
+        guestCount: prepared.guestCount,
+        notes: prepared.notes,
         status: BookingStatus.CONFIRMED,
-        bookingDetails: detailsEnriched as unknown as Prisma.InputJsonValue,
+        bookingDetails: prepared.bookingDetails,
         source: BookingSource.CLIENT_REGISTERED,
         contactRequestId,
-        guestFullName,
-        guestEmail,
-        guestPhone: phone,
+        guestFullName: prepared.guestFullName,
+        guestEmail: prepared.guestEmail,
+        guestPhone: prepared.guestPhone,
       },
       include: bookingInclude,
     });
@@ -523,6 +563,25 @@ export class BookingsService {
       `Booking ${created.id} created from public inquiry ${contactRequestId}`,
     );
     return created;
+  }
+
+  async createFromPublicBookingInquiry(
+    contactRequestId: string,
+    dto: CreateContactDto,
+    enriched: SanitizedInquiryDetails,
+    options?: CreateFromPublicBookingInquiryOptions,
+  ): Promise<BookingWithRelations | null> {
+    const prepared = await this.preparePublicBookingInquiry(
+      dto,
+      enriched,
+      contactRequestId,
+    );
+    if (!prepared) return null;
+    return this.insertPublicBookingInquiry(
+      contactRequestId,
+      prepared,
+      options,
+    );
   }
 
   /**
