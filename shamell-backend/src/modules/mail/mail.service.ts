@@ -85,6 +85,40 @@ export class MailService {
     }
   }
 
+  /**
+   * Spanish hint for known MailerSend API errors (e.g. trial domain MS42225).
+   * Returns null when the raw provider message should be shown as-is.
+   */
+  static userFacingErrorMessage(raw: string): string | null {
+    const text = raw.trim();
+    if (!text) return null;
+
+    if (
+      /MS42225|trial account unique recipients|trial domain unique recipients/i.test(
+        text,
+      )
+    ) {
+      return (
+        'MailerSend sigue usando el dominio de prueba (*.mlsender.net), que solo permite 2 destinatarios distintos. ' +
+        'En MailerSend: verifica tu dominio propio, usa un remitente de ese dominio en MAILERSEND_FROM_EMAIL ' +
+        '(ej. noreply@tudominio.com) y reinicia el backend.'
+      );
+    }
+
+    if (
+      /domain|sender|from|verified|verification|unauthorized|forbidden/i.test(
+        text,
+      )
+    ) {
+      return (
+        'MailerSend no pudo enviar el correo. Verifica que MAILERSEND_FROM_EMAIL pertenezca a un dominio ' +
+        'verificado y que MAILERSEND_API_KEY tenga permisos para enviar emails.'
+      );
+    }
+
+    return null;
+  }
+
   /** Normalizes MailerSend HTTP-style errors and generic Error messages. */
   static extractProviderErrorMessage(error: unknown): string {
     if (!error || typeof error !== 'object') {
