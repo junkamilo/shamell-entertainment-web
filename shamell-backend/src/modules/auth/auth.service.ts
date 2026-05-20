@@ -260,14 +260,9 @@ export class AuthService {
         .delete({ where: { id: invite.id } })
         .catch(() => null);
       const raw = result.errorText ?? '';
-      if (
-        /domain|sender|from|verified|verification|unauthorized|forbidden/i.test(
-          raw,
-        )
-      ) {
-        throw new BadRequestException(
-          'MailerSend no pudo enviar el correo. Verifica que MAILERSEND_FROM_EMAIL pertenezca a un dominio/remitente verificado y que MAILERSEND_API_KEY tenga permisos para enviar emails.',
-        );
+      const friendly = MailService.userFacingErrorMessage(raw);
+      if (friendly) {
+        throw new BadRequestException(friendly);
       }
       throw new InternalServerErrorException(
         raw || 'Failed to send verification email.',
