@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
+import { AGREGAR_ADMIN_PATH } from "../agregar-admin/lib/agregarAdminRoutes";
 
 export default function LegacyInviteAdminRedirectPage() {
-  redirect("/shamell-admin/agregar-admin");
+  redirect(AGREGAR_ADMIN_PATH);
 }

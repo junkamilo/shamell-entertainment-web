@@ -1,5 +1,7 @@
 import type { ContactCatalogKind, InquiryEntrySource, ServiceTypeCode } from "@/lib/contactInquiryConstants";
 
+export type { ContactLine } from "../lib/inquiry/wizardTypes";
+
 export type ContactInquiryFormProps = {
   initialServiceType?: ServiceTypeCode;
   hadServiceTypeInUrl?: boolean;

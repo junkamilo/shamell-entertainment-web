@@ -27,7 +27,11 @@ export async function forgotPasswordAction(email: string): Promise<ForgotPasswor
     const message =
       typeof record.message === "string" && record.message.trim() ? record.message.trim() : SUCCESS_FALLBACK;
 
-    return { ok: true, message };
+    const resetLinkRaw = record.resetLink;
+    const resetLink =
+      typeof resetLinkRaw === "string" && resetLinkRaw.trim() ? resetLinkRaw.trim() : undefined;
+
+    return { ok: true, message, ...(resetLink ? { resetLink } : {}) };
   } catch {
     return { ok: false, message: "Cannot reach backend. Ensure API is running." };
   }

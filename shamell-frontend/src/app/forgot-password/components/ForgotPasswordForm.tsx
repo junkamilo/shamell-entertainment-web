@@ -3,11 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import bailarinaLogo from "@/public/01_bailarina.png";
+import { ADMIN_LOGIN_PATH } from "@/app/admin/shared/lib/adminRoutes";
 import { useForgotPassword } from "../hooks/useForgotPassword";
 import PasswordField from "./PasswordField";
 
 export default function ForgotPasswordForm() {
-  const { email, setEmail, error, message, isSubmitting, onSubmit } = useForgotPassword();
+  const { email, setEmail, error, message, resetLink, isSubmitting, onSubmit } = useForgotPassword();
 
   return (
     <main className="shamell-admin-bg flex min-h-svh items-center justify-center px-4 py-8 sm:py-12">
@@ -40,6 +41,23 @@ export default function ForgotPasswordForm() {
           {error ? <p className="text-sm text-shamell-danger">{error}</p> : null}
           {message ? <p className="text-gold-light text-sm">{message}</p> : null}
 
+          {resetLink ? (
+            <div className="rounded-shamell-md border border-gold/35 bg-gold/5 p-4 text-left text-sm">
+              <p className="font-brand text-xs tracking-[0.12em] text-gold uppercase">
+                Development only
+              </p>
+              <p className="mt-2 font-body text-foreground/80">
+                No recovery email is sent yet. Use this link to test password reset (valid 15 minutes):
+              </p>
+              <Link
+                href={resetLink}
+                className="mt-3 inline-block break-all font-body text-gold underline-offset-4 hover:underline"
+              >
+                Open reset page
+              </Link>
+            </div>
+          ) : null}
+
           <button type="submit" className="btn-outline-gold min-h-11 w-full font-brand" disabled={isSubmitting}>
             {isSubmitting ? "Sending..." : "Send recovery link"}
           </button>
@@ -51,7 +69,7 @@ export default function ForgotPasswordForm() {
           </Link>
           <span className="mx-2 text-foreground/40">·</span>
           <Link
-            href="/admin/login"
+            href={ADMIN_LOGIN_PATH}
             className="text-gold/90 underline-offset-4 hover:text-gold hover:underline"
           >
             Admin sign in

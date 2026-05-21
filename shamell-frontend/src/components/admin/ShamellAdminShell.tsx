@@ -3,6 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ADMIN_LOGIN_PATH } from "@/app/admin/shared/lib/adminRoutes";
+import { AGREGAR_ADMIN_PATH } from "@/app/shamell-admin/agregar-admin/lib/agregarAdminRoutes";
+import { EVENT_TYPES_PATH } from "@/app/shamell-admin/event-types/lib/eventTypesRoutes";
+import { EVENTS_PATH } from "@/app/shamell-admin/events/lib/eventsRoutes";
+import { HEADER_MEDIA_PATH } from "@/app/shamell-admin/header-media/lib/headerMediaRoutes";
+import { OCCASION_TYPES_PATH } from "@/app/shamell-admin/occasion-types/lib/occasionTypesRoutes";
+import { SERVICE_TYPES_PATH } from "@/app/shamell-admin/service-types/lib/serviceTypesRoutes";
+import { SERVICES_PATH } from "@/app/shamell-admin/services/lib/servicesRoutes";
+import { GALLERY_CATEGORIES_PATH, GALLERY_PATH } from "@/app/shamell-admin/gallery/lib/galleryRoutes";
 import {
   CalendarDays,
   CalendarRange,
@@ -38,16 +47,16 @@ type AdminNavItem = {
 
 const navItems: AdminNavItem[] = [
   { href: "/shamell-admin/agenda", label: "Agenda", icon: CalendarDays },
-  { href: "/shamell-admin/header-media", label: "Header media", icon: ImageIcon },
-  { href: "/shamell-admin/service-types", label: "Service types (form)", icon: Shapes },
-  { href: "/shamell-admin/services", label: "Services", icon: Package },
-  { href: "/shamell-admin/occasion-types", label: "Occasion types (form)", icon: ClipboardList },
-  { href: "/shamell-admin/event-types", label: "Event types (form)", icon: Tags },
-  { href: "/shamell-admin/events", label: "Events", icon: CalendarRange },
-  { href: "/shamell-admin/gallery-categories", label: "Gallery categories", icon: PanelsTopLeft },
-  { href: "/shamell-admin/gallery", label: "Gallery", icon: ImageIcon },
+  { href: HEADER_MEDIA_PATH, label: "Header media", icon: ImageIcon },
+  { href: SERVICE_TYPES_PATH, label: "Service types (form)", icon: Shapes },
+  { href: SERVICES_PATH, label: "Services", icon: Package },
+  { href: OCCASION_TYPES_PATH, label: "Occasion types (form)", icon: ClipboardList },
+  { href: EVENT_TYPES_PATH, label: "Event types (form)", icon: Tags },
+  { href: EVENTS_PATH, label: "Events", icon: CalendarRange },
+  { href: GALLERY_CATEGORIES_PATH, label: "Gallery categories", icon: PanelsTopLeft },
+  { href: GALLERY_PATH, label: "Gallery", icon: ImageIcon },
   { href: "/shamell-admin/about", label: "About Shamell", icon: Info },
-  { href: "/shamell-admin/agregar-admin", label: "Add admin", icon: UserPlus },
+  { href: AGREGAR_ADMIN_PATH, label: "Add admin", icon: UserPlus },
 ];
 
 const breadcrumbLabel: Record<string, string> = {
@@ -98,7 +107,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
   useEffect(() => {
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
     if (!token) {
-      router.replace("/admin/login");
+      router.replace(ADMIN_LOGIN_PATH);
       return;
     }
     const raw = localStorage.getItem(ADMIN_USER_KEY);
@@ -291,7 +300,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-5 md:p-8 max-lg:pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]">
+        <main className="admin-main min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-5 md:p-8 max-lg:pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]">
           {children}
         </main>
       </div>

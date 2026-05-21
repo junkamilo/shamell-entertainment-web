@@ -9,7 +9,7 @@ export type PasswordFieldProps = {
 };
 
 export type ForgotPasswordActionResult =
-  | { ok: true; message: string }
+  | { ok: true; message: string; resetLink?: string }
   | { ok: false; message: string };
 
 export type ResetPasswordActionResult =

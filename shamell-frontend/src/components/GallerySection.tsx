@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import RevealOnView from "@/components/shared/RevealOnView";
 import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
-import { useGalleryCategories, useGalleryPhotos, type GalleryPhotoItem } from "@/hooks/use-gallery";
+import { useGalleryCategories } from "@/app/gallery/hooks/useGalleryCategories";
+import { useGalleryPhotos } from "@/app/gallery/hooks/useGalleryPhotos";
+import type { GalleryPhotoItem } from "@/app/gallery/types/gallery.types";
 import { cn } from "@/lib/utils";
 
 /** Home preview: brick layout 3 + 2 + 3 (mockup), up to 8 images; shorter rows when fewer photos. */

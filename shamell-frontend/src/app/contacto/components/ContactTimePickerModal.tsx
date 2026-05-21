@@ -11,7 +11,7 @@ import {
   hhmmToParts,
   partsToHHMM,
   snapToNearestSelectableParts,
-} from "@/components/contact/contactLogisticsUtils";
+} from "@/lib/contactLogisticsUtils";
 
 function formatClampHint(totalMinutes: number): string {
   const h24 = Math.floor(totalMinutes / 60) % 24;

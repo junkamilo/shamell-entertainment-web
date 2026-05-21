@@ -63,7 +63,10 @@ export default function AdminModal({ title, isOpen, onClose, children }: AdminMo
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-gold/15 bg-shamell-surface-deep px-6 py-5">
-              <h2 id="admin-modal-title" className="admin-text-brand font-brand text-3xl tracking-[0.08em] md:text-4xl">
+              <h2
+                id="admin-modal-title"
+                className="admin-text-brand font-brand text-[1.75rem] leading-tight tracking-[0.08em] sm:text-3xl md:text-4xl"
+              >
                 {title}
               </h2>
               <button

@@ -1,8 +1,8 @@
 "use client";
 
-import { LoginFieldProps } from "../types/login.types";
+import type { LoginFieldProps } from "../types/login.types";
 
-export default function LoginField({
+export function LoginField({
   label,
   value,
   onChange,
@@ -12,7 +12,7 @@ export default function LoginField({
 }: LoginFieldProps) {
   return (
     <label className="block">
-      <span className="font-brand text-gold text-xs tracking-[0.14em]">{label}</span>
+      <span className="font-brand text-[0.8125rem] tracking-[0.14em] text-gold sm:text-xs">{label}</span>
       <input
         type={type}
         value={value}
