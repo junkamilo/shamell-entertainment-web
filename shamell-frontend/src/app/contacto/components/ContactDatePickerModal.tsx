@@ -9,7 +9,7 @@ import {
   parseISOLocal,
   startOfTodayLocal,
   toISOLocalDate,
-} from "@/components/contact/contactLogisticsUtils";
+} from "@/lib/contactLogisticsUtils";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 

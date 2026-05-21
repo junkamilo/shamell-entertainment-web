@@ -1,8 +1,9 @@
+import { AGENDA_PETICIONES_PATH } from "@/app/shamell-admin/agenda/agendar/lib/agendarRoutes";
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
 import type { AdminBookingRow, CreateAdminBookingPayload } from "@/hooks/use-admin-bookings";
 import { buildInquiryDetailRows, type InquiryDetailRow } from "@/components/admin/InquiryDetailsReadable";
 import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
-import { hhmmToMinutes } from "@/components/contact/contactLogisticsUtils";
+import { hhmmToMinutes } from "@/lib/contactLogisticsUtils";
 import { utcInstantForWallClock } from "@/lib/bookingAvailability";
 
 export const CONTACT_MESSAGE_SEPARATOR = "\n\n---\n\n";
@@ -375,7 +376,7 @@ export function buildContactInboxAgendarHref(
   url.searchParams.set("contactId", row.id);
   url.searchParams.set(
     "returnTo",
-    (options?.returnTo ?? "/shamell-admin/agenda/peticiones").trim() || "/shamell-admin/agenda/peticiones",
+    (options?.returnTo ?? AGENDA_PETICIONES_PATH).trim() || AGENDA_PETICIONES_PATH,
   );
   return `${url.pathname}?${url.searchParams.toString()}`;
 }

@@ -1,4 +1,4 @@
-import { hhmmToMinutes } from "@/components/contact/contactLogisticsUtils";
+import { hhmmToMinutes } from "@/lib/contactLogisticsUtils";
 
 const WEEKDAY_FROM_SHORT: Record<string, number> = {
   Sun: 0,

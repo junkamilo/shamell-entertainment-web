@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import bailarinaLogo from "@/public/01_bailarina.png";
+import { ADMIN_LOGIN_PATH } from "@/app/admin/shared/lib/adminRoutes";
 import { useResetPassword } from "../hooks/useResetPassword";
 import PasswordField from "./PasswordField";
 
@@ -39,7 +40,7 @@ export default function ResetPasswordForm() {
         {message ? (
           <div className="space-y-6 text-center">
             <p className="text-gold-light text-sm">{message}</p>
-            <Link href="/admin/login" className="btn-outline-gold inline-flex min-h-11 items-center justify-center px-6 font-brand">
+            <Link href={ADMIN_LOGIN_PATH} className="btn-outline-gold inline-flex min-h-11 items-center justify-center px-6 font-brand">
               Sign in as admin
             </Link>
           </div>
@@ -74,7 +75,7 @@ export default function ResetPasswordForm() {
 
         <p className="mt-6 text-center text-sm">
           <Link
-            href="/admin/login"
+            href={ADMIN_LOGIN_PATH}
             className="text-gold/90 underline-offset-4 hover:text-gold hover:underline"
           >
             Back to admin sign in

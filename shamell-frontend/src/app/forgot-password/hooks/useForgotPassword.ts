@@ -7,6 +7,7 @@ export function useForgotPassword() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [resetLink, setResetLink] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const onSubmit = useCallback(
@@ -14,6 +15,7 @@ export function useForgotPassword() {
       event.preventDefault();
       setError(null);
       setMessage(null);
+      setResetLink(null);
       setIsSubmitting(true);
       try {
         const result = await forgotPasswordAction(email);
@@ -22,6 +24,7 @@ export function useForgotPassword() {
           return;
         }
         setMessage(result.message);
+        setResetLink(result.resetLink ?? null);
         setEmail("");
       } catch {
         setError("Cannot reach backend. Ensure API is running.");
@@ -32,5 +35,5 @@ export function useForgotPassword() {
     [email],
   );
 
-  return { email, setEmail, error, message, isSubmitting, onSubmit };
+  return { email, setEmail, error, message, resetLink, isSubmitting, onSubmit };
 }

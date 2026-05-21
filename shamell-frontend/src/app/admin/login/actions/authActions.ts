@@ -1,22 +1,15 @@
 "use server";
 
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
-import { getAdminApiBaseUrl } from "../../shared/lib/adminApiBaseUrl";
-
+import { postAdminLogin } from "../services/postAdminLogin";
 import type { AdminLoginActionResult } from "../types/login.types";
 
-export async function loginAdminAction(email: string, password: string): Promise<AdminLoginActionResult> {
-  const base = getAdminApiBaseUrl();
-
+export async function loginAdminAction(
+  email: string,
+  password: string,
+): Promise<AdminLoginActionResult> {
   try {
-    const response = await fetch(`${base}/api/v1/auth/admin/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-      cache: "no-store",
-    });
-
-    const data: unknown = await response.json().catch(() => ({}));
+    const { response, data } = await postAdminLogin(email, password);
 
     if (!response.ok) {
       const message = nestApiErrorMessage(data, "Invalid admin credentials.");

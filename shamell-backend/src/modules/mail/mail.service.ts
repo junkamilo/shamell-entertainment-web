@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailParams, MailerSend, Recipient, Sender } from 'mailersend';
 
@@ -16,16 +16,54 @@ export type SendTransactionalResult = {
 };
 
 @Injectable()
-export class MailService {
+export class MailService implements OnModuleInit {
   private readonly logger = new Logger(MailService.name);
 
   constructor(private readonly config: ConfigService) {}
 
+  onModuleInit(): void {
+    const fromEmail = this.resolveFromEmail();
+    if (!this.isConfigured()) {
+      this.logger.warn(
+        'MailerSend not configured: set MAILERSEND_API_KEY and MAILERSEND_FROM_EMAIL.',
+      );
+      return;
+    }
+    const trialDomain = MailService.isTrialMlsenderDomain(fromEmail);
+    this.logger.log(
+      `MailerSend ready: sending as ${fromEmail}` +
+        (trialDomain
+          ? ' (trial *.mlsender.net — max 2 unique recipients)'
+          : ''),
+    );
+  }
+
+  /**
+   * Reads MAILERSEND_FROM_EMAIL (strips quotes/spaces — common in Render dashboards).
+   * Any local part is fine (info@, noreply@, etc.) once the domain is verified in MailerSend.
+   */
+  resolveFromEmail(): string {
+    let raw = this.config.get<string>('MAILERSEND_FROM_EMAIL') ?? '';
+    raw = raw.trim();
+    if (
+      (raw.startsWith('"') && raw.endsWith('"')) ||
+      (raw.startsWith("'") && raw.endsWith("'"))
+    ) {
+      raw = raw.slice(1, -1).trim();
+    }
+    return raw;
+  }
+
+  /** True when the from address is MailerSend's shared trial subdomain. */
+  static isTrialMlsenderDomain(fromEmail: string): boolean {
+    const domain = fromEmail.trim().toLowerCase().split('@')[1] ?? '';
+    return domain.endsWith('.mlsender.net') || domain === 'mlsender.net';
+  }
+
   /** True when MailerSend can send (API key + verified from address). */
   isConfigured(): boolean {
     const apiKey = this.config.get<string>('MAILERSEND_API_KEY')?.trim();
-    const fromEmail = this.config.get<string>('MAILERSEND_FROM_EMAIL')?.trim();
-    return Boolean(apiKey && fromEmail);
+    return Boolean(apiKey && this.resolveFromEmail());
   }
 
   /** User-facing hint when `isConfigured()` is false. */
@@ -49,7 +87,7 @@ export class MailService {
     payload: TransactionalMailPayload,
   ): Promise<SendTransactionalResult> {
     const apiKey = this.config.get<string>('MAILERSEND_API_KEY')?.trim();
-    const fromEmail = this.config.get<string>('MAILERSEND_FROM_EMAIL')?.trim();
+    const fromEmail = this.resolveFromEmail();
     const fromName = this.resolveFromName();
 
     const email = payload.to.toLowerCase().trim();
@@ -78,8 +116,9 @@ export class MailService {
       return { ok: true };
     } catch (err) {
       const raw = MailService.extractProviderErrorMessage(err);
+      const fromDomain = fromEmail.split('@')[1] ?? '?';
       this.logger.error(
-        `MailerSend failed for ${email}: ${raw || 'unknown error'}`,
+        `MailerSend failed (from ***@${fromDomain} → ${email}): ${raw || 'unknown error'}`,
       );
       return { ok: false, errorText: raw };
     }
@@ -89,7 +128,10 @@ export class MailService {
    * Spanish hint for known MailerSend API errors (e.g. trial domain MS42225).
    * Returns null when the raw provider message should be shown as-is.
    */
-  static userFacingErrorMessage(raw: string): string | null {
+  static userFacingErrorMessage(
+    raw: string,
+    configuredFromEmail?: string,
+  ): string | null {
     const text = raw.trim();
     if (!text) return null;
 
@@ -98,10 +140,17 @@ export class MailService {
         text,
       )
     ) {
+      const from = configuredFromEmail?.trim() ?? '';
+      if (from && !MailService.isTrialMlsenderDomain(from)) {
+        return (
+          `MailerSend rechazó el envío (#MS42225). El backend usa ${from} (info@ o noreply@ vale igual). ` +
+          'En app.mailersend.com: dominio shamellentertainment.com en Verified, plan Free activo (no Trial), ' +
+          'token nuevo con permiso de envío, luego redeploy en Render.'
+        );
+      }
       return (
-        'MailerSend sigue usando el dominio de prueba (*.mlsender.net), que solo permite 2 destinatarios distintos. ' +
-        'En MailerSend: verifica tu dominio propio, usa un remitente de ese dominio en MAILERSEND_FROM_EMAIL ' +
-        '(ej. noreply@tudominio.com) y reinicia el backend.'
+        'MAILERSEND_FROM_EMAIL usa el dominio de prueba (*.mlsender.net). ' +
+        'Cámbialo a info@shamellentertainment.com (o cualquier buzón de tu dominio verificado) y reinicia el backend.'
       );
     }
 

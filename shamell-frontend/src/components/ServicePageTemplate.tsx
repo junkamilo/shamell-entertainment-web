@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { BESPOKE_COLLABORATIONS_PATH } from "@/app/bespoke-collaborations/lib/bespokeCollaborationsRoutes";
+import { PRIVATE_GALAS_PATH } from "@/app/private-galas/lib/privateGalasRoutes";
+import { VIP_EVENTS_PATH } from "@/app/vip-events/lib/vipEventsRoutes";
 import FlameIcon from "./FlameIcon";
 import PearlDivider from "./PearlDivider";
 import OrnamentDivider from "./OrnamentDivider";
@@ -20,9 +23,9 @@ interface ServicePageProps {
 
 const ServiceNavBar = ({ currentTitle }: { currentTitle: string }) => {
   const navLinks = [
-    { label: "Private Galas", path: "/private-galas" },
-    { label: "VIP Events", path: "/vip-events" },
-    { label: "Bespoke Collaborations", path: "/bespoke-collaborations" },
+    { label: "Private Galas", path: PRIVATE_GALAS_PATH },
+    { label: "VIP Events", path: VIP_EVENTS_PATH },
+    { label: "Bespoke Collaborations", path: BESPOKE_COLLABORATIONS_PATH },
   ];
 
   return (

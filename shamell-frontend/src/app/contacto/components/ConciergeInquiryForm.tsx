@@ -15,7 +15,7 @@ import ContactDatePickerModal from "./ContactDatePickerModal";
 import InquirySubmitFeedbackLayer, {
   type InquirySubmitFeedbackPhase,
 } from "./InquirySubmitFeedbackLayer";
-import { formatDateDisplayUs } from "@/components/contact/contactLogisticsUtils";
+import { formatDateDisplayUs } from "@/lib/contactLogisticsUtils";
 
 const emptyConciergeForm: ConciergeFormData = {
   fullName: "",

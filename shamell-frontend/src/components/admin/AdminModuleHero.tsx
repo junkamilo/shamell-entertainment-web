@@ -46,11 +46,13 @@ export default function AdminModuleHero({
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between md:gap-8">
         <div className="min-w-0 text-left">
           <p className="font-brand text-[10px] tracking-[0.28em] text-gold/85">{eyebrow}</p>
-          <h1 className="mt-2 font-brand text-3xl tracking-[0.06em] text-gold md:text-4xl lg:text-[2.65rem] lg:leading-tight">
+          <h1 className="mt-2 font-brand text-[1.75rem] leading-tight tracking-[0.06em] text-gold sm:text-3xl md:text-4xl lg:text-[2.65rem] lg:leading-tight">
             {title}
           </h1>
           {subtitle ? (
-            <p className="mt-3 max-w-xl font-body text-sm leading-relaxed text-foreground/55">{subtitle}</p>
+            <p className="mt-3 max-w-xl font-elegant text-xl leading-[1.65] text-foreground/92 sm:font-body sm:text-sm sm:leading-relaxed sm:text-foreground/55">
+              {subtitle}
+            </p>
           ) : null}
         </div>
 

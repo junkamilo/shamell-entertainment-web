@@ -2,7 +2,7 @@
 
 import { useId, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { isTimeSlotSelectable } from "@/components/contact/contactLogisticsUtils";
+import { isTimeSlotSelectable } from "@/lib/contactLogisticsUtils";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);

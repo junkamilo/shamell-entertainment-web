@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -24,6 +25,7 @@ const INVITE_TTL_MS = 48 * 60 * 60 * 1000;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly googleClient: OAuth2Client | null;
 
   constructor(
@@ -260,7 +262,10 @@ export class AuthService {
         .delete({ where: { id: invite.id } })
         .catch(() => null);
       const raw = result.errorText ?? '';
-      const friendly = MailService.userFacingErrorMessage(raw);
+      const friendly = MailService.userFacingErrorMessage(
+        raw,
+        this.mail.resolveFromEmail(),
+      );
       if (friendly) {
         throw new BadRequestException(friendly);
       }
@@ -334,14 +339,25 @@ export class AuthService {
     };
   }
 
+  /** First origin from FRONTEND_URL (comma-separated list for CORS). */
+  private frontendOrigin(): string {
+    const raw = this.config.get<string>('FRONTEND_URL')?.trim();
+    const first = raw?.split(',')[0]?.trim();
+    return first || 'http://localhost:3000';
+  }
+
   async forgotPassword(dto: ForgotPasswordDto) {
+    const message =
+      'If this email exists, a secure recovery link has been sent.';
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
       select: { id: true },
     });
 
+    let rawToken: string | null = null;
+
     if (user) {
-      const rawToken = randomBytes(32).toString('hex');
+      rawToken = randomBytes(32).toString('hex');
       const tokenHash = createHash('sha256').update(rawToken).digest('hex');
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
@@ -354,9 +370,18 @@ export class AuthService {
       });
     }
 
-    return {
-      message: 'If this email exists, a secure recovery link has been sent.',
-    };
+    const response: { message: string; resetLink?: string } = { message };
+
+    const nodeEnv = this.config.get<string>('NODE_ENV')?.trim() ?? 'development';
+    if (nodeEnv !== 'production' && rawToken) {
+      const resetLink = `${this.frontendOrigin()}/forgot-password/reset?token=${encodeURIComponent(rawToken)}`;
+      response.resetLink = resetLink;
+      this.logger.log(
+        `[dev] Password reset link for ${dto.email.toLowerCase()}: ${resetLink}`,
+      );
+    }
+
+    return response;
   }
 
   async resetPassword(dto: ResetPasswordDto) {

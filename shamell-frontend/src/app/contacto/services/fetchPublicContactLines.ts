@@ -1,4 +1,4 @@
-import type { ContactLine } from "../components/ContactInquiryForm";
+import type { ContactLine } from "../lib/inquiry/wizardTypes";
 import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
 
 export async function fetchPublicContactLines(): Promise<ContactLine[]> {
