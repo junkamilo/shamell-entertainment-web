@@ -12,7 +12,12 @@ import { OCCASION_TYPES_PATH } from "@/app/shamell-admin/occasion-types/lib/occa
 import { SERVICE_TYPES_PATH } from "@/app/shamell-admin/service-types/lib/serviceTypesRoutes";
 import { SERVICES_PATH } from "@/app/shamell-admin/services/lib/servicesRoutes";
 import { GALLERY_CATEGORIES_PATH, GALLERY_PATH } from "@/app/shamell-admin/gallery/lib/galleryRoutes";
+import { FLOOR_LAYOUT_PATH } from "@/app/shamell-admin/floor-layout/lib/floorLayoutRoutes";
+import { VENUE_LAYOUT_PROMO_ADMIN_PATH } from "@/app/shamell-admin/venue-layout-promo/lib/venueLayoutPromoRoutes";
+import { VENUE_RESERVATIONS_ADMIN_PATH } from "@/app/shamell-admin/venue-reservations/lib/venueReservationsRoutes";
+import { VENUE_TABLES_PATH } from "@/app/shamell-admin/venue-tables/lib/venueTablesRoutes";
 import {
+  Armchair,
   CalendarDays,
   CalendarRange,
   ClipboardList,
@@ -26,6 +31,8 @@ import {
   Shapes,
   Store,
   Tags,
+  Ticket,
+  LayoutGrid,
   PanelsTopLeft,
   UserPlus,
   X,
@@ -55,6 +62,10 @@ const navItems: AdminNavItem[] = [
   { href: EVENTS_PATH, label: "Events", icon: CalendarRange },
   { href: GALLERY_CATEGORIES_PATH, label: "Gallery categories", icon: PanelsTopLeft },
   { href: GALLERY_PATH, label: "Gallery", icon: ImageIcon },
+  { href: FLOOR_LAYOUT_PATH, label: "Venue layout", icon: LayoutGrid },
+  { href: VENUE_LAYOUT_PROMO_ADMIN_PATH, label: "Venue layout (site)", icon: Store },
+  { href: VENUE_RESERVATIONS_ADMIN_PATH, label: "Seat reservations", icon: Ticket },
+  { href: VENUE_TABLES_PATH, label: "Table seating", icon: Armchair },
   { href: "/shamell-admin/about", label: "About Shamell", icon: Info },
   { href: AGREGAR_ADMIN_PATH, label: "Add admin", icon: UserPlus },
 ];
@@ -74,6 +85,10 @@ const breadcrumbLabel: Record<string, string> = {
   events: "Events",
   "gallery-categories": "Gallery categories",
   gallery: "Gallery",
+  "floor-layout": "Venue layout",
+  "venue-layout-promo": "Venue layout (site)",
+  "venue-reservations": "Seat reservations",
+  "venue-tables": "Table seating",
   about: "About Shamell",
   "agregar-admin": "Add admin",
   "invite-admin": "Add admin",

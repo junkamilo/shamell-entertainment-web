@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { getPublicApiBaseUrl } from "@/app/contacto/lib/apiBaseUrl";
 import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
 
 export type AboutContentItem = {
@@ -37,16 +38,12 @@ export function useAboutContent() {
   const [about, setAbout] = useState<AboutContentItem>(fallbackAboutContent);
   const [isLoading, setIsLoading] = useState(false);
 
-  const apiBaseUrl = useMemo(
-    () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
-    [],
-  );
-
   useEffect(() => {
     let isCancelled = false;
     setIsLoading(true);
+    const apiBaseUrl = getPublicApiBaseUrl();
 
-    fetch(`${apiBaseUrl}/api/v1/about`)
+    fetch(`${apiBaseUrl}/api/v1/about`, { cache: "no-store" })
       .then((response) => {
         if (!response.ok) throw new Error("Cannot load about content.");
         return response.json();
@@ -76,7 +73,7 @@ export function useAboutContent() {
     return () => {
       isCancelled = true;
     };
-  }, [apiBaseUrl]);
+  }, []);
 
   return { about, isLoading };
 }

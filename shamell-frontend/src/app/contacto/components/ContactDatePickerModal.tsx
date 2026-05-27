@@ -83,8 +83,10 @@ export default function ContactDatePickerModal({
     return startOfTodayLocal();
   }, [minSelectableIso]);
 
-  const [viewYear, setViewYear] = useState(() => minDate.getFullYear());
-  const [viewMonth0, setViewMonth0] = useState(() => minDate.getMonth());
+  const today = useMemo(() => startOfTodayLocal(), [isOpen]);
+
+  const [viewYear, setViewYear] = useState(() => today.getFullYear());
+  const [viewMonth0, setViewMonth0] = useState(() => today.getMonth());
   const [picked, setPicked] = useState<Date | null>(null);
   /** Tap-to-show tooltip on mobile for blocked-by-policy dates */
   const [openTooltipIso, setOpenTooltipIso] = useState<string | null>(null);
@@ -92,12 +94,23 @@ export default function ContactDatePickerModal({
   useEffect(() => {
     if (!isOpen) return;
     const initial = value ? parseISOLocal(value) : null;
-    const validInitial = initial && initial >= minDate ? initial : minDate;
-    setPicked(validInitial);
-    setViewYear(validInitial.getFullYear());
-    setViewMonth0(validInitial.getMonth());
+    const initialIso = initial ? toISOLocalDate(initial) : null;
+    const initialBlocked = initialIso ? Boolean(blockedIsoDates?.has(initialIso)) : false;
+    const validFromValue =
+      initial && initial >= minDate && !initialBlocked ? initial : null;
+
+    const todayIso = toISOLocalDate(today);
+    const todaySelectable = today >= minDate && !blockedIsoDates?.has(todayIso);
+    const defaultPicked = value ? null : todaySelectable ? today : null;
+    const pickedState = validFromValue ?? defaultPicked;
+
+    const viewAnchor = pickedState ?? (today >= minDate ? today : minDate);
+
+    setPicked(pickedState);
+    setViewYear(viewAnchor.getFullYear());
+    setViewMonth0(viewAnchor.getMonth());
     setOpenTooltipIso(null);
-  }, [isOpen, value, minDate]);
+  }, [isOpen, value, minDate, blockedIsoDates, today]);
 
   useEffect(() => {
     if (!isOpen) setOpenTooltipIso(null);
