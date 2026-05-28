@@ -60,6 +60,33 @@ enum EventTypeOccasionUsage {
   BESPOKE_ROLE
 }
 
+enum EventPublicSection {
+  GENERAL
+  UPCOMING_EVENTS
+}
+
+enum UpcomingExperienceType {
+  CLASSES
+  VENUE_SEATING
+}
+
+enum UpcomingClassVariant {
+  GROUP
+  PERSONAL
+}
+
+enum UpcomingClassEnrollmentStatus {
+  PENDING_PAYMENT
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum ReservationEventScheduleMode {
+  FIXED_EVENT
+  RECURRING_WEEKLY
+}
+
 enum BookingSource {
   CLIENT_REGISTERED
   ADMIN_PHONE
@@ -152,18 +179,25 @@ model ServiceType {
 }
 
 model Event {
-  id            String         @id @default(uuid())
-  eventType     EventType      @relation(fields: [eventTypeId], references: [id])
-  eventTypeId   String         @unique
-  description   String         @db.Text
-  items         String[]
-  price         Decimal?       @db.Decimal(12, 2)
-  isActive      Boolean        @default(true)
-  showOnHome    Boolean        @default(true)
-  galleryPhotos GalleryPhoto[]
-  bookings      Booking[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id              String                  @id @default(uuid())
+  eventType       EventType               @relation(fields: [eventTypeId], references: [id])
+  eventTypeId     String                  @unique
+  description     String                  @db.Text
+  items           String[]
+  price           Decimal?                @db.Decimal(12, 2)
+  isActive        Boolean                 @default(true)
+  showOnHome      Boolean                 @default(true)
+  publicSection   EventPublicSection      @default(GENERAL)
+  slug            String?                 @unique
+  experienceType  UpcomingExperienceType?
+  classVariant    UpcomingClassVariant?
+  galleryPhotos   GalleryPhoto[]
+  bookings        Booking[]
+  venueConfig     UpcomingVenueConfig?
+  classSessions   UpcomingClassSession[]
+  seatReservations VenueSeatReservation[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
 
   @@map("events")
 }
@@ -448,16 +482,120 @@ model HeroHeaderContent {
 }
 
 model VenueFloorLayout {
-  id                String   @id @default(uuid())
-  viewBoxWidth      Int      @default(1024)
-  viewBoxHeight     Int      @default(944)
-  backgroundVersion String   @default("v1")
-  items             Json     @default("[]")
-  isActive          Boolean  @default(true)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                String                @id @default(uuid())
+  viewBoxWidth      Int                   @default(1024)
+  viewBoxHeight     Int                   @default(944)
+  backgroundVersion String                @default("v1")
+  items             Json                  @default("[]")
+  sceneZones        Json                  @default("{}")
+  isActive          Boolean               @default(true)
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  upcomingVenueConfigs UpcomingVenueConfig[]
 
   @@map("venue_floor_layouts")
+}
+
+model ReservationEventTemplate {
+  id           String                       @id @default(uuid())
+  name         String                       @unique
+  timezone     String                       @default("America/New_York")
+  scheduleMode ReservationEventScheduleMode @default(FIXED_EVENT)
+  salesStartDate         DateTime? @db.Date
+  salesEndDate           DateTime? @db.Date
+  eventDate              DateTime? @db.Date
+  eventStartTime         String?
+  eventEndTime           String?
+  recurringEffectiveFrom DateTime? @db.Date
+  recurringStartTime     String?
+  recurringEndTime         String?
+  startDate              DateTime? @db.Date
+  endDate                DateTime? @db.Date
+  startTime              String?
+  endTime                String?
+  weekdays               ReservationEventWeekday[]
+  venueConfigs           UpcomingVenueConfig[]
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("reservation_event_templates")
+}
+
+model ReservationEventWeekday {
+  id         String                   @id @default(uuid())
+  templateId String
+  template   ReservationEventTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  weekday    Int
+  isActive   Boolean                  @default(true)
+
+  @@unique([templateId, weekday])
+  @@map("reservation_event_weekdays")
+}
+
+model UpcomingVenueConfig {
+  id                         String    @id @default(uuid())
+  eventId                    String    @unique
+  event                      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  clientEnabled                Boolean   @default(false)
+  promoTitle                   String?
+  promoDescription             String?   @db.Text
+  promoImageUrl                String?
+  promoImagePublicId           String?
+  reservationEventDate         DateTime?
+  reservationOpensAt           DateTime?
+  reservationClosesAt          DateTime?
+  reservationEventLabel        String?
+  reservationTimezone          String    @default("America/New_York")
+  reservationEventTemplateId   String?
+  reservationEventTemplate     ReservationEventTemplate? @relation(fields: [reservationEventTemplateId], references: [id], onDelete: SetNull)
+  floorLayoutId                String?
+  floorLayout                  VenueFloorLayout? @relation(fields: [floorLayoutId], references: [id], onDelete: SetNull)
+  createdAt                    DateTime  @default(now())
+  updatedAt                    DateTime  @updatedAt
+
+  @@index([reservationEventTemplateId])
+  @@map("upcoming_venue_configs")
+}
+
+model UpcomingClassSession {
+  id          String   @id @default(uuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  startsAt    DateTime
+  endsAt      DateTime
+  timezone    String   @default("America/New_York")
+  capacity    Int
+  price       Decimal  @db.Decimal(12, 2)
+  currency    String   @default("usd")
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  enrollments UpcomingClassEnrollment[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([eventId, startsAt])
+  @@map("upcoming_class_sessions")
+}
+
+model UpcomingClassEnrollment {
+  id                      String                        @id @default(uuid())
+  sessionId               String
+  session                 UpcomingClassSession          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  status                  UpcomingClassEnrollmentStatus @default(PENDING_PAYMENT)
+  amount                  Decimal                       @db.Decimal(12, 2)
+  currency                String                        @default("usd")
+  stripeCheckoutSessionId String                        @unique
+  stripePaymentIntentId   String?
+  customerName            String
+  customerEmail           String
+  customerPhone           String?
+  paidAt                  DateTime?
+  expiresAt               DateTime?
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
+
+  @@index([sessionId, status])
+  @@map("upcoming_class_enrollments")
 }
 
 enum VenueSeatReservationStatus {
@@ -536,6 +674,8 @@ model VenueLayoutClientSettings {
 
 model VenueSeatReservation {
   id                      String                     @id @default(uuid())
+  upcomingEventId         String?
+  upcomingEvent           Event?                     @relation(fields: [upcomingEventId], references: [id], onDelete: SetNull)
   kind                    VenueSeatKind
   venueTableConfigId      String?
   layoutItemId            String
@@ -555,8 +695,9 @@ model VenueSeatReservation {
 
   venueTableConfig VenueTableConfig? @relation(fields: [venueTableConfigId], references: [id], onDelete: SetNull)
 
-  @@unique([venueTableConfigId, eventDate])
-  @@index([layoutItemId, eventDate, status])
+  @@unique([layoutItemId, upcomingEventId])
+  @@index([layoutItemId, upcomingEventId, status])
+  @@index([upcomingEventId, status])
   @@index([status])
   @@map("venue_seat_reservations")
 }

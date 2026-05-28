@@ -1,0 +1,224 @@
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { ReservationEventScheduleMode, type Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { CreateReservationEventTemplateDto } from './dto/create-reservation-event-template.dto';
+import type { UpdateReservationEventTemplateDto } from './dto/update-reservation-event-template.dto';
+import {
+  buildTemplateSummary,
+  inactiveWeekdays,
+  validateTemplatePayload,
+  type ValidatedTemplatePayload,
+  type WeekdayInput,
+} from './reservation-event-template.util';
+
+const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+type TemplateWithWeekdays = Prisma.ReservationEventTemplateGetPayload<{
+  include: { weekdays: true };
+}>;
+
+@Injectable()
+export class ReservationEventTemplatesService {
+  constructor(private readonly prisma: PrismaService) {}
+
+  // TODO(phase-2): reservation template schedule evaluation for public sales
+
+  async listAdmin(scheduleMode?: ReservationEventScheduleMode) {
+    const rows = await this.prisma.reservationEventTemplate.findMany({
+      where: scheduleMode ? { scheduleMode } : undefined,
+      include: { weekdays: { orderBy: { weekday: 'asc' } } },
+      orderBy: { name: 'asc' },
+    });
+    return rows.map((row) => this.mapTemplate(row));
+  }
+
+  async getAdminById(id: string) {
+    const row = await this.findByIdOrThrow(id);
+    return this.mapTemplate(row);
+  }
+
+  async createAdmin(dto: CreateReservationEventTemplateDto) {
+    const validated = validateTemplatePayload(dto);
+    const created = await this.prisma.reservationEventTemplate.create({
+      data: this.toPrismaCreate(validated),
+      include: { weekdays: { orderBy: { weekday: 'asc' } } },
+    });
+    return this.mapTemplate(created);
+  }
+
+  async updateAdmin(id: string, dto: UpdateReservationEventTemplateDto) {
+    const existing = await this.findByIdOrThrow(id);
+    const merged = this.mergeDto(existing, dto);
+    const validated = validateTemplatePayload(merged);
+
+    await this.prisma.reservationEventWeekday.deleteMany({
+      where: { templateId: id },
+    });
+
+    const updated = await this.prisma.reservationEventTemplate.update({
+      where: { id },
+      data: this.toPrismaUpdate(validated),
+      include: { weekdays: { orderBy: { weekday: 'asc' } } },
+    });
+    return this.mapTemplate(updated);
+  }
+
+  async deleteAdmin(id: string) {
+    await this.findByIdOrThrow(id);
+    const linked = await this.prisma.upcomingVenueConfig.count({
+      where: { reservationEventTemplateId: id },
+    });
+    if (linked > 0) {
+      throw new ConflictException(
+        `This reservation event is linked to ${linked} upcoming event(s). Unlink them before deleting.`,
+      );
+    }
+    await this.prisma.reservationEventTemplate.delete({ where: { id } });
+    return { message: 'Reservation event deleted.' };
+  }
+
+  async findByIdOrThrow(id: string): Promise<TemplateWithWeekdays> {
+    const row = await this.prisma.reservationEventTemplate.findUnique({
+      where: { id },
+      include: { weekdays: { orderBy: { weekday: 'asc' } } },
+    });
+    if (!row) {
+      throw new NotFoundException('Reservation event not found.');
+    }
+    return row;
+  }
+
+  private mergeDto(
+    existing: TemplateWithWeekdays,
+    dto: UpdateReservationEventTemplateDto,
+  ) {
+    const scheduleMode = dto.scheduleMode ?? existing.scheduleMode;
+    const base = {
+      name: dto.name ?? existing.name,
+      timezone: dto.timezone ?? existing.timezone,
+      scheduleMode,
+    };
+
+    if (scheduleMode === ReservationEventScheduleMode.FIXED_EVENT) {
+      return {
+        ...base,
+        salesStartDate:
+          dto.salesStartDate ??
+          existing.salesStartDate?.toISOString().slice(0, 10) ??
+          '',
+        salesEndDate:
+          dto.salesEndDate ??
+          existing.salesEndDate?.toISOString().slice(0, 10) ??
+          '',
+        eventDate:
+          dto.eventDate ?? existing.eventDate?.toISOString().slice(0, 10) ?? '',
+        eventStartTime: dto.eventStartTime ?? existing.eventStartTime ?? '',
+        eventEndTime: dto.eventEndTime ?? existing.eventEndTime ?? '',
+      };
+    }
+
+    return {
+      ...base,
+      weekdays:
+        dto.weekdays ??
+        existing.weekdays.map((w) => ({
+          weekday: w.weekday,
+          isActive: w.isActive,
+        })),
+      recurringStartTime:
+        dto.recurringStartTime ?? existing.recurringStartTime ?? '',
+      recurringEndTime: dto.recurringEndTime ?? existing.recurringEndTime ?? '',
+    };
+  }
+
+  private toPrismaCreate(validated: ValidatedTemplatePayload) {
+    return {
+      name: validated.name,
+      timezone: validated.timezone,
+      scheduleMode: validated.scheduleMode,
+      salesStartDate: validated.salesStartDate,
+      salesEndDate: validated.salesEndDate,
+      eventDate: validated.eventDate,
+      eventStartTime: validated.eventStartTime,
+      eventEndTime: validated.eventEndTime,
+      recurringEffectiveFrom: validated.recurringEffectiveFrom,
+      recurringStartTime: validated.recurringStartTime,
+      recurringEndTime: validated.recurringEndTime,
+      startDate: validated.salesStartDate ?? validated.recurringEffectiveFrom,
+      endDate: validated.salesEndDate ?? validated.recurringEffectiveFrom,
+      startTime: validated.eventStartTime ?? validated.recurringStartTime,
+      endTime: validated.eventEndTime ?? validated.recurringEndTime,
+      weekdays: {
+        create: this.normalizeWeekdays(validated.weekdays),
+      },
+    };
+  }
+
+  private toPrismaUpdate(validated: ValidatedTemplatePayload) {
+    return {
+      name: validated.name,
+      timezone: validated.timezone,
+      scheduleMode: validated.scheduleMode,
+      salesStartDate: validated.salesStartDate,
+      salesEndDate: validated.salesEndDate,
+      eventDate: validated.eventDate,
+      eventStartTime: validated.eventStartTime,
+      eventEndTime: validated.eventEndTime,
+      recurringEffectiveFrom: validated.recurringEffectiveFrom,
+      recurringStartTime: validated.recurringStartTime,
+      recurringEndTime: validated.recurringEndTime,
+      startDate: validated.salesStartDate ?? validated.recurringEffectiveFrom,
+      endDate: validated.salesEndDate ?? validated.recurringEffectiveFrom,
+      startTime: validated.eventStartTime ?? validated.recurringStartTime,
+      endTime: validated.eventEndTime ?? validated.recurringEndTime,
+      weekdays: {
+        create: this.normalizeWeekdays(validated.weekdays),
+      },
+    };
+  }
+
+  private normalizeWeekdays(weekdays: WeekdayInput[]) {
+    const rows =
+      weekdays.length === 7 ? weekdays : inactiveWeekdays();
+    return rows.map((w) => ({
+      weekday: w.weekday,
+      isActive: w.isActive,
+    }));
+  }
+
+  private mapTemplate(row: TemplateWithWeekdays) {
+    const activeDays = row.weekdays
+      .filter((w) => w.isActive)
+      .map((w) => WEEKDAY_LABELS[w.weekday] ?? String(w.weekday));
+    return {
+      id: row.id,
+      name: row.name,
+      timezone: row.timezone,
+      scheduleMode: row.scheduleMode,
+      salesStartDate: row.salesStartDate?.toISOString().slice(0, 10) ?? null,
+      salesEndDate: row.salesEndDate?.toISOString().slice(0, 10) ?? null,
+      eventDate: row.eventDate?.toISOString().slice(0, 10) ?? null,
+      eventStartTime: row.eventStartTime,
+      eventEndTime: row.eventEndTime,
+      recurringEffectiveFrom:
+        row.recurringEffectiveFrom?.toISOString().slice(0, 10) ?? null,
+      recurringStartTime: row.recurringStartTime,
+      recurringEndTime: row.recurringEndTime,
+      startDate: row.startDate?.toISOString().slice(0, 10) ?? null,
+      endDate: row.endDate?.toISOString().slice(0, 10) ?? null,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      weekdays: row.weekdays.map((w) => ({
+        weekday: w.weekday,
+        isActive: w.isActive,
+      })),
+      activeDayLabels: activeDays,
+      summary: buildTemplateSummary(row),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  }
+}

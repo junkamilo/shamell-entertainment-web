@@ -19,6 +19,8 @@ import { StandaloneChairsModule } from './modules/standalone-chairs/standalone-c
 import { VenueTablesModule } from './modules/venue-tables/venue-tables.module';
 import { VenueLayoutSettingsModule } from './modules/venue-layout-settings/venue-layout-settings.module';
 import { VenueReservationsModule } from './modules/venue-reservations/venue-reservations.module';
+import { UpcomingEventsModule } from './modules/upcoming-events/upcoming-events.module';
+import { ReservationEventTemplatesModule } from './modules/reservation-event-templates/reservation-event-templates.module';
 
 @Module({
   imports: [
@@ -41,6 +43,8 @@ import { VenueReservationsModule } from './modules/venue-reservations/venue-rese
     StandaloneChairsModule,
     VenueLayoutSettingsModule,
     VenueReservationsModule,
+    UpcomingEventsModule,
+    ReservationEventTemplatesModule,
   ],
 })
 export class AppModule {}

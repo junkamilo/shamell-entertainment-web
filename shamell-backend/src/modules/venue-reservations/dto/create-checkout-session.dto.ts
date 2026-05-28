@@ -33,4 +33,13 @@ export class CreateCheckoutSessionDto {
   @IsString()
   @MaxLength(40)
   customerPhone?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  upcomingEventId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  upcomingEventSlug?: string;
 }

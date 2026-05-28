@@ -10,6 +10,10 @@ export type EventsEventTypeOption = {
   isActive: boolean;
 };
 
+export type EventPublicSection = "GENERAL" | "UPCOMING_EVENTS";
+export type UpcomingExperienceType = "CLASSES" | "VENUE_SEATING";
+export type UpcomingClassVariant = "GROUP" | "PERSONAL";
+
 export type AdminEvent = {
   id: string;
   eventTypeId: string;
@@ -20,6 +24,10 @@ export type AdminEvent = {
   catalogImages: CatalogImage[];
   isActive: boolean;
   showOnHome: boolean;
+  publicSection: EventPublicSection;
+  slug?: string | null;
+  experienceType?: UpcomingExperienceType | null;
+  classVariant?: UpcomingClassVariant | null;
   createdAt?: string;
   updatedAt?: string;
   bookingCount?: number;
@@ -28,31 +36,44 @@ export type AdminEvent = {
 
 export type EventFormSnapshot = {
   eventTypeId: string;
+  eventName: string;
   description: string;
   itemsText: string;
   price: number | null;
+  publicSection: EventPublicSection;
+  reservationEventTemplateId?: string;
 };
 
 export type EventsStats = {
   total: number;
-  upcoming: number;
-  completed: number;
+  activeCount: number;
+  inactiveCount: number;
   itemsTotal: number;
   nearestLabel: string;
 };
 
+export type EventsStatsBarVariant = "general" | "upcomingSite";
+
 export type CreateAdminEventBody = {
-  eventTypeId: string;
+  eventTypeId?: string;
+  eventTypeName?: string;
   description: string;
   items: string[];
   showOnHome: boolean;
+  publicSection: EventPublicSection;
+  experienceType?: UpcomingExperienceType;
+  classVariant?: UpcomingClassVariant;
   price?: number;
 };
 
 export type UpdateAdminEventBody = {
-  eventTypeId: string;
+  eventTypeId?: string;
+  eventTypeName?: string;
   description: string;
   items: string[];
   showOnHome: boolean;
+  publicSection: EventPublicSection;
+  experienceType?: UpcomingExperienceType;
+  classVariant?: UpcomingClassVariant;
   price?: number | null;
 };

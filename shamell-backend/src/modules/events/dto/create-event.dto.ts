@@ -1,6 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
   ArrayMinSize,
+  IsEnum,
   IsArray,
   IsBoolean,
   IsNotEmpty,
@@ -12,10 +13,25 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
+import {
+  EventPublicSection,
+  UpcomingClassVariant,
+  UpcomingExperienceType,
+} from '@prisma/client';
 
 export class CreateEventDto {
+  @ValidateIf((o: CreateEventDto) => !o.eventTypeName?.trim())
   @IsUUID()
-  eventTypeId!: string;
+  eventTypeId?: string;
+
+  @ValidateIf((o: CreateEventDto) => !o.eventTypeId)
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  @Transform(({ value }) =>
+    value === undefined || value === null ? undefined : String(value).trim(),
+  )
+  eventTypeName?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -49,4 +65,36 @@ export class CreateEventDto {
   })
   @IsBoolean()
   showOnHome?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return String(value).trim().toUpperCase();
+  })
+  @IsEnum(EventPublicSection)
+  publicSection?: EventPublicSection;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  @Transform(({ value }) =>
+    value === undefined || value === null ? undefined : String(value).trim().toLowerCase(),
+  )
+  slug?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return String(value).trim().toUpperCase();
+  })
+  @IsEnum(UpcomingExperienceType)
+  experienceType?: UpcomingExperienceType;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    return String(value).trim().toUpperCase();
+  })
+  @IsEnum(UpcomingClassVariant)
+  classVariant?: UpcomingClassVariant;
 }

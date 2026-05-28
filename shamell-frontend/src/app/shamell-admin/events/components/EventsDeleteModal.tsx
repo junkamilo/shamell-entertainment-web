@@ -10,6 +10,12 @@ type Props = {
 };
 
 export default function EventsDeleteModal({ pendingDelete, isDeleting, onClose, onConfirm }: Props) {
+  const catalogCount = pendingDelete?.catalogImages?.length ?? 0;
+  const galleryOnlyCount = Math.max(
+    0,
+    (pendingDelete?.galleryPhotoCount ?? 0) - catalogCount,
+  );
+
   return (
     <AdminModal title="Delete event" isOpen={Boolean(pendingDelete)} onClose={onClose}>
       <div className="space-y-5 font-body text-sm text-foreground/85">
@@ -18,7 +24,25 @@ export default function EventsDeleteModal({ pendingDelete, isDeleting, onClose, 
           <span className="font-brand text-gold">
             {pendingDelete ? displayEventHeading(pendingDelete.description).title : ""}
           </span>
-          ? This is only allowed when there are no bookings or linked gallery photos. You cannot undo it.
+          ? You cannot undo this.
+        </p>
+        {catalogCount > 0 ? (
+          <p className="text-foreground/70">
+            {catalogCount === 1
+              ? "Its catalog image will also be removed."
+              : `Its ${catalogCount} catalog images will also be removed.`}
+          </p>
+        ) : null}
+        {galleryOnlyCount > 0 ? (
+          <p className="text-foreground/70">
+            {galleryOnlyCount === 1
+              ? "One linked gallery photo will also be removed."
+              : `${galleryOnlyCount} linked gallery photos will also be removed.`}
+          </p>
+        ) : null}
+        <p className="text-foreground/60 text-xs">
+          Deletion is blocked while the event has bookings, pending seat reservations, or paid class
+          enrollments.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button

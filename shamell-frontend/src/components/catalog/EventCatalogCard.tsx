@@ -32,13 +32,21 @@ const inquireLinkClass = cn(
 export function EventCatalogCard({
   service,
   currencySuffix = "USD",
+  primaryActionHref,
+  primaryActionLabel = "View event",
+  showInquireLink = true,
 }: {
   service: EventCatalogItem;
   index?: number;
   /** Shown after the amount when price is set (e.g. USD). */
   currencySuffix?: string;
+  primaryActionHref?: string;
+  primaryActionLabel?: string;
+  showInquireLink?: boolean;
 }) {
   const inquireHref = buildEventLineContactHref(service.id);
+  const actionHref = primaryActionHref ?? inquireHref;
+  const actionLabel = primaryActionHref ? primaryActionLabel : "Inquire";
   const heroIsVideo =
     service.heroMediaType === "VIDEO" ||
     serviceCatalogMediaTypeFromUrl(service.heroImageUrl) === "VIDEO";
@@ -111,10 +119,19 @@ export function EventCatalogCard({
         />
 
         <div className="mt-6 shrink-0 border-t border-gold/14 pt-5">
-          <Link href={inquireHref} prefetch={false} className={cn(inquireLinkClass, "w-full")}>
-            <span className="relative z-10">Inquire</span>
+          <Link href={actionHref} prefetch={false} className={cn(inquireLinkClass, "w-full")}>
+            <span className="relative z-10">{actionLabel}</span>
             <ArrowRight className="relative z-10 h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
           </Link>
+          {showInquireLink && primaryActionHref ? (
+            <Link
+              href={inquireHref}
+              prefetch={false}
+              className="mt-3 block text-center font-brand text-[10px] tracking-[0.14em] text-gold/75 uppercase hover:text-gold"
+            >
+              Or inquire without booking
+            </Link>
+          ) : null}
         </div>
       </div>
     </article>

@@ -1,3 +1,5 @@
+export const EVENT_NAME_MIN_LENGTH = 2;
+export const EVENT_NAME_MAX_LENGTH = 200;
 export const DESCRIPTION_MIN_LENGTH = 10;
 export const DESCRIPTION_MAX_LENGTH = 5000;
 export const ITEM_MAX_LENGTH = 180;

@@ -36,7 +36,9 @@ export const STAGE_TOP_Y = STAGE_HEIGHT;
 
 export const STAIR_COUNT = 3;
 export const STAIR_DEPTH = 0.38 * STAGE_SCALE;
-export const STAIR_WIDTH = 2.8 * STAGE_SCALE;
+/** Shared width for red carpet and stair treads (local X, meters). */
+export const STAGE_RUNNER_WIDTH = 1.95 * STAGE_SCALE;
+export const STAIR_WIDTH = STAGE_RUNNER_WIDTH;
 
 export const LIGHT_SPHERE_RADIUS = 0.048 * STAGE_SCALE;
 export const LIGHT_SPACING = 0.25 * STAGE_SCALE;
@@ -77,7 +79,7 @@ export function getStageStairsFrontZ(): number {
 
 /** Carpet runs from room entrance toward stage stairs. */
 export const CARPET_START_Z = WORLD_DEPTH * 0.88;
-export const CARPET_WIDTH = 3.1 * STAGE_SCALE;
+export const CARPET_WIDTH = STAGE_RUNNER_WIDTH;
 export const CARPET_Y = 0.012;
 export const CARPET_LENGTH = 12.5;
 

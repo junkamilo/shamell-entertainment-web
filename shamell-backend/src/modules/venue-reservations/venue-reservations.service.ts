@@ -6,7 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  EventPublicSection,
   Prisma,
+  UpcomingExperienceType,
   VenueSeatKind,
   VenueSeatReservationStatus,
 } from '@prisma/client';
@@ -38,6 +40,7 @@ type StripeWebhookEventLite = {
 
 type StripeCheckoutSessionLite = {
   id?: string;
+  metadata?: Record<string, string> | null;
   payment_intent?: string | { id?: string } | null;
   payment_status?: string | null;
   amount_total?: number | null;
@@ -56,13 +59,19 @@ export class VenueReservationsService {
     private readonly floorLayout: FloorLayoutService,
   ) {}
 
-  async getAvailability() {
-    const settings = await this.getReservationSettings();
+  async getAvailability(query?: {
+    upcomingEventId?: string;
+    upcomingEventSlug?: string;
+  }) {
+    const ctx = await this.resolveVenueContext(query);
+    const settings = ctx.settings;
     const window = settings.window;
     const eventDate = eventDateForReservations(window);
 
-    if (!settings.clientEnabled || !eventDate) {
+    if (!settings.clientEnabled || !eventDate || !ctx.upcomingEventId) {
       return {
+        upcomingEventId: ctx.upcomingEventId,
+        upcomingEventSlug: ctx.slug,
         eventDate: null,
         reservationOpensAt: window.opensAt?.toISOString() ?? null,
         reservationClosesAt: window.closesAt?.toISOString() ?? null,
@@ -73,8 +82,15 @@ export class VenueReservationsService {
       };
     }
 
-    const blocking = await this.findBlockingReservations(eventDate);
-    const soldOut = await this.isInventorySoldOut(eventDate);
+    const blocking = await this.findBlockingReservations(
+      eventDate,
+      ctx.upcomingEventId,
+    );
+    const soldOut = await this.isInventorySoldOut(
+      eventDate,
+      ctx.upcomingEventId,
+      ctx.floorLayoutId,
+    );
     const windowStatus = evaluateSalesWindow(window);
     const reservationsOpen = windowStatus.open && !soldOut;
     const salesClosedReason = soldOut
@@ -84,6 +100,8 @@ export class VenueReservationsService {
         : windowStatus.reason;
 
     return {
+      upcomingEventId: ctx.upcomingEventId,
+      upcomingEventSlug: ctx.slug,
       eventDate: eventDate.toISOString(),
       reservationOpensAt: window.opensAt?.toISOString() ?? null,
       reservationClosesAt: window.closesAt?.toISOString() ?? null,
@@ -101,8 +119,12 @@ export class VenueReservationsService {
   }
 
   async createCheckoutSession(dto: CreateCheckoutSessionDto) {
-    const settings = await this.getReservationSettings();
-    if (!settings.clientEnabled) {
+    const ctx = await this.resolveVenueContext({
+      upcomingEventId: dto.upcomingEventId,
+      upcomingEventSlug: dto.upcomingEventSlug,
+    });
+    const settings = ctx.settings;
+    if (!settings.clientEnabled || !ctx.upcomingEventId) {
       throw new BadRequestException('On Coming Events is not published.');
     }
 
@@ -123,10 +145,18 @@ export class VenueReservationsService {
       throw new BadRequestException(message);
     }
 
-    if (await this.isInventorySoldOut(eventDate)) {
+    if (
+      await this.isInventorySoldOut(
+        eventDate,
+        ctx.upcomingEventId,
+        ctx.floorLayoutId,
+      )
+    ) {
       throw new BadRequestException('All seats are sold.');
     }
-    const layout = await this.floorLayout.getPublicFloorLayoutForClient();
+    const layout = await this.floorLayout.getPublicFloorLayoutForClient(
+      ctx.floorLayoutId,
+    );
     const layoutItem = layout.items.find((i) => i.id === dto.layoutItemId);
     if (!layoutItem) {
       throw new BadRequestException('Seat is not on the published floor plan.');
@@ -180,6 +210,7 @@ export class VenueReservationsService {
       layoutItemId: dto.layoutItemId,
       venueTableConfigId,
       eventDate,
+      upcomingEventId: ctx.upcomingEventId,
     });
 
     const eventLabel =
@@ -192,7 +223,8 @@ export class VenueReservationsService {
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
-    const returnUrl = `${frontendUrl}/on-coming-events/return?session_id={CHECKOUT_SESSION_ID}`;
+    const slugSegment = ctx.slug ? `/${ctx.slug}` : '';
+    const returnUrl = `${frontendUrl}/on-coming-events${slugSegment}/seats/return?session_id={CHECKOUT_SESSION_ID}`;
 
     const sessionParams = {
       ui_mode: 'embedded_page',
@@ -211,7 +243,7 @@ export class VenueReservationsService {
           },
         },
       ],
-      metadata: {},
+      metadata: { flow: 'venue_seat' },
       return_url: returnUrl,
       expires_at: Math.floor(expiresAt.getTime() / 1000),
     };
@@ -228,6 +260,7 @@ export class VenueReservationsService {
 
     const reservation = await this.prisma.venueSeatReservation.create({
       data: {
+        upcomingEventId: ctx.upcomingEventId,
         kind,
         venueTableConfigId,
         layoutItemId: dto.layoutItemId,
@@ -244,7 +277,11 @@ export class VenueReservationsService {
     });
 
     await this.stripeService.client.checkout.sessions.update(session.id, {
-      metadata: { reservationId: reservation.id },
+      metadata: {
+        flow: 'venue_seat',
+        reservationId: reservation.id,
+        upcomingEventId: ctx.upcomingEventId,
+      },
     });
 
     this.logger.log(
@@ -320,6 +357,9 @@ export class VenueReservationsService {
     try {
       if (event.type === 'checkout.session.completed') {
         const session = this.parseCheckoutSession(event.data.object);
+        if (session.metadata?.flow === 'class_session') {
+          return { received: true, skipped: true };
+        }
         await this.markPaidFromSession(session, event.id);
       } else if (event.type === 'checkout.session.expired') {
         const session = this.parseCheckoutSession(event.data.object);
@@ -360,6 +400,10 @@ export class VenueReservationsService {
     }
     if (query.layoutItemId?.trim()) {
       where.layoutItemId = query.layoutItemId.trim();
+    }
+    const upcomingEventId = (query as { upcomingEventId?: string }).upcomingEventId;
+    if (upcomingEventId?.trim()) {
+      where.upcomingEventId = upcomingEventId.trim();
     }
 
     const [totalItems, rows] = await Promise.all([
@@ -520,7 +564,83 @@ export class VenueReservationsService {
     );
   }
 
-  private async getReservationSettings() {
+  private async resolveVenueContext(query?: {
+    upcomingEventId?: string;
+    upcomingEventSlug?: string;
+  }) {
+    if (query?.upcomingEventId || query?.upcomingEventSlug) {
+      const event = await this.prisma.event.findFirst({
+        where: {
+          publicSection: EventPublicSection.UPCOMING_EVENTS,
+          experienceType: UpcomingExperienceType.VENUE_SEATING,
+          isActive: true,
+          ...(query.upcomingEventId
+            ? { id: query.upcomingEventId }
+            : { slug: query.upcomingEventSlug!.toLowerCase() }),
+        },
+        include: { venueConfig: true },
+      });
+      if (!event) {
+        throw new NotFoundException('Venue upcoming event not found.');
+      }
+      const config = event.venueConfig;
+      const window = resolveReservationWindow({
+        reservationOpensAt: config?.reservationOpensAt ?? null,
+        reservationClosesAt: config?.reservationClosesAt ?? null,
+        reservationEventDate: config?.reservationEventDate ?? null,
+      });
+      return {
+        upcomingEventId: event.id,
+        slug: event.slug,
+        floorLayoutId: config?.floorLayoutId ?? null,
+        settings: {
+          clientEnabled: config?.clientEnabled ?? false,
+          window,
+          reservationEventLabel: config?.reservationEventLabel ?? null,
+          reservationTimezone:
+            config?.reservationTimezone ?? 'America/New_York',
+        },
+      };
+    }
+
+    const legacyEvent = await this.prisma.event.findFirst({
+      where: {
+        publicSection: EventPublicSection.UPCOMING_EVENTS,
+        experienceType: UpcomingExperienceType.VENUE_SEATING,
+      },
+      orderBy: { createdAt: 'asc' },
+      include: { venueConfig: true },
+    });
+    if (legacyEvent?.venueConfig) {
+      const config = legacyEvent.venueConfig;
+      const window = resolveReservationWindow({
+        reservationOpensAt: config.reservationOpensAt,
+        reservationClosesAt: config.reservationClosesAt,
+        reservationEventDate: config.reservationEventDate,
+      });
+      return {
+        upcomingEventId: legacyEvent.id,
+        slug: legacyEvent.slug,
+        floorLayoutId: config.floorLayoutId,
+        settings: {
+          clientEnabled: config.clientEnabled,
+          window,
+          reservationEventLabel: config.reservationEventLabel,
+          reservationTimezone: config.reservationTimezone,
+        },
+      };
+    }
+
+    const settings = await this.getLegacyReservationSettings();
+    return {
+      upcomingEventId: legacyEvent?.id ?? null,
+      slug: legacyEvent?.slug ?? null,
+      floorLayoutId: null as string | null,
+      settings,
+    };
+  }
+
+  private async getLegacyReservationSettings() {
     const row = await this.prisma.venueLayoutClientSettings.findFirst({
       orderBy: { updatedAt: 'desc' },
     });
@@ -537,8 +657,14 @@ export class VenueReservationsService {
     };
   }
 
-  private async isInventorySoldOut(eventDate: Date): Promise<boolean> {
-    const layout = await this.floorLayout.getPublicFloorLayoutForClient();
+  private async isInventorySoldOut(
+    eventDate: Date,
+    upcomingEventId: string,
+    floorLayoutId: string | null,
+  ): Promise<boolean> {
+    const layout = await this.floorLayout.getPublicFloorLayoutForClient(
+      floorLayoutId,
+    );
     const reservableIds = layout.items
       .filter(
         (item) =>
@@ -549,7 +675,10 @@ export class VenueReservationsService {
       return true;
     }
 
-    const blocking = await this.findBlockingReservations(eventDate);
+    const blocking = await this.findBlockingReservations(
+      eventDate,
+      upcomingEventId,
+    );
     const reserved = new Set(blocking.map((r) => r.layoutItemId));
     return reservableIds.every((id) => reserved.has(id));
   }
@@ -560,10 +689,14 @@ export class VenueReservationsService {
       : VenueSeatKind.STANDALONE_CHAIR;
   }
 
-  private async findBlockingReservations(eventDate: Date) {
+  private async findBlockingReservations(
+    eventDate: Date,
+    upcomingEventId: string,
+  ) {
     const now = new Date();
     return this.prisma.venueSeatReservation.findMany({
       where: {
+        upcomingEventId,
         eventDate,
         OR: [
           { status: VenueSeatReservationStatus.PAID },
@@ -585,8 +718,12 @@ export class VenueReservationsService {
     layoutItemId: string;
     venueTableConfigId: string | null;
     eventDate: Date;
+    upcomingEventId: string;
   }) {
-    const blocking = await this.findBlockingReservations(args.eventDate);
+    const blocking = await this.findBlockingReservations(
+      args.eventDate,
+      args.upcomingEventId,
+    );
 
     if (
       blocking.some((r) => r.layoutItemId === args.layoutItemId) ||
@@ -670,6 +807,7 @@ export class VenueReservationsService {
 
   private async sendReservationPaidConfirmationEmail(row: {
     id: string;
+    upcomingEventId: string | null;
     kind: VenueSeatKind;
     layoutItemId: string;
     eventDate: Date;
@@ -699,8 +837,20 @@ export class VenueReservationsService {
         'Shamell Entertainment';
       const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
       const frontendBaseUrl = frontendRaw?.split(',')[0]?.trim();
-      const reservationTimezone = (await this.getReservationSettings())
-        .reservationTimezone;
+      let reservationTimezone = 'America/New_York';
+      if (row.upcomingEventId) {
+        const config = await this.prisma.upcomingVenueConfig.findUnique({
+          where: { eventId: row.upcomingEventId },
+          select: { reservationTimezone: true },
+        });
+        reservationTimezone =
+          config?.reservationTimezone ??
+          (await this.getLegacyReservationSettings()).reservationTimezone;
+      } else {
+        reservationTimezone = (
+          await this.getLegacyReservationSettings()
+        ).reservationTimezone;
+      }
       const recipientName = row.customerName.trim() || 'Guest';
 
       const subject = buildVenueReservationConfirmationSubject(appPublicName);

@@ -3,7 +3,12 @@
 import { useEventsPage } from "../hooks/useEventsPage";
 import EventsPageContent from "./EventsPageContent";
 
-export default function EventsPage() {
-  const state = useEventsPage();
+type Props = {
+  embedded?: boolean;
+  upcomingOnly?: boolean;
+};
+
+export default function EventsPage({ embedded, upcomingOnly }: Props) {
+  const state = useEventsPage({ embedded, upcomingOnly });
   return <EventsPageContent state={state} />;
 }

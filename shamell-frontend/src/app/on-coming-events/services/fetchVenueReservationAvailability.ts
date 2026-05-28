@@ -26,11 +26,17 @@ const emptyAvailability: VenueReservationAvailability = {
   reservedVenueTableConfigIds: [],
 };
 
-export async function fetchVenueReservationAvailability(): Promise<VenueReservationAvailability> {
+export async function fetchVenueReservationAvailability(
+  upcomingEventSlug?: string,
+): Promise<VenueReservationAvailability> {
   const base = getPublicApiBaseUrl();
-  const response = await fetch(`${base}/api/v1/venue-reservations/availability`, {
-    cache: "no-store",
-  });
+  const params = new URLSearchParams();
+  if (upcomingEventSlug) params.set("upcomingEventSlug", upcomingEventSlug);
+  const query = params.toString();
+  const response = await fetch(
+    `${base}/api/v1/venue-reservations/availability${query ? `?${query}` : ""}`,
+    { cache: "no-store" },
+  );
   const data: unknown = await response.json().catch(() => null);
   if (!response.ok || !data || typeof data !== "object") {
     return emptyAvailability;

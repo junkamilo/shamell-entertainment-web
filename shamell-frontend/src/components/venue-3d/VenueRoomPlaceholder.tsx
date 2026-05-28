@@ -1,7 +1,6 @@
 "use client";
 
 import RedCarpetRunner from "./carpet/RedCarpetRunner";
-import VenueDancerBench from "./bench/VenueDancerBench";
 import VenueStage from "./stage/VenueStage";
 import VenueWallSconces from "./VenueWallSconces";
 import VenueWoodFloor from "./VenueWoodFloor";
@@ -16,9 +15,6 @@ export default function VenueRoomPlaceholder() {
       <VenueWoodFloor />
 
       <VenueStage />
-      <VenueDancerBench />
-
-      {/* Red carpet — axis-aligned runner toward stage stairs */}
       <RedCarpetRunner />
 
       {/* Back wall */}

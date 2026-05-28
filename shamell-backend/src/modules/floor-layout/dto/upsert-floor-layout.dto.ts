@@ -9,6 +9,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+import { FloorSceneZonesDto } from './floor-scene-zone.dto';
 import { PlacedLayoutItemDto } from './placed-layout-item.dto';
 
 export class UpsertFloorLayoutDto {
@@ -33,4 +34,9 @@ export class UpsertFloorLayoutDto {
   @ValidateNested({ each: true })
   @Type(() => PlacedLayoutItemDto)
   items!: PlacedLayoutItemDto[];
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => FloorSceneZonesDto)
+  sceneZones?: FloorSceneZonesDto;
 }

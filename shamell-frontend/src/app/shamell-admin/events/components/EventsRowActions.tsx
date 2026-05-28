@@ -83,11 +83,11 @@ export function EventsActionButtons({
         )}
         aria-label="Delete event permanently"
         title={
-          !deletable
-            ? bk > 0
-              ? "Has linked bookings"
-              : "Has linked gallery photos"
-            : "Delete from catalog (cannot undo)"
+          !deletable ?
+            bk > 0 ?
+              "Has linked bookings"
+            : "Cannot delete"
+          : "Delete from catalog (cannot undo)"
         }
       >
         <Trash2 className="h-4 w-4" strokeWidth={1.5} />

@@ -38,7 +38,9 @@ const VenueScene3D = dynamic(() => import("@/components/venue-3d/VenueScene3D"),
   ),
 });
 
-export default function VenueLayoutPublicPage() {
+type Props = { eventSlug?: string };
+
+export default function VenueLayoutPublicPage({ eventSlug }: Props) {
   const sceneLayout = useVenueSceneLayout("public");
   const [layout, setLayout] = useState<VenueFloorLayout | null>(null);
   const [tables, setTables] = useState<VenueTableConfig[]>([]);
@@ -78,23 +80,50 @@ export default function VenueLayoutPublicPage() {
     setLoading(true);
     setError(null);
     try {
-      const settings = await fetchOnComingEventsSettings();
-      if (!settings?.clientEnabled) {
-        setClientEnabled(false);
-        setLoading(false);
-        return;
-      }
-      setClientEnabled(true);
-      setEventLabel(settings.reservationEventLabel ?? null);
-      setEventDateIso(
-        settings.reservationOpensAt ?? settings.reservationEventDate ?? null,
+      const apiBase = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(
+        /\/$/,
+        "",
       );
+
+      if (!eventSlug) {
+        const settings = await fetchOnComingEventsSettings();
+        if (!settings?.clientEnabled) {
+          setClientEnabled(false);
+          setLoading(false);
+          return;
+        }
+        setClientEnabled(true);
+        setEventLabel(settings.reservationEventLabel ?? null);
+        setEventDateIso(
+          settings.reservationOpensAt ?? settings.reservationEventDate ?? null,
+        );
+      } else {
+        const venueRes = await fetch(
+          `${apiBase}/api/v1/upcoming-events/${encodeURIComponent(eventSlug)}/venue`,
+        ).catch(() => null);
+        if (!venueRes?.ok) {
+          setClientEnabled(false);
+          setLoading(false);
+          return;
+        }
+        const venueData = (await venueRes.json()) as {
+          event?: { eventTypeName?: string };
+          config?: { reservationEventLabel?: string | null; reservationOpensAt?: string | null };
+        };
+        setClientEnabled(true);
+        setEventLabel(
+          venueData.config?.reservationEventLabel ??
+            venueData.event?.eventTypeName ??
+            null,
+        );
+        setEventDateIso(venueData.config?.reservationOpensAt ?? null);
+      }
 
       const [layoutData, tablesData, chairsData, availability] = await Promise.all([
         fetchPublicFloorLayout(),
         fetchPublicVenueTables(),
         fetchPublicStandaloneChairs(),
-        fetchVenueReservationAvailability(),
+        fetchVenueReservationAvailability(eventSlug),
       ]);
 
       if (!layoutData) {
@@ -115,7 +144,7 @@ export default function VenueLayoutPublicPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [eventSlug]);
 
   useEffect(() => {
     void load();
@@ -211,6 +240,7 @@ export default function VenueLayoutPublicPage() {
             viewBoxWidth={layout.viewBoxWidth}
             viewBoxHeight={layout.viewBoxHeight}
             items={layout.items}
+            sceneZones={layout.sceneZones}
             selectedId={selectedItemId}
             reservedIds={reservedIds}
             onItemSelect={handleItemSelect}
@@ -240,6 +270,7 @@ export default function VenueLayoutPublicPage() {
           isReserved={selectedIsReserved}
           reservationsOpen={reservationsOpen}
           reservationsClosedMessage={salesClosedMessage(salesClosedReason)}
+          upcomingEventSlug={eventSlug}
           onClose={() => setSelectedItemId(null)}
         />
       ) : null}

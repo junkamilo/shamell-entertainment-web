@@ -27,7 +27,8 @@ export type PlacedLayoutItem =
       rotation: number;
     };
 
-export const DEFAULT_VIEW_BOX_WIDTH = 1024;
+/** ~60% of legacy 1024 — matches frontend WORLD_WIDTH 24 (was 40). */
+export const DEFAULT_VIEW_BOX_WIDTH = 614;
 export const DEFAULT_VIEW_BOX_HEIGHT = 944;
 export const DEFAULT_BACKGROUND_VERSION = 'v1';
 

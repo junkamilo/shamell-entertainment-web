@@ -1,10 +1,10 @@
-import VenueLayoutPublicPage from "./components/VenueLayoutPublicPage";
+import OnComingEventsHubPage from "@/components/on-coming-events/OnComingEventsHubPage";
 
 export const metadata = {
   title: "On Coming Events — Shamell Entertainment",
-  description: "View upcoming events, choose your table or chair, and reserve your seats.",
+  description: "Browse upcoming events, book classes, or reserve your table.",
 };
 
-export default function VenueLayoutPage() {
-  return <VenueLayoutPublicPage />;
+export default function OnComingEventsPage() {
+  return <OnComingEventsHubPage />;
 }

@@ -30,6 +30,17 @@ export function mapAdminEventFromApi(row: Record<string, unknown>): AdminEvent {
     catalogImages,
     isActive: Boolean(row.isActive),
     showOnHome: row.showOnHome !== undefined ? Boolean(row.showOnHome) : true,
+    publicSection:
+      row.publicSection === "UPCOMING_EVENTS" ? "UPCOMING_EVENTS" : "GENERAL",
+    slug: typeof row.slug === "string" ? row.slug : null,
+    experienceType:
+      row.experienceType === "VENUE_SEATING" ? "VENUE_SEATING"
+      : row.experienceType === "CLASSES" ? "CLASSES"
+      : null,
+    classVariant:
+      row.classVariant === "PERSONAL" ? "PERSONAL"
+      : row.classVariant === "GROUP" ? "GROUP"
+      : null,
     createdAt: typeof row.createdAt === "string" ? row.createdAt : undefined,
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : undefined,
     bookingCount: typeof row.bookingCount === "number" ? row.bookingCount : 0,

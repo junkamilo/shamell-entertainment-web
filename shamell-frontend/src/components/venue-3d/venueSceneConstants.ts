@@ -1,7 +1,7 @@
 import type { VenueTableSize } from "@/components/floor-layout/layoutTypes";
 
 /** World floor footprint (Three.js X/Z); maps from layout viewBox. */
-export const WORLD_WIDTH = 40;
+export const WORLD_WIDTH = 24;
 export const WORLD_DEPTH = 22;
 
 /** Canvas backdrop and fog (lighter plum tone — keeps Shamell mood, less crush). */
@@ -54,11 +54,11 @@ export const FLOOR_MATERIAL = {
 
 export const TABLE_WORLD: Record<
   VenueTableSize,
-  { tableRadius: number; chairOrbit: number; tableHeight: number }
+  { tableRadius: number; tableHeight: number }
 > = {
-  LARGE: { tableRadius: 0.72, chairOrbit: 1.22, tableHeight: 0.42 },
-  MEDIUM: { tableRadius: 0.58, chairOrbit: 1.02, tableHeight: 0.38 },
-  SMALL: { tableRadius: 0.45, chairOrbit: 0.85, tableHeight: 0.34 },
+  LARGE: { tableRadius: 0.72, tableHeight: 0.42 },
+  MEDIUM: { tableRadius: 0.58, tableHeight: 0.38 },
+  SMALL: { tableRadius: 0.45, tableHeight: 0.34 },
 };
 
 export const CHAIR_WORLD = {

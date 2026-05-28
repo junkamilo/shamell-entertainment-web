@@ -5,6 +5,7 @@ import { toast } from "@/hooks/use-toast";
 import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
+import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/onComingEventsRoutes";
 import AdminPagination from "@/components/admin/AdminPagination";
 import { deleteAdminVenueTable } from "../services/deleteAdminVenueTable";
 import { deleteAdminVenueTablesBulk } from "../services/deleteAdminVenueTablesBulk";
@@ -155,7 +156,7 @@ export default function VenueTablesPageContent() {
         subtitle={
           isTablesSection
             ? "Configure tables with combo pricing and included chairs."
-            : "Set how many standalone chairs are available and their unit price for On Coming Events."
+            : `Set how many standalone chairs are available and their unit price for ${SEATING_LAYOUT_ADMIN_LABEL.toLowerCase()}.`
         }
         actionLabel={isTablesSection ? "Configure table" : undefined}
         onAction={isTablesSection ? openCreate : undefined}

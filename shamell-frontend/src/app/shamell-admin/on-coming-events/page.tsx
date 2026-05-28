@@ -1,5 +1,5 @@
-import { VenueLayoutPromoAdminPage } from "./components/VenueLayoutPromoAdminPage";
+import { OnComingEventsSiteHubPage } from "./components/OnComingEventsSiteHubPage";
 
-export default function VenueLayoutPromoAdminRoutePage() {
-  return <VenueLayoutPromoAdminPage />;
+export default function OnComingEventsSiteAdminRoutePage() {
+  return <OnComingEventsSiteHubPage />;
 }

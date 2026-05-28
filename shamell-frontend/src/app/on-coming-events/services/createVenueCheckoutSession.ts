@@ -7,6 +7,7 @@ export type CreateCheckoutSessionBody = {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
+  upcomingEventSlug?: string;
 };
 
 export async function createVenueCheckoutSession(

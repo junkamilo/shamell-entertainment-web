@@ -1,0 +1,43 @@
+export type ReservationEventScheduleMode = "FIXED_EVENT" | "RECURRING_WEEKLY";
+
+export type ReservationEventWeekday = {
+  weekday: number;
+  isActive: boolean;
+};
+
+export type ReservationEventTemplate = {
+  id: string;
+  name: string;
+  timezone: string;
+  scheduleMode: ReservationEventScheduleMode;
+  salesStartDate: string | null;
+  salesEndDate: string | null;
+  eventDate: string | null;
+  eventStartTime: string | null;
+  eventEndTime: string | null;
+  recurringEffectiveFrom: string | null;
+  recurringStartTime: string | null;
+  recurringEndTime: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  startTime: string | null;
+  endTime: string | null;
+  weekdays: ReservationEventWeekday[];
+  activeDayLabels: string[];
+  summary: string;
+  updatedAt: string;
+};
+
+export type ReservationEventTemplateBody = {
+  name: string;
+  timezone?: string;
+  scheduleMode: ReservationEventScheduleMode;
+  salesStartDate?: string;
+  salesEndDate?: string;
+  eventDate?: string;
+  eventStartTime?: string;
+  eventEndTime?: string;
+  weekdays?: ReservationEventWeekday[];
+  recurringStartTime?: string;
+  recurringEndTime?: string;
+};
