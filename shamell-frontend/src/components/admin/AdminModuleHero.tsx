@@ -14,6 +14,8 @@ type AdminModuleHeroProps = {
   /** Optional outline action (e.g. export) shown before the primary gold button */
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
+  /** Rendered before primary/secondary actions (e.g. section tabs) */
+  extraActions?: ReactNode;
   bordered?: boolean;
 };
 
@@ -32,10 +34,12 @@ export default function AdminModuleHero({
   onAction,
   secondaryActionLabel,
   onSecondaryAction,
+  extraActions,
   bordered = true,
 }: AdminModuleHeroProps) {
   const hasSecondary = Boolean(secondaryActionLabel && onSecondaryAction);
   const hasPrimary = Boolean(actionLabel && (actionHref || onAction));
+  const hasActions = Boolean(extraActions || hasSecondary || hasPrimary);
 
   return (
     <section
@@ -56,10 +60,13 @@ export default function AdminModuleHero({
           ) : null}
         </div>
 
-        {hasSecondary || hasPrimary ? (
+        {hasActions ? (
           <div
             className={`flex shrink-0 flex-col gap-3 sm:flex-row sm:items-center md:pt-1 ${hasSecondary ? "sm:flex-wrap" : ""}`}
           >
+            {extraActions ? (
+              <div className="flex w-full justify-start sm:w-auto sm:justify-end">{extraActions}</div>
+            ) : null}
             {hasSecondary ? (
               <button type="button" onClick={onSecondaryAction} className={`${secondaryButtonClass} w-full sm:w-auto`}>
                 <Download className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />

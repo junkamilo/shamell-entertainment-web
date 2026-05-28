@@ -170,7 +170,9 @@ export class ContactService {
     const entrySource = enriched?.entrySource;
     const isBookingInquiry =
       !!entrySource &&
-      (BOOKING_INQUIRY_ENTRY_SOURCES as readonly string[]).includes(entrySource);
+      (BOOKING_INQUIRY_ENTRY_SOURCES as readonly string[]).includes(
+        entrySource,
+      );
 
     const resolvedSubject =
       subject?.trim() ||
@@ -190,12 +192,10 @@ export class ContactService {
         return duplicate;
       }
 
-      const preparedBooking =
-        await this.bookings.preparePublicBookingInquiry(dto, enriched);
-
-      let bookingForNotify: Awaited<
-        ReturnType<BookingsService['insertPublicBookingInquiry']>
-      > | null = null;
+      const preparedBooking = await this.bookings.preparePublicBookingInquiry(
+        dto,
+        enriched,
+      );
 
       const materialized = await this.prisma.$transaction(
         async (tx) => {
@@ -206,7 +206,7 @@ export class ContactService {
               subject: resolvedSubject,
               status: ContactRequestStatus.PENDING,
               eventDate: new Date(eventDate),
-              inquiryDetails: enriched as unknown as Prisma.InputJsonValue,
+              inquiryDetails: enriched,
             },
           });
 
@@ -214,13 +214,12 @@ export class ContactService {
             return created;
           }
 
-          const booking = await this.bookings.insertPublicBookingInquiry(
+          await this.bookings.insertPublicBookingInquiry(
             created.id,
             preparedBooking,
             { tx, skipConfirmationEmail: true },
           );
 
-          bookingForNotify = booking;
           return tx.contactRequest.update({
             where: { id: created.id },
             data: {
@@ -233,9 +232,7 @@ export class ContactService {
       );
 
       await this.sendBookingInquiryAckEmail(dto, guideForAck);
-      if (bookingForNotify) {
-        await this.bookings.notifyBookingCreated(bookingForNotify);
-      }
+      // Booking confirmation is now sent only after payment completion.
 
       return materialized;
     }
@@ -253,7 +250,9 @@ export class ContactService {
             : (enriched as unknown as Prisma.InputJsonValue),
         conciergeVisionSnapshot:
           enriched?.entrySource === 'concierge_gate'
-            ? (buildConciergeVisionSnapshot(dto) as unknown as Prisma.InputJsonValue)
+            ? (buildConciergeVisionSnapshot(
+                dto,
+              ) as unknown as Prisma.InputJsonValue)
             : undefined,
       },
     });
@@ -275,7 +274,9 @@ export class ContactService {
   ): Promise<ContactRequest | null> {
     const emailNorm = email.trim().toLowerCase();
     const eventDateObj = new Date(eventDateIso);
-    const since = new Date(Date.now() - ContactService.BOOKING_INQUIRY_DEDUPE_MS);
+    const since = new Date(
+      Date.now() - ContactService.BOOKING_INQUIRY_DEDUPE_MS,
+    );
     const tz = this.availability.bookingTimeZone();
     const dayStart = utcInstantForWallClock(eventDateIso, 0, tz);
     const dayEnd = utcInstantForWallClock(eventDateIso, 23 * 60 + 59, tz);
@@ -346,7 +347,11 @@ export class ContactService {
         OR LOWER(COALESCE(cr."subject", '')) LIKE '%concierge inquiry%'
       )
     `;
-    return { isOrphanContact, isShadowedBookingInquiryContact, isConciergeContact };
+    return {
+      isOrphanContact,
+      isShadowedBookingInquiryContact,
+      isConciergeContact,
+    };
   }
 
   async countPeticionesBadge(query: {
@@ -358,14 +363,19 @@ export class ContactService {
       query.since != null && Number.isFinite(query.since) && query.since > 0
         ? new Date(query.since)
         : null;
-    const { isOrphanContact, isShadowedBookingInquiryContact, isConciergeContact } =
-      this.peticionesSqlFragments();
+    const {
+      isOrphanContact,
+      isShadowedBookingInquiryContact,
+      isConciergeContact,
+    } = this.peticionesSqlFragments();
     const sinceFilter = since
       ? Prisma.sql`WHERE unified.created_at > ${since}`
       : Prisma.empty;
 
     if (lane === 'guidance') {
-      const rows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+      const rows = await this.prisma.$queryRaw<
+        Array<{ total: bigint }>
+      >(Prisma.sql`
         SELECT COUNT(*)::bigint AS total
         FROM (
           SELECT cr."createdAt" AS created_at
@@ -378,7 +388,9 @@ export class ContactService {
       return { count: Number(rows[0]?.total ?? 0n) };
     }
 
-    const rows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+    const rows = await this.prisma.$queryRaw<
+      Array<{ total: bigint }>
+    >(Prisma.sql`
       SELECT COUNT(*)::bigint AS total
       FROM (
         SELECT cr."createdAt" AS created_at
@@ -398,7 +410,9 @@ export class ContactService {
   /**
    * Thanks the guest via MailerSend. Does not throw; logs on skip/failure.
    */
-  private async sendConciergeInquiryAckEmail(dto: CreateContactDto): Promise<void> {
+  private async sendConciergeInquiryAckEmail(
+    dto: CreateContactDto,
+  ): Promise<void> {
     try {
       const to = dto.email.trim().toLowerCase();
       if (!to) {
@@ -529,11 +543,16 @@ export class ContactService {
     const skip = (page - 1) * perPage;
     const lane = query.lane === 'guidance' ? 'guidance' : 'bookings';
 
-    const { isOrphanContact, isShadowedBookingInquiryContact, isConciergeContact } =
-      this.peticionesSqlFragments();
+    const {
+      isOrphanContact,
+      isShadowedBookingInquiryContact,
+      isConciergeContact,
+    } = this.peticionesSqlFragments();
 
     if (lane === 'guidance') {
-      const guidanceCountRows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+      const guidanceCountRows = await this.prisma.$queryRaw<
+        Array<{ total: bigint }>
+      >(Prisma.sql`
           SELECT COUNT(*)::bigint AS total
           FROM "contact_requests" cr
           WHERE ${isOrphanContact}
@@ -571,7 +590,13 @@ export class ContactService {
         LIMIT ${perPage}
       `);
 
-      return this.hydratePeticionesPage(feedRows, page, perPage, totalItems, totalPages);
+      return this.hydratePeticionesPage(
+        feedRows,
+        page,
+        perPage,
+        totalItems,
+        totalPages,
+      );
     }
 
     const [nonConciergeOrphanRows, bookingTotalRows] = await Promise.all([
@@ -584,7 +609,9 @@ export class ContactService {
       `),
       this.prisma.booking.count(),
     ]);
-    const nonConciergeOrphanTotal = Number(nonConciergeOrphanRows[0]?.total ?? 0n);
+    const nonConciergeOrphanTotal = Number(
+      nonConciergeOrphanRows[0]?.total ?? 0n,
+    );
     const bookingTotal = bookingTotalRows;
     const totalItems = bookingTotal + nonConciergeOrphanTotal;
     const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
@@ -625,7 +652,13 @@ export class ContactService {
       LIMIT ${perPage}
     `);
 
-    return this.hydratePeticionesPage(feedRows, page, perPage, totalItems, totalPages);
+    return this.hydratePeticionesPage(
+      feedRows,
+      page,
+      perPage,
+      totalItems,
+      totalPages,
+    );
   }
 
   private async hydratePeticionesPage(
@@ -661,7 +694,9 @@ export class ContactService {
       ...new Set(
         bookingRows
           .map((b) => b.contactRequestId)
-          .filter((id): id is string => typeof id === 'string' && id.length > 0),
+          .filter(
+            (id): id is string => typeof id === 'string' && id.length > 0,
+          ),
       ),
     ].filter((id) => !contactIds.includes(id));
 
@@ -689,7 +724,8 @@ export class ContactService {
             id: contact.id,
             createdAt: contact.createdAt,
             state: contact.status,
-            hasLinkedBooking: hasLinkedBookingByContactId.get(contact.id) ?? false,
+            hasLinkedBooking:
+              hasLinkedBookingByContactId.get(contact.id) ?? false,
             contact,
           };
         }

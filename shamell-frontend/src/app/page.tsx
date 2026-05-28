@@ -1,4 +1,5 @@
 import AboutSection from "@/components/AboutSection";
+import OnComingEventsPromoSection from "@/components/OnComingEventsPromoSection";
 import ExperiencesSection from "@/components/ExperiencesSection";
 import Footer from "@/components/Footer";
 import GallerySection from "@/components/GallerySection";
@@ -15,6 +16,7 @@ export default function Home() {
       <ExperiencesSection />
       <ServicesSection />
       <AboutSection />
+      <OnComingEventsPromoSection />
       <GallerySection />
       <Footer />
     </main>

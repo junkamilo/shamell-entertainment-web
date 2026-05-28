@@ -13,6 +13,13 @@ import { SERVICE_TYPES_PATH } from "@/app/shamell-admin/service-types/lib/servic
 import { SERVICES_PATH } from "@/app/shamell-admin/services/lib/servicesRoutes";
 import { GALLERY_CATEGORIES_PATH, GALLERY_PATH } from "@/app/shamell-admin/gallery/lib/galleryRoutes";
 import {
+  ON_COMING_EVENTS_ADMIN_PATH,
+  ON_COMING_EVENTS_LAYOUT_ADMIN_PATH,
+} from "@/lib/onComingEventsRoutes";
+import { VENUE_RESERVATIONS_ADMIN_PATH } from "@/app/shamell-admin/venue-reservations/lib/venueReservationsRoutes";
+import { VENUE_TABLES_PATH } from "@/app/shamell-admin/venue-tables/lib/venueTablesRoutes";
+import {
+  Armchair,
   CalendarDays,
   CalendarRange,
   ClipboardList,
@@ -26,6 +33,8 @@ import {
   Shapes,
   Store,
   Tags,
+  Ticket,
+  LayoutGrid,
   PanelsTopLeft,
   UserPlus,
   X,
@@ -33,11 +42,18 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import bailarinaLogo from "@/public/01_bailarina.png";
+import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { fetchAdminVenueReservations } from "@/app/shamell-admin/venue-reservations/services/fetchAdminVenueReservations";
+import AdminNavNotification from "@/components/admin/AdminNavNotification";
 import {
   ADMIN_ACCESS_TOKEN_KEY,
   ADMIN_USER_KEY,
   notifyAdminSessionChanged,
 } from "@/lib/adminSession";
+import {
+  ON_COMING_EVENTS_BADGE_REFRESH_EVENT,
+  readLastSeenPaidReservationAtMs,
+} from "@/lib/onComingEventsReservationsNotice";
 
 type AdminNavItem = {
   href: string;
@@ -55,6 +71,10 @@ const navItems: AdminNavItem[] = [
   { href: EVENTS_PATH, label: "Events", icon: CalendarRange },
   { href: GALLERY_CATEGORIES_PATH, label: "Gallery categories", icon: PanelsTopLeft },
   { href: GALLERY_PATH, label: "Gallery", icon: ImageIcon },
+  { href: ON_COMING_EVENTS_LAYOUT_ADMIN_PATH, label: "On Coming Events", icon: LayoutGrid },
+  { href: ON_COMING_EVENTS_ADMIN_PATH, label: "On Coming Events (site)", icon: Store },
+  { href: VENUE_RESERVATIONS_ADMIN_PATH, label: "Seat reservations", icon: Ticket },
+  { href: VENUE_TABLES_PATH, label: "Table seating", icon: Armchair },
   { href: "/shamell-admin/about", label: "About Shamell", icon: Info },
   { href: AGREGAR_ADMIN_PATH, label: "Add admin", icon: UserPlus },
 ];
@@ -74,10 +94,26 @@ const breadcrumbLabel: Record<string, string> = {
   events: "Events",
   "gallery-categories": "Gallery categories",
   gallery: "Gallery",
+  "on-coming-events": "On Coming Events (site)",
+  layout: "On Coming Events",
+  "venue-reservations": "Seat reservations",
+  "venue-tables": "Table seating",
   about: "About Shamell",
   "agregar-admin": "Add admin",
   "invite-admin": "Add admin",
 };
+
+function isNavItemActive(pathname: string, href: string): boolean {
+  if (href === "/shamell-admin/agenda") {
+    return pathname === "/shamell-admin/agenda" || pathname.startsWith("/shamell-admin/agenda/");
+  }
+
+  if (href === ON_COMING_EVENTS_ADMIN_PATH) {
+    return pathname === ON_COMING_EVENTS_ADMIN_PATH;
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 function breadcrumbFromPath(pathname: string): string[] {
   const parts = pathname.split("/").filter(Boolean);
@@ -103,6 +139,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [adminName, setAdminName] = useState<string>("Administrator");
   const [adminEmail, setAdminEmail] = useState<string>("");
+  const [onComingEventsBadgeCount, setOnComingEventsBadgeCount] = useState(0);
 
   useEffect(() => {
     const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
@@ -121,6 +158,41 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
       }
     }
   }, [router]);
+
+  useEffect(() => {
+    const loadBadge = async () => {
+      const token = getAdminBearerToken();
+      if (!token) {
+        setOnComingEventsBadgeCount(0);
+        return;
+      }
+      const result = await fetchAdminVenueReservations(token, {
+        status: "PAID",
+        page: 1,
+        perPage: 50,
+      });
+      if (!result.ok) {
+        setOnComingEventsBadgeCount(0);
+        return;
+      }
+      const lastSeenAt = readLastSeenPaidReservationAtMs();
+      const count = result.reservations.filter((r) => {
+        const createdAtMs = Date.parse(r.createdAt);
+        return Number.isFinite(createdAtMs) && createdAtMs > lastSeenAt;
+      }).length;
+      setOnComingEventsBadgeCount(count);
+    };
+
+    void loadBadge();
+    const onFocus = () => void loadBadge();
+    const onRefresh = () => void loadBadge();
+    window.addEventListener("focus", onFocus);
+    window.addEventListener(ON_COMING_EVENTS_BADGE_REFRESH_EVENT, onRefresh);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener(ON_COMING_EVENTS_BADGE_REFRESH_EVENT, onRefresh);
+    };
+  }, []);
 
   const crumbs = useMemo(() => breadcrumbFromPath(pathname), [pathname]);
 
@@ -185,10 +257,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
 
       <nav className="shamell-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         {navItems.map((item) => {
-          const active =
-            item.href === "/shamell-admin/agenda"
-              ? pathname === "/shamell-admin/agenda" || pathname.startsWith("/shamell-admin/agenda/")
-              : pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const active = isNavItemActive(pathname, item.href);
           const Icon = item.icon;
           return (
             <Link
@@ -196,14 +265,23 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
               href={item.href}
               title={item.label}
               onClick={() => setSidebarOpen(false)}
-              className={`flex items-center rounded-md px-3 py-2.5 font-brand text-[11px] tracking-[0.12em] transition-colors ${
+              className={`relative flex items-center rounded-md px-3 py-2.5 font-brand text-[11px] tracking-[0.12em] transition-colors ${
                 active
                   ? "border border-gold/35 bg-gold/15 text-gold"
                   : "border border-transparent text-foreground/70 hover:border-gold/20 hover:bg-gold/5 hover:text-gold"
               } ${sidebarCollapsed ? "justify-center" : "gap-3"} `}
             >
               <Icon className={`h-4 w-4 shrink-0 opacity-90 ${sidebarCollapsed ? "mx-auto" : ""}`} strokeWidth={1.5} />
-              {!sidebarCollapsed ? item.label.toUpperCase() : null}
+              {!sidebarCollapsed ? (
+                <span className="flex min-w-0 items-center gap-2">
+                  <span>{item.label.toUpperCase()}</span>
+                  {item.href === ON_COMING_EVENTS_LAYOUT_ADMIN_PATH ? (
+                    <AdminNavNotification count={onComingEventsBadgeCount} />
+                  ) : null}
+                </span>
+              ) : item.href === ON_COMING_EVENTS_LAYOUT_ADMIN_PATH ? (
+                <AdminNavNotification count={onComingEventsBadgeCount} collapsed />
+              ) : null}
             </Link>
           );
         })}

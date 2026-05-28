@@ -21,8 +21,8 @@ export class AboutService {
   }
 
   async getPublicAboutContent() {
+    // Same singleton row as admin (latest save); isActive is set true on every upsert.
     const latest = await this.prisma.aboutContent.findFirst({
-      where: { isActive: true },
       orderBy: { updatedAt: 'desc' },
     });
     if (!latest) {
@@ -67,6 +67,7 @@ export class AboutService {
         ? await this.prisma.aboutContent.update({
             where: { id: existing.id },
             data: {
+              isActive: true,
               ...(dto.title !== undefined ? { title: dto.title } : {}),
               ...(dto.paragraph1 !== undefined
                 ? { paragraph1: dto.paragraph1 }

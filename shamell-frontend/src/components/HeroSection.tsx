@@ -3,8 +3,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
+import { useHeaderText } from "@/hooks/use-header-text";
+import { fontClassForToken } from "@/lib/headerTextStyleTokens";
 import { buildHeroWaveClipPathD } from "@/lib/heroPearlWave";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { cn } from "@/lib/utils";
 import HeroFallbackBackground from "./HeroFallbackBackground";
 
 const heroWaveClipPathId = "shamell-hero-wave-clip";
@@ -70,6 +73,7 @@ function HeroSlideMedia({
 }
 
 const HeroSection = () => {
+  const { content: headerText } = useHeaderText();
   const apiBaseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
     [],
@@ -249,18 +253,37 @@ const HeroSection = () => {
                 />
               </div>
 
-              <h1 className="shamell-hero-enter shamell-hero-enter--d2 mb-4 font-brand text-4xl tracking-[0.28em] text-gold drop-shadow-[0_4px_28px_rgba(0,0,0,0.65)] sm:text-5xl sm:tracking-[0.26em] md:mb-5 md:text-6xl md:tracking-[0.24em] lg:text-7xl">
-                SHAMELL
+              <h1
+                className={cn(
+                  "shamell-hero-enter shamell-hero-enter--d2 mb-4 text-4xl tracking-[0.28em] drop-shadow-[0_4px_28px_rgba(0,0,0,0.65)] sm:text-5xl sm:tracking-[0.26em] md:mb-5 md:text-6xl md:tracking-[0.24em] lg:text-7xl",
+                  fontClassForToken(headerText.headlineFont),
+                )}
+                style={{ color: headerText.headlineColor }}
+              >
+                {headerText.headline}
               </h1>
 
-              <p className="shamell-hero-enter shamell-hero-enter--d3 mx-auto mb-10 max-w-lg font-elegant text-xl font-medium italic leading-relaxed tracking-wide text-gold-light/95 sm:mb-12 sm:max-w-xl sm:text-2xl sm:leading-relaxed md:max-w-2xl md:text-3xl md:leading-snug lg:text-4xl">
-                Exclusive Belly Dance Performance Artistry
+              <p
+                className={cn(
+                  "shamell-hero-enter shamell-hero-enter--d3 mx-auto mb-10 max-w-lg font-medium italic leading-relaxed tracking-wide sm:mb-12 sm:max-w-xl sm:text-2xl sm:leading-relaxed md:max-w-2xl md:text-3xl md:leading-snug lg:text-4xl",
+                  fontClassForToken(headerText.taglineFont),
+                  "text-xl",
+                )}
+                style={{ color: headerText.taglineColor }}
+              >
+                {headerText.tagline}
               </p>
 
               <div className="shamell-hero-enter shamell-hero-enter--d4 mx-auto w-full max-w-md md:max-w-xl">
                 <div className="rounded-2xl border border-white/12 bg-black/35 px-5 py-6 shadow-[0_16px_48px_rgba(0,0,0,0.45)] backdrop-blur-md sm:px-8 sm:py-7 md:rounded-3xl md:px-10 md:py-8">
-                  <p className="font-script text-2xl leading-snug text-gold drop-shadow-[0_2px_16px_rgba(0,0,0,0.5)] sm:text-3xl md:text-[2.1rem] md:leading-tight">
-                    Dance is the hidden language of the soul.
+                  <p
+                    className={cn(
+                      "text-2xl leading-snug drop-shadow-[0_2px_16px_rgba(0,0,0,0.5)] sm:text-3xl md:text-[2.1rem] md:leading-tight",
+                      fontClassForToken(headerText.quoteFont),
+                    )}
+                    style={{ color: headerText.quoteColor }}
+                  >
+                    {headerText.quote}
                     <span className="ml-2 inline-block h-2 w-2 rounded-full bg-gold-light align-middle opacity-90" />
                   </p>
 

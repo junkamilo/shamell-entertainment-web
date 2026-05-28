@@ -1,21 +1,29 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
+  Req,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { CurrentAdmin } from '../auth/decorators/current-admin.decorator';
 import type { AdminJwtPayload } from '../auth/decorators/current-admin.decorator';
 import { AdminBookingQueryDto } from './dto/admin-booking-query.dto';
+import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
 import { CreateAdminBookingDto } from './dto/create-admin-booking.dto';
+import { SendBookingBalanceLinkDto } from './dto/send-booking-balance-link.dto';
 import { UpdateAdminBookingDto } from './dto/update-admin-booking.dto';
 import { BookingsService } from './bookings.service';
 
@@ -81,5 +89,53 @@ export class BookingsController {
     return this.bookingsService.removeAdmin(id, {
       purgeContact: purgeContact === 'true' || purgeContact === '1',
     });
+  }
+
+  @Post('admin/:id/quote')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth()
+  createQuote(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: CreateBookingQuoteDto,
+  ) {
+    return this.bookingsService.createBookingQuote(admin.id, id, dto);
+  }
+
+  @Post('admin/:id/send-balance-link')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth()
+  sendBalanceLink(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: SendBookingBalanceLinkDto,
+  ) {
+    return this.bookingsService.sendBookingBalanceLink(admin.id, id, dto);
+  }
+
+  @Get('public/quote/pay')
+  async quotePayRedirect(@Query('token') token: string, @Res() res: Response) {
+    if (!token?.trim()) {
+      throw new BadRequestException('token is required.');
+    }
+    const url = await this.bookingsService.resolveQuotePayUrl(token.trim());
+    return res.redirect(url);
+  }
+
+  @Post('public/webhook')
+  handleBookingPaymentsWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('stripe-signature') signature?: string,
+  ) {
+    const rawBody = req.rawBody;
+    if (!rawBody) {
+      throw new BadRequestException(
+        'Raw body is required for Stripe webhook verification.',
+      );
+    }
+    return this.bookingsService.handleBookingPaymentsWebhook(
+      rawBody,
+      signature,
+    );
   }
 }

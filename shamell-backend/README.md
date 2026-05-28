@@ -25,6 +25,10 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Project runbooks
+
+- Stripe live payments: `docs/stripe-live-runbook.md`
+
 ## Project setup
 
 ```bash

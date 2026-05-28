@@ -11,6 +11,8 @@ import {
   isAdminLoggedIn,
 } from "@/lib/adminSession";
 import { cn } from "@/lib/utils";
+import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
+import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/onComingEventsRoutes";
 import bailarinaLogo from "@/public/01_bailarina.png";
 
 type NavItem = {
@@ -19,7 +21,7 @@ type NavItem = {
   sectionId?: string;
 };
 
-const navItems: NavItem[] = [
+const baseNavItems: NavItem[] = [
   { label: "HOME", href: "/#hero", sectionId: "hero" },
   { label: "SERVICE CATALOG", href: "/#services", sectionId: "services" },
   {
@@ -31,19 +33,19 @@ const navItems: NavItem[] = [
   { label: "GALLERY", href: "/#gallery", sectionId: "gallery" },
 ];
 
-/** DOM order on `/` — used to pick the "current" section while scrolling (last section whose top passed the activation line). */
-const homeScrollSectionIds = navItems
-  .map((item) => item.sectionId)
-  .filter((id): id is string => Boolean(id));
+const onComingEventsNavItem: NavItem = {
+  label: "ON COMING EVENTS",
+  href: ON_COMING_EVENTS_PUBLIC_PATH,
+};
 
-function computeHomeActiveSectionId(): string {
+function computeHomeActiveSectionId(sectionIds: string[]): string {
   if (typeof window === "undefined") {
-    return homeScrollSectionIds[0] ?? "hero";
+    return sectionIds[0] ?? "hero";
   }
   const activationOffset = Math.min(168, Math.max(88, window.innerHeight * 0.2));
   const y = window.scrollY + activationOffset;
-  let current = homeScrollSectionIds[0] ?? "hero";
-  for (const id of homeScrollSectionIds) {
+  let current = sectionIds[0] ?? "hero";
+  for (const id of sectionIds) {
     const el = document.getElementById(id);
     if (!el) continue;
     const sectionTop = el.getBoundingClientRect().top + window.scrollY;
@@ -115,6 +117,20 @@ function DesktopNavLink({
 
 export default function SiteHeader() {
   const pathname = usePathname();
+  const { clientEnabled: onComingEventsEnabled } = useOnComingEventsSettings();
+  const navItems = useMemo(() => {
+    if (!onComingEventsEnabled) return baseNavItems;
+    const items = [...baseNavItems];
+    const galleryIndex = items.findIndex((item) => item.sectionId === "gallery");
+    const insertAt = galleryIndex >= 0 ? galleryIndex : items.length;
+    items.splice(insertAt, 0, onComingEventsNavItem);
+    return items;
+  }, [onComingEventsEnabled]);
+  const homeScrollSectionIds = useMemo(
+    () =>
+      navItems.map((item) => item.sectionId).filter((id): id is string => Boolean(id)),
+    [navItems],
+  );
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
   const [showAdminEntry, setShowAdminEntry] = useState(false);
@@ -153,7 +169,7 @@ export default function SiteHeader() {
     if (pathname !== "/") return;
 
     const sync = () => {
-      setActiveSection(computeHomeActiveSectionId());
+      setActiveSection(computeHomeActiveSectionId(homeScrollSectionIds));
     };
 
     sync();
@@ -168,7 +184,7 @@ export default function SiteHeader() {
       window.removeEventListener("hashchange", sync);
       window.clearTimeout(t);
     };
-  }, [pathname]);
+  }, [pathname, homeScrollSectionIds]);
 
   useEffect(() => {
     document.body.style.overflow = isMenuOpen ? "hidden" : "";
@@ -198,8 +214,10 @@ export default function SiteHeader() {
 
     if (pathname.startsWith("/contacto")) return "/contacto";
 
+    if (pathname.startsWith(ON_COMING_EVENTS_PUBLIC_PATH)) return ON_COMING_EVENTS_PUBLIC_PATH;
+
     return "";
-  }, [activeSection, pathname]);
+  }, [activeSection, pathname, navItems]);
   const headerElevated = scrolled || isMenuOpen;
 
   return (

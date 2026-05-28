@@ -3,7 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAdminContactRequests } from "@/hooks/use-admin-contact-requests";
 import { useAdminBookings } from "@/hooks/use-admin-bookings";
-import type { ConfirmDeleteState, PeticionesLane } from "../types/peticiones.types";
+import type {
+  ConfirmDeleteState,
+  PeticionesLane,
+} from "../types/peticiones.types";
 import { usePeticionesActions } from "./usePeticionesActions";
 import { usePeticionesCatalogMaps } from "./usePeticionesCatalogMaps";
 import { usePeticionesInbox } from "./usePeticionesInbox";
@@ -14,9 +17,14 @@ export function usePeticionesPage() {
   const [activeLane, setActiveLane] = useState<PeticionesLane>("bookings");
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [reservingContactId, setReservingContactId] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<ConfirmDeleteState | null>(null);
-  const [purgeLinkedInquiryOnDelete, setPurgeLinkedInquiryOnDelete] = useState(true);
+  const [reservingContactId, setReservingContactId] = useState<string | null>(
+    null,
+  );
+  const [confirmDelete, setConfirmDelete] = useState<ConfirmDeleteState | null>(
+    null,
+  );
+  const [purgeLinkedInquiryOnDelete, setPurgeLinkedInquiryOnDelete] =
+    useState(true);
 
   const inbox = usePeticionesInbox(true, { page, perPage, lane: activeLane });
   const catalog = usePeticionesCatalogMaps();
@@ -37,6 +45,8 @@ export function usePeticionesPage() {
       patchBooking: bookingMutations.patchBooking,
       removeBooking: bookingMutations.removeBooking,
       reloadBookings: bookingMutations.reload,
+      createBookingQuote: bookingMutations.createBookingQuote,
+      sendBalanceLink: bookingMutations.sendBalanceLink,
     },
     catalog,
     setBusyId,

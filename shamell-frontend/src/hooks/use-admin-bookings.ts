@@ -3,10 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
-import { DEFAULT_PAGINATION_META, type PaginatedResponse, type PaginationMeta } from "@/lib/pagination";
+import {
+  DEFAULT_PAGINATION_META,
+  type PaginatedResponse,
+  type PaginationMeta,
+} from "@/lib/pagination";
 
 function apiBase() {
-  return (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, "");
+  return (
+    process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"
+  ).replace(/\/$/, "");
 }
 
 export type AdminBookingRow = {
@@ -28,6 +34,20 @@ export type AdminBookingRow = {
   eventType?: { id?: string; name: string } | null;
   occasionType?: { id?: string; name: string } | null;
   event?: { id?: string; name: string } | null;
+  quoteModel?: "FULL" | "DEPOSIT" | null;
+  quoteTotalAmount?: number | null;
+  quoteDepositAmount?: number | null;
+  quoteBalanceAmount?: number | null;
+  quoteSentAt?: string | null;
+  depositPaidAt?: string | null;
+  balancePaidAt?: string | null;
+};
+
+export type CreateBookingQuotePayload = {
+  paymentModel: "FULL" | "DEPOSIT";
+  totalAmount: number;
+  depositAmount?: number;
+  currency?: string;
 };
 
 export type CreateAdminBookingPayload = {
@@ -73,7 +93,10 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
   const to = query?.to;
 
   const authHeaders = useCallback((): HeadersInit => {
-    const token = typeof window !== "undefined" ? localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY) : null;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY)
+        : null;
     const h: HeadersInit = { "Content-Type": "application/json" };
     if (token) (h as Record<string, string>).Authorization = `Bearer ${token}`;
     return h;
@@ -101,14 +124,23 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
       .then(async (res) => {
         if (!res.ok) {
           const data = await res.json().catch(() => ({}));
-          throw new Error(nestApiErrorMessage(data, "Could not load bookings."));
+          throw new Error(
+            nestApiErrorMessage(data, "Could not load bookings."),
+          );
         }
         return res.json();
       })
       .then((data: unknown) => {
         if (Array.isArray(data)) {
           setBookings(data as AdminBookingRow[]);
-          setMeta((m) => ({ ...m, totalItems: data.length, totalPages: 1, page: 1, hasPrev: false, hasNext: false }));
+          setMeta((m) => ({
+            ...m,
+            totalItems: data.length,
+            totalPages: 1,
+            page: 1,
+            hasPrev: false,
+            hasNext: false,
+          }));
           return;
         }
         const payload = data as Partial<PaginatedResponse<AdminBookingRow>>;
@@ -124,7 +156,9 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
           hasNext: Boolean(nextMeta.hasNext),
         });
       })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : "Error."))
+      .catch((e: unknown) =>
+        setError(e instanceof Error ? e.message : "Error."),
+      )
       .finally(() => setIsLoading(false));
   }, [authHeaders, enabled, from, page, perPage, source, status, to]);
 
@@ -153,7 +187,10 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
   );
 
   const patchBooking = useCallback(
-    async (id: string, payload: Partial<CreateAdminBookingPayload> & { status?: string }) => {
+    async (
+      id: string,
+      payload: Partial<CreateAdminBookingPayload> & { status?: string },
+    ) => {
       const res = await fetch(`${apiBase()}/api/v1/bookings/admin/${id}`, {
         method: "PATCH",
         headers: authHeaders(),
@@ -187,5 +224,58 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
     [authHeaders, reload],
   );
 
-  return { bookings, meta, isLoading, error, reload, createBooking, patchBooking, removeBooking };
+  const createBookingQuote = useCallback(
+    async (id: string, payload: CreateBookingQuotePayload) => {
+      const res = await fetch(
+        `${apiBase()}/api/v1/bookings/admin/${id}/quote`,
+        {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify(payload),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(nestApiErrorMessage(data, "Could not send quote."));
+      }
+      reload();
+      return data;
+    },
+    [authHeaders, reload],
+  );
+
+  const sendBalanceLink = useCallback(
+    async (id: string) => {
+      const res = await fetch(
+        `${apiBase()}/api/v1/bookings/admin/${id}/send-balance-link`,
+        {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({}),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(
+          nestApiErrorMessage(data, "Could not send balance link."),
+        );
+      }
+      reload();
+      return data;
+    },
+    [authHeaders, reload],
+  );
+
+  return {
+    bookings,
+    meta,
+    isLoading,
+    error,
+    reload,
+    createBooking,
+    patchBooking,
+    removeBooking,
+    createBookingQuote,
+    sendBalanceLink,
+  };
 }

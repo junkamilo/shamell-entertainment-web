@@ -2,8 +2,18 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { ChevronDown, ChevronUp, Loader2, Mail, Trash2, XCircle } from "lucide-react";
-import { InquiryDetailsReadable, buildInquiryDetailRows } from "@/components/admin/InquiryDetailsReadable";
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Mail,
+  Trash2,
+  XCircle,
+} from "lucide-react";
+import {
+  InquiryDetailsReadable,
+  buildInquiryDetailRows,
+} from "@/components/admin/InquiryDetailsReadable";
 import { formatContactSubjectForAdmin } from "@/lib/adminContactDisplay";
 import {
   buildContactInboxAgendarHref,
@@ -37,6 +47,15 @@ type Props = {
   onReserveFromContact: (row: ContactRequest) => void;
   onCancelBooking: (row: AdminBookingRow) => void;
   onRemoveBooking: (row: AdminBookingRow) => void;
+  onSendBookingQuote: (
+    row: AdminBookingRow,
+    payload: {
+      paymentModel: "FULL" | "DEPOSIT";
+      totalAmount: number;
+      depositAmount?: number;
+    },
+  ) => void;
+  onSendBalanceLink: (row: AdminBookingRow) => void;
   busyId: string | null;
   reservingContactId: string | null;
   serviceByInquiryCode: Map<string, string>;
@@ -55,6 +74,8 @@ export default function PeticionesRequestCard({
   onReserveFromContact,
   onCancelBooking,
   onRemoveBooking,
+  onSendBookingQuote,
+  onSendBalanceLink,
   busyId,
   reservingContactId,
   serviceByInquiryCode,
@@ -68,7 +89,8 @@ export default function PeticionesRequestCard({
   const contact = row.origin === "CONTACT" ? row.contact : null;
   const contactRow = row.origin === "CONTACT" ? row : null;
   const booking = row.origin === "BOOKING_ADMIN" ? row.booking : null;
-  const linkedContact = row.origin === "BOOKING_ADMIN" ? (row.linkedContact ?? null) : null;
+  const linkedContact =
+    row.origin === "BOOKING_ADMIN" ? (row.linkedContact ?? null) : null;
 
   const structuredDetails = useMemo(
     () => structuredDetailsForPeticionRow(contact, booking, linkedContact),
@@ -83,15 +105,23 @@ export default function PeticionesRequestCard({
   }, [structuredDetails, booking, bookingTz]);
 
   const showLegacyBookingHint = Boolean(
-    booking && buildInquiryDetailRows(structuredDetails).length === 0 && inquiryRows.length > 0,
+    booking &&
+    buildInquiryDetailRows(structuredDetails).length === 0 &&
+    inquiryRows.length > 0,
   );
 
   const clientComment = useMemo(() => {
     if (contact) {
-      return contactClientCommentFromRequest(contact.message, contact.inquiryDetails);
+      return contactClientCommentFromRequest(
+        contact.message,
+        contact.inquiryDetails,
+      );
     }
     if (linkedContact) {
-      return contactClientCommentFromRequest(linkedContact.message, linkedContact.inquiryDetails);
+      return contactClientCommentFromRequest(
+        linkedContact.message,
+        linkedContact.inquiryDetails,
+      );
     }
     return booking?.notes?.trim() || "No notes.";
   }, [booking?.notes, contact, linkedContact]);
@@ -116,8 +146,14 @@ export default function PeticionesRequestCard({
     serviceByInquiryCode,
   ]);
 
-  const isReserved = row.origin === "CONTACT" ? row.state === "RESERVED" : row.status === "CONFIRMED";
-  const isCancelled = row.origin === "CONTACT" ? row.state === "CANCELLED" : row.status === "CANCELLED";
+  const isReserved =
+    row.origin === "CONTACT"
+      ? row.state === "RESERVED"
+      : row.status === "CONFIRMED";
+  const isCancelled =
+    row.origin === "CONTACT"
+      ? row.state === "CANCELLED"
+      : row.status === "CANCELLED";
 
   return (
     <article
@@ -141,7 +177,10 @@ export default function PeticionesRequestCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="font-brand text-base tracking-wide text-gold sm:text-lg">
-              {contact?.fullName || booking?.guestFullName || booking?.user?.fullName || "Client"}
+              {contact?.fullName ||
+                booking?.guestFullName ||
+                booking?.user?.fullName ||
+                "Client"}
             </span>
             {isReserved ? (
               <span className="rounded border border-emerald-400/45 px-2 py-0.5 font-brand text-[10px] tracking-widest text-emerald-200 sm:text-xs">
@@ -164,18 +203,24 @@ export default function PeticionesRequestCard({
             {contact
               ? formatContactSubjectForAdmin(contact.subject)
               : booking?.event?.name ||
-                  booking?.eventType?.name ||
-                  bookingServiceDisplayLine(booking) ||
-                  "Admin booking"}
+                booking?.eventType?.name ||
+                bookingServiceDisplayLine(booking) ||
+                "Admin booking"}
           </p>
           <p className="mt-1 font-brand text-xs tracking-widest text-foreground/45 sm:text-sm">
             {formatRequestDate(row.createdAt)}
           </p>
         </div>
         {expanded ? (
-          <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+          <ChevronUp
+            className="mt-1 h-4 w-4 shrink-0 text-gold/70"
+            strokeWidth={1.5}
+          />
         ) : (
-          <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-gold/70" strokeWidth={1.5} />
+          <ChevronDown
+            className="mt-1 h-4 w-4 shrink-0 text-gold/70"
+            strokeWidth={1.5}
+          />
         )}
       </button>
 
@@ -184,7 +229,9 @@ export default function PeticionesRequestCard({
           <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-3 sm:text-base">
             {contact?.phone || booking?.guestPhone ? (
               <>
-                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">PHONE</dt>
+                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">
+                  PHONE
+                </dt>
                 <dd className="min-w-0 wrap-break-word font-body text-foreground/85">
                   {contact?.phone || booking?.guestPhone}
                 </dd>
@@ -192,27 +239,37 @@ export default function PeticionesRequestCard({
             ) : null}
             {contact?.eventDate || booking?.eventDate ? (
               <>
-                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">EVENT DATE</dt>
+                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">
+                  EVENT DATE
+                </dt>
                 <dd className="min-w-0 wrap-break-word font-body text-foreground/85">
                   {contact
                     ? formatEventCalendarDate(contact.eventDate || "")
-                    : formatBookingCalendarDate(booking?.eventDate || "", bookingTz)}
+                    : formatBookingCalendarDate(
+                        booking?.eventDate || "",
+                        bookingTz,
+                      )}
                 </dd>
               </>
             ) : null}
             {contact?.location || booking?.location ? (
               <>
-                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">CITY / VENUE</dt>
+                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">
+                  CITY / VENUE
+                </dt>
                 <dd className="min-w-0 wrap-break-word font-body text-foreground/85">
                   {contact?.location || booking?.location}
                 </dd>
               </>
             ) : null}
           </dl>
-          {inquiryRows.length > 0 ? <InquiryDetailsReadable rows={inquiryRows} /> : null}
+          {inquiryRows.length > 0 ? (
+            <InquiryDetailsReadable rows={inquiryRows} />
+          ) : null}
           {showLegacyBookingHint ? (
             <p className="font-body text-xs leading-relaxed text-foreground/50 sm:text-sm">
-              No structured form snapshot on this booking; showing catalog fields only.
+              No structured form snapshot on this booking; showing catalog
+              fields only.
             </p>
           ) : null}
           {!(
@@ -250,7 +307,12 @@ export default function PeticionesRequestCard({
                     : "border-gold/35 text-gold hover:bg-gold/10",
                 )}
               >
-                {reserving ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={2} /> : null}
+                {reserving ? (
+                  <Loader2
+                    className="h-3.5 w-3.5 animate-spin"
+                    strokeWidth={2}
+                  />
+                ) : null}
                 {contactRow.state === "RESERVED" ? "Reserved" : "Reserve"}
               </button>
             ) : null}
@@ -273,6 +335,61 @@ export default function PeticionesRequestCard({
               <XCircle className="h-4 w-4" strokeWidth={1.5} />
               Cancel
             </button>
+            {booking ? (
+              <button
+                type="button"
+                disabled={busy || reserving}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const totalInput = window.prompt(
+                    "Total price in USD",
+                    "2500",
+                  );
+                  const totalAmount = Number(totalInput);
+                  if (!Number.isFinite(totalAmount) || totalAmount <= 0) return;
+                  const modelChoice = window.prompt(
+                    "Payment model: FULL or DEPOSIT",
+                    booking.quoteModel ?? "FULL",
+                  );
+                  const paymentModel =
+                    modelChoice?.trim().toUpperCase() === "DEPOSIT"
+                      ? "DEPOSIT"
+                      : "FULL";
+                  if (paymentModel === "DEPOSIT") {
+                    const depositInput = window.prompt(
+                      "Deposit amount in USD",
+                      "1000",
+                    );
+                    const depositAmount = Number(depositInput);
+                    if (!Number.isFinite(depositAmount) || depositAmount <= 0)
+                      return;
+                    onSendBookingQuote(booking, {
+                      paymentModel,
+                      totalAmount,
+                      depositAmount,
+                    });
+                    return;
+                  }
+                  onSendBookingQuote(booking, { paymentModel, totalAmount });
+                }}
+                className="inline-flex w-full items-center justify-center rounded-md border border-sky-300/40 px-3 py-3 font-brand text-xs tracking-widest text-sky-200 transition hover:bg-sky-500/10 disabled:opacity-50 sm:w-auto sm:py-2.5 sm:text-sm"
+              >
+                Send payment link
+              </button>
+            ) : null}
+            {booking?.depositPaidAt && !booking?.balancePaidAt ? (
+              <button
+                type="button"
+                disabled={busy || reserving}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSendBalanceLink(booking);
+                }}
+                className="inline-flex w-full items-center justify-center rounded-md border border-indigo-300/40 px-3 py-3 font-brand text-xs tracking-widest text-indigo-200 transition hover:bg-indigo-500/10 disabled:opacity-50 sm:w-auto sm:py-2.5 sm:text-sm"
+              >
+                Send balance link
+              </button>
+            ) : null}
             <button
               type="button"
               disabled={busy || reserving || !isCancelled}
