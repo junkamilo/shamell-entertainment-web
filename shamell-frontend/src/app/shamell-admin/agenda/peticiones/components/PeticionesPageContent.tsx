@@ -4,7 +4,10 @@ import { Loader2 } from "lucide-react";
 import AdminBackButton from "@/components/admin/AdminBackButton";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminPagination from "@/components/admin/AdminPagination";
-import { AGENDA_HUB_PATH, AGENDA_MI_AGENDA_PATH } from "../lib/peticionesRoutes";
+import {
+  AGENDA_HUB_PATH,
+  AGENDA_MI_AGENDA_PATH,
+} from "../lib/peticionesRoutes";
 import { usePeticionesPage } from "../hooks/usePeticionesPage";
 import PeticionesDeleteModal from "./PeticionesDeleteModal";
 import PeticionesLaneTabs from "./PeticionesLaneTabs";
@@ -25,7 +28,10 @@ export default function PeticionesPageContent() {
         bordered={false}
       />
 
-      <PeticionesLaneTabs activeLane={page.activeLane} onLaneChange={page.onLaneChange} />
+      <PeticionesLaneTabs
+        activeLane={page.activeLane}
+        onLaneChange={page.onLaneChange}
+      />
 
       <PeticionesStatsBar
         isLoading={page.inbox.isLoading}
@@ -44,7 +50,9 @@ export default function PeticionesPageContent() {
             </div>
           ) : null}
 
-          {!page.inbox.isLoading && page.inbox.rows.length === 0 && !page.inbox.error ? (
+          {!page.inbox.isLoading &&
+          page.inbox.rows.length === 0 &&
+          !page.inbox.error ? (
             <p className="shamell-glass-surface rounded-xl py-12 text-center font-body text-sm text-foreground/50">
               {page.activeLane === "guidance"
                 ? "No concierge guidance requests in this inbox yet."
@@ -57,17 +65,23 @@ export default function PeticionesPageContent() {
               key={row.id}
               row={row}
               expanded={page.expandedId === row.id}
-              onToggle={() => page.setExpandedId((id) => (id === row.id ? null : row.id))}
+              onToggle={() =>
+                page.setExpandedId((id) => (id === row.id ? null : row.id))
+              }
               onCancel={() => page.actions.onCancelContact(row.id)}
               onRemove={() => page.actions.onRemove(row.id)}
               onReserveFromContact={page.actions.onReserveFromContact}
               onCancelBooking={page.actions.onCancelBooking}
               onRemoveBooking={page.actions.onRemoveBooking}
+              onSendBookingQuote={page.actions.onSendBookingQuote}
+              onSendBalanceLink={page.actions.onSendBalanceLink}
               busyId={page.busyId}
               reservingContactId={page.reservingContactId}
               serviceByInquiryCode={page.catalog.serviceByInquiryCode}
               eventTypeContactCodeById={page.catalog.eventTypeContactCodeById}
-              inquiryCodeByCatalogLineId={page.catalog.inquiryCodeByCatalogLineId}
+              inquiryCodeByCatalogLineId={
+                page.catalog.inquiryCodeByCatalogLineId
+              }
               fallbackServiceId={page.catalog.fallbackServiceId}
               bookingTz={page.actions.bookingTz}
             />

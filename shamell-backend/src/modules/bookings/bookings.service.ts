@@ -6,11 +6,16 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  BookingPaymentStage,
+  BookingPaymentStatus,
+  BookingQuotePaymentModel,
+  BookingQuoteStatus,
   BookingSource,
   BookingStatus,
   ContactRequestStatus,
   Prisma,
 } from '@prisma/client';
+import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
 import {
@@ -38,6 +43,18 @@ import {
   type BookingConfirmationTemplateInput,
 } from './booking-confirmation.mail';
 import { MailService } from '../mail/mail.service';
+import { StripeService } from '../stripe/stripe.service';
+import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
+import { SendBookingBalanceLinkDto } from './dto/send-booking-balance-link.dto';
+import {
+  buildBookingDepositPaidSubject,
+  buildBookingDepositPaidText,
+  buildBookingFullyPaidSubject,
+  buildBookingFullyPaidText,
+  buildBookingQuoteHtml,
+  buildBookingQuoteSubject,
+  buildBookingQuoteText,
+} from './booking-quote.mail';
 
 const bookingInclude = {
   service: { include: { serviceType: true } },
@@ -53,6 +70,16 @@ type BookingWithRelations = Prisma.BookingGetPayload<{
 }>;
 
 type PrismaTx = Prisma.TransactionClient;
+type StripeCheckoutSessionLite = {
+  id?: string;
+  metadata?: Record<string, string | undefined>;
+  payment_status?: string | null;
+  amount_total?: number | null;
+  currency?: string | null;
+  payment_intent?: string | { id?: string } | null;
+};
+const QUOTE_TOKEN_TTL_HOURS = 72;
+const CHECKOUT_TTL_MINUTES = 45;
 
 export type CreateFromPublicBookingInquiryOptions = {
   tx?: PrismaTx;
@@ -85,6 +112,7 @@ export class BookingsService {
     private readonly availability: AvailabilityService,
     private readonly mail: MailService,
     private readonly config: ConfigService,
+    private readonly stripeService: StripeService,
   ) {}
 
   private async enrichBookingDetails(
@@ -506,7 +534,10 @@ export class BookingsService {
     const eventId = trimUuidField(detailsAligned.eventId);
 
     let guestCount: number | null = null;
-    if (detailsAligned.guestCount !== undefined && detailsAligned.guestCount > 0) {
+    if (
+      detailsAligned.guestCount !== undefined &&
+      detailsAligned.guestCount > 0
+    ) {
       guestCount = detailsAligned.guestCount;
     }
 
@@ -545,7 +576,7 @@ export class BookingsService {
         location: prepared.location,
         guestCount: prepared.guestCount,
         notes: prepared.notes,
-        status: BookingStatus.CONFIRMED,
+        status: BookingStatus.PENDING,
         bookingDetails: prepared.bookingDetails,
         source: BookingSource.CLIENT_REGISTERED,
         contactRequestId,
@@ -577,11 +608,7 @@ export class BookingsService {
       contactRequestId,
     );
     if (!prepared) return null;
-    return this.insertPublicBookingInquiry(
-      contactRequestId,
-      prepared,
-      options,
-    );
+    return this.insertPublicBookingInquiry(contactRequestId, prepared, options);
   }
 
   /**
@@ -622,9 +649,8 @@ export class BookingsService {
       const multiLabels = details?.serviceLabels?.filter(
         (s) => typeof s === 'string' && s.trim().length > 0,
       );
-      const serviceLabel =
-        multiLabels?.length ?
-          multiLabels.join(', ')
+      const serviceLabel = multiLabels?.length
+        ? multiLabels.join(', ')
         : (booking.service.serviceType?.name ?? 'Service');
       const serviceHeading =
         multiLabels && multiLabels.length > 1 ? 'Services' : 'Service';
@@ -784,11 +810,7 @@ export class BookingsService {
         id,
       );
     } else if (dto.bookingDetails !== undefined && enrichedDetails) {
-      await this.assertNoDuplicateSlot(
-        existing.eventDate,
-        enrichedDetails,
-        id,
-      );
+      await this.assertNoDuplicateSlot(existing.eventDate, enrichedDetails, id);
     }
 
     const updated = await this.prisma.booking.update({
@@ -813,17 +835,14 @@ export class BookingsService {
         ...(dto.status !== undefined ? { status: dto.status } : {}),
         ...(enrichedDetails !== undefined
           ? {
-              bookingDetails: enrichedDetails as unknown as Prisma.InputJsonValue,
+              bookingDetails: enrichedDetails,
             }
           : {}),
       },
       include: bookingInclude,
     });
 
-    if (
-      dto.status === BookingStatus.CANCELLED &&
-      existing.contactRequestId
-    ) {
+    if (dto.status === BookingStatus.CANCELLED && existing.contactRequestId) {
       await this.cancelLinkedContactRequest(existing.contactRequestId);
     }
 
@@ -851,6 +870,524 @@ export class BookingsService {
     });
 
     return { ok: true };
+  }
+
+  async createBookingQuote(
+    adminUserId: string,
+    bookingId: string,
+    dto: CreateBookingQuoteDto,
+  ) {
+    const booking = await this.findOneAdmin(bookingId);
+    const toEmail =
+      booking.user?.email?.trim().toLowerCase() ??
+      booking.guestEmail?.trim().toLowerCase();
+    if (!toEmail) {
+      throw new BadRequestException('Booking has no customer email.');
+    }
+
+    const currency = (dto.currency?.trim().toLowerCase() ?? 'usd') || 'usd';
+    if (currency !== 'usd') {
+      throw new BadRequestException('Only USD is supported for this flow.');
+    }
+    const total = Number(dto.totalAmount);
+    if (!Number.isFinite(total) || total <= 0) {
+      throw new BadRequestException('Invalid total amount.');
+    }
+
+    let deposit = 0;
+    let balance = 0;
+    if (dto.paymentModel === BookingQuotePaymentModel.DEPOSIT) {
+      deposit = Number(dto.depositAmount ?? 0);
+      if (!Number.isFinite(deposit) || deposit <= 0 || deposit >= total) {
+        throw new BadRequestException(
+          'Deposit amount must be > 0 and < total amount.',
+        );
+      }
+      balance = Number((total - deposit).toFixed(2));
+    }
+
+    const rawToken = randomBytes(24).toString('hex');
+    const tokenHash = this.hashQuoteToken(rawToken);
+    const tokenExpiresAt = new Date(
+      Date.now() + QUOTE_TOKEN_TTL_HOURS * 60 * 60 * 1000,
+    );
+
+    const quote = await this.prisma.bookingQuote.create({
+      data: {
+        bookingId: booking.id,
+        paymentModel: dto.paymentModel,
+        totalAmount: total,
+        depositAmount:
+          dto.paymentModel === BookingQuotePaymentModel.DEPOSIT
+            ? deposit
+            : null,
+        balanceAmount:
+          dto.paymentModel === BookingQuotePaymentModel.DEPOSIT
+            ? balance
+            : null,
+        currency,
+        tokenHash,
+        tokenExpiresAt,
+      },
+    });
+
+    await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: BookingStatus.PENDING,
+        quoteModel: dto.paymentModel,
+        quoteTotalAmount: total,
+        quoteDepositAmount:
+          dto.paymentModel === BookingQuotePaymentModel.DEPOSIT
+            ? deposit
+            : null,
+        quoteBalanceAmount:
+          dto.paymentModel === BookingQuotePaymentModel.DEPOSIT
+            ? balance
+            : null,
+        quoteCurrency: currency,
+        quoteSentAt: new Date(),
+        quoteAcceptedAt: null,
+        quoteRejectedAt: null,
+      },
+    });
+
+    const stage =
+      dto.paymentModel === BookingQuotePaymentModel.DEPOSIT
+        ? BookingPaymentStage.DEPOSIT
+        : BookingPaymentStage.FULL;
+    const payAmount = stage === BookingPaymentStage.FULL ? total : deposit;
+    const payment = await this.createBookingStripePayment({
+      bookingId: booking.id,
+      quoteId: quote.id,
+      stage,
+      amount: payAmount,
+      currency,
+      customerEmail: toEmail,
+      customerName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      adminUserId,
+    });
+
+    const appPublicName =
+      this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+      'Shamell Entertainment';
+    const frontendBaseUrl = this.config
+      .get<string>('FRONTEND_URL')
+      ?.split(',')[0]
+      ?.trim();
+    const payUrl = this.buildQuotePayUrl(rawToken);
+    const bookingRef = booking.id.slice(0, 8).toUpperCase();
+    await this.mail.sendTransactional({
+      to: toEmail,
+      toName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      subject: buildBookingQuoteSubject(appPublicName),
+      html: buildBookingQuoteHtml({
+        recipientName:
+          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        appPublicName,
+        frontendBaseUrl,
+        bookingReference: bookingRef,
+        totalAmountUsd: this.usd(total),
+        depositAmountUsd: deposit > 0 ? this.usd(deposit) : undefined,
+        balanceAmountUsd: balance > 0 ? this.usd(balance) : undefined,
+        payUrl,
+      }),
+      text: buildBookingQuoteText({
+        recipientName:
+          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        appPublicName,
+        frontendBaseUrl,
+        bookingReference: bookingRef,
+        totalAmountUsd: this.usd(total),
+        depositAmountUsd: deposit > 0 ? this.usd(deposit) : undefined,
+        balanceAmountUsd: balance > 0 ? this.usd(balance) : undefined,
+        payUrl,
+      }),
+    });
+
+    return {
+      message: 'Payment link sent successfully.',
+      quoteId: quote.id,
+      paymentId: payment.id,
+      checkoutSessionId: payment.stripeCheckoutSessionId,
+      quoteExpiresAt: tokenExpiresAt.toISOString(),
+    };
+  }
+
+  async sendBookingBalanceLink(
+    adminUserId: string,
+    bookingId: string,
+    dto: SendBookingBalanceLinkDto,
+  ) {
+    const booking = await this.findOneAdmin(bookingId);
+    if (
+      !booking.quoteBalanceAmount ||
+      Number(booking.quoteBalanceAmount) <= 0
+    ) {
+      throw new BadRequestException('Booking has no pending balance.');
+    }
+    if (!booking.depositPaidAt) {
+      throw new BadRequestException(
+        'Deposit must be paid before sending balance link.',
+      );
+    }
+
+    const activeQuote = await this.prisma.bookingQuote.findFirst({
+      where: {
+        bookingId,
+        status: { in: [BookingQuoteStatus.SENT, BookingQuoteStatus.ACCEPTED] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!activeQuote) {
+      throw new NotFoundException('Active quote not found.');
+    }
+    const customerEmail =
+      booking.user?.email?.trim().toLowerCase() ??
+      booking.guestEmail?.trim().toLowerCase();
+    if (!customerEmail)
+      throw new BadRequestException('Missing customer email.');
+    const currency = (dto.currency?.trim().toLowerCase() ?? 'usd') || 'usd';
+    if (currency !== 'usd') {
+      throw new BadRequestException('Only USD is supported.');
+    }
+    const balanceAmount = Number(booking.quoteBalanceAmount);
+    const rawToken = randomBytes(24).toString('hex');
+    await this.prisma.bookingQuote.update({
+      where: { id: activeQuote.id },
+      data: {
+        tokenHash: this.hashQuoteToken(rawToken),
+        tokenExpiresAt: new Date(
+          Date.now() + QUOTE_TOKEN_TTL_HOURS * 60 * 60 * 1000,
+        ),
+      },
+    });
+    const payment = await this.createBookingStripePayment({
+      bookingId,
+      quoteId: activeQuote.id,
+      stage: BookingPaymentStage.BALANCE,
+      amount: balanceAmount,
+      currency,
+      customerEmail,
+      customerName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      adminUserId,
+    });
+    const payUrl = this.buildQuotePayUrl(rawToken);
+    return {
+      message: 'Balance payment link created.',
+      paymentId: payment.id,
+      payUrl,
+    };
+  }
+
+  async resolveQuotePayUrl(token: string): Promise<string> {
+    const quote = await this.findActiveQuoteByToken(token);
+    const payment = await this.prisma.bookingPayment.findFirst({
+      where: {
+        quoteId: quote.id,
+        status: BookingPaymentStatus.PENDING,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!payment) {
+      throw new NotFoundException('No pending payment for this quote.');
+    }
+    const session = await this.stripeService.client.checkout.sessions.retrieve(
+      payment.stripeCheckoutSessionId,
+    );
+    if (!session.url) {
+      throw new BadRequestException('Stripe checkout URL unavailable.');
+    }
+    return session.url;
+  }
+
+  async handleBookingPaymentsWebhook(
+    rawBody: Buffer,
+    signature: string | string[] | undefined,
+  ) {
+    if (!signature || Array.isArray(signature)) {
+      throw new BadRequestException('Missing stripe-signature header.');
+    }
+    const event = this.stripeService.client.webhooks.constructEvent(
+      rawBody,
+      signature,
+      this.stripeService.webhookSecret,
+    );
+    const eventObj = this.parseStripeCheckoutSession(event.data.object);
+    if (eventObj.metadata?.flow !== 'booking_quote') {
+      return { received: true, handled: false };
+    }
+    if (event.type === 'checkout.session.completed') {
+      await this.markBookingPaymentPaid(event.id, eventObj);
+      return { received: true, handled: true };
+    }
+    if (event.type === 'checkout.session.expired') {
+      const sessionId = eventObj.id?.trim();
+      if (!sessionId) {
+        throw new BadRequestException(
+          'Invalid checkout.session.expired payload.',
+        );
+      }
+      await this.markBookingPaymentExpired(sessionId);
+      return { received: true, handled: true };
+    }
+    return { received: true, handled: false };
+  }
+
+  private async markBookingPaymentPaid(
+    stripeEventId: string,
+    session: StripeCheckoutSessionLite,
+  ): Promise<void> {
+    const sessionId = session.id;
+    if (!sessionId) throw new BadRequestException('Missing session id.');
+    const payment = await this.prisma.bookingPayment.findUnique({
+      where: { stripeCheckoutSessionId: sessionId },
+      include: { booking: true, quote: true },
+    });
+    if (!payment) throw new NotFoundException('Booking payment not found.');
+    if (payment.status === BookingPaymentStatus.PAID) return;
+    if (session.payment_status !== 'paid') {
+      throw new BadRequestException('Session payment_status is not paid.');
+    }
+    const expectedCents = Math.round(Number(payment.expectedAmount) * 100);
+    if (session.amount_total !== expectedCents) {
+      throw new BadRequestException('Amount mismatch.');
+    }
+    if (session.currency?.toLowerCase() !== payment.currency.toLowerCase()) {
+      throw new BadRequestException('Currency mismatch.');
+    }
+    const paymentIntentId =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : (session.payment_intent?.id ?? null);
+    const paidAt = new Date();
+    await this.prisma.bookingPayment.update({
+      where: { id: payment.id },
+      data: {
+        status: BookingPaymentStatus.PAID,
+        paidAt,
+        stripePaymentIntentId: paymentIntentId,
+      },
+    });
+    if (payment.stage === BookingPaymentStage.DEPOSIT) {
+      await this.prisma.booking.update({
+        where: { id: payment.bookingId },
+        data: {
+          depositPaidAt: paidAt,
+          status: BookingStatus.PENDING,
+        },
+      });
+      await this.sendDepositPaidEmail(
+        payment.bookingId,
+        Number(payment.expectedAmount),
+      );
+    } else {
+      await this.prisma.booking.update({
+        where: { id: payment.bookingId },
+        data: {
+          status: BookingStatus.CONFIRMED,
+          ...(payment.stage === BookingPaymentStage.FULL
+            ? { totalAmount: payment.expectedAmount }
+            : {
+                balancePaidAt: paidAt,
+                totalAmount: payment.quote.totalAmount,
+              }),
+        },
+      });
+      await this.sendFullyPaidEmail(
+        payment.bookingId,
+        Number(payment.expectedAmount),
+      );
+    }
+    this.logger.log(
+      `booking-payment-paid bookingId=${payment.bookingId} paymentId=${payment.id} stage=${payment.stage} eventId=${stripeEventId}`,
+    );
+  }
+
+  private async markBookingPaymentExpired(sessionId: string): Promise<void> {
+    const payment = await this.prisma.bookingPayment.findUnique({
+      where: { stripeCheckoutSessionId: sessionId },
+    });
+    if (!payment || payment.status !== BookingPaymentStatus.PENDING) return;
+    await this.prisma.bookingPayment.update({
+      where: { id: payment.id },
+      data: { status: BookingPaymentStatus.EXPIRED },
+    });
+  }
+
+  private async createBookingStripePayment(args: {
+    bookingId: string;
+    quoteId: string;
+    stage: BookingPaymentStage;
+    amount: number;
+    currency: string;
+    customerEmail: string;
+    customerName: string;
+    adminUserId: string;
+  }) {
+    const amountCents = Math.round(Number(args.amount) * 100);
+    if (amountCents < 50) throw new BadRequestException('Invalid amount.');
+    const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
+    const returnUrl = `${this.stripeService.frontendUrl()}/booking-payment/return?session_id={CHECKOUT_SESSION_ID}`;
+    const session = await this.stripeService.client.checkout.sessions.create({
+      mode: 'payment',
+      customer_email: args.customerEmail,
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: args.currency,
+            unit_amount: amountCents,
+            product_data: {
+              name:
+                args.stage === BookingPaymentStage.FULL
+                  ? 'Booking full payment'
+                  : args.stage === BookingPaymentStage.DEPOSIT
+                    ? 'Booking deposit payment'
+                    : 'Booking balance payment',
+              description: `Booking ${args.bookingId.slice(0, 8).toUpperCase()}`,
+            },
+          },
+        },
+      ],
+      expires_at: Math.floor(expiresAt.getTime() / 1000),
+      success_url: returnUrl,
+      cancel_url: returnUrl,
+      metadata: {
+        flow: 'booking_quote',
+        bookingId: args.bookingId,
+        quoteId: args.quoteId,
+        stage: args.stage,
+        adminUserId: args.adminUserId,
+      },
+    });
+    const created = await this.prisma.bookingPayment.create({
+      data: {
+        bookingId: args.bookingId,
+        quoteId: args.quoteId,
+        stage: args.stage,
+        expectedAmount: args.amount,
+        currency: args.currency,
+        stripeCheckoutSessionId: session.id,
+        expiresAt,
+      },
+    });
+    return created;
+  }
+
+  private async sendDepositPaidEmail(
+    bookingId: string,
+    amount: number,
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { user: true },
+    });
+    if (!booking) return;
+    const toEmail =
+      booking.user?.email?.trim().toLowerCase() ??
+      booking.guestEmail?.trim().toLowerCase();
+    if (!toEmail) return;
+    const appPublicName =
+      this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+      'Shamell Entertainment';
+    await this.mail.sendTransactional({
+      to: toEmail,
+      toName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      subject: buildBookingDepositPaidSubject(appPublicName),
+      html: `<p>We received your deposit.</p><p>Booking reference: ${booking.id.slice(0, 8).toUpperCase()}</p><p>Amount paid: ${this.usd(amount)}</p>`,
+      text: buildBookingDepositPaidText({
+        appPublicName,
+        recipientName:
+          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        bookingReference: booking.id.slice(0, 8).toUpperCase(),
+        amountUsd: this.usd(amount),
+      }),
+    });
+  }
+
+  private async sendFullyPaidEmail(
+    bookingId: string,
+    amount: number,
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: bookingInclude,
+    });
+    if (!booking) return;
+    const toEmail =
+      booking.user?.email?.trim().toLowerCase() ??
+      booking.guestEmail?.trim().toLowerCase();
+    if (!toEmail) return;
+    const appPublicName =
+      this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+      'Shamell Entertainment';
+    await this.mail.sendTransactional({
+      to: toEmail,
+      toName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      subject: buildBookingFullyPaidSubject(appPublicName),
+      html: `<p>Your reservation is now confirmed.</p><p>Booking reference: ${booking.id.slice(0, 8).toUpperCase()}</p><p>Amount paid: ${this.usd(amount)}</p>`,
+      text: buildBookingFullyPaidText({
+        appPublicName,
+        recipientName:
+          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        bookingReference: booking.id.slice(0, 8).toUpperCase(),
+        amountUsd: this.usd(amount),
+      }),
+    });
+  }
+
+  private hashQuoteToken(rawToken: string): string {
+    return createHash('sha256').update(rawToken).digest('hex');
+  }
+
+  private async findActiveQuoteByToken(rawToken: string) {
+    const tokenHash = this.hashQuoteToken(rawToken);
+    const quote = await this.prisma.bookingQuote.findFirst({
+      where: {
+        tokenHash,
+        status: { in: [BookingQuoteStatus.SENT, BookingQuoteStatus.ACCEPTED] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!quote) throw new NotFoundException('Quote not found.');
+    if (quote.tokenExpiresAt.getTime() < Date.now()) {
+      await this.prisma.bookingQuote.update({
+        where: { id: quote.id },
+        data: { status: BookingQuoteStatus.EXPIRED },
+      });
+      throw new BadRequestException('Quote has expired.');
+    }
+    return quote;
+  }
+
+  private usd(value: number): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+
+  private buildQuotePayUrl(token: string): string {
+    const backendBase = (
+      this.config.get<string>('BACKEND_PUBLIC_URL')?.trim() ||
+      this.config.get<string>('NEXT_PUBLIC_BACKEND_URL')?.trim() ||
+      this.config.get<string>('FRONTEND_URL')?.split(',')[0]?.trim() ||
+      ''
+    ).replace(/\/$/, '');
+    const base = backendBase.startsWith('http')
+      ? backendBase
+      : this.stripeService.frontendUrl();
+    return `${base}/api/v1/bookings/public/quote/pay?token=${encodeURIComponent(token)}`;
+  }
+
+  private parseStripeCheckoutSession(raw: unknown): StripeCheckoutSessionLite {
+    if (!raw || typeof raw !== 'object') {
+      throw new BadRequestException('Invalid Stripe checkout session payload.');
+    }
+    return raw;
   }
 
   private async cancelLinkedContactRequest(

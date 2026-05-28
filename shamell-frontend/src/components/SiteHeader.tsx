@@ -11,8 +11,8 @@ import {
   isAdminLoggedIn,
 } from "@/lib/adminSession";
 import { cn } from "@/lib/utils";
-import { useVenueLayoutSettings } from "@/hooks/use-venue-layout-settings";
-import { VENUE_LAYOUT_PUBLIC_PATH } from "@/app/shamell-admin/venue-layout-promo/lib/venueLayoutPromoRoutes";
+import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
+import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/onComingEventsRoutes";
 import bailarinaLogo from "@/public/01_bailarina.png";
 
 type NavItem = {
@@ -33,9 +33,9 @@ const baseNavItems: NavItem[] = [
   { label: "GALLERY", href: "/#gallery", sectionId: "gallery" },
 ];
 
-const venueLayoutNavItem: NavItem = {
-  label: "VENUE LAYOUT",
-  href: VENUE_LAYOUT_PUBLIC_PATH,
+const onComingEventsNavItem: NavItem = {
+  label: "ON COMING EVENTS",
+  href: ON_COMING_EVENTS_PUBLIC_PATH,
 };
 
 function computeHomeActiveSectionId(sectionIds: string[]): string {
@@ -117,15 +117,15 @@ function DesktopNavLink({
 
 export default function SiteHeader() {
   const pathname = usePathname();
-  const { clientEnabled: venueLayoutEnabled } = useVenueLayoutSettings();
+  const { clientEnabled: onComingEventsEnabled } = useOnComingEventsSettings();
   const navItems = useMemo(() => {
-    if (!venueLayoutEnabled) return baseNavItems;
+    if (!onComingEventsEnabled) return baseNavItems;
     const items = [...baseNavItems];
     const galleryIndex = items.findIndex((item) => item.sectionId === "gallery");
     const insertAt = galleryIndex >= 0 ? galleryIndex : items.length;
-    items.splice(insertAt, 0, venueLayoutNavItem);
+    items.splice(insertAt, 0, onComingEventsNavItem);
     return items;
-  }, [venueLayoutEnabled]);
+  }, [onComingEventsEnabled]);
   const homeScrollSectionIds = useMemo(
     () =>
       navItems.map((item) => item.sectionId).filter((id): id is string => Boolean(id)),
@@ -214,7 +214,7 @@ export default function SiteHeader() {
 
     if (pathname.startsWith("/contacto")) return "/contacto";
 
-    if (pathname.startsWith(VENUE_LAYOUT_PUBLIC_PATH)) return VENUE_LAYOUT_PUBLIC_PATH;
+    if (pathname.startsWith(ON_COMING_EVENTS_PUBLIC_PATH)) return ON_COMING_EVENTS_PUBLIC_PATH;
 
     return "";
   }, [activeSection, pathname, navItems]);

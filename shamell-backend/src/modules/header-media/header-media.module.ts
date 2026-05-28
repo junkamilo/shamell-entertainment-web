@@ -5,6 +5,8 @@ import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { GalleryModule } from '../gallery/gallery.module';
 import { HeaderMediaController } from './header-media.controller';
 import { HeaderMediaService } from './header-media.service';
+import { HeaderTextController } from './header-text/header-text.controller';
+import { HeaderTextService } from './header-text/header-text.service';
 
 @Module({
   imports: [
@@ -17,7 +19,7 @@ import { HeaderMediaService } from './header-media.service';
       },
     }),
   ],
-  controllers: [HeaderMediaController],
-  providers: [HeaderMediaService, AdminJwtGuard],
+  controllers: [HeaderMediaController, HeaderTextController],
+  providers: [HeaderMediaService, HeaderTextService, AdminJwtGuard],
 })
 export class HeaderMediaModule {}

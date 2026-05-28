@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Minus, Plus } from "lucide-react";
-import { FLOOR_LAYOUT_PATH } from "@/app/shamell-admin/floor-layout/lib/floorLayoutRoutes";
+import { ON_COMING_EVENTS_LAYOUT_ADMIN_PATH } from "@/lib/onComingEventsRoutes";
 import { formatPriceEn, parsePriceInput } from "../lib/parseVenueTablePrice";
 import { formatStandaloneChairAdminSubtitle } from "../lib/mapStandaloneChairFromApi";
 import { useStandaloneChairsConfig } from "../hooks/useStandaloneChairsConfig";
@@ -24,7 +24,7 @@ export default function StandaloneChairsSection() {
     <section className="rounded-xl border border-shamell-line-soft bg-shamell-twilight/25 p-6">
       <div className="mb-4">
         <p className="text-sm text-shamell-text-primary/75">
-          Chairs placed on the venue layout that are not part of a table combo. Set how
+          Chairs placed on the On Coming Events floor plan that are not part of a table combo. Set how
           many are available and the unit price per chair.
         </p>
         <p className="mt-2 text-xs text-shamell-gold">
@@ -33,8 +33,8 @@ export default function StandaloneChairsSection() {
         </p>
         <p className="mt-2 text-xs text-shamell-gold">
           Place them in{" "}
-          <Link href={FLOOR_LAYOUT_PATH} className="underline hover:text-shamell-text-primary">
-            Venue layout
+          <Link href={ON_COMING_EVENTS_LAYOUT_ADMIN_PATH} className="underline hover:text-shamell-text-primary">
+            On Coming Events
           </Link>{" "}
           using the chair item from the palette.
         </p>

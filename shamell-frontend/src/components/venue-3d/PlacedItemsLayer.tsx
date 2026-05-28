@@ -1,6 +1,7 @@
 "use client";
 
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import { Html } from "@react-three/drei";
 import { layoutToWorld } from "./layoutCoords3d";
 import CatalogTableMesh from "./CatalogTableMesh";
 import StandaloneChairMesh from "./StandaloneChairMesh";
@@ -11,8 +12,10 @@ type Props = {
   viewBoxHeight: number;
   selectedId?: string | null;
   reservedIds?: Set<string>;
+  newlyReservedIds?: Set<string>;
   interactive?: boolean;
   onSelect?: (id: string) => void;
+  onReservedSelect?: (id: string) => void;
   onItemPointerDown?: (id: string, e: import("@react-three/fiber").ThreeEvent<PointerEvent>) => void;
   pointerCursor?: boolean;
 };
@@ -23,8 +26,10 @@ export default function PlacedItemsLayer({
   viewBoxHeight,
   selectedId = null,
   reservedIds,
+  newlyReservedIds,
   interactive = false,
   onSelect,
+  onReservedSelect,
   onItemPointerDown,
   pointerCursor = false,
 }: Props) {
@@ -35,6 +40,7 @@ export default function PlacedItemsLayer({
         const rotY = (item.rotation * Math.PI) / 180;
         const selected = selectedId === item.id;
         const reserved = reservedIds?.has(item.id) ?? false;
+        const newlyReserved = newlyReservedIds?.has(item.id) ?? false;
 
         return (
           <group
@@ -42,9 +48,13 @@ export default function PlacedItemsLayer({
             position={[x, 0, z]}
             rotation={[0, rotY, 0]}
             onClick={
-              interactive && !reserved
+              interactive
                 ? (e) => {
                     e.stopPropagation();
+                    if (reserved) {
+                      onReservedSelect?.(item.id);
+                      return;
+                    }
                     onSelect?.(item.id);
                   }
                 : undefined
@@ -85,6 +95,13 @@ export default function PlacedItemsLayer({
             ) : (
               <StandaloneChairMesh selected={selected} reserved={reserved} />
             )}
+            {newlyReserved ? (
+              <Html position={[0, 1.1, 0]} center transform occlude={false}>
+                <div className="animate-pulse rounded-md border border-amber-300/70 bg-black/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200 shadow-lg">
+                  Apartada
+                </div>
+              </Html>
+            ) : null}
           </group>
         );
       })}

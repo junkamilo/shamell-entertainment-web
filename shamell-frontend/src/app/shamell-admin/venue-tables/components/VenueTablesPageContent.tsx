@@ -155,7 +155,7 @@ export default function VenueTablesPageContent() {
         subtitle={
           isTablesSection
             ? "Configure tables with combo pricing and included chairs."
-            : "Set how many standalone chairs are available and their unit price for the venue layout."
+            : "Set how many standalone chairs are available and their unit price for On Coming Events."
         }
         actionLabel={isTablesSection ? "Configure table" : undefined}
         onAction={isTablesSection ? openCreate : undefined}

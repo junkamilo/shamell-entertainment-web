@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { AvailabilityModule } from '../availability/availability.module';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { MailModule } from '../mail/mail.module';
+import { StripeModule } from '../stripe/stripe.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
 
@@ -13,6 +14,7 @@ import { BookingsService } from './bookings.service';
     }),
     AvailabilityModule,
     MailModule,
+    StripeModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, AdminJwtGuard],

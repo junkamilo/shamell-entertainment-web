@@ -3,7 +3,11 @@
 import { type Dispatch, type SetStateAction, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
-import type { AdminBookingRow, CreateAdminBookingPayload } from "@/hooks/use-admin-bookings";
+import type {
+  AdminBookingRow,
+  CreateAdminBookingPayload,
+  CreateBookingQuotePayload,
+} from "@/hooks/use-admin-bookings";
 import {
   buildAdminBookingPayloadFromContactRequest,
   buildContactInboxAgendarHref,
@@ -11,14 +15,20 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { contactIsConciergeInquiry } from "../lib/peticionesContactUtils";
 import { bookingTimeZone } from "../lib/peticionesDateUtils";
-import type { ConfirmDeleteState, UnifiedPeticionRow } from "../types/peticiones.types";
+import type {
+  ConfirmDeleteState,
+  UnifiedPeticionRow,
+} from "../types/peticiones.types";
 
 type Props = {
   unifiedRows: UnifiedPeticionRow[];
   reloadPeticiones: () => void;
   contact: {
     remove: (id: string) => Promise<unknown>;
-    setStatus: (id: string, status: "PENDING" | "RESERVED" | "CANCELLED") => Promise<unknown>;
+    setStatus: (
+      id: string,
+      status: "PENDING" | "RESERVED" | "CANCELLED",
+    ) => Promise<unknown>;
     reloadContacts: () => void;
   };
   bookings: {
@@ -27,8 +37,16 @@ type Props = {
       id: string,
       payload: Partial<CreateAdminBookingPayload> & { status?: string },
     ) => Promise<unknown>;
-    removeBooking: (id: string, options?: { purgeContact?: boolean }) => Promise<void>;
+    removeBooking: (
+      id: string,
+      options?: { purgeContact?: boolean },
+    ) => Promise<void>;
     reloadBookings: () => void;
+    createBookingQuote: (
+      id: string,
+      payload: CreateBookingQuotePayload,
+    ) => Promise<unknown>;
+    sendBalanceLink: (id: string) => Promise<unknown>;
   };
   catalog: {
     serviceByInquiryCode: Map<string, string>;
@@ -90,17 +108,24 @@ export function usePeticionesActions({
       }
       setReservingContactId(row.id);
       try {
-        await bookings.createBooking({ ...built.payload, contactRequestId: row.id });
+        await bookings.createBooking({
+          ...built.payload,
+          contactRequestId: row.id,
+        });
         await contact.setStatus(row.id, "RESERVED");
         toast({
           title: "Booking created",
-          description: "The booking was saved from this request (source: contact).",
+          description:
+            "The booking was saved from this request (source: contact).",
         });
         contact.reloadContacts();
         bookings.reloadBookings();
         reloadPeticiones();
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Try again or open Book to enter it manually.";
+        const message =
+          e instanceof Error
+            ? e.message
+            : "Try again or open Book to enter it manually.";
         toast({
           title: message.includes("already has a calendar booking")
             ? "Booking already exists"
@@ -112,7 +137,15 @@ export function usePeticionesActions({
         setReservingContactId(null);
       }
     },
-    [bookingTz, bookings, catalog, contact, reloadPeticiones, router, setReservingContactId],
+    [
+      bookingTz,
+      bookings,
+      catalog,
+      contact,
+      reloadPeticiones,
+      router,
+      setReservingContactId,
+    ],
   );
 
   const onCancelContact = useCallback(
@@ -138,12 +171,15 @@ export function usePeticionesActions({
 
   const onRemove = useCallback(
     (id: string) => {
-      const row = unifiedRows.find((r) => r.origin === "CONTACT" && r.id === id);
+      const row = unifiedRows.find(
+        (r) => r.origin === "CONTACT" && r.id === id,
+      );
       const state = row?.origin === "CONTACT" ? row.state : "PENDING";
       if (state !== "CANCELLED") {
         toast({
           title: "Action not allowed",
-          description: "You can only delete a request after it has been canceled.",
+          description:
+            "You can only delete a request after it has been canceled.",
           variant: "destructive",
         });
         return;
@@ -207,7 +243,8 @@ export function usePeticionesActions({
       if (row.status !== "CANCELLED") {
         toast({
           title: "Action not allowed",
-          description: "You can only delete a booking after it has been canceled.",
+          description:
+            "You can only delete a booking after it has been canceled.",
           variant: "destructive",
         });
         return;
@@ -216,7 +253,9 @@ export function usePeticionesActions({
         (r) => r.origin === "BOOKING_ADMIN" && r.booking.id === row.id,
       );
       const linkedContactId =
-        unified?.origin === "BOOKING_ADMIN" ? unified.linkedContact?.id : undefined;
+        unified?.origin === "BOOKING_ADMIN"
+          ? unified.linkedContact?.id
+          : undefined;
       setPurgeLinkedInquiryOnDelete(Boolean(linkedContactId));
       setConfirmDelete({
         kind: "BOOKING",
@@ -229,6 +268,62 @@ export function usePeticionesActions({
       });
     },
     [setConfirmDelete, setPurgeLinkedInquiryOnDelete, unifiedRows],
+  );
+
+  const onSendBookingQuote = useCallback(
+    async (
+      row: AdminBookingRow,
+      payload: {
+        paymentModel: "FULL" | "DEPOSIT";
+        totalAmount: number;
+        depositAmount?: number;
+      },
+    ) => {
+      setBusyId(row.id);
+      try {
+        await bookings.createBookingQuote(row.id, payload);
+        toast({
+          title: "Payment link sent",
+          description:
+            "The customer received an email with the secure payment link.",
+        });
+        bookings.reloadBookings();
+        reloadPeticiones();
+      } catch (e) {
+        toast({
+          title: "Could not send quote",
+          description: e instanceof Error ? e.message : "Try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [bookings, reloadPeticiones, setBusyId],
+  );
+
+  const onSendBalanceLink = useCallback(
+    async (row: AdminBookingRow) => {
+      setBusyId(row.id);
+      try {
+        await bookings.sendBalanceLink(row.id);
+        toast({
+          title: "Balance link sent",
+          description: "Customer received the remaining balance payment link.",
+        });
+        bookings.reloadBookings();
+        reloadPeticiones();
+      } catch (e) {
+        toast({
+          title: "Could not send balance link",
+          description: e instanceof Error ? e.message : "Try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [bookings, reloadPeticiones, setBusyId],
   );
 
   const confirmRemoveBooking = useCallback(
@@ -263,6 +358,8 @@ export function usePeticionesActions({
     confirmRemoveContact,
     onCancelBooking,
     onRemoveBooking,
+    onSendBookingQuote,
+    onSendBalanceLink,
     confirmRemoveBooking,
   };
 }

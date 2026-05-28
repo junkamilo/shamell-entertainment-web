@@ -1,22 +1,21 @@
 "use client";
 
-import { Suspense, useMemo, useRef } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Environment, OrbitControls } from "@react-three/drei";
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import {
-  CAMERA_DEFAULT,
-  CAMERA_PRESETS_BY_BUCKET,
+  resolveCameraPresetForAspect,
   SCENE_BACKGROUND,
   SCENE_FOG,
   SCENE_LIGHTING,
+  type VenueCameraPreset,
   type VenueSceneLayoutBucket,
   WORLD_DEPTH,
   WORLD_WIDTH,
 } from "./venueSceneConstants";
 import type * as THREE from "three";
 import { MOUSE, TOUCH } from "three";
-import ResponsiveVenueCamera from "./ResponsiveVenueCamera";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   VenueSceneCanvasContext,
@@ -56,7 +55,8 @@ type SceneContentProps = Omit<
   "canvasRef" | "className" | "viewportHeight" | "viewportMinHeight" | "dpr"
 > & {
   orbitControlsRef: React.RefObject<OrbitControlsImpl | null>;
-  layoutBucket: VenueSceneLayoutBucket;
+  cameraPreset: VenueCameraPreset;
+  cameraPresetKey: string;
 };
 
 function SceneContent({
@@ -66,16 +66,15 @@ function SceneContent({
   items,
   selectedId,
   reservedIds,
-  onSelect,
   placedItemsAdmin,
   onBackgroundClick,
   onItemSelect,
   orbitControlsRef,
-  layoutBucket,
+  cameraPreset,
+  cameraPresetKey,
 }: SceneContentProps) {
   const interactive = mode === "admin";
   const selectable = mode === "public-select";
-  const orbitLimits = CAMERA_PRESETS_BY_BUCKET[layoutBucket];
 
   return (
     <>
@@ -131,13 +130,14 @@ function SceneContent({
       ) : null}
       <Environment preset="apartment" environmentIntensity={SCENE_LIGHTING.environmentIntensity} />
       <OrbitControls
+        key={cameraPresetKey}
         ref={orbitControlsRef}
         makeDefault
-        target={CAMERA_DEFAULT.target}
+        target={cameraPreset.target}
         enablePan={interactive || selectable}
         enableRotate={interactive || selectable}
-        minDistance={orbitLimits.minDistance}
-        maxDistance={orbitLimits.maxDistance}
+        minDistance={cameraPreset.minDistance}
+        maxDistance={cameraPreset.maxDistance}
         maxPolarAngle={Math.PI / 2.2}
         minPolarAngle={0.25}
         mouseButtons={
@@ -158,7 +158,6 @@ function SceneContent({
             : undefined
         }
       />
-      <ResponsiveVenueCamera bucket={layoutBucket} orbitControlsRef={orbitControlsRef} />
     </>
   );
 }
@@ -181,7 +180,32 @@ export default function VenueScene3D({
   layoutBucket = "laptop",
   dpr = [1, 1.5],
 }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [viewportAspect, setViewportAspect] = useState(16 / 9);
   const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const updateAspect = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      if (w > 0 && h > 0) setViewportAspect(w / h);
+    };
+
+    updateAspect();
+    const observer = new ResizeObserver(updateAspect);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const cameraPreset = useMemo(
+    () => resolveCameraPresetForAspect(layoutBucket, viewportAspect),
+    [layoutBucket, viewportAspect],
+  );
+
+  const cameraPresetKey = `${layoutBucket}:${viewportAspect.toFixed(2)}:${cameraPreset.fov}`;
 
   const handleRef = useRef<VenueScene3DHandle>({
     getCanvas: () => null,
@@ -201,12 +225,15 @@ export default function VenueScene3D({
     [],
   );
 
-  if (canvasRef) {
-    canvasRef.current = handleRef.current;
-  }
+  useLayoutEffect(() => {
+    if (canvasRef) {
+      canvasRef.current = handleRef.current;
+    }
+  });
 
   return (
     <div
+      ref={containerRef}
       className={`relative w-full ${className}`}
       style={{ height: viewportHeight, minHeight: viewportMinHeight }}
     >
@@ -216,8 +243,8 @@ export default function VenueScene3D({
           shadows="percentage"
           dpr={dpr}
           camera={{
-            position: CAMERA_DEFAULT.position,
-            fov: CAMERA_DEFAULT.fov,
+            position: cameraPreset.position,
+            fov: cameraPreset.fov,
             near: 0.1,
             far: 100,
           }}
@@ -245,7 +272,8 @@ export default function VenueScene3D({
               onBackgroundClick={onBackgroundClick}
               onItemSelect={onItemSelect}
               orbitControlsRef={orbitControlsRef}
-              layoutBucket={layoutBucket}
+              cameraPreset={cameraPreset}
+              cameraPresetKey={cameraPresetKey}
             />
           </Suspense>
         </Canvas>

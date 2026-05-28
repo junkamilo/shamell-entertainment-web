@@ -1,5 +1,5 @@
 import AboutSection from "@/components/AboutSection";
-import VenueLayoutPromoSection from "@/components/VenueLayoutPromoSection";
+import OnComingEventsPromoSection from "@/components/OnComingEventsPromoSection";
 import ExperiencesSection from "@/components/ExperiencesSection";
 import Footer from "@/components/Footer";
 import GallerySection from "@/components/GallerySection";
@@ -16,7 +16,7 @@ export default function Home() {
       <ExperiencesSection />
       <ServicesSection />
       <AboutSection />
-      <VenueLayoutPromoSection />
+      <OnComingEventsPromoSection />
       <GallerySection />
       <Footer />
     </main>

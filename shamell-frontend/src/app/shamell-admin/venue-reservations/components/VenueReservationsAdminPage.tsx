@@ -59,6 +59,18 @@ export function VenueReservationsAdminPage() {
         >
           Refresh
         </button>
+        {page.layoutItemIdFilter ? (
+          <div className="inline-flex items-center gap-2 rounded-lg border border-gold/25 bg-gold/10 px-3 py-2 text-xs text-gold">
+            <span>Item filter: {page.layoutItemIdFilter}</span>
+            <button
+              type="button"
+              onClick={() => page.setLayoutItemIdFilter("")}
+              className="font-semibold underline-offset-2 hover:underline"
+            >
+              Clear
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {page.isLoading ? (

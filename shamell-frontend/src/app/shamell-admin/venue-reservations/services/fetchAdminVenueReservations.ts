@@ -46,7 +46,7 @@ function mapReservationRow(r: Record<string, unknown>): VenueSeatReservationRow 
 
 export async function fetchAdminVenueReservations(
   token: string,
-  params?: { status?: string; page?: number; perPage?: number },
+  params?: { status?: string; page?: number; perPage?: number; layoutItemId?: string },
 ): Promise<{
   ok: boolean;
   reservations: VenueSeatReservationRow[];
@@ -58,6 +58,7 @@ export async function fetchAdminVenueReservations(
   search.set("page", String(params?.page ?? 1));
   search.set("perPage", String(params?.perPage ?? 10));
   if (params?.status) search.set("status", params.status);
+  if (params?.layoutItemId) search.set("layoutItemId", params.layoutItemId);
 
   const qs = search.toString();
   const response = await fetch(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import { toast } from "@/hooks/use-toast";
 import { DEFAULT_PAGINATION_META, type PaginationMeta } from "@/lib/pagination";
@@ -9,9 +10,11 @@ import { fetchAdminVenueReservations } from "../services/fetchAdminVenueReservat
 import type { VenueSeatReservationRow } from "../types/venueReservations.types";
 
 export function useAdminVenueReservationsPage() {
+  const searchParams = useSearchParams();
   const [reservations, setReservations] = useState<VenueSeatReservationRow[]>([]);
   const [paginationMeta, setPaginationMeta] = useState<PaginationMeta>(DEFAULT_PAGINATION_META);
   const [statusFilter, setStatusFilter] = useState("");
+  const [layoutItemIdFilter, setLayoutItemIdFilter] = useState("");
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,7 +22,14 @@ export function useAdminVenueReservationsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter]);
+  }, [statusFilter, layoutItemIdFilter]);
+
+  useEffect(() => {
+    const status = searchParams.get("status") ?? "";
+    const layoutItemId = searchParams.get("layoutItemId") ?? "";
+    setStatusFilter(status);
+    setLayoutItemIdFilter(layoutItemId);
+  }, [searchParams]);
 
   const reload = useCallback(async () => {
     const token = getAdminBearerToken();
@@ -30,6 +40,7 @@ export function useAdminVenueReservationsPage() {
     setIsLoading(true);
     const result = await fetchAdminVenueReservations(token, {
       status: statusFilter || undefined,
+      layoutItemId: layoutItemIdFilter || undefined,
       page,
       perPage,
     });
@@ -44,7 +55,7 @@ export function useAdminVenueReservationsPage() {
     }
     setReservations(result.reservations);
     setPaginationMeta(result.meta);
-  }, [statusFilter, page, perPage]);
+  }, [statusFilter, layoutItemIdFilter, page, perPage]);
 
   useEffect(() => {
     void reload();
@@ -85,6 +96,8 @@ export function useAdminVenueReservationsPage() {
     paginationMeta,
     statusFilter,
     setStatusFilter,
+    layoutItemIdFilter,
+    setLayoutItemIdFilter,
     isLoading,
     cancellingId,
     cancelReservation,

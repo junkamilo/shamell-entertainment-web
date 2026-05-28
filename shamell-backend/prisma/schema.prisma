@@ -24,6 +24,31 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum BookingQuotePaymentModel {
+  FULL
+  DEPOSIT
+}
+
+enum BookingQuoteStatus {
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum BookingPaymentStage {
+  FULL
+  DEPOSIT
+  BALANCE
+}
+
+enum BookingPaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
 enum GalleryMediaType {
   IMAGE
   VIDEO
@@ -51,6 +76,12 @@ enum ContactRequestStatus {
   PENDING
   RESERVED
   CANCELLED
+}
+
+enum VenueTableSize {
+  LARGE
+  MEDIUM
+  SMALL
 }
 
 // ============ MODELS ============
@@ -91,72 +122,72 @@ model AdminInvite {
 }
 
 model Service {
-  id            String      @id @default(uuid())
-  serviceType   ServiceType @relation(fields: [serviceTypeId], references: [id])
-  serviceTypeId String      @unique
-  description   String      @db.Text
+  id            String         @id @default(uuid())
+  serviceType   ServiceType    @relation(fields: [serviceTypeId], references: [id])
+  serviceTypeId String         @unique
+  description   String         @db.Text
   items         String[]
-  price         Decimal?    @db.Decimal(12, 2)
+  price         Decimal?       @db.Decimal(12, 2)
   imageUrl      String?
-  isActive      Boolean     @default(true)
+  isActive      Boolean        @default(true)
   bookings      Booking[]
   galleryPhotos GalleryPhoto[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@map("services")
 }
 
 model ServiceType {
-  id                  String    @id @default(uuid())
-  name                String    @unique
-  contactInquiryCode  String?
-  isActive            Boolean   @default(true)
-  services            Service[]
-  galleryPhotos       GalleryPhoto[]
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                 String         @id @default(uuid())
+  name               String         @unique
+  contactInquiryCode String?
+  isActive           Boolean        @default(true)
+  services           Service[]
+  galleryPhotos      GalleryPhoto[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 
   @@map("service_types")
 }
 
 model Event {
-  id          String    @id @default(uuid())
-  eventType   EventType @relation(fields: [eventTypeId], references: [id])
-  eventTypeId String    @unique
-  description String    @db.Text
-  items       String[]
-  price       Decimal?  @db.Decimal(12, 2)
-  isActive    Boolean   @default(true)
-  showOnHome  Boolean   @default(true)
+  id            String         @id @default(uuid())
+  eventType     EventType      @relation(fields: [eventTypeId], references: [id])
+  eventTypeId   String         @unique
+  description   String         @db.Text
+  items         String[]
+  price         Decimal?       @db.Decimal(12, 2)
+  isActive      Boolean        @default(true)
+  showOnHome    Boolean        @default(true)
   galleryPhotos GalleryPhoto[]
-  bookings    Booking[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  bookings      Booking[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@map("events")
 }
 
 model OccasionType {
-  id          String              @id @default(uuid())
-  name        String              @unique
-  isActive    Boolean             @default(true)
-  eventLinks  EventTypeOccasion[]
-  bookings    Booking[]
-  createdAt   DateTime            @default(now())
-  updatedAt   DateTime            @updatedAt
+  id         String              @id @default(uuid())
+  name       String              @unique
+  isActive   Boolean             @default(true)
+  eventLinks EventTypeOccasion[]
+  bookings   Booking[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@map("occasion_types")
 }
 
 model EventTypeOccasion {
-  id             String                @id @default(uuid())
+  id             String                 @id @default(uuid())
   eventTypeId    String
   occasionTypeId String
   usage          EventTypeOccasionUsage
-  sortOrder      Int                   @default(0)
-  eventType      EventType             @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
-  occasionType   OccasionType          @relation(fields: [occasionTypeId], references: [id], onDelete: Cascade)
+  sortOrder      Int                    @default(0)
+  eventType      EventType              @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+  occasionType   OccasionType           @relation(fields: [occasionTypeId], references: [id], onDelete: Cascade)
 
   @@unique([eventTypeId, occasionTypeId])
   @@index([eventTypeId])
@@ -164,16 +195,16 @@ model EventTypeOccasion {
 }
 
 model EventType {
-  id                  String              @id @default(uuid())
-  name                String              @unique
-  contactInquiryCode  String?
-  isActive            Boolean             @default(true)
-  events              Event[]
-  occasionLinks       EventTypeOccasion[]
-  galleryPhotos       GalleryPhoto[]
-  bookings            Booking[]
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  id                 String              @id @default(uuid())
+  name               String              @unique
+  contactInquiryCode String?
+  isActive           Boolean             @default(true)
+  events             Event[]
+  occasionLinks      EventTypeOccasion[]
+  galleryPhotos      GalleryPhoto[]
+  bookings           Booking[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@map("event_types")
 }
@@ -191,27 +222,27 @@ model GalleryCategory {
 }
 
 model GalleryPhoto {
-  id            String            @id @default(uuid())
-  category      GalleryCategory   @relation(fields: [categoryId], references: [id])
+  id            String           @id @default(uuid())
+  category      GalleryCategory  @relation(fields: [categoryId], references: [id])
   categoryId    String
   imageUrl      String
   imagePublicId String
-  focalX        Int               @default(50)
-  focalY        Int               @default(35)
-  focalMobileX  Int               @default(50)
-  focalMobileY  Int               @default(35)
-  mediaType     GalleryMediaType  @default(IMAGE)
-  isActive      Boolean           @default(true)
+  focalX        Int              @default(50)
+  focalY        Int              @default(35)
+  focalMobileX  Int              @default(50)
+  focalMobileY  Int              @default(35)
+  mediaType     GalleryMediaType @default(IMAGE)
+  isActive      Boolean          @default(true)
   serviceId     String?
   serviceTypeId String?
   eventId       String?
   eventTypeId   String?
-  service       Service?          @relation(fields: [serviceId], references: [id])
-  serviceType   ServiceType?      @relation(fields: [serviceTypeId], references: [id])
-  event         Event?            @relation(fields: [eventId], references: [id])
-  eventType     EventType?        @relation(fields: [eventTypeId], references: [id])
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  service       Service?         @relation(fields: [serviceId], references: [id])
+  serviceType   ServiceType?     @relation(fields: [serviceTypeId], references: [id])
+  event         Event?           @relation(fields: [eventId], references: [id])
+  eventType     EventType?       @relation(fields: [eventTypeId], references: [id])
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   @@index([categoryId, isActive])
   @@map("gallery_photos")
@@ -243,14 +274,14 @@ model AvailabilityClosure {
 }
 
 model Booking {
-  id       String    @id @default(uuid())
-  user     User?     @relation("ClientBookings", fields: [userId], references: [id])
-  userId   String?
+  id            String  @id @default(uuid())
+  user          User?   @relation("ClientBookings", fields: [userId], references: [id])
+  userId        String?
   guestFullName String?
   guestEmail    String?
   guestPhone    String?
 
-  createdByAdmin   User?   @relation("AdminCreatedBookings", fields: [createdByAdminId], references: [id])
+  createdByAdmin   User?           @relation("AdminCreatedBookings", fields: [createdByAdminId], references: [id])
   createdByAdminId String?
   contactRequest   ContactRequest? @relation(fields: [contactRequestId], references: [id])
   contactRequestId String?
@@ -260,23 +291,35 @@ model Booking {
   service   Service @relation(fields: [serviceId], references: [id])
   serviceId String
 
-  eventType   EventType? @relation(fields: [eventTypeId], references: [id])
-  eventTypeId String?
+  eventType      EventType?    @relation(fields: [eventTypeId], references: [id])
+  eventTypeId    String?
   occasionType   OccasionType? @relation(fields: [occasionTypeId], references: [id])
   occasionTypeId String?
-  event   Event?  @relation(fields: [eventId], references: [id])
-  eventId String?
+  event          Event?        @relation(fields: [eventId], references: [id])
+  eventId        String?
 
   bookingDetails Json?
 
-  eventDate   DateTime
-  location    String
-  guestCount  Int?
-  notes       String?       @db.Text
-  status      BookingStatus @default(PENDING)
-  totalAmount Decimal?      @db.Decimal(10, 2)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  eventDate          DateTime
+  location           String
+  guestCount         Int?
+  notes              String?                   @db.Text
+  status             BookingStatus             @default(PENDING)
+  totalAmount        Decimal?                  @db.Decimal(10, 2)
+  quoteModel         BookingQuotePaymentModel?
+  quoteTotalAmount   Decimal?                  @db.Decimal(12, 2)
+  quoteDepositAmount Decimal?                  @db.Decimal(12, 2)
+  quoteBalanceAmount Decimal?                  @db.Decimal(12, 2)
+  quoteCurrency      String                    @default("usd")
+  quoteSentAt        DateTime?
+  quoteAcceptedAt    DateTime?
+  quoteRejectedAt    DateTime?
+  depositPaidAt      DateTime?
+  balancePaidAt      DateTime?
+  quotes             BookingQuote[]
+  payments           BookingPayment[]
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
 
   @@index([eventDate])
   @@index([status])
@@ -285,24 +328,73 @@ model Booking {
   @@map("bookings")
 }
 
+model BookingQuote {
+  id             String                   @id @default(uuid())
+  bookingId      String
+  status         BookingQuoteStatus       @default(SENT)
+  paymentModel   BookingQuotePaymentModel
+  totalAmount    Decimal                  @db.Decimal(12, 2)
+  depositAmount  Decimal?                 @db.Decimal(12, 2)
+  balanceAmount  Decimal?                 @db.Decimal(12, 2)
+  currency       String                   @default("usd")
+  tokenHash      String
+  tokenExpiresAt DateTime
+  respondedAt    DateTime?
+  rejectReason   String?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  booking  Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  payments BookingPayment[]
+
+  @@index([bookingId, status])
+  @@index([tokenExpiresAt])
+  @@map("booking_quotes")
+}
+
+model BookingPayment {
+  id                      String               @id @default(uuid())
+  bookingId               String
+  quoteId                 String
+  stage                   BookingPaymentStage
+  expectedAmount          Decimal              @db.Decimal(12, 2)
+  currency                String               @default("usd")
+  status                  BookingPaymentStatus @default(PENDING)
+  stripeCheckoutSessionId String               @unique
+  stripePaymentIntentId   String?
+  expiresAt               DateTime?
+  paidAt                  DateTime?
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+
+  booking Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  quote   BookingQuote @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId, stage, status])
+  @@index([quoteId, stage])
+  @@map("booking_payments")
+}
+
 model ContactRequest {
-  id              String    @id @default(uuid())
-  fullName        String
-  email           String
-  phone           String?
-  eventDate       DateTime?
-  location        String?
-  serviceType     String?
-  preferences     String?   @db.Text
-  subject         String
-  message         String    @db.Text
-  inquiryDetails  Json?
-  /** Fixed-shape JSON for "Tell us your vision" (concierge_gate) submissions; null for other contact flows. */
-  conciergeVisionSnapshot Json? @map("concierge_vision_snapshot")
-  bookings        Booking[]
-  isRead          Boolean   @default(false)
-  status          ContactRequestStatus @default(PENDING)
-  createdAt       DateTime  @default(now())
+  id                      String               @id @default(uuid())
+  fullName                String
+  email                   String
+  phone                   String?
+  eventDate               DateTime?
+  location                String?
+  serviceType             String?
+  preferences             String?              @db.Text
+  subject                 String
+  message                 String               @db.Text
+  inquiryDetails          Json?
+  /**
+   * Fixed-shape JSON for "Tell us your vision" (concierge_gate) submissions; null for other contact flows.
+   */
+  conciergeVisionSnapshot Json?                @map("concierge_vision_snapshot")
+  bookings                Booking[]
+  isRead                  Boolean              @default(false)
+  status                  ContactRequestStatus @default(PENDING)
+  createdAt               DateTime             @default(now())
 
   @@index([status])
   @@map("contact_requests")
@@ -322,19 +414,164 @@ model Performer {
 }
 
 model AboutContent {
-  id          String   @id @default(uuid())
-  title       String
-  paragraph1  String   @db.Text
-  coreValues  String[]
-  imageUrl    String?
+  id            String   @id @default(uuid())
+  title         String
+  paragraph1    String   @db.Text
+  coreValues    String[]
+  imageUrl      String?
   imagePublicId String?
   /// IMAGE or VIDEO — Cloudinary resource type for `imagePublicId` deletion and public rendering.
-  heroMediaType String @default("IMAGE")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  heroMediaType String   @default("IMAGE")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@map("about_content")
 }
 
+model HeroHeaderContent {
+  id            String   @id @default(uuid())
+  headline      String   @default("SHAMELL")
+  headlineFont  String   @default("brand")
+  headlineColor String   @default("#c5a55a")
+  tagline       String   @default("Exclusive Belly Dance Performance Artistry") @db.Text
+  taglineFont   String   @default("elegant")
+  taglineColor  String   @default("#f5e6b8")
+  quote         String   @default("Dance is the hidden language of the soul.") @db.Text
+  quoteFont     String   @default("script")
+  quoteColor    String   @default("#c5a55a")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
+  @@map("hero_header_content")
+}
+
+model VenueFloorLayout {
+  id                String   @id @default(uuid())
+  viewBoxWidth      Int      @default(1024)
+  viewBoxHeight     Int      @default(944)
+  backgroundVersion String   @default("v1")
+  items             Json     @default("[]")
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("venue_floor_layouts")
+}
+
+enum VenueSeatReservationStatus {
+  PENDING_PAYMENT
+  PAID
+  EXPIRED
+  CANCELLED
+}
+
+enum VenueSeatKind {
+  CATALOG_TABLE
+  STANDALONE_CHAIR
+}
+
+model VenueTableConfig {
+  id             String         @id @default(uuid())
+  tableName      String
+  size           VenueTableSize
+  includedChairs Int
+  bundlePrice    Decimal        @db.Decimal(12, 2)
+  visualX        Float?
+  visualY        Float?
+  isActive       Boolean        @default(true)
+  sortOrder      Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  seatReservations VenueSeatReservation[]
+
+  @@map("venue_table_configs")
+}
+
+model VenueStandaloneChairConfig {
+  id                String   @id @default(uuid())
+  availableQuantity Int
+  unitPrice         Decimal  @db.Decimal(12, 2)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("venue_standalone_chair_configs")
+}
+
+model VenueStandaloneChair {
+  id        String   @id @default(uuid())
+  chairName String
+  unitPrice Decimal  @db.Decimal(12, 2)
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("venue_standalone_chairs")
+}
+
+/// Client-facing On Coming Events publish toggle and home promo (singleton row).
+model VenueLayoutClientSettings {
+  id                    String    @id @default(uuid())
+  clientEnabled         Boolean   @default(false)
+  promoTitle            String?
+  promoDescription      String?   @db.Text
+  promoImageUrl         String?
+  promoImagePublicId    String?
+  reservationEventDate  DateTime?
+  /// When public seat sales open (On Coming Events reservations).
+  reservationOpensAt    DateTime?
+  /// When public seat sales close (unless sold out earlier).
+  reservationClosesAt   DateTime?
+  reservationEventLabel String?
+  reservationTimezone   String    @default("America/New_York")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("venue_layout_client_settings")
+}
+
+model VenueSeatReservation {
+  id                      String                     @id @default(uuid())
+  kind                    VenueSeatKind
+  venueTableConfigId      String?
+  layoutItemId            String
+  eventDate               DateTime
+  amount                  Decimal                    @db.Decimal(12, 2)
+  currency                String                     @default("usd")
+  status                  VenueSeatReservationStatus @default(PENDING_PAYMENT)
+  stripeCheckoutSessionId String                     @unique
+  stripePaymentIntentId   String?
+  customerName            String
+  customerEmail           String
+  customerPhone           String?
+  paidAt                  DateTime?
+  expiresAt               DateTime?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+
+  venueTableConfig VenueTableConfig? @relation(fields: [venueTableConfigId], references: [id], onDelete: SetNull)
+
+  @@unique([venueTableConfigId, eventDate])
+  @@index([layoutItemId, eventDate, status])
+  @@index([status])
+  @@map("venue_seat_reservations")
+}
+
+model StripeWebhookEvent {
+  id          String    @id @default(uuid())
+  eventId     String    @unique
+  eventType   String
+  livemode    Boolean
+  processedAt DateTime?
+  attempts    Int       @default(0)
+  lastError   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([eventType, processedAt])
+  @@map("stripe_webhook_events")
+}

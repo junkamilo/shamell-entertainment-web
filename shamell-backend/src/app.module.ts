@@ -14,6 +14,11 @@ import { GalleryModule } from './modules/gallery/gallery.module';
 import { AboutModule } from './modules/about/about.module';
 import { AvailabilityModule } from './modules/availability/availability.module';
 import { HeaderMediaModule } from './modules/header-media/header-media.module';
+import { FloorLayoutModule } from './modules/floor-layout/floor-layout.module';
+import { StandaloneChairsModule } from './modules/standalone-chairs/standalone-chairs.module';
+import { VenueTablesModule } from './modules/venue-tables/venue-tables.module';
+import { VenueLayoutSettingsModule } from './modules/venue-layout-settings/venue-layout-settings.module';
+import { VenueReservationsModule } from './modules/venue-reservations/venue-reservations.module';
 
 @Module({
   imports: [
@@ -31,6 +36,11 @@ import { HeaderMediaModule } from './modules/header-media/header-media.module';
     AboutModule,
     AvailabilityModule,
     HeaderMediaModule,
+    FloorLayoutModule,
+    VenueTablesModule,
+    StandaloneChairsModule,
+    VenueLayoutSettingsModule,
+    VenueReservationsModule,
   ],
 })
 export class AppModule {}
