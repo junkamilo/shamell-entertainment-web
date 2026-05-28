@@ -1,16 +1,27 @@
 import { type FormEvent } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import AdminModal from "@/components/admin/AdminModal";
+import { UpcomingClassSessionsPanel } from "@/app/shamell-admin/on-coming-events/components/UpcomingClassSessionsPanel";
+import { ReservationEventTemplateField } from "@/app/shamell-admin/on-coming-events/reservation-events/components/ReservationEventTemplateField";
 import { cn } from "@/lib/utils";
 import { MAX_CATALOG_IMAGES } from "../lib/eventsConstants";
 import { isVideoCatalogItem, isVideoFile } from "../lib/eventsMedia";
-import type { CatalogImage, EventsEventTypeOption } from "../types/events.types";
+import type { ReservationEventTemplate } from "@/app/shamell-admin/on-coming-events/reservation-events/types/reservationEventTemplate.types";
+import type {
+  CatalogImage,
+  EventPublicSection,
+  EventsEventTypeOption,
+  UpcomingExperienceType,
+} from "../types/events.types";
 
 type Props = {
   isOpen: boolean;
   editingId: string | null;
   isSubmitting: boolean;
   canSubmit: boolean;
+  freeEventNameMode?: boolean;
+  eventName: string;
+  onEventNameChange: (value: string) => void;
   activeEventTypes: EventsEventTypeOption[];
   eventTypeId: string;
   selectedTypeName: string | undefined;
@@ -23,6 +34,10 @@ type Props = {
   onItemsTextChange: (value: string) => void;
   priceInput: string;
   onPriceInputChange: (value: string) => void;
+  publicSection: EventPublicSection;
+  onPublicSectionChange: (value: EventPublicSection) => void;
+  lockPublicSection?: boolean;
+  editExperienceType?: UpcomingExperienceType | null;
   existingImages: CatalogImage[];
   pendingFiles: File[];
   pendingPreviewUrls: string[];
@@ -31,6 +46,10 @@ type Props = {
   onPickCatalogImages: (fileList: FileList | null) => void;
   onRemovePendingAt: (index: number) => void;
   onRemoveExistingImage: (photoId: string) => void;
+  reservationEventTemplates?: ReservationEventTemplate[];
+  reservationTemplatesLoading?: boolean;
+  reservationEventTemplateId?: string;
+  onReservationEventTemplateIdChange?: (id: string) => void;
 };
 
 export default function EventsFormModal({
@@ -38,6 +57,9 @@ export default function EventsFormModal({
   editingId,
   isSubmitting,
   canSubmit,
+  freeEventNameMode = false,
+  eventName,
+  onEventNameChange,
   activeEventTypes,
   eventTypeId,
   selectedTypeName,
@@ -50,6 +72,10 @@ export default function EventsFormModal({
   onItemsTextChange,
   priceInput,
   onPriceInputChange,
+  publicSection,
+  onPublicSectionChange,
+  lockPublicSection = false,
+  editExperienceType = null,
   existingImages,
   pendingFiles,
   pendingPreviewUrls,
@@ -58,53 +84,96 @@ export default function EventsFormModal({
   onPickCatalogImages,
   onRemovePendingAt,
   onRemoveExistingImage,
+  reservationEventTemplates = [],
+  reservationTemplatesLoading = false,
+  reservationEventTemplateId = "",
+  onReservationEventTemplateIdChange,
 }: Props) {
   return (
-    <AdminModal title={editingId ? "Edit event" : "New event"} isOpen={isOpen} onClose={onClose}>
+    <AdminModal
+      title={
+        freeEventNameMode
+          ? editingId
+            ? "Edit upcoming event"
+            : "New upcoming event"
+          : editingId
+            ? "Edit event"
+            : "New event"
+      }
+      isOpen={isOpen}
+      onClose={onClose}
+    >
       <form id="event-form" noValidate onSubmit={onSubmit} className="space-y-6">
-        <label className="block">
-          <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">EVENT TYPE</span>
-          <div className="relative mt-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (activeEventTypes.length === 0) return;
-                onTypeDropdownToggle();
-              }}
-              className="shamell-glass-trigger flex h-12 w-full items-center justify-between rounded-xl px-4 text-sm text-foreground"
-            >
-              <span className={selectedTypeName ? "text-foreground" : "text-foreground/55"}>
-                {selectedTypeName ?? "Create an event type first"}
-              </span>
-              <ChevronDown
-                className={`h-4 w-4 text-gold/80 transition ${isTypeDropdownOpen ? "rotate-180" : ""}`}
-              />
-            </button>
+        {freeEventNameMode ? (
+          <label className="block">
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">
+              EVENT NAME
+            </span>
+            <input
+              type="text"
+              value={eventName}
+              onChange={(event) => onEventNameChange(event.target.value)}
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+              placeholder="e.g. Summer Gala 2026"
+              autoComplete="off"
+            />
+          </label>
+        ) : null}
 
-            {isTypeDropdownOpen && activeEventTypes.length > 0 ? (
-              <div className="shamell-scrollbar absolute left-0 top-14 z-40 max-h-56 w-full overflow-y-auto rounded-xl border border-gold/35 bg-[#0b0f14] p-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.6)]">
-                {activeEventTypes.map((item) => {
-                  const isSelected = eventTypeId === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => onSelectEventType(item.id)}
-                      className={cn(
-                        "mb-1 flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition last:mb-0",
-                        isSelected
-                          ? "border border-gold/35 bg-gold/15 text-gold"
-                          : "border border-transparent text-foreground/80 hover:border-gold/20 hover:bg-gold/10 hover:text-gold-light",
-                      )}
-                    >
-                      {item.name}
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-          </div>
-        </label>
+        {lockPublicSection ? (
+          <ReservationEventTemplateField
+            templates={reservationEventTemplates}
+            loading={reservationTemplatesLoading}
+            value={reservationEventTemplateId}
+            onChange={(id) => onReservationEventTemplateIdChange?.(id)}
+          />
+        ) : null}
+
+        {!freeEventNameMode ? (
+          <label className="block">
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">EVENT TYPE</span>
+            <div className="relative mt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (activeEventTypes.length === 0) return;
+                  onTypeDropdownToggle();
+                }}
+                className="shamell-glass-trigger flex h-12 w-full items-center justify-between rounded-xl px-4 text-sm text-foreground"
+              >
+                <span className={selectedTypeName ? "text-foreground" : "text-foreground/55"}>
+                  {selectedTypeName ?? "Create an event type first"}
+                </span>
+                <ChevronDown
+                  className={`h-4 w-4 text-gold/80 transition ${isTypeDropdownOpen ? "rotate-180" : ""}`}
+                />
+              </button>
+
+              {isTypeDropdownOpen && activeEventTypes.length > 0 ? (
+                <div className="shamell-scrollbar absolute left-0 top-14 z-40 max-h-56 w-full overflow-y-auto rounded-xl border border-gold/35 bg-[#0b0f14] p-1.5 shadow-[0_16px_36px_rgba(0,0,0,0.6)]">
+                  {activeEventTypes.map((item) => {
+                    const isSelected = eventTypeId === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => onSelectEventType(item.id)}
+                        className={cn(
+                          "mb-1 flex w-full items-center rounded-lg px-3 py-2 text-left text-sm transition last:mb-0",
+                          isSelected
+                            ? "border border-gold/35 bg-gold/15 text-gold"
+                            : "border border-transparent text-foreground/80 hover:border-gold/20 hover:bg-gold/10 hover:text-gold-light",
+                        )}
+                      >
+                        {item.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          </label>
+        ) : null}
 
         <label className="block">
           <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">DESCRIPTION</span>
@@ -127,6 +196,22 @@ export default function EventsFormModal({
             placeholder={"Line 1\nLine 2\nLine 3"}
           />
         </label>
+
+        {!lockPublicSection ? (
+          <label className="block">
+            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PUBLIC SECTION</span>
+            <select
+              value={publicSection}
+              onChange={(event) =>
+                onPublicSectionChange(event.target.value as EventPublicSection)
+              }
+              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+            >
+              <option value="GENERAL">General (Types of Events)</option>
+              <option value="UPCOMING_EVENTS">Upcoming Events</option>
+            </select>
+          </label>
+        ) : null}
 
         <label className="block">
           <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PRICE (OPTIONAL)</span>
@@ -220,6 +305,10 @@ export default function EventsFormModal({
             ) : null}
           </div>
         </div>
+
+        {lockPublicSection && editingId && editExperienceType === "CLASSES" ? (
+          <UpcomingClassSessionsPanel eventId={editingId} />
+        ) : null}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button

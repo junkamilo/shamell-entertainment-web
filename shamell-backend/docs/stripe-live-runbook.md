@@ -23,6 +23,16 @@
    - `checkout.session.expired`
 3. Copy webhook signing secret (`whsec_...`) to Render as `STRIPE_WEBHOOK_SECRET`.
 
+## Checkout metadata flows
+
+| `metadata.flow` | Handler |
+|-----------------|---------|
+| `booking_quote` | Bookings quote payments |
+| `class_session` | Upcoming class enrollments |
+| `venue_seat` | On Coming Events seat reservations |
+
+Unified webhook: `POST /api/v1/stripe/webhook` (booking, then class, then venue).
+
 ## Security controls implemented in backend
 
 - Rejects invalid webhook signature.

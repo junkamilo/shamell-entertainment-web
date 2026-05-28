@@ -5,14 +5,21 @@ import { toast } from "@/hooks/use-toast";
 import { getEventsBearerToken } from "../lib/eventsAuth";
 import { fetchAdminEvents } from "../services/fetchAdminEvents";
 import { fetchAdminEventTypesForEvents } from "../services/fetchAdminEventTypesForEvents";
-import type { AdminEvent, EventsEventTypeOption } from "../types/events.types";
+import type {
+  AdminEvent,
+  EventPublicSection,
+  EventsEventTypeOption,
+} from "../types/events.types";
 
 function isOfflineError(err: unknown) {
   const description = err instanceof Error ? err.message : "Could not reach the server.";
   return description === "Failed to fetch" || !(err instanceof Error);
 }
 
-export function useEventsCatalog(onSeedEventTypes: (types: EventsEventTypeOption[]) => void) {
+export function useEventsCatalog(
+  onSeedEventTypes: (types: EventsEventTypeOption[]) => void,
+  options?: { publicSection?: EventPublicSection },
+) {
   const [events, setEvents] = useState<AdminEvent[]>([]);
   const [eventTypes, setEventTypes] = useState<EventsEventTypeOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +41,7 @@ export function useEventsCatalog(onSeedEventTypes: (types: EventsEventTypeOption
     try {
       const [types, items] = await Promise.all([
         fetchAdminEventTypesForEvents(token),
-        fetchAdminEvents(token),
+        fetchAdminEvents(token, { publicSection: options?.publicSection }),
       ]);
       setEventTypes(types);
       if (types.length > 0) onSeedEventTypes(types);
@@ -53,7 +60,7 @@ export function useEventsCatalog(onSeedEventTypes: (types: EventsEventTypeOption
     } finally {
       setIsLoading(false);
     }
-  }, [onSeedEventTypes]);
+  }, [onSeedEventTypes, options?.publicSection]);
 
   useEffect(() => {
     void loadAllData();

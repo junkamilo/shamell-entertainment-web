@@ -26,8 +26,14 @@ export class VenueReservationsController {
 
   @Get('availability')
   @HttpCode(HttpStatus.OK)
-  getAvailability() {
-    return this.venueReservationsService.getAvailability();
+  getAvailability(
+    @Query('upcomingEventId') upcomingEventId?: string,
+    @Query('upcomingEventSlug') upcomingEventSlug?: string,
+  ) {
+    return this.venueReservationsService.getAvailability({
+      upcomingEventId: upcomingEventId?.trim() || undefined,
+      upcomingEventSlug: upcomingEventSlug?.trim() || undefined,
+    });
   }
 
   @Post('checkout-session')

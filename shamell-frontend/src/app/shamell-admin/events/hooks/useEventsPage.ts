@@ -1,15 +1,25 @@
 "use client";
 
 import { type FormEvent, useCallback, useState } from "react";
+import { usePathname } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
 import { getEventsBearerToken } from "../lib/eventsAuth";
-import { canDeleteEvent, cannotDeactivateWhileActive } from "../lib/eventsUsage";
+import {
+  canDeleteEvent,
+  cannotDeactivateWhileActive,
+  deleteBlockedReason,
+} from "../lib/eventsUsage";
 import { deleteAdminEvent } from "../services/deleteAdminEvent";
 import { deleteGalleryAdminPhoto } from "../services/deleteGalleryAdminPhoto";
 import { patchAdminEvent, patchAdminEventActive } from "../services/patchAdminEvent";
 import { postAdminEvent } from "../services/postAdminEvent";
 import { postAdminEventCatalogImages } from "../services/postAdminEventCatalogImages";
 import type { AdminEvent, EventsEventTypeOption } from "../types/events.types";
+import {
+  fetchAdminVenueConfig,
+  patchAdminVenueConfig,
+} from "@/app/shamell-admin/on-coming-events/services/patchAdminVenueConfig";
+import { useReservationEventTemplateOptions } from "@/app/shamell-admin/on-coming-events/reservation-events/hooks/useReservationEventTemplateOptions";
 import { useEventsCatalog } from "./useEventsCatalog";
 import { useEventsForm } from "./useEventsForm";
 import { useEventsList } from "./useEventsList";
@@ -32,7 +42,20 @@ function toastApiError(err: unknown, fallbackTitle: string) {
   });
 }
 
-export function useEventsPage() {
+type UseEventsPageOptions = {
+  upcomingOnly?: boolean;
+  embedded?: boolean;
+};
+
+export function useEventsPage(options?: UseEventsPageOptions) {
+  const pathname = usePathname();
+  const isUpcomingAdminRoute =
+    options?.upcomingOnly === true ||
+    pathname.startsWith("/shamell-admin/upcoming-events");
+  const defaultPublicSection = isUpcomingAdminRoute ? "UPCOMING_EVENTS" : "GENERAL";
+  const defaultListSectionFilter = isUpcomingAdminRoute ? "UPCOMING_EVENTS" : "GENERAL";
+  const catalogPublicSection = isUpcomingAdminRoute ? "UPCOMING_EVENTS" : undefined;
+  const embedded = options?.embedded === true;
   const [eventTypeId, setEventTypeId] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -49,13 +72,19 @@ export function useEventsPage() {
     });
   }, []);
 
-  const catalog = useEventsCatalog(seedEventTypes);
-  const list = useEventsList(catalog.events);
+  const catalog = useEventsCatalog(seedEventTypes, {
+    publicSection: catalogPublicSection,
+  });
+  const list = useEventsList(catalog.events, defaultListSectionFilter);
+  const reservationTemplates = useReservationEventTemplateOptions(isUpcomingAdminRoute);
   const form = useEventsForm({
     eventTypes: catalog.eventTypes,
     eventTypeId,
     setEventTypeId,
     isSubmitting,
+    defaultPublicSection,
+    freeEventNameMode: isUpcomingAdminRoute,
+    reservationTemplates: reservationTemplates.templates,
   });
 
   const openCreateModal = useCallback(() => {
@@ -109,6 +138,19 @@ export function useEventsPage() {
           }
         }
 
+        if (savedId && isUpcomingAdminRoute && form.reservationEventTemplateId) {
+          const linkResult = await patchAdminVenueConfig(token, savedId, {
+            reservationEventTemplateId: form.reservationEventTemplateId,
+          });
+          if (!linkResult.ok) {
+            toast({
+              variant: "destructive",
+              title: "Schedule not linked",
+              description: linkResult.message ?? "Could not apply the reservation event schedule.",
+            });
+          }
+        }
+
         const wasEditing = Boolean(form.editingId);
         closeModal();
         toast({
@@ -124,15 +166,23 @@ export function useEventsPage() {
         setIsSubmitting(false);
       }
     },
-    [form, closeModal, catalog],
+    [form, closeModal, catalog, isUpcomingAdminRoute],
   );
 
   const startEdit = useCallback(
-    (item: AdminEvent) => {
-      form.startEdit(item);
+    async (item: AdminEvent) => {
+      let linkedTemplateId = "";
+      if (isUpcomingAdminRoute) {
+        const token = getEventsBearerToken();
+        if (token) {
+          const configResult = await fetchAdminVenueConfig(token, item.id);
+          linkedTemplateId = configResult.config?.reservationEventTemplateId ?? "";
+        }
+      }
+      form.startEdit(item, linkedTemplateId);
       setIsModalOpen(true);
     },
-    [form],
+    [form, isUpcomingAdminRoute],
   );
 
   const removeExistingCatalogImage = useCallback(
@@ -200,14 +250,12 @@ export function useEventsPage() {
   );
 
   const openDeleteConfirm = useCallback((item: AdminEvent) => {
-    if (!canDeleteEvent(item)) {
+    const blocked = deleteBlockedReason(item);
+    if (blocked) {
       toast({
         variant: "destructive",
         title: "Cannot delete",
-        description:
-          (item.bookingCount ?? 0) > 0
-            ? "This event has linked bookings."
-            : "Remove linked catalog images before deleting this event.",
+        description: blocked,
       });
       return;
     }
@@ -252,9 +300,14 @@ export function useEventsPage() {
   }, [isDeleting]);
 
   return {
+    embedded,
+    upcomingOnly: isUpcomingAdminRoute,
+    pageTitle: isUpcomingAdminRoute ? "Upcoming Events" : "Events",
+    createLabel: isUpcomingAdminRoute ? "New upcoming event" : "New event",
     catalog,
     list,
     form,
+    reservationTemplates,
     eventTypeId,
     setEventTypeId,
     isModalOpen,

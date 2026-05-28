@@ -20,6 +20,12 @@ import {
   VENUE_TABLE_SIZES,
   type VenueTableSizeLabel,
 } from './floor-layout.defaults';
+import {
+  DEFAULT_FLOOR_SCENE_ZONES,
+  mergeFloorSceneZones,
+  normalizeFloorSceneZonesInput,
+  type FloorSceneZones,
+} from './floor-scene-zones.defaults';
 import { STANDALONE_CHAIR_DISPLAY_LABEL } from '../standalone-chairs/standalone-chair-names.util';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
 
@@ -32,8 +38,12 @@ export class FloorLayoutService {
     return this.getPublicFloorLayoutForClient();
   }
 
-  async getPublicFloorLayoutForClient() {
-    const row = await this.findActiveRow();
+  async getPublicFloorLayoutForClient(floorLayoutId?: string | null) {
+    const row = floorLayoutId
+      ? await this.prisma.venueFloorLayout.findUnique({
+          where: { id: floorLayoutId },
+        })
+      : await this.findActiveRow();
     if (!row) {
       return this.mapVirtualLayout(null);
     }
@@ -162,6 +172,8 @@ export class FloorLayoutService {
     });
 
     const itemsJson = items as unknown as Prisma.InputJsonValue;
+    const sceneZones = normalizeFloorSceneZonesInput(dto.sceneZones);
+    const sceneZonesJson = sceneZones as unknown as Prisma.InputJsonValue;
 
     const row = await this.prisma.$transaction(async (tx) => {
       const saved = existing
@@ -172,6 +184,7 @@ export class FloorLayoutService {
               viewBoxHeight,
               backgroundVersion,
               items: itemsJson,
+              sceneZones: sceneZonesJson,
             },
           })
         : await tx.venueFloorLayout.create({
@@ -180,6 +193,7 @@ export class FloorLayoutService {
               viewBoxHeight,
               backgroundVersion,
               items: itemsJson,
+              sceneZones: sceneZonesJson,
               isActive: true,
             },
           });
@@ -367,6 +381,7 @@ export class FloorLayoutService {
       viewBoxHeight: DEFAULT_VIEW_BOX_HEIGHT,
       backgroundVersion: DEFAULT_BACKGROUND_VERSION,
       items,
+      sceneZones: { ...DEFAULT_FLOOR_SCENE_ZONES },
       totalChairs: this.sumChairs(items),
       updatedAt: null as Date | null,
       isDefault: true,
@@ -380,16 +395,19 @@ export class FloorLayoutService {
     viewBoxHeight: number;
     backgroundVersion: string;
     items: unknown;
+    sceneZones: unknown;
     updatedAt: Date;
   }) {
     const items = this.parseItems(row.items);
     const hasLegacyItems = this.hasLegacyItemsRaw(row.items);
+    const sceneZones = mergeFloorSceneZones(row.sceneZones);
     return {
       id: row.id,
       viewBoxWidth: row.viewBoxWidth,
       viewBoxHeight: row.viewBoxHeight,
       backgroundVersion: row.backgroundVersion,
       items,
+      sceneZones,
       totalChairs: this.sumChairs(items),
       updatedAt: row.updatedAt,
       isDefault: false,

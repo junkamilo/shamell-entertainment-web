@@ -17,11 +17,26 @@ async function bootstrap() {
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean);
-  const corsOrigin =
-    frontendOrigins.length === 1 ? frontendOrigins[0] : frontendOrigins;
+  const isDevLocalOrigin = (origin: string) =>
+    /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(origin);
+
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  const allowDevLocalOrigins = nodeEnv !== 'production';
 
   app.enableCors({
-    origin: corsOrigin,
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      const allowed =
+        frontendOrigins.includes(origin) ||
+        (allowDevLocalOrigins && isDevLocalOrigin(origin));
+      callback(allowed ? null : new Error('Not allowed by CORS'), allowed);
+    },
     credentials: true,
   });
 

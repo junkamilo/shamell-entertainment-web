@@ -26,12 +26,24 @@ export type PlacedLayoutItem =
       rotation: number;
     };
 
+export type FloorSceneZoneTransform = {
+  x: number;
+  z: number;
+  rotationY: number;
+};
+
+export type FloorSceneZones = {
+  stage: FloorSceneZoneTransform;
+  carpet: FloorSceneZoneTransform;
+};
+
 export type VenueFloorLayout = {
   id: string | null;
   viewBoxWidth: number;
   viewBoxHeight: number;
   backgroundVersion: string;
   items: PlacedLayoutItem[];
+  sceneZones: FloorSceneZones;
   totalChairs: number;
   updatedAt: string | null;
   isDefault?: boolean;
@@ -60,7 +72,8 @@ export type FloorLayoutPalette = {
   placedChairCount: number;
 };
 
-export const DEFAULT_VIEW_BOX_WIDTH = 1024;
+/** ~60% of legacy 1024 width — matches narrower WORLD_WIDTH (24 vs 40). */
+export const DEFAULT_VIEW_BOX_WIDTH = 614;
 export const DEFAULT_VIEW_BOX_HEIGHT = 944;
 
 export const TABLE_SIZE_LABELS: Record<VenueTableSize, string> = {

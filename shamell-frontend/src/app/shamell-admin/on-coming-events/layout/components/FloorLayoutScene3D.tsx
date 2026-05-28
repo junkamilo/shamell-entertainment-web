@@ -3,21 +3,25 @@
 import { useDroppable } from "@dnd-kit/core";
 import VenueScene3D, { type VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
 import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
-import type { PlacedLayoutItem } from "../types/floorLayout.types";
+import { isSceneSelectId } from "@/components/venue-3d/floorSceneZonesDefaults";
+import type { FloorSceneZones, PlacedLayoutItem } from "../types/floorLayout.types";
 import { FLOOR_CANVAS_DROPPABLE_ID } from "../hooks/useFloorLayoutEditor";
-import FloorLayoutEditorActions from "./FloorLayoutEditorActions";
+import FloorLayoutEditorActions, { sceneSelectionLabel } from "./FloorLayoutEditorActions";
 import PlacedItemsLayer3d from "./PlacedItemsLayer3d";
+import SceneDecorEditorLayer from "./SceneDecorEditorLayer";
 
 type Props = {
   viewBoxWidth: number;
   viewBoxHeight: number;
   items: PlacedLayoutItem[];
+  sceneZones: FloorSceneZones;
   reservedIds?: Set<string>;
   newlyReservedIds?: Set<string>;
   selectedId: string | null;
   sceneHandleRef: React.RefObject<VenueScene3DHandle | null>;
   onSelect: (id: string | null) => void;
   onMoveItem: (id: string, x: number, y: number) => void;
+  onMoveSceneZone: (kind: "stage" | "carpet", x: number, z: number) => void;
   onReservedSelect?: (id: string) => void;
   dirty: boolean;
   saving: boolean;
@@ -31,12 +35,14 @@ export default function FloorLayoutScene3D({
   viewBoxWidth,
   viewBoxHeight,
   items,
+  sceneZones,
   reservedIds,
   newlyReservedIds,
   selectedId,
   sceneHandleRef,
   onSelect,
   onMoveItem,
+  onMoveSceneZone,
   onReservedSelect,
   dirty,
   saving,
@@ -47,6 +53,16 @@ export default function FloorLayoutScene3D({
 }: Props) {
   const sceneLayout = useVenueSceneLayout("admin");
   const { setNodeRef, isOver } = useDroppable({ id: FLOOR_CANVAS_DROPPABLE_ID });
+
+  const sceneDecorAdmin = (
+    <SceneDecorEditorLayer
+      sceneZones={sceneZones}
+      selectedId={selectedId}
+      onSelect={onSelect}
+      onMoveStage={(x, z) => onMoveSceneZone("stage", x, z)}
+      onMoveCarpet={(x, z) => onMoveSceneZone("carpet", x, z)}
+    />
+  );
 
   const placedItemsAdmin = (
     <PlacedItemsLayer3d
@@ -80,18 +96,22 @@ export default function FloorLayoutScene3D({
           viewBoxWidth={viewBoxWidth}
           viewBoxHeight={viewBoxHeight}
           items={items}
+          sceneZones={sceneZones}
           selectedId={selectedId}
           onSelect={onSelect}
           onBackgroundClick={() => onSelect(null)}
           canvasRef={sceneHandleRef}
           placedItemsAdmin={placedItemsAdmin}
+          sceneDecorAdmin={sceneDecorAdmin}
         />
       </div>
       <FloorLayoutEditorActions
-        className="absolute bottom-[max(1rem,env(safe-area-inset-bottom,0px))] right-4 z-20 max-w-[min(100%,20rem)] sm:max-w-none"
+        className="absolute top-auto right-auto bottom-[max(1rem,env(safe-area-inset-bottom,0px))] left-4 z-[120] max-w-[min(100%,20rem)] sm:max-w-none"
         dirty={dirty}
         saving={saving}
         selectedId={selectedId}
+        canDeleteSelected={!isSceneSelectId(selectedId)}
+        selectionLabel={sceneSelectionLabel(selectedId)}
         onSave={onSave}
         onRotateLeft={onRotateLeft}
         onRotateRight={onRotateRight}

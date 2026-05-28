@@ -16,6 +16,8 @@ type EventCatalogCardHeroProps = {
   /** Used for image alt when not decorative. */
   title: string;
   className?: string;
+  /** Tailwind aspect class for the media frame (default portrait catalog ratio). */
+  aspectClassName?: string;
 };
 
 /**
@@ -28,6 +30,7 @@ export function EventCatalogCardHero({
   isVideo,
   title,
   className,
+  aspectClassName = "aspect-4/5",
 }: EventCatalogCardHeroProps) {
   return (
     <div
@@ -36,7 +39,7 @@ export function EventCatalogCardHero({
         className,
       )}
     >
-      <div className="relative aspect-4/5 w-full">
+      <div className={cn("relative w-full", aspectClassName)}>
         {imageUrl ? (
           <>
             {isVideo ? (

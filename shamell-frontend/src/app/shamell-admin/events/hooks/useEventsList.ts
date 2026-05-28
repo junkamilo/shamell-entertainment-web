@@ -6,18 +6,30 @@ import { formatShortDateUs } from "../lib/eventsDisplay";
 import { formatPriceEn } from "../lib/eventsPrice";
 import type { AdminEvent, EventsStats } from "../types/events.types";
 
-export function useEventsList(events: AdminEvent[]) {
+export function useEventsList(
+  events: AdminEvent[],
+  defaultSectionFilter: "ALL" | "GENERAL" | "UPCOMING_EVENTS" = "ALL",
+) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [sectionFilter, setSectionFilter] = useState<
+    "ALL" | "GENERAL" | "UPCOMING_EVENTS"
+  >(defaultSectionFilter);
   const [page, setPage] = useState(1);
+
+  const filteredBySection = useMemo(() => {
+    if (sectionFilter === "ALL") return events;
+    return events.filter((item) => item.publicSection === sectionFilter);
+  }, [events, sectionFilter]);
 
   const searchedEvents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return events;
-    return events.filter((item) => {
+    if (!q) return filteredBySection;
+    return filteredBySection.filter((item) => {
       const searchable = [
         item.eventTypeName,
         item.description,
         ...item.items,
+        item.publicSection === "UPCOMING_EVENTS" ? "upcoming events" : "general events",
         formatPriceEn(item.price),
         item.isActive ? "active" : "inactive",
         "upcoming",
@@ -30,11 +42,15 @@ export function useEventsList(events: AdminEvent[]) {
         .toLowerCase();
       return searchable.includes(q);
     });
-  }, [events, searchQuery]);
+  }, [filteredBySection, searchQuery]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, sectionFilter]);
+
+  useEffect(() => {
+    setSectionFilter(defaultSectionFilter);
+  }, [defaultSectionFilter]);
 
   const totalPages = Math.max(1, Math.ceil(searchedEvents.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -47,10 +63,11 @@ export function useEventsList(events: AdminEvent[]) {
   const paginatedEvents = searchedEvents.slice(pageOffset, pageOffset + PAGE_SIZE);
 
   const stats: EventsStats = useMemo(() => {
-    const total = events.length;
-    const upcoming = events.filter((e) => e.isActive).length;
-    const itemsTotal = events.reduce((acc, e) => acc + e.items.length, 0);
-    const activeWithDates = events.filter((e) => e.isActive);
+    const scoped = filteredBySection;
+    const total = scoped.length;
+    const activeCount = scoped.filter((e) => e.isActive).length;
+    const itemsTotal = scoped.reduce((acc, e) => acc + e.items.length, 0);
+    const activeWithDates = scoped.filter((e) => e.isActive);
     let nearestLabel = "—";
     if (activeWithDates.length > 0) {
       const sorted = [...activeWithDates].sort((a, b) => {
@@ -60,12 +77,20 @@ export function useEventsList(events: AdminEvent[]) {
       });
       nearestLabel = formatShortDateUs(sorted[0]?.updatedAt ?? sorted[0]?.createdAt);
     }
-    return { total, upcoming, completed: total - upcoming, itemsTotal, nearestLabel };
-  }, [events]);
+    return {
+      total,
+      activeCount,
+      inactiveCount: total - activeCount,
+      itemsTotal,
+      nearestLabel,
+    };
+  }, [filteredBySection]);
 
   return {
     searchQuery,
     setSearchQuery,
+    sectionFilter,
+    setSectionFilter,
     searchedEvents,
     paginatedEvents,
     page,

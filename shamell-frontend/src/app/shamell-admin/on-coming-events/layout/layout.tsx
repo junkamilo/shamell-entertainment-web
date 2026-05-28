@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/onComingEventsRoutes";
 
 export const metadata: Metadata = {
-  title: "On Coming Events — Shamell Admin",
+  title: `${SEATING_LAYOUT_ADMIN_LABEL} — Shamell Admin`,
   description: "Arrange tables, benches, and furniture on the interactive floor plan.",
 };
 

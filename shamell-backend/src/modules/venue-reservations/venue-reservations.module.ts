@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { UpcomingEventsModule } from '../upcoming-events/upcoming-events.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { MailModule } from '../mail/mail.module';
@@ -18,6 +19,7 @@ import { VenueReservationsService } from './venue-reservations.service';
     MailModule,
     StripeModule,
     FloorLayoutModule,
+    UpcomingEventsModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'change-me-in-production',
       signOptions: {

@@ -10,6 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { useMemo, useState } from "react";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
+import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/onComingEventsRoutes";
 import { useFloorLayoutEditor } from "../hooks/useFloorLayoutEditor";
 import { TABLE_SIZE_LABELS } from "../types/floorLayout.types";
 import type { VenueTableSize } from "../types/floorLayout.types";
@@ -57,8 +58,8 @@ export default function FloorLayoutPageContent() {
   return (
     <div className="mx-auto flex w-full max-w-6xl min-h-0 min-w-0 flex-1 flex-col">
       <AdminModuleHero
-        title="On Coming Events"
-        subtitle="Configure the interactive floor plan for upcoming events."
+        title={SEATING_LAYOUT_ADMIN_LABEL}
+        subtitle="Place tables and chairs on the interactive floor plan for upcoming events."
         bordered={false}
       />
       <DndContext
@@ -105,21 +106,19 @@ export default function FloorLayoutPageContent() {
               viewBoxWidth={editor.layoutMeta.viewBoxWidth}
               viewBoxHeight={editor.layoutMeta.viewBoxHeight}
               items={editor.items}
+              sceneZones={editor.sceneZones}
               reservedIds={reservedIds}
               newlyReservedIds={newlyReservedIds}
               selectedId={editor.selectedId}
               onSelect={editor.setSelectedId}
               onReservedSelect={editor.onReservedItemSelect}
               onMoveItem={editor.moveItem}
+              onMoveSceneZone={editor.moveSceneZone}
               dirty={editor.dirty}
               saving={editor.saving}
               onSave={() => void editor.save()}
-              onRotateLeft={() => {
-                if (editor.selectedId) editor.updateRotation(editor.selectedId, -15);
-              }}
-              onRotateRight={() => {
-                if (editor.selectedId) editor.updateRotation(editor.selectedId, 15);
-              }}
+              onRotateLeft={() => editor.rotateSelected(-15)}
+              onRotateRight={() => editor.rotateSelected(15)}
               onDelete={editor.removeSelected}
             />
             <p className="shrink-0 border-t border-shamell-line-soft/60 px-3 py-1.5 text-center text-[10px] leading-snug text-shamell-text-primary/55 sm:text-left">

@@ -1,12 +1,17 @@
 import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
 import { mapFloorLayoutFromApi } from "../lib/mapFloorLayoutFromApi";
-import type { PlacedLayoutItem, VenueFloorLayout } from "../types/floorLayout.types";
+import type {
+  FloorSceneZones,
+  PlacedLayoutItem,
+  VenueFloorLayout,
+} from "../types/floorLayout.types";
 
 export type PutAdminFloorLayoutPayload = {
   viewBoxWidth: number;
   viewBoxHeight: number;
   backgroundVersion: string;
   items: PlacedLayoutItem[];
+  sceneZones?: FloorSceneZones;
 };
 
 export type PutAdminFloorLayoutResult = {

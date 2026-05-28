@@ -1,4 +1,6 @@
 export type {
+  FloorSceneZones,
+  FloorSceneZoneTransform,
   LayoutShapeKind,
   PlacedLayoutItem,
   VenueFloorLayout,

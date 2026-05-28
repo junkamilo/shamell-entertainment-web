@@ -42,7 +42,7 @@ const ServicesSection = () => {
     let isCancelled = false;
     setIsLoading(true);
 
-    fetch(`${apiBaseUrl}/api/v1/events`)
+    fetch(`${apiBaseUrl}/api/v1/events?publicSection=GENERAL`)
       .then((response) => {
         if (!response.ok) throw new Error("Cannot load events.");
         return response.json();

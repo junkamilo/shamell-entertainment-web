@@ -45,7 +45,7 @@ New screens under `src/app/shamell-admin/<feature>/` (or `src/app/admin/` for cr
 ## On Coming Events (`on-coming-events`)
 
 - **3D scene (R3F):** `src/components/venue-3d/` — `VenueScene3D`, primitive room (`VenueRoomPlaceholder`), modular stage (`venue-3d/stage/`: platform, marquee lights, stairs, palms, backdrop), `carpet/RedCarpetRunner`, `bench/VenueDancerBench`, `CatalogTableMesh` / `StandaloneChairMesh`, `layoutCoords3d`. Phase 2: GLB under `public/venue-3d/` (see `venue-3d/assets/README.md`).
-- **Admin editor:** `src/app/shamell-admin/on-coming-events/layout/` — route `/shamell-admin/on-coming-events/layout`. `next/dynamic` (`ssr: false`). Palette drag via `@dnd-kit/core` + floor raycast (`floorLayoutRaycast.ts`); placed-item drag via `useItemPointerDrag3d` inside the Canvas.
+- **Admin editor (Seating layout):** `src/app/shamell-admin/on-coming-events/layout/` — route `/shamell-admin/on-coming-events/layout`. `next/dynamic` (`ssr: false`). Palette drag via `@dnd-kit/core` + floor raycast (`floorLayoutRaycast.ts`); placed-item drag via `useItemPointerDrag3d` inside the Canvas.
 - **Palette inventory:** `GET /api/v1/floor-layout/admin/palette` — counts from Table seating (`tablesBySize`: Large/Medium/Small × unplaced) and standalone chairs (`availableQuantity` minus placed). Drag assigns next free catalog table of that size.
 - **Placed item kinds:** `catalog_table` (requires `venueTableConfigId`, `tableName`, `size`, `includedChairs`) | `standalone_chair`. Legacy kinds show a clear-items banner; save rejects old kinds.
 - **Layout types (shared):** `src/components/floor-layout/layoutTypes.ts`. Legacy SVG helpers (`FloorLayoutViewer`, `renderPlacedItem`, croquis PNG) remain in repo but are not used in the active admin/public flow.

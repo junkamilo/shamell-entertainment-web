@@ -1,0 +1,55 @@
+import { Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsISO8601,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
+
+export class UpsertVenueConfigDto {
+  @IsOptional()
+  @IsBoolean()
+  clientEnabled?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  promoTitle?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  promoDescription?: string | null;
+
+  @IsOptional()
+  @IsISO8601()
+  reservationEventDate?: string | null;
+
+  @IsOptional()
+  @IsISO8601()
+  reservationOpensAt?: string | null;
+
+  @IsOptional()
+  @IsISO8601()
+  reservationClosesAt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  reservationEventLabel?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  reservationTimezone?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  floorLayoutId?: string | null;
+
+  @IsOptional()
+  @IsUUID('4')
+  reservationEventTemplateId?: string | null;
+}

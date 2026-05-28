@@ -3,17 +3,45 @@ import AdminSearchInput from "@/components/admin/AdminSearchInput";
 type Props = {
   searchQuery: string;
   onSearchChange: (value: string) => void;
+  sectionFilter: "ALL" | "GENERAL" | "UPCOMING_EVENTS";
+  onSectionFilterChange: (value: "ALL" | "GENERAL" | "UPCOMING_EVENTS") => void;
+  hideSectionFilter?: boolean;
 };
 
-export default function EventsSearchBar({ searchQuery, onSearchChange }: Props) {
+export default function EventsSearchBar({
+  searchQuery,
+  onSearchChange,
+  sectionFilter,
+  onSectionFilterChange,
+  hideSectionFilter = false,
+}: Props) {
   return (
-    <div className="mb-6">
+    <div
+      className={
+        hideSectionFilter ? "mb-6" : "mb-6 grid gap-3 md:grid-cols-[2fr_1fr]"
+      }
+    >
       <AdminSearchInput
         value={searchQuery}
         onChange={onSearchChange}
-        placeholder="Search events..."
+        placeholder={hideSectionFilter ? "Search upcoming events..." : "Search events..."}
         className="shamell-glass-surface mx-0 min-h-12 max-w-none w-full rounded-xl"
       />
+      {hideSectionFilter ? null : (
+        <select
+          value={sectionFilter}
+          onChange={(event) =>
+            onSectionFilterChange(
+              event.target.value as "ALL" | "GENERAL" | "UPCOMING_EVENTS",
+            )
+          }
+          className="shamell-glass-surface min-h-12 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none focus:border-gold"
+        >
+          <option value="ALL">All sections</option>
+          <option value="UPCOMING_EVENTS">Upcoming Events</option>
+          <option value="GENERAL">General (Types of Events)</option>
+        </select>
+      )}
     </div>
   );
 }

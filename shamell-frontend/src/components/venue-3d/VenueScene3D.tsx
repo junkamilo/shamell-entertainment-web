@@ -3,7 +3,9 @@
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Environment, OrbitControls } from "@react-three/drei";
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { FloorSceneZones, PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import { FloorSceneZonesProvider } from "./FloorSceneZonesContext";
+import { mergeFloorSceneZones } from "./floorSceneZonesDefaults";
 import {
   resolveCameraPresetForAspect,
   SCENE_BACKGROUND,
@@ -34,12 +36,15 @@ type Props = {
   viewBoxWidth: number;
   viewBoxHeight: number;
   items: PlacedLayoutItem[];
+  sceneZones?: FloorSceneZones;
   selectedId?: string | null;
   reservedIds?: Set<string>;
   onSelect?: (id: string | null) => void;
   onItemSelect?: (id: string) => void;
   /** Must be used inside Canvas (uses useThree). */
   placedItemsAdmin?: React.ReactNode;
+  /** Stage/carpet pick handles (admin layout editor). */
+  sceneDecorAdmin?: React.ReactNode;
   onBackgroundClick?: () => void;
   canvasRef?: React.RefObject<VenueScene3DHandle | null>;
   className?: string;
@@ -64,9 +69,11 @@ function SceneContent({
   viewBoxWidth,
   viewBoxHeight,
   items,
+  sceneZones,
   selectedId,
   reservedIds,
   placedItemsAdmin,
+  sceneDecorAdmin,
   onBackgroundClick,
   onItemSelect,
   orbitControlsRef,
@@ -111,6 +118,7 @@ function SceneContent({
         distance={34}
       />
       <VenueRoomPlaceholder />
+      {interactive && sceneDecorAdmin ? sceneDecorAdmin : null}
       {interactive && placedItemsAdmin ? (
         placedItemsAdmin
       ) : (
@@ -167,10 +175,12 @@ export default function VenueScene3D({
   viewBoxWidth,
   viewBoxHeight,
   items,
+  sceneZones,
   selectedId,
   reservedIds,
   onSelect,
   placedItemsAdmin,
+  sceneDecorAdmin,
   onBackgroundClick,
   onItemSelect,
   canvasRef,
@@ -206,6 +216,11 @@ export default function VenueScene3D({
   );
 
   const cameraPresetKey = `${layoutBucket}:${viewportAspect.toFixed(2)}:${cameraPreset.fov}`;
+
+  const resolvedSceneZones = useMemo(
+    () => mergeFloorSceneZones(sceneZones),
+    [sceneZones],
+  );
 
   const handleRef = useRef<VenueScene3DHandle>({
     getCanvas: () => null,
@@ -260,21 +275,25 @@ export default function VenueScene3D({
           }}
         >
           <Suspense fallback={null}>
-            <SceneContent
-              mode={mode}
-              viewBoxWidth={viewBoxWidth}
-              viewBoxHeight={viewBoxHeight}
-              items={items}
-              selectedId={selectedId}
-              reservedIds={reservedIds}
-              onSelect={onSelect}
-              placedItemsAdmin={placedItemsAdmin}
-              onBackgroundClick={onBackgroundClick}
-              onItemSelect={onItemSelect}
-              orbitControlsRef={orbitControlsRef}
-              cameraPreset={cameraPreset}
-              cameraPresetKey={cameraPresetKey}
-            />
+            <FloorSceneZonesProvider zones={resolvedSceneZones}>
+              <SceneContent
+                mode={mode}
+                viewBoxWidth={viewBoxWidth}
+                viewBoxHeight={viewBoxHeight}
+                items={items}
+                sceneZones={resolvedSceneZones}
+                selectedId={selectedId}
+                reservedIds={reservedIds}
+                onSelect={onSelect}
+                placedItemsAdmin={placedItemsAdmin}
+                sceneDecorAdmin={sceneDecorAdmin}
+                onBackgroundClick={onBackgroundClick}
+                onItemSelect={onItemSelect}
+                orbitControlsRef={orbitControlsRef}
+                cameraPreset={cameraPreset}
+                cameraPresetKey={cameraPresetKey}
+              />
+            </FloorSceneZonesProvider>
           </Suspense>
         </Canvas>
       </VenueSceneCanvasContext.Provider>

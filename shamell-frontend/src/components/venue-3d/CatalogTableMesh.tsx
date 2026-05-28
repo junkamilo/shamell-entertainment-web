@@ -5,7 +5,11 @@ import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
 import type { VenueTableSize } from "@/components/floor-layout/layoutTypes";
 import VenueBanquetChairMesh from "./chair/VenueBanquetChairMesh";
+import { CHAIR_SEAT } from "./chair/chairConstants";
 import { TABLE_WORLD, VENUE_COLORS } from "./venueSceneConstants";
+
+/** Clearance from table edge to chair seat (world meters). */
+const CHAIR_TABLE_EDGE_GAP = 0.06;
 
 type Props = {
   size: VenueTableSize;
@@ -36,7 +40,7 @@ export default function CatalogTableMesh({
 
   const chairPlacements = useMemo(() => {
     const n = Math.max(1, includedChairs);
-    const r = cfg.chairOrbit;
+    const r = cfg.tableRadius + CHAIR_SEAT.depth * 0.5 + CHAIR_TABLE_EDGE_GAP;
     return Array.from({ length: n }, (_, i) => {
       const a = (i / n) * Math.PI * 2 - Math.PI / 2;
       const x = Math.cos(a) * r;
@@ -46,7 +50,7 @@ export default function CatalogTableMesh({
         rotationY: Math.atan2(x, z) + Math.PI,
       };
     });
-  }, [includedChairs, cfg.chairOrbit]);
+  }, [includedChairs, cfg.tableRadius]);
 
   return (
     <group ref={groupRef}>

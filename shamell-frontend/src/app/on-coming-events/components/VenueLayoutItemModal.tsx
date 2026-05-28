@@ -23,6 +23,7 @@ type Props = {
   isReserved: boolean;
   reservationsOpen: boolean;
   reservationsClosedMessage?: string;
+  upcomingEventSlug?: string;
   onClose: () => void;
 };
 
@@ -50,6 +51,7 @@ export default function VenueLayoutItemModal({
   isReserved,
   reservationsOpen,
   reservationsClosedMessage = "Reservations closed",
+  upcomingEventSlug,
   onClose,
 }: Props) {
   const [step, setStep] = useState<Step>("summary");
@@ -112,6 +114,7 @@ export default function VenueLayoutItemModal({
       customerName: customerName.trim(),
       customerEmail: customerEmail.trim(),
       customerPhone: customerPhone.trim() || undefined,
+      upcomingEventSlug,
     });
 
     setIsStartingCheckout(false);

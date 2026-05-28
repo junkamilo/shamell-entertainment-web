@@ -18,24 +18,47 @@ export default function EventsPageContent({ state }: Props) {
   const { catalog, list, form } = state;
   const hasActiveTypes = catalog.eventTypes.some((item) => item.isActive);
 
+  const wrapperClass = state.embedded ? "w-full" : "mx-auto w-full max-w-6xl";
+
   return (
-    <div className="mx-auto w-full max-w-6xl">
-      <AdminModuleHero
-        title="Events"
-        actionLabel="New event"
-        onAction={state.openCreateModal}
-        bordered={false}
+    <div className={wrapperClass}>
+      {state.embedded ? (
+        <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+          <button
+            type="button"
+            onClick={state.openCreateModal}
+            className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-2.5 font-brand text-xs uppercase tracking-[0.12em] text-gold transition hover:bg-gold/25"
+          >
+            {state.createLabel}
+          </button>
+        </div>
+      ) : (
+        <AdminModuleHero
+          title={state.pageTitle}
+          actionLabel={state.createLabel}
+          onAction={state.openCreateModal}
+          bordered={false}
+        />
+      )}
+
+      {!state.upcomingOnly && !hasActiveTypes ? <EventsNoTypesBanner /> : null}
+
+      <EventsStatsBar
+        stats={list.stats}
+        variant={state.upcomingOnly ? "upcomingSite" : "general"}
       />
 
-      {!hasActiveTypes ? <EventsNoTypesBanner /> : null}
-
-      <EventsStatsBar stats={list.stats} />
-
-      <EventsSearchBar searchQuery={list.searchQuery} onSearchChange={list.setSearchQuery} />
+      <EventsSearchBar
+        searchQuery={list.searchQuery}
+        onSearchChange={list.setSearchQuery}
+        sectionFilter={list.sectionFilter}
+        onSectionFilterChange={list.setSectionFilter}
+        hideSectionFilter={state.upcomingOnly}
+      />
 
       <EventsListSection
         isLoading={catalog.isLoading}
-        eventsCount={catalog.events.length}
+        eventsCount={list.searchedEvents.length}
         searchedCount={list.searchedEvents.length}
         paginatedEvents={list.paginatedEvents}
         pageOffset={list.pageOffset}
@@ -57,6 +80,9 @@ export default function EventsPageContent({ state }: Props) {
         editingId={form.editingId}
         isSubmitting={state.isSubmitting}
         canSubmit={form.canSubmit}
+        freeEventNameMode={form.freeEventNameMode}
+        eventName={form.eventName}
+        onEventNameChange={form.setEventName}
         eventTypeId={state.eventTypeId}
         activeEventTypes={form.activeEventTypes}
         selectedTypeName={form.selectedTypeName}
@@ -72,6 +98,10 @@ export default function EventsPageContent({ state }: Props) {
         onItemsTextChange={form.setItemsText}
         priceInput={form.priceInput}
         onPriceInputChange={form.setPriceInput}
+        publicSection={form.publicSection}
+        onPublicSectionChange={form.setPublicSection}
+        lockPublicSection={state.upcomingOnly}
+        editExperienceType={form.editingId ? form.experienceType : null}
         existingImages={form.existingImages}
         pendingFiles={form.pendingFiles}
         pendingPreviewUrls={form.pendingPreviewUrls}
@@ -80,6 +110,10 @@ export default function EventsPageContent({ state }: Props) {
         onPickCatalogImages={form.onPickCatalogImages}
         onRemovePendingAt={form.removePendingAt}
         onRemoveExistingImage={(id) => void state.removeExistingCatalogImage(id)}
+        reservationEventTemplates={state.reservationTemplates.templates}
+        reservationTemplatesLoading={state.reservationTemplates.loading}
+        reservationEventTemplateId={form.reservationEventTemplateId}
+        onReservationEventTemplateIdChange={form.setReservationEventTemplateId}
       />
 
       <EventsDeleteModal

@@ -1,3 +1,4 @@
+import { mergeFloorSceneZones } from "@/components/venue-3d/floorSceneZonesDefaults";
 import type { PlacedLayoutItem, VenueFloorLayout, VenueTableSize } from "../types/floorLayout.types";
 import {
   DEFAULT_VIEW_BOX_HEIGHT,
@@ -101,6 +102,7 @@ export function mapFloorLayoutFromApi(data: unknown): VenueFloorLayout | null {
     backgroundVersion:
       typeof o.backgroundVersion === "string" ? o.backgroundVersion : "v1",
     items,
+    sceneZones: mergeFloorSceneZones(o.sceneZones),
     totalChairs,
     updatedAt:
       o.updatedAt instanceof Date

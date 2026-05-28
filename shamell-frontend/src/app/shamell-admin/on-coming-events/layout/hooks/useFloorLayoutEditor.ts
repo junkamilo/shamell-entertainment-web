@@ -19,8 +19,15 @@ import {
   readLastSeenPaidReservationAtMs,
   writeLastSeenPaidReservationAtMs,
 } from "@/lib/onComingEventsReservationsNotice";
+import {
+  isSceneSelectId,
+  SCENE_CARPET_SELECT_ID,
+  SCENE_STAGE_SELECT_ID,
+} from "@/components/venue-3d/floorSceneZonesDefaults";
+import { DEFAULT_FLOOR_SCENE_ZONES } from "../lib/floorSceneZones.defaults";
 import type {
   FloorLayoutPalette,
+  FloorSceneZones,
   PlacedLayoutItem,
   VenueFloorLayout,
   VenueTableSize,
@@ -59,6 +66,10 @@ export function useFloorLayoutEditor() {
     backgroundVersion: "v1",
   });
   const [items, setItems] = useState<PlacedLayoutItem[]>([]);
+  const [sceneZones, setSceneZones] = useState<FloorSceneZones>(() => ({
+    stage: { ...DEFAULT_FLOOR_SCENE_ZONES.stage },
+    carpet: { ...DEFAULT_FLOOR_SCENE_ZONES.carpet },
+  }));
   const [serverPalette, setServerPalette] = useState<FloorLayoutPalette>(EMPTY_PALETTE);
   const [hasLegacyItems, setHasLegacyItems] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -120,6 +131,10 @@ export function useFloorLayoutEditor() {
       backgroundVersion: layout.backgroundVersion,
     });
     setItems(layout.items);
+    setSceneZones({
+      stage: { ...layout.sceneZones.stage },
+      carpet: { ...layout.sceneZones.carpet },
+    });
     setHasLegacyItems(layout.hasLegacyItems === true);
     setSelectedId(null);
   }, []);
@@ -307,8 +322,42 @@ export function useFloorLayoutEditor() {
     setDirty(true);
   }, []);
 
+  const updateSceneRotation = useCallback((delta: number) => {
+    if (!selectedId || !isSceneSelectId(selectedId)) return;
+    const kind = selectedId === SCENE_STAGE_SELECT_ID ? "stage" : "carpet";
+    setSceneZones((prev) => {
+      const zone = prev[kind];
+      let rotationY = zone.rotationY + delta;
+      const twoPi = Math.PI * 2;
+      if (rotationY > Math.PI) rotationY -= twoPi;
+      if (rotationY < -Math.PI) rotationY += twoPi;
+      return { ...prev, [kind]: { ...zone, rotationY } };
+    });
+    setDirty(true);
+  }, [selectedId]);
+
+  const moveSceneZone = useCallback((kind: "stage" | "carpet", x: number, z: number) => {
+    setSceneZones((prev) => ({
+      ...prev,
+      [kind]: { ...prev[kind], x, z },
+    }));
+    setDirty(true);
+  }, []);
+
+  const rotateSelected = useCallback(
+    (deltaDegrees: number) => {
+      if (!selectedId) return;
+      if (isSceneSelectId(selectedId)) {
+        updateSceneRotation((deltaDegrees * Math.PI) / 180);
+        return;
+      }
+      updateRotation(selectedId, deltaDegrees);
+    },
+    [selectedId, updateRotation, updateSceneRotation],
+  );
+
   const removeSelected = useCallback(() => {
-    if (!selectedId) return;
+    if (!selectedId || isSceneSelectId(selectedId)) return;
     setItems((prev) => prev.filter((item) => item.id !== selectedId));
     setSelectedId(null);
     setDirty(true);
@@ -383,6 +432,7 @@ export function useFloorLayoutEditor() {
         viewBoxHeight: layoutMeta.viewBoxHeight,
         backgroundVersion: layoutMeta.backgroundVersion,
         items,
+        sceneZones,
       });
       if (!result.ok) {
         toast({
@@ -411,7 +461,7 @@ export function useFloorLayoutEditor() {
     } finally {
       setSaving(false);
     }
-  }, [items, layoutMeta]);
+  }, [items, layoutMeta, sceneZones]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -430,6 +480,7 @@ export function useFloorLayoutEditor() {
     sceneHandleRef,
     layoutMeta,
     items,
+    sceneZones,
     palette,
     hasLegacyItems,
     selectedId,
@@ -443,7 +494,9 @@ export function useFloorLayoutEditor() {
     chairTotal: totalChairs(items),
     load,
     moveItem,
+    moveSceneZone,
     updateRotation,
+    rotateSelected,
     removeSelected,
     clearAllItems,
     handleDragEnd,

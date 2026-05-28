@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Query,
   HttpCode,
   HttpStatus,
   Param,
@@ -21,6 +22,7 @@ import { GalleryService } from '../gallery/gallery.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
 import { CreateOccasionTypeDto } from './dto/create-occasion-type.dto';
+import { ListEventsQueryDto } from './dto/list-events-query.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateEventTypeDto } from './dto/update-event-type.dto';
 import { UpdateOccasionTypeDto } from './dto/update-occasion-type.dto';
@@ -35,8 +37,8 @@ export class EventsController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
-  getPublicEvents() {
-    return this.eventsService.getPublicEvents();
+  getPublicEvents(@Query() query: ListEventsQueryDto) {
+    return this.eventsService.getPublicEvents(query);
   }
 
   @Get('contact-lines')
@@ -94,8 +96,8 @@ export class EventsController {
   @Get('admin')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  getAdminEvents() {
-    return this.eventsService.getAdminEvents();
+  getAdminEvents(@Query() query: ListEventsQueryDto) {
+    return this.eventsService.getAdminEvents(query);
   }
 
   @Get('types/admin')
