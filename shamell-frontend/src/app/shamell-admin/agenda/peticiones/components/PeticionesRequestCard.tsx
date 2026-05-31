@@ -37,6 +37,11 @@ import {
   contactIsConciergeInquiry,
 } from "../lib/peticionesContactUtils";
 import type { UnifiedPeticionRow } from "../types/peticiones.types";
+import {
+  paymentCardBadge,
+  paymentCardBorderClass,
+  resolveBookingPaymentCardState,
+} from "../lib/peticionesPaymentCardState";
 import PeticionesSendPaymentLinkModal from "./PeticionesSendPaymentLinkModal";
 
 type Props = {
@@ -157,15 +162,29 @@ export default function PeticionesRequestCard({
       ? row.state === "CANCELLED"
       : row.status === "CANCELLED";
 
+  const bookingPaymentVisual =
+    row.origin === "BOOKING_ADMIN" && booking
+      ? resolveBookingPaymentCardState(booking)
+      : null;
+  const bookingBadge =
+    bookingPaymentVisual != null
+      ? paymentCardBadge(bookingPaymentVisual)
+      : null;
+
+  const cardBorderClass =
+    bookingPaymentVisual != null
+      ? paymentCardBorderClass(bookingPaymentVisual)
+      : isReserved
+        ? "border-emerald-400/30 ring-1 ring-emerald-400/15"
+        : isCancelled
+          ? "border-red-400/25 ring-1 ring-red-400/10 opacity-85"
+          : "border-gold/40 ring-1 ring-gold/15";
+
   return (
     <article
       className={cn(
         "shamell-glass-surface min-w-0 rounded-xl px-4 py-3 transition-colors",
-        isReserved
-          ? "border-emerald-400/30 ring-1 ring-emerald-400/15"
-          : isCancelled
-            ? "border-red-400/25 ring-1 ring-red-400/10 opacity-85"
-            : "border-gold/40 ring-1 ring-gold/15",
+        cardBorderClass,
       )}
     >
       <button
@@ -184,7 +203,9 @@ export default function PeticionesRequestCard({
                 booking?.user?.fullName ||
                 "Client"}
             </span>
-            {isReserved ? (
+            {bookingBadge ? (
+              <span className={bookingBadge.className}>{bookingBadge.label}</span>
+            ) : isReserved ? (
               <span className="rounded border border-emerald-400/45 px-2 py-0.5 font-brand text-[10px] tracking-widest text-emerald-200 sm:text-xs">
                 RESERVED
               </span>
@@ -381,7 +402,9 @@ export default function PeticionesRequestCard({
             <p className="wrap-break-word font-body text-xs leading-relaxed text-foreground/50 sm:text-sm">
               {contact && contactIsBookingInquiry(contact)
                 ? "Booking inquiry from the public form: use Reserve only if a calendar booking was not created automatically (missing phone or catalog match)."
-                : "Bookings from the public form or Book appear here as reserved (green)."}
+                : booking
+                  ? "Green = fully paid, orange = deposit paid, gold = awaiting payment, red = canceled."
+                  : "Bookings from the public form or Book appear here as reserved (green)."}
             </p>
           ) : null}
         </div>

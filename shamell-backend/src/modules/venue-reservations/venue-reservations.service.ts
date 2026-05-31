@@ -16,6 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FloorLayoutService } from '../floor-layout/floor-layout.service';
 import { MailService } from '../mail/mail.service';
+import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { StripeService } from '../stripe/stripe.service';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
 import {
@@ -55,6 +56,7 @@ export class VenueReservationsService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly mail: MailService,
+    private readonly adminPaymentNotify: AdminPaymentNotifyService,
     private readonly stripeService: StripeService,
     private readonly floorLayout: FloorLayoutService,
   ) {}
@@ -462,6 +464,17 @@ export class VenueReservationsService {
 
     this.logger.log(`reservation-cancelled id=${id}`);
 
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'CANCELLED',
+      flow: 'VENUE_SEAT',
+      customerName: saved.customerName,
+      customerEmail: saved.customerEmail,
+      amount: Number(saved.amount),
+      currency: saved.currency,
+      contextLabel: await this.venueReservationContextLabel(saved),
+      reference: saved.id.slice(0, 8).toUpperCase(),
+    });
+
     return {
       message: 'Reservation cancelled.',
       reservation: this.mapReservationAdmin(saved),
@@ -543,6 +556,40 @@ export class VenueReservationsService {
     );
 
     await this.sendReservationPaidConfirmationEmail(saved);
+
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'PAID',
+      flow: 'VENUE_SEAT',
+      customerName: saved.customerName,
+      customerEmail: saved.customerEmail,
+      amount: Number(saved.amount),
+      currency: saved.currency,
+      contextLabel: await this.venueReservationContextLabel(saved),
+      reference: saved.id.slice(0, 8).toUpperCase(),
+    });
+  }
+
+  private async venueReservationContextLabel(
+    row: {
+      kind: VenueSeatKind;
+      upcomingEventId: string | null;
+      venueTableConfig?: { tableName: string | null } | null;
+    },
+  ): Promise<string> {
+    let eventName = 'Venue event';
+    if (row.upcomingEventId) {
+      const event = await this.prisma.event.findUnique({
+        where: { id: row.upcomingEventId },
+        include: { eventType: { select: { name: true } } },
+      });
+      if (event?.eventType?.name) eventName = event.eventType.name;
+    }
+    const kindLabel =
+      row.kind === VenueSeatKind.STANDALONE_CHAIR ? 'Chair' : 'Table';
+    const tableLabel = row.venueTableConfig?.tableName
+      ? ` — ${row.venueTableConfig.tableName}`
+      : '';
+    return `${eventName} (${kindLabel}${tableLabel})`;
   }
 
   private async markExpiredFromSession(sessionId: string) {
@@ -562,6 +609,17 @@ export class VenueReservationsService {
     this.logger.log(
       `reservation-expired id=${reservation.id} session=${sessionId}`,
     );
+
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'EXPIRED',
+      flow: 'VENUE_SEAT',
+      customerName: reservation.customerName,
+      customerEmail: reservation.customerEmail,
+      amount: Number(reservation.amount),
+      currency: reservation.currency,
+      contextLabel: await this.venueReservationContextLabel(reservation),
+      reference: reservation.id.slice(0, 8).toUpperCase(),
+    });
   }
 
   private async resolveVenueContext(query?: {
