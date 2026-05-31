@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
@@ -37,6 +37,7 @@ import {
   contactIsConciergeInquiry,
 } from "../lib/peticionesContactUtils";
 import type { UnifiedPeticionRow } from "../types/peticiones.types";
+import PeticionesSendPaymentLinkModal from "./PeticionesSendPaymentLinkModal";
 
 type Props = {
   row: UnifiedPeticionRow;
@@ -84,6 +85,7 @@ export default function PeticionesRequestCard({
   fallbackServiceId,
   bookingTz,
 }: Props) {
+  const [paymentLinkOpen, setPaymentLinkOpen] = useState(false);
   const busy = busyId === row.id;
   const reserving = row.origin === "CONTACT" && reservingContactId === row.id;
   const contact = row.origin === "CONTACT" ? row.contact : null;
@@ -341,36 +343,7 @@ export default function PeticionesRequestCard({
                 disabled={busy || reserving}
                 onClick={(e) => {
                   e.stopPropagation();
-                  const totalInput = window.prompt(
-                    "Total price in USD",
-                    "2500",
-                  );
-                  const totalAmount = Number(totalInput);
-                  if (!Number.isFinite(totalAmount) || totalAmount <= 0) return;
-                  const modelChoice = window.prompt(
-                    "Payment model: FULL or DEPOSIT",
-                    booking.quoteModel ?? "FULL",
-                  );
-                  const paymentModel =
-                    modelChoice?.trim().toUpperCase() === "DEPOSIT"
-                      ? "DEPOSIT"
-                      : "FULL";
-                  if (paymentModel === "DEPOSIT") {
-                    const depositInput = window.prompt(
-                      "Deposit amount in USD",
-                      "1000",
-                    );
-                    const depositAmount = Number(depositInput);
-                    if (!Number.isFinite(depositAmount) || depositAmount <= 0)
-                      return;
-                    onSendBookingQuote(booking, {
-                      paymentModel,
-                      totalAmount,
-                      depositAmount,
-                    });
-                    return;
-                  }
-                  onSendBookingQuote(booking, { paymentModel, totalAmount });
+                  setPaymentLinkOpen(true);
                 }}
                 className="inline-flex w-full items-center justify-center rounded-md border border-sky-300/40 px-3 py-3 font-brand text-xs tracking-widest text-sky-200 transition hover:bg-sky-500/10 disabled:opacity-50 sm:w-auto sm:py-2.5 sm:text-sm"
               >
@@ -412,6 +385,19 @@ export default function PeticionesRequestCard({
             </p>
           ) : null}
         </div>
+      ) : null}
+
+      {booking ? (
+        <PeticionesSendPaymentLinkModal
+          booking={booking}
+          isOpen={paymentLinkOpen}
+          onClose={() => setPaymentLinkOpen(false)}
+          isSubmitting={busy}
+          onSubmit={(payload) => {
+            onSendBookingQuote(booking, payload);
+            setPaymentLinkOpen(false);
+          }}
+        />
       ) : null}
     </article>
   );

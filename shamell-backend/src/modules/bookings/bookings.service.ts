@@ -1371,16 +1371,8 @@ export class BookingsService {
   }
 
   private buildQuotePayUrl(token: string): string {
-    const backendBase = (
-      this.config.get<string>('BACKEND_PUBLIC_URL')?.trim() ||
-      this.config.get<string>('NEXT_PUBLIC_BACKEND_URL')?.trim() ||
-      this.config.get<string>('FRONTEND_URL')?.split(',')[0]?.trim() ||
-      ''
-    ).replace(/\/$/, '');
-    const base = backendBase.startsWith('http')
-      ? backendBase
-      : this.stripeService.frontendUrl();
-    return `${base}/api/v1/bookings/public/quote/pay?token=${encodeURIComponent(token)}`;
+    const frontendBase = this.stripeService.frontendUrl().replace(/\/$/, '');
+    return `${frontendBase}/pay/quote?token=${encodeURIComponent(token)}`;
   }
 
   private parseStripeCheckoutSession(raw: unknown): StripeCheckoutSessionLite {
