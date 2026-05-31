@@ -6,7 +6,7 @@ export const RESERVATION_SCHEDULE_MODE_RADIO_NAME = "reservationEventScheduleMod
 
 type Props = {
   title: string;
-  description: string;
+  description?: string;
   modeValue: string;
   active: boolean;
   onSelect: () => void;
@@ -30,7 +30,8 @@ export function ScheduleModeToggleSection({
     >
       <label
         className={cn(
-          "mb-4 flex cursor-pointer flex-wrap items-start justify-between gap-3 rounded-lg p-1 -m-1",
+          "flex cursor-pointer flex-wrap justify-between gap-3 rounded-lg p-2",
+          description ? "items-start" : "items-center",
           !active && "hover:bg-gold/5",
         )}
       >
@@ -43,29 +44,26 @@ export function ScheduleModeToggleSection({
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-xs text-foreground/65">{description}</p>
-          {!active ? (
-            <p className="mt-2 text-[10px] uppercase tracking-wider text-foreground/45">
-              Tap Activate to edit this schedule
-            </p>
+          {description ? (
+            <p className="mt-1 text-xs text-foreground/65">{description}</p>
           ) : null}
         </div>
         <span
           className={cn(
-            "relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border transition-colors",
+            "relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border p-1 transition-colors",
             active ? "border-gold/50 bg-gold/25" : "border-gold/20 bg-black/30",
           )}
           aria-hidden
         >
           <span
             className={cn(
-              "inline-block h-7 w-7 rounded-full bg-gold shadow transition-transform",
-              active ? "translate-x-8" : "translate-x-1",
+              "h-7 w-7 shrink-0 rounded-full bg-gold shadow transition-transform duration-200 ease-out",
+              active ? "translate-x-9" : "translate-x-0",
             )}
           />
         </span>
         <input
-          type="radio"
+          type="checkbox"
           name={RESERVATION_SCHEDULE_MODE_RADIO_NAME}
           value={modeValue}
           checked={active}
@@ -74,7 +72,14 @@ export function ScheduleModeToggleSection({
         />
         <span className="sr-only">Activate {title}</span>
       </label>
-      <div className={cn(!active && "pointer-events-none opacity-50")}>{children}</div>
+      <div
+        className={cn(
+          "mt-4 border-t border-gold/10 pt-4",
+          !active && "pointer-events-none opacity-50",
+        )}
+      >
+        {children}
+      </div>
     </section>
   );
 }

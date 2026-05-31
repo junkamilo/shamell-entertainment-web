@@ -6,7 +6,6 @@ import GallerySection from "@/components/GallerySection";
 import HeroSection from "@/components/HeroSection";
 import SiteHeader from "@/components/SiteHeader";
 import ServicesSection from "@/components/ServicesSection";
-import UpcomingEventsSection from "@/components/UpcomingEventsSection";
 
 /** Home: `#services` / `#experiences` blocks; then `#about` before `#gallery` (matches header nav). */
 export default function Home() {
@@ -16,7 +15,6 @@ export default function Home() {
       <HeroSection />
       <ExperiencesSection />
       <ServicesSection />
-      <UpcomingEventsSection />
       <AboutSection />
       <OnComingEventsPromoSection />
       <GallerySection />

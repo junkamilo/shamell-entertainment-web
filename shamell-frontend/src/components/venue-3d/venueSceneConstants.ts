@@ -158,3 +158,37 @@ export function resolveCameraPresetForAspect(
   if (aspect > ASPECT_WIDE_MIN) return CAMERA_PRESET_WIDE;
   return CAMERA_PRESETS_BY_BUCKET[bucket];
 }
+
+/**
+ * Admin layout editor default view: an elevated front 3/4 overview that frames
+ * the whole room (floor, side walls, stage backdrop and carpet). The editor
+ * canvas is typically very wide and short, so wider/shorter viewports need a
+ * higher camera and a wider FOV to fit the full depth of the room.
+ */
+export const CAMERA_PRESET_ADMIN: VenueCameraPreset = {
+  position: [WORLD_WIDTH * 0.5, 20, WORLD_DEPTH * 1.22],
+  target: [WORLD_WIDTH * 0.5, 0, WORLD_DEPTH * 0.4],
+  fov: 50,
+  minDistance: 8,
+  maxDistance: 48,
+};
+
+export function resolveAdminCameraPreset(aspect: number): VenueCameraPreset {
+  if (aspect > 2.0) {
+    return {
+      ...CAMERA_PRESET_ADMIN,
+      position: [WORLD_WIDTH * 0.5, 23.5, WORLD_DEPTH * 1.42],
+      fov: 56,
+      maxDistance: 54,
+    };
+  }
+  if (aspect < ASPECT_NARROW_MAX) {
+    return {
+      ...CAMERA_PRESET_ADMIN,
+      position: [WORLD_WIDTH * 0.5, 22, WORLD_DEPTH * 1.55],
+      fov: 58,
+      maxDistance: 56,
+    };
+  }
+  return CAMERA_PRESET_ADMIN;
+}

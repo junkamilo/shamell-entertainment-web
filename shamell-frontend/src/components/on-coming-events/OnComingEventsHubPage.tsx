@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
+import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
+import { OnComingEventsHubHero } from "@/app/on-coming-events/components/OnComingEventsHubHero";
 import {
   OnComingEventHubCard,
   type OnComingEventHubCardItem,
 } from "@/app/on-coming-events/components/OnComingEventHubCard";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { parseApiInt } from "@/lib/fixedTicketInventory";
 
 type HubEvent = OnComingEventHubCardItem;
 
@@ -19,6 +21,16 @@ export default function OnComingEventsHubPage() {
   );
   const [events, setEvents] = useState<HubEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [leaving, setLeaving] = useState(false);
+  const [navigatingToEvent, setNavigatingToEvent] = useState(false);
+
+  const handleBackNavigate = useCallback(() => {
+    setLeaving(true);
+  }, []);
+
+  const handleEventNavigate = useCallback(() => {
+    setNavigatingToEvent(true);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -46,11 +58,49 @@ export default function OnComingEventsHubPage() {
               explicitMt === "VIDEO" || serviceCatalogMediaTypeFromUrl(heroUrl) === "VIDEO"
                 ? "VIDEO"
                 : "IMAGE";
+            const purchaseMode =
+              item.purchaseMode === "venue_seating" ||
+              item.purchaseMode === "classes" ||
+              item.purchaseMode === "fixed_ticket" ||
+              item.purchaseMode === "none"
+                ? item.purchaseMode
+                : item.experienceType === "VENUE_SEATING"
+                  ? "venue_seating"
+                  : item.experienceType === "CLASSES"
+                    ? "classes"
+                    : "none";
             return {
               slug: String(item.slug),
               eventTypeName: String(item.eventTypeName),
               heroImageUrl: heroUrl || null,
               heroMediaType,
+              experienceType:
+                item.experienceType === "VENUE_SEATING" || item.experienceType === "CLASSES"
+                  ? item.experienceType
+                  : null,
+              purchaseMode,
+              purchasable: item.purchasable === true,
+              ...(parseApiInt(item.ticketsRemaining) !== undefined
+                ? { ticketsRemaining: parseApiInt(item.ticketsRemaining) }
+                : {}),
+              ...(parseApiInt(item.fixedTicketCapacity) !== undefined
+                ? { fixedTicketCapacity: parseApiInt(item.fixedTicketCapacity) }
+                : {}),
+              ...(parseApiInt(item.ticketsSold) !== undefined
+                ? { ticketsSold: parseApiInt(item.ticketsSold) }
+                : {}),
+              ...(parseApiInt(item.tableCapacity) !== undefined
+                ? { tableCapacity: parseApiInt(item.tableCapacity) }
+                : {}),
+              ...(parseApiInt(item.tablesRemaining) !== undefined
+                ? { tablesRemaining: parseApiInt(item.tablesRemaining) }
+                : {}),
+              ...(parseApiInt(item.tablesSold) !== undefined
+                ? { tablesSold: parseApiInt(item.tablesSold) }
+                : {}),
+              ...(typeof item.eventStartsAt === "string" && item.eventStartsAt
+                ? { eventStartsAt: item.eventStartsAt }
+                : {}),
             } satisfies HubEvent;
           });
         setEvents(normalized);
@@ -66,40 +116,45 @@ export default function OnComingEventsHubPage() {
     };
   }, [apiBaseUrl]);
 
+  const showBusyOverlay = isLoading || leaving || navigatingToEvent;
+  const busyTitle = isLoading
+    ? "Loading upcoming events…"
+    : leaving
+      ? "Loading…"
+      : "Loading event…";
+  const showContent = !isLoading && !leaving && !navigatingToEvent;
+
   return (
-    <main className="relative z-10 min-h-screen text-foreground">
-      <SiteHeader />
-      <div className="mx-auto max-w-6xl px-4 pb-20 pt-28 md:pt-32">
-        <div className="mb-10 text-center">
-          <h1 className="font-brand text-2xl font-semibold tracking-[0.14em] text-gold md:text-4xl">
-            ON COMING EVENTS
-          </h1>
-          <p className="mx-auto mt-4 max-w-2xl font-body text-base text-foreground/85 md:text-lg">
-            Browse upcoming experiences and view full details before you book.
-          </p>
-        </div>
+    <>
+      <ShamellBusyOverlay active={showBusyOverlay} title={busyTitle} />
 
-        {isLoading ? (
-          <p className="text-center text-foreground/70">Loading upcoming events…</p>
-        ) : null}
+      {showContent ? (
+        <main className="relative z-10 min-h-screen text-foreground">
+          <SiteHeader />
+          <div className="mx-auto max-w-6xl px-4 pb-20 pt-28 md:pt-32">
+            <OnComingEventsHubHero onBackNavigateStart={handleBackNavigate} />
 
-        {!isLoading && events.length === 0 ? (
-          <p className="text-center text-foreground/70">Upcoming events coming soon.</p>
-        ) : null}
+            <p className="mx-auto mb-10 max-w-2xl text-center font-body text-base text-foreground/85 md:text-lg">
+              Browse upcoming experiences and view full details before you book.
+            </p>
 
-        <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-6 md:gap-8">
-          {events.map((event) => (
-            <OnComingEventHubCard key={event.slug} event={event} />
-          ))}
-        </div>
+            {events.length === 0 ? (
+              <p className="text-center text-foreground/70">Upcoming events coming soon.</p>
+            ) : null}
 
-        <p className="mt-10 text-center">
-          <Link href="/" className="text-sm text-gold underline-offset-2 hover:underline">
-            Back to home
-          </Link>
-        </p>
-      </div>
-      <Footer />
-    </main>
+            <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-6 md:gap-8">
+              {events.map((event) => (
+                <OnComingEventHubCard
+                  key={event.slug}
+                  event={event}
+                  onNavigateStart={handleEventNavigate}
+                />
+              ))}
+            </div>
+          </div>
+          <Footer />
+        </main>
+      ) : null}
+    </>
   );
 }

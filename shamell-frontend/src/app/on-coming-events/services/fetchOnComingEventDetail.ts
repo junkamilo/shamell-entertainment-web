@@ -21,6 +21,8 @@ export type OnComingEventSchedule =
       endTime: string | null;
     };
 
+export type UpcomingPurchaseMode = "none" | "classes" | "venue_seating" | "fixed_ticket";
+
 export type OnComingEventDetail = {
   id: string;
   slug: string | null;
@@ -36,7 +38,12 @@ export type OnComingEventDetail = {
   hasActiveSessions: boolean;
   salesOpen: boolean;
   purchasable: boolean;
+  purchaseMode: UpcomingPurchaseMode;
   sessions: ClassSessionPublic[];
+  ticketsRemaining?: number;
+  fixedTicketCapacity?: number;
+  ticketsSold?: number;
+  eventStartsAt?: string;
 };
 
 export async function fetchOnComingEventDetail(slug: string): Promise<OnComingEventDetail> {
@@ -51,5 +58,14 @@ export async function fetchOnComingEventDetail(slug: string): Promise<OnComingEv
   if (!data || typeof data !== "object") {
     throw new Error("Invalid event response.");
   }
-  return data as OnComingEventDetail;
+  const row = data as OnComingEventDetail & { purchaseMode?: UpcomingPurchaseMode };
+  if (!row.purchaseMode) {
+    row.purchaseMode =
+      row.experienceType === "VENUE_SEATING"
+        ? "venue_seating"
+        : row.experienceType === "CLASSES"
+          ? "classes"
+          : "none";
+  }
+  return row;
 }

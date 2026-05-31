@@ -1,39 +1,13 @@
 "use client";
 
-import type { LucideIcon } from "lucide-react";
-import {
-  Crown,
-  GlassWater,
-  Mic2,
-  Music2,
-  Palette,
-  Sparkles,
-  Star,
-  Theater,
-} from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import RevealOnView from "@/components/shared/RevealOnView";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
-const ITEM_ICONS: LucideIcon[] = [
-  Sparkles,
-  Star,
-  Mic2,
-  Music2,
-  Theater,
-  Crown,
-  Palette,
-  GlassWater,
-];
-
 type Props = {
   items: string[];
 };
-
-function iconForIndex(index: number): LucideIcon {
-  return ITEM_ICONS[index % ITEM_ICONS.length] ?? Sparkles;
-}
 
 function OnComingEventItemCard({
   item,
@@ -44,7 +18,6 @@ function OnComingEventItemCard({
   index: number;
   prefersReducedMotion: boolean;
 }) {
-  const Icon = iconForIndex(index);
   const displayIndex = String(index + 1).padStart(2, "0");
 
   return (
@@ -85,7 +58,12 @@ function OnComingEventItemCard({
             "transition-transform duration-400 group-hover/item:scale-105 group-hover/item:border-gold/55",
           )}
         >
-          <Icon className="h-5 w-5 text-gold/90" strokeWidth={1.5} aria-hidden />
+          <span
+            className="font-brand text-lg leading-none text-gold/90 transition-colors duration-400 group-hover/item:text-gold"
+            aria-hidden
+          >
+            ✦
+          </span>
           <span
             className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-black/80 px-1 font-brand text-[9px] tracking-wider text-gold/90 ring-1 ring-gold/40"
             aria-hidden

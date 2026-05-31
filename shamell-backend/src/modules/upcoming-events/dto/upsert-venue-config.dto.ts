@@ -1,11 +1,15 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsInt,
   IsISO8601,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class UpsertVenueConfigDto {
@@ -52,4 +56,12 @@ export class UpsertVenueConfigDto {
   @IsOptional()
   @IsUUID('4')
   reservationEventTemplateId?: string | null;
+
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(99999)
+  fixedTicketCapacity?: number | null;
 }

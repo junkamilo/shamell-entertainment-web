@@ -46,10 +46,20 @@ export class StripeWebhookController {
                 deduplicated: classResult.deduplicated === true,
               };
             }
-            return this.venueReservationsService.handleWebhookEvent(
-              rawBody,
-              signature,
-            );
+            return this.upcomingEventsService
+              .handleFixedEventTicketWebhook(rawBody, signature)
+              .then(async (fixedResult) => {
+                if (fixedResult.handled) {
+                  return {
+                    received: true,
+                    deduplicated: fixedResult.deduplicated === true,
+                  };
+                }
+                return this.venueReservationsService.handleWebhookEvent(
+                  rawBody,
+                  signature,
+                );
+              });
           });
       });
   }

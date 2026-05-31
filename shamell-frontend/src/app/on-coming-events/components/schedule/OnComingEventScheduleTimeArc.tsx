@@ -40,6 +40,24 @@ function describeTrack(): string {
   return `M ${left.x} ${left.y} A ${R} ${R} 0 0 1 ${right.x} ${right.y}`;
 }
 
+function ScheduleDetails({ model }: { model: ScheduleViewModel }) {
+  return (
+    <div className="mt-4 w-full space-y-2 border-t border-gold/10 pt-4 text-center">
+      {model.humanLines.map((line) => (
+        <p
+          key={line}
+          className="font-body text-sm leading-relaxed text-foreground/88 sm:text-base sm:leading-relaxed"
+        >
+          {line}
+        </p>
+      ))}
+      <p className="font-body text-sm text-gold/75 sm:text-base">
+        Times shown in {model.timezoneLabel}
+      </p>
+    </div>
+  );
+}
+
 type Props = {
   model: ScheduleViewModel;
 };
@@ -62,17 +80,18 @@ export function OnComingEventScheduleTimeArc({ model }: Props) {
   const endTick = hasTime ? polarToXY(minutesToAngle(model.endMinutes!), R + 6) : null;
 
   return (
-    <div ref={ref} className="flex flex-col items-center" aria-label="Event time">
-      <p className="mb-4 self-start font-brand text-xs tracking-[0.14em] text-gold/80">TIME</p>
+    <div ref={ref} className="flex h-full flex-col items-center" aria-label="Event time">
+      <p className="mb-3 self-start font-brand text-xs tracking-[0.14em] text-gold/80">TIME</p>
 
       {!hasTime ? (
-        <div className="flex flex-col items-center justify-center py-8 text-center">
-          <Clock className="mb-3 h-12 w-12 text-gold/25" strokeWidth={1.2} aria-hidden />
+        <div className="flex w-full flex-1 flex-col items-center justify-center text-center">
+          <Clock className="mb-3 h-10 w-10 text-gold/25" strokeWidth={1.2} aria-hidden />
           <p className="font-body text-sm text-foreground/60">Time to be announced</p>
+          <ScheduleDetails model={model} />
         </div>
       ) : (
         <>
-          <div className="relative w-full max-w-[240px]">
+          <div className="relative w-full max-w-[200px]">
             <svg
               viewBox="0 0 240 140"
               className="w-full overflow-visible"
@@ -121,14 +140,14 @@ export function OnComingEventScheduleTimeArc({ model }: Props) {
               ) : null}
             </svg>
 
-            <div className="pointer-events-none absolute inset-x-0 bottom-2 flex flex-col items-center text-center">
+            <div className="pointer-events-none absolute inset-x-0 bottom-1 flex flex-col items-center text-center">
               {model.durationLabel ? (
-                <span className="font-display text-2xl text-gold">{model.durationLabel}</span>
+                <span className="font-display text-xl text-gold sm:text-2xl">{model.durationLabel}</span>
               ) : null}
               <span
                 className={cn(
-                  "font-body text-sm text-foreground/88",
-                  model.durationLabel ? "mt-0.5" : "mt-2 text-base",
+                  "font-body text-xs text-foreground/88 sm:text-sm",
+                  model.durationLabel ? "mt-0.5" : "mt-1",
                 )}
               >
                 {model.timeRangeLabel}
@@ -136,11 +155,13 @@ export function OnComingEventScheduleTimeArc({ model }: Props) {
             </div>
           </div>
 
-          <div className="mt-2 flex w-full max-w-[240px] justify-between text-[10px] text-foreground/50">
+          <div className="mt-1 flex w-full max-w-[200px] justify-between text-[9px] text-foreground/50 sm:text-[10px]">
             <span>12 AM</span>
             <span>12 PM</span>
             <span>12 AM</span>
           </div>
+
+          <ScheduleDetails model={model} />
         </>
       )}
     </div>

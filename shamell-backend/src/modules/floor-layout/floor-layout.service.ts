@@ -54,7 +54,15 @@ export class FloorLayoutService {
     const settings = await this.prisma.venueLayoutClientSettings.findFirst({
       orderBy: { updatedAt: 'desc' },
     });
-    if (!settings?.clientEnabled) {
+    if (settings?.clientEnabled) {
+      return;
+    }
+    // A published per-event seat-sales config also exposes the shared floor
+    // plan, so admins don't have to flip the global publish toggle too.
+    const publishedEvents = await this.prisma.upcomingVenueConfig.count({
+      where: { clientEnabled: true },
+    });
+    if (publishedEvents === 0) {
       throw new NotFoundException('Venue floor plan is not available.');
     }
   }

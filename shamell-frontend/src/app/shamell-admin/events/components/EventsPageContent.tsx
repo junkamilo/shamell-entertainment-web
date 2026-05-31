@@ -79,6 +79,7 @@ export default function EventsPageContent({ state }: Props) {
         isOpen={state.isModalOpen}
         editingId={form.editingId}
         isSubmitting={state.isSubmitting}
+        submittingMessage={state.submittingMessage}
         canSubmit={form.canSubmit}
         freeEventNameMode={form.freeEventNameMode}
         eventName={form.eventName}
@@ -101,7 +102,6 @@ export default function EventsPageContent({ state }: Props) {
         publicSection={form.publicSection}
         onPublicSectionChange={form.setPublicSection}
         lockPublicSection={state.upcomingOnly}
-        editExperienceType={form.editingId ? form.experienceType : null}
         existingImages={form.existingImages}
         pendingFiles={form.pendingFiles}
         pendingPreviewUrls={form.pendingPreviewUrls}
@@ -110,10 +110,14 @@ export default function EventsPageContent({ state }: Props) {
         onPickCatalogImages={form.onPickCatalogImages}
         onRemovePendingAt={form.removePendingAt}
         onRemoveExistingImage={(id) => void state.removeExistingCatalogImage(id)}
-        reservationEventTemplates={state.reservationTemplates.templates}
-        reservationTemplatesLoading={state.reservationTemplates.loading}
-        reservationEventTemplateId={form.reservationEventTemplateId}
-        onReservationEventTemplateIdChange={form.setReservationEventTemplateId}
+        experienceMode={form.experienceMode}
+        onExperienceModeChange={form.setExperienceMode}
+        schedule={form.schedule}
+        onScheduleChange={form.setSchedule}
+        enableVenueSeating={form.enableVenueSeating}
+        onEnableVenueSeatingChange={form.setEnableVenueSeating}
+        fixedTicketCapacityInput={form.fixedTicketCapacityInput}
+        onFixedTicketCapacityInputChange={form.setFixedTicketCapacityInput}
       />
 
       <EventsDeleteModal
