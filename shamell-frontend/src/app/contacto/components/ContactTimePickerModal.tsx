@@ -108,7 +108,7 @@ export default function ContactTimePickerModal({
         <motion.div
           key="contact-time-picker-overlay"
           className={cn(
-            "fixed inset-0 flex items-center justify-center bg-shamell-night/80 px-4 py-8 backdrop-blur-sm",
+            "admin-theme fixed inset-0 flex items-center justify-center bg-shamell-night/90 px-4 py-8 backdrop-blur-sm",
             overlayZClass,
           )}
           role="presentation"
@@ -124,7 +124,7 @@ export default function ContactTimePickerModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="contact-time-picker-title"
-            className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-shamell-line-soft bg-shamell-surface-raised shadow-2xl"
+            className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-gold/35 bg-shamell-surface-deep text-foreground shadow-2xl"
             initial={{ opacity: 0, scale: 0.94, y: 18 }}
             animate={{
               opacity: 1,
@@ -149,7 +149,7 @@ export default function ContactTimePickerModal({
               <X className="h-5 w-5" aria-hidden />
             </button>
 
-            <div className="border-b border-gold/15 bg-shamell-surface-deep px-5 py-5 pr-16">
+            <div className="border-b border-gold/20 bg-[#1f0a2e] px-5 py-5 pr-16">
               <p
                 id="contact-time-picker-title"
                 className="font-brand text-xs tracking-[0.22em] text-gold/95 uppercase"
@@ -181,7 +181,7 @@ export default function ContactTimePickerModal({
             ) : null}
 
             <ShamellTime12hColumns
-              className="px-5 py-5"
+              className="bg-shamell-surface-deep px-5 py-5"
               value={{ h12, min, ap }}
               onChange={(next) => {
                 setH12(next.h12);
@@ -192,7 +192,7 @@ export default function ContactTimePickerModal({
               blockedRanges={blockedRanges}
             />
 
-            <div className="flex flex-wrap justify-end gap-2 border-t border-gold/15 bg-shamell-surface-deep px-5 py-4">
+            <div className="flex flex-wrap justify-end gap-2 border-t border-gold/20 bg-[#1f0a2e] px-5 py-4">
               <button
                 type="button"
                 onClick={onClose}

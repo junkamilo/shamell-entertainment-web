@@ -109,22 +109,10 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
             />
           )}
 
-          <div className="absolute bottom-0 left-0 right-0 z-30 flex items-end justify-between gap-3 border-t border-white/10 bg-[linear-gradient(180deg,rgba(10,8,12,0.35),rgba(6,5,8,0.92))] px-4 py-3 backdrop-blur-[3px] md:px-5 md:py-3.5">
-            <h3 className="min-w-0 font-brand text-base font-semibold tracking-[0.2em] text-gold drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)] transition-[letter-spacing,color] duration-500 group-hover:tracking-[0.24em] group-hover:text-gold-light md:text-lg md:tracking-[0.22em]">
+          <div className="absolute bottom-0 left-0 right-0 z-30 border-t border-white/10 bg-[linear-gradient(180deg,rgba(10,8,12,0.35),rgba(6,5,8,0.92))] px-4 py-3 backdrop-blur-[3px] md:px-5 md:py-3.5">
+            <h3 className="font-brand text-base font-semibold tracking-[0.2em] text-gold drop-shadow-[0_2px_14px_rgba(0,0,0,0.9)] transition-[letter-spacing,color] duration-500 group-hover:tracking-[0.24em] group-hover:text-gold-light md:text-lg md:tracking-[0.22em]">
               {experience.title.toUpperCase()}
             </h3>
-            <Link
-              href={inquireHref}
-              prefetch={false}
-              className={cn(
-                "relative shrink-0 overflow-hidden border border-white/20 bg-black/60 px-3.5 py-2.5 font-brand text-xs font-semibold tracking-[0.16em] text-gold md:px-4 md:py-2.5 md:tracking-[0.18em]",
-                "transition-all duration-300",
-                "before:pointer-events-none before:absolute before:inset-0 before:-translate-y-full before:bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.12),transparent)] before:transition-transform before:duration-500",
-                "hover:border-white/35 hover:text-gold-light group-hover:before:translate-y-full",
-              )}
-            >
-              <span className="relative z-10">INQUIRE</span>
-            </Link>
           </div>
         </div>
 
@@ -228,6 +216,21 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
                 ))}
               </ul>
             </div>
+          </div>
+
+          <div className="relative z-10 mt-auto shrink-0 border-t border-white/[0.07] pt-5">
+            <Link
+              href={inquireHref}
+              prefetch={false}
+              className={cn(
+                "relative flex w-full items-center justify-center overflow-hidden border border-white/20 bg-black/60 px-4 py-3 font-brand text-xs font-semibold tracking-[0.16em] text-gold md:py-3.5 md:tracking-[0.18em]",
+                "transition-all duration-300",
+                "before:pointer-events-none before:absolute before:inset-0 before:-translate-y-full before:bg-[linear-gradient(180deg,transparent,rgba(255,255,255,0.12),transparent)] before:transition-transform before:duration-500",
+                "hover:border-white/35 hover:text-gold-light group-hover:before:translate-y-full",
+              )}
+            >
+              <span className="relative z-10">INQUIRE</span>
+            </Link>
           </div>
         </div>
       </div>

@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
@@ -9,10 +8,7 @@ import type { VenueTableConfig } from "@/app/shamell-admin/venue-tables/types/ve
 import type { StandaloneChairConfig } from "@/app/shamell-admin/venue-tables/types/standaloneChairs.types";
 import { formatPriceEn } from "@/lib/pricing";
 import { createVenueCheckoutSession } from "../services/createVenueCheckoutSession";
-
-const VenueLayoutCheckoutStep = dynamic(() => import("./VenueLayoutCheckoutStep"), {
-  ssr: false,
-});
+import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
 
 type Props = {
   item: PlacedLayoutItem;
@@ -138,34 +134,7 @@ export default function VenueLayoutItemModal({
 
   if (!isReserved && step === "payment" && clientSecret) {
     return (
-      <div
-        className="fixed inset-0 z-120 flex items-end justify-center bg-black/80 p-2 sm:items-center sm:p-4"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Secure payment"
-      >
-        <button
-          type="button"
-          className="absolute inset-0"
-          aria-label="Close payment"
-          onClick={onClose}
-        />
-        <div className="relative z-10 flex h-[min(92dvh,860px)] w-full max-w-[min(100vw-0.5rem,1120px)] flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-w-[min(100vw-1rem,1120px)] sm:rounded-xl">
-          <div className="absolute right-2 top-2 z-20 sm:right-3 sm:top-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg bg-white/90 p-2.5 text-neutral-500 shadow-sm transition hover:bg-neutral-100 hover:text-neutral-800"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" strokeWidth={1.75} />
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-0 py-0">
-            <VenueLayoutCheckoutStep clientSecret={clientSecret} />
-          </div>
-        </div>
-      </div>
+      <StripeEmbeddedCheckoutOverlay clientSecret={clientSecret} onClose={onClose} />
     );
   }
 

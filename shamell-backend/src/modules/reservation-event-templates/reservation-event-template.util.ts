@@ -155,11 +155,12 @@ export function validateTemplatePayload(input: {
     }
 
     const salesStartIso = salesStartDate.toISOString().slice(0, 10);
-    const salesEndIso = salesEndDate.toISOString().slice(0, 10);
     const eventIso = eventDate.toISOString().slice(0, 10);
-    if (eventIso < salesStartIso || eventIso > salesEndIso) {
+    // The event night must be on or after sales open. Sales may close on or
+    // before the event (e.g. sell until Jun 30, event on Jul 1).
+    if (eventIso < salesStartIso) {
       throw new BadRequestException(
-        'eventDate should fall within the sales window.',
+        'eventDate must be on or after salesStartDate.',
       );
     }
 

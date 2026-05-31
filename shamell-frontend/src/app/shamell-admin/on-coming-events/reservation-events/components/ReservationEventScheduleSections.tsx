@@ -104,35 +104,75 @@ function PickerButton({
   );
 }
 
+/** When `experienceMode`/`onExperienceModeChange` are provided, a third "Normal"
+ * card is shown and the active state is driven by the parent's 3-state value
+ * (used inside the upcoming event form). Without them it behaves as a plain
+ * 2-mode (FIXED/RECURRING) selector. */
+export type ScheduleExperienceMode = "NORMAL" | ReservationEventScheduleMode;
+
 type Props = {
   value: ScheduleFormState;
   onChange: Dispatch<SetStateAction<ScheduleFormState>>;
+  experienceMode?: ScheduleExperienceMode;
+  onExperienceModeChange?: (mode: ScheduleExperienceMode) => void;
+  enableVenueSeating?: boolean;
+  onEnableVenueSeatingChange?: (enabled: boolean) => void;
+  fixedTicketCapacityInput?: string;
+  onFixedTicketCapacityInputChange?: (value: string) => void;
 };
 
-export function ReservationEventScheduleSections({ value, onChange }: Props) {
+export function ReservationEventScheduleSections({
+  value,
+  onChange,
+  experienceMode,
+  onExperienceModeChange,
+  enableVenueSeating = false,
+  onEnableVenueSeatingChange,
+  fixedTicketCapacityInput = "",
+  onFixedTicketCapacityInputChange,
+}: Props) {
   const minDate = todayIsoDateInTimezone();
   const [dateTarget, setDateTarget] = useState<ScheduleDateTarget>(null);
   const [timeTarget, setTimeTarget] = useState<ScheduleTimeTarget>(null);
 
+  const threeState = experienceMode !== undefined;
+
   const setMode = (scheduleMode: ReservationEventScheduleMode) => {
     onChange((prev) => ({ ...prev, scheduleMode }));
+    onExperienceModeChange?.(scheduleMode);
+  };
+
+  // In the 3-state event form, toggling an already-active card turns it off
+  // (back to NORMAL). With both off the event is a normal event.
+  const toggleMode = (
+    scheduleMode: ReservationEventScheduleMode,
+    isActive: boolean,
+  ) => {
+    if (threeState && isActive) {
+      onExperienceModeChange?.("NORMAL");
+      return;
+    }
+    setMode(scheduleMode);
   };
 
   const patch = (partial: Partial<ScheduleFormState>) => {
     onChange((prev) => ({ ...prev, ...partial }));
   };
 
-  const fixedActive = value.scheduleMode === "FIXED_EVENT";
-  const recurringActive = value.scheduleMode === "RECURRING_WEEKLY";
+  const fixedActive = threeState
+    ? experienceMode === "FIXED_EVENT"
+    : value.scheduleMode === "FIXED_EVENT";
+  const recurringActive = threeState
+    ? experienceMode === "RECURRING_WEEKLY"
+    : value.scheduleMode === "RECURRING_WEEKLY";
 
   return (
     <>
       <ScheduleModeToggleSection
-        title="FIXED EVENT (SEAT SALES)"
-        description="Set when table sales open and close, plus the single event night and its hours."
+        title="FIXED EVENT"
         modeValue="FIXED_EVENT"
         active={fixedActive}
-        onSelect={() => setMode("FIXED_EVENT")}
+        onSelect={() => toggleMode("FIXED_EVENT", fixedActive)}
       >
         <div className="space-y-4">
           <fieldset className="space-y-3 rounded-lg border border-gold/10 p-3">
@@ -185,6 +225,60 @@ export function ReservationEventScheduleSections({ value, onChange }: Props) {
               />
             </div>
           </fieldset>
+
+          {threeState && onEnableVenueSeatingChange ? (
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gold/15 bg-black/20 p-3">
+              <input
+                type="checkbox"
+                checked={enableVenueSeating}
+                onChange={(e) => onEnableVenueSeatingChange(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-gold"
+              />
+              <span className="min-w-0">
+                <span className="block font-brand text-[10px] tracking-[0.12em] text-gold">
+                  ASSOCIATE TABLE &amp; SEAT SALES (MESAS Y SILLAS)
+                </span>
+                <span className="mt-1 block text-xs text-foreground/60">
+                  When enabled, the public card goes to the 3D floor plan to buy tables or
+                  seats. When off, guests buy a single ticket from the event detail using the
+                  event Price field.
+                </span>
+              </span>
+            </label>
+          ) : null}
+
+          {threeState && onFixedTicketCapacityInputChange ? (
+            <div
+              className={`space-y-1.5 rounded-lg border border-gold/10 p-3 ${
+                enableVenueSeating ? "opacity-50" : ""
+              }`}
+            >
+              <label
+                htmlFor="fixed-ticket-capacity"
+                className={`${fieldLabelClass} block`}
+              >
+                Tickets for sale
+              </label>
+              <input
+                id="fixed-ticket-capacity"
+                type="number"
+                min={1}
+                max={99999}
+                step={1}
+                inputMode="numeric"
+                disabled={enableVenueSeating}
+                value={fixedTicketCapacityInput}
+                onChange={(e) => onFixedTicketCapacityInputChange(e.target.value)}
+                placeholder="e.g. 50"
+                className="w-full rounded-lg border border-gold/20 bg-black/30 px-3 py-2 font-body text-sm text-foreground placeholder:text-foreground/40 focus:border-gold/40 focus:outline-none disabled:cursor-not-allowed"
+              />
+              <p className="text-xs text-foreground/55">
+                {enableVenueSeating
+                  ? "Seat/table inventory controls capacity."
+                  : "Required when table & seat sales are off. Checkout stops when this count is reached."}
+              </p>
+            </div>
+          ) : null}
         </div>
       </ScheduleModeToggleSection>
 
@@ -193,7 +287,7 @@ export function ReservationEventScheduleSections({ value, onChange }: Props) {
         description="From today onward, on the selected weekdays, with a daily start and end time."
         modeValue="RECURRING_WEEKLY"
         active={recurringActive}
-        onSelect={() => setMode("RECURRING_WEEKLY")}
+        onSelect={() => toggleMode("RECURRING_WEEKLY", recurringActive)}
       >
         <div className="space-y-4">
           <ReservationEventWeekdaySelector

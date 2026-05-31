@@ -37,15 +37,15 @@ export function VenueLayoutPublishCard({
           aria-checked={clientEnabled}
           disabled={isToggling}
           onClick={() => void onToggle()}
-          className={`relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border transition-colors disabled:opacity-50 ${
+          className={`relative inline-flex h-9 w-[4.5rem] shrink-0 items-center rounded-full border p-1 transition-colors disabled:opacity-50 ${
             clientEnabled
               ? "border-gold/50 bg-gold/25"
               : "border-gold/20 bg-black/30"
           }`}
         >
           <span
-            className={`inline-block h-7 w-7 rounded-full bg-gold shadow transition-transform ${
-              clientEnabled ? "translate-x-8" : "translate-x-1"
+            className={`h-7 w-7 shrink-0 rounded-full bg-gold shadow transition-transform duration-200 ease-out ${
+              clientEnabled ? "translate-x-9" : "translate-x-0"
             }`}
           />
           <span className="sr-only">Publish On Coming Events on client site</span>

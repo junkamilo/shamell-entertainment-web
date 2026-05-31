@@ -7,6 +7,7 @@ import type { FloorSceneZones, PlacedLayoutItem } from "@/components/floor-layou
 import { FloorSceneZonesProvider } from "./FloorSceneZonesContext";
 import { mergeFloorSceneZones } from "./floorSceneZonesDefaults";
 import {
+  resolveAdminCameraPreset,
   resolveCameraPresetForAspect,
   SCENE_BACKGROUND,
   SCENE_FOG,
@@ -211,8 +212,11 @@ export default function VenueScene3D({
   }, []);
 
   const cameraPreset = useMemo(
-    () => resolveCameraPresetForAspect(layoutBucket, viewportAspect),
-    [layoutBucket, viewportAspect],
+    () =>
+      mode === "admin"
+        ? resolveAdminCameraPreset(viewportAspect)
+        : resolveCameraPresetForAspect(layoutBucket, viewportAspect),
+    [mode, layoutBucket, viewportAspect],
   );
 
   const cameraPresetKey = `${layoutBucket}:${viewportAspect.toFixed(2)}:${cameraPreset.fov}`;

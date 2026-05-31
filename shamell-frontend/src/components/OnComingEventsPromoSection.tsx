@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import RevealOnView from "@/components/shared/RevealOnView";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
 import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/onComingEventsRoutes";
 
@@ -17,34 +18,52 @@ export default function OnComingEventsPromoSection() {
 
   return (
     <section id="on-coming-events" className="bg-transparent px-4 py-20 md:py-24">
-      <div className="mx-auto grid max-w-6xl items-center gap-10 md:grid-cols-2 md:gap-14">
-        <div className="relative aspect-[4/3] overflow-hidden rounded-2xl border border-gold/20 shadow-[0_12px_48px_rgba(0,0,0,0.45)]">
-          {promo.promoImageUrl ? (
-            <Image
-              src={promo.promoImageUrl}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
+      <div className="mx-auto max-w-6xl">
+        <RevealOnView className="relative mb-12 text-center md:mb-16" delay={40}>
+          <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div className="h-36 w-[min(28rem,94vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.08),transparent_72%)] blur-3xl opacity-80" />
+          </div>
+          <div className="relative">
+            <h2 className="font-brand text-2xl font-semibold tracking-[0.14em] text-gold md:text-4xl md:tracking-[0.16em]">
+              {title}
+            </h2>
+            <div
+              className="mx-auto mt-5 h-px w-20 max-w-48 bg-linear-to-r from-transparent via-white/25 to-transparent"
+              aria-hidden
             />
-          ) : (
-            <div className="flex h-full items-center justify-center bg-black/50 text-sm text-foreground/50">
-              On Coming Events
+          </div>
+        </RevealOnView>
+
+        <div className="grid items-stretch gap-10 md:grid-cols-2 md:gap-14">
+          <RevealOnView delay={80} amount={0.18}>
+            <div className="relative aspect-3/4 w-full overflow-hidden rounded-2xl border border-gold/20 bg-[radial-gradient(ellipse_at_center,rgba(32,28,24,1)_0%,#060606_70%)] shadow-[0_12px_48px_rgba(0,0,0,0.45)]">
+              {promo.promoImageUrl ? (
+                <Image
+                  src={promo.promoImageUrl}
+                  alt=""
+                  fill
+                  className="object-contain object-center p-3 sm:p-4"
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-foreground/50">
+                  On Coming Events
+                </div>
+              )}
             </div>
-          )}
-        </div>
-        <div>
-          <p className="font-brand text-xs tracking-[0.2em] text-gold/90">ON COMING EVENTS</p>
-          <h2 className="mt-3 font-display text-3xl text-gold md:text-4xl">{title}</h2>
-          <p className="mt-5 whitespace-pre-wrap text-sm leading-relaxed text-foreground/82 md:text-base">
-            {description}
-          </p>
-          <Link
-            href={ON_COMING_EVENTS_PUBLIC_PATH}
-            className="mt-8 inline-flex rounded-lg border border-gold/45 bg-gold/10 px-6 py-3 font-brand text-xs font-semibold uppercase tracking-[0.14em] text-gold transition hover:bg-gold/20"
-          >
-            Explore the floor plan
-          </Link>
+          </RevealOnView>
+
+          <RevealOnView className="flex flex-col justify-center" delay={120} amount={0.18}>
+            <p className="whitespace-pre-wrap font-body text-base leading-relaxed text-foreground/88 md:text-lg md:leading-relaxed">
+              {description}
+            </p>
+            <Link
+              href={ON_COMING_EVENTS_PUBLIC_PATH}
+              className="mt-8 inline-flex w-fit rounded-lg border border-gold/45 bg-gold/10 px-6 py-3 font-brand text-xs font-semibold uppercase tracking-[0.14em] text-gold transition hover:bg-gold/20"
+            >
+              Explore the floor plan
+            </Link>
+          </RevealOnView>
         </div>
       </div>
     </section>

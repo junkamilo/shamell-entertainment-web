@@ -14,6 +14,9 @@ export type EventPublicSection = "GENERAL" | "UPCOMING_EVENTS";
 export type UpcomingExperienceType = "CLASSES" | "VENUE_SEATING";
 export type UpcomingClassVariant = "GROUP" | "PERSONAL";
 
+/** Inline experience selector for an upcoming event form. */
+export type UpcomingExperienceMode = "NORMAL" | "FIXED_EVENT" | "RECURRING_WEEKLY";
+
 export type AdminEvent = {
   id: string;
   eventTypeId: string;
@@ -41,7 +44,10 @@ export type EventFormSnapshot = {
   itemsText: string;
   price: number | null;
   publicSection: EventPublicSection;
-  reservationEventTemplateId?: string;
+  experienceMode?: UpcomingExperienceMode;
+  scheduleKey?: string;
+  enableVenueSeating?: boolean;
+  fixedTicketCapacityInput?: string;
 };
 
 export type EventsStats = {
@@ -61,8 +67,8 @@ export type CreateAdminEventBody = {
   items: string[];
   showOnHome: boolean;
   publicSection: EventPublicSection;
-  experienceType?: UpcomingExperienceType;
-  classVariant?: UpcomingClassVariant;
+  experienceType?: UpcomingExperienceType | null;
+  classVariant?: UpcomingClassVariant | null;
   price?: number;
 };
 
@@ -73,7 +79,7 @@ export type UpdateAdminEventBody = {
   items: string[];
   showOnHome: boolean;
   publicSection: EventPublicSection;
-  experienceType?: UpcomingExperienceType;
-  classVariant?: UpcomingClassVariant;
+  experienceType?: UpcomingExperienceType | null;
+  classVariant?: UpcomingClassVariant | null;
   price?: number | null;
 };

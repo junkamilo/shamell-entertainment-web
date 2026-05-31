@@ -112,15 +112,15 @@ export default function ShamellTime12hColumns({
   }, [min, h12, ap]);
 
   const listboxShell =
-    "mt-2 max-h-[min(14rem,calc(50vh-8rem))] min-h-[10.5rem] overflow-y-auto overscroll-contain rounded-xl border border-gold/35 bg-shamell-surface-overlay py-1 shamell-scrollbar outline-none focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent";
+    "mt-2 max-h-[min(14rem,calc(50vh-8rem))] min-h-[10.5rem] overflow-y-auto overscroll-contain rounded-xl border border-gold/35 bg-[#170824] py-1 shamell-scrollbar outline-none focus-visible:ring-2 focus-visible:ring-gold/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#170824]";
 
   const optionRow =
-    "flex w-full items-center justify-center px-2 py-2.5 text-center font-body text-base transition-colors";
+    "flex w-full items-center justify-center px-2 py-2.5 text-center font-body text-base font-medium transition-colors";
 
   return (
     <div className={cn("grid grid-cols-3 gap-3", className)}>
       <div className="block min-w-0">
-        <span id={hourLabelId} className="font-brand text-xs tracking-[0.16em] text-gold/80">
+        <span id={hourLabelId} className="font-brand text-xs tracking-[0.16em] text-gold/90">
           {hourLabel}
         </span>
         <div
@@ -164,9 +164,9 @@ export default function ShamellTime12hColumns({
                 onClick={() => enabled && emit({ h12: h })}
                 className={cn(
                   optionRow,
-                  selected && enabled && "bg-gold/22 text-gold-light",
-                  !selected && enabled && "text-foreground hover:bg-gold/10",
-                  !enabled && "cursor-not-allowed text-foreground/30",
+                  selected && enabled && "bg-gold/30 text-gold-bright",
+                  !selected && enabled && "text-foreground hover:bg-gold/15",
+                  !enabled && "cursor-not-allowed text-foreground/35",
                 )}
               >
                 {h}
@@ -176,7 +176,7 @@ export default function ShamellTime12hColumns({
         </div>
       </div>
       <div className="block min-w-0">
-        <span id={minuteLabelId} className="font-brand text-xs tracking-[0.16em] text-gold/80">
+        <span id={minuteLabelId} className="font-brand text-xs tracking-[0.16em] text-gold/90">
           {minuteLabel}
         </span>
         <div
@@ -222,9 +222,9 @@ export default function ShamellTime12hColumns({
                 onClick={() => enabled && emit({ min: m })}
                 className={cn(
                   optionRow,
-                  selected && enabled && "bg-gold/22 text-gold-light",
-                  !selected && enabled && "text-foreground hover:bg-gold/10",
-                  !enabled && "cursor-not-allowed text-foreground/30",
+                  selected && enabled && "bg-gold/30 text-gold-bright",
+                  !selected && enabled && "text-foreground hover:bg-gold/15",
+                  !enabled && "cursor-not-allowed text-foreground/35",
                 )}
               >
                 {String(m).padStart(2, "0")}
@@ -234,8 +234,8 @@ export default function ShamellTime12hColumns({
         </div>
       </div>
       <div className="block min-w-0">
-        <span className="font-brand text-xs tracking-[0.16em] text-gold/80">{periodLabel}</span>
-        <div className="mt-2 grid min-h-[48px] grid-cols-2 gap-1 rounded-xl border border-gold/25 bg-shamell-surface-overlay p-1">
+        <span className="font-brand text-xs tracking-[0.16em] text-gold/90">{periodLabel}</span>
+        <div className="mt-2 grid min-h-[48px] grid-cols-2 gap-1 rounded-xl border border-gold/35 bg-[#170824] p-1">
           {(["AM", "PM"] as const).map((p) => {
             const periodOk = isTimeSlotSelectable(h12, min, p, timeClamp, blockedRanges);
             return (
@@ -246,7 +246,7 @@ export default function ShamellTime12hColumns({
                 onClick={() => emit({ ap: p })}
                 className={cn(
                   "rounded-lg py-2.5 font-brand text-xs tracking-[0.14em] transition-colors",
-                  ap === p ? "bg-gold/20 text-gold" : "text-foreground/55 hover:text-gold/90",
+                  ap === p ? "bg-gold/30 text-gold-bright" : "text-foreground/80 hover:bg-gold/12 hover:text-gold",
                   !periodOk && "cursor-not-allowed opacity-35 hover:text-foreground/55",
                 )}
               >

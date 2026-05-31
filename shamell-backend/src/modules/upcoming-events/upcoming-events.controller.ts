@@ -16,6 +16,7 @@ import {
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { CreateClassCheckoutDto } from './dto/create-class-checkout.dto';
+import { CreateFixedEventCheckoutDto } from './dto/create-fixed-event-checkout.dto';
 import { UpsertClassSessionDto } from './dto/upsert-class-session.dto';
 import { UpsertVenueConfigDto } from './dto/upsert-venue-config.dto';
 import { UpcomingEventsService } from './upcoming-events.service';
@@ -31,6 +32,15 @@ export class UpcomingEventsController {
       throw new BadRequestException('session_id is required.');
     }
     return this.upcomingEventsService.getClassSessionStatus(sessionId.trim());
+  }
+
+  @Get('fixed-event-enrollments/session-status')
+  @HttpCode(HttpStatus.OK)
+  getFixedEventSessionStatus(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.upcomingEventsService.getFixedEventSessionStatus(sessionId.trim());
   }
 
   @Get('upcoming-events/admin/events/:eventId/sessions')
@@ -115,5 +125,16 @@ export class UpcomingEventsController {
     @Body() dto: CreateClassCheckoutDto,
   ) {
     return this.upcomingEventsService.createClassCheckout(slug, dto);
+  }
+
+  @Post('upcoming-events/:slug/fixed-event/checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  createFixedEventCheckout(
+    @Param('slug') slug: string,
+    @Body() dto: CreateFixedEventCheckoutDto,
+  ) {
+    return this.upcomingEventsService.createFixedEventCheckout(slug, dto);
   }
 }

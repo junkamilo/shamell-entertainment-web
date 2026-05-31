@@ -1,23 +1,28 @@
-import { type FormEvent } from "react";
+import { type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
 import AdminModal from "@/components/admin/AdminModal";
+import { ADMIN_BUSY_OVERLAY_Z_CLASS } from "@/components/admin/adminModalLayers";
+import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
 import { UpcomingClassSessionsPanel } from "@/app/shamell-admin/on-coming-events/components/UpcomingClassSessionsPanel";
-import { ReservationEventTemplateField } from "@/app/shamell-admin/on-coming-events/reservation-events/components/ReservationEventTemplateField";
+import {
+  ReservationEventScheduleSections,
+  type ScheduleFormState,
+} from "@/app/shamell-admin/on-coming-events/reservation-events/components/ReservationEventScheduleSections";
 import { cn } from "@/lib/utils";
 import { MAX_CATALOG_IMAGES } from "../lib/eventsConstants";
 import { isVideoCatalogItem, isVideoFile } from "../lib/eventsMedia";
-import type { ReservationEventTemplate } from "@/app/shamell-admin/on-coming-events/reservation-events/types/reservationEventTemplate.types";
 import type {
   CatalogImage,
   EventPublicSection,
   EventsEventTypeOption,
-  UpcomingExperienceType,
+  UpcomingExperienceMode,
 } from "../types/events.types";
 
 type Props = {
   isOpen: boolean;
   editingId: string | null;
   isSubmitting: boolean;
+  submittingMessage?: string | null;
   canSubmit: boolean;
   freeEventNameMode?: boolean;
   eventName: string;
@@ -37,7 +42,6 @@ type Props = {
   publicSection: EventPublicSection;
   onPublicSectionChange: (value: EventPublicSection) => void;
   lockPublicSection?: boolean;
-  editExperienceType?: UpcomingExperienceType | null;
   existingImages: CatalogImage[];
   pendingFiles: File[];
   pendingPreviewUrls: string[];
@@ -46,16 +50,21 @@ type Props = {
   onPickCatalogImages: (fileList: FileList | null) => void;
   onRemovePendingAt: (index: number) => void;
   onRemoveExistingImage: (photoId: string) => void;
-  reservationEventTemplates?: ReservationEventTemplate[];
-  reservationTemplatesLoading?: boolean;
-  reservationEventTemplateId?: string;
-  onReservationEventTemplateIdChange?: (id: string) => void;
+  experienceMode?: UpcomingExperienceMode;
+  onExperienceModeChange?: (mode: UpcomingExperienceMode) => void;
+  schedule?: ScheduleFormState;
+  onScheduleChange?: Dispatch<SetStateAction<ScheduleFormState>>;
+  enableVenueSeating?: boolean;
+  onEnableVenueSeatingChange?: (enabled: boolean) => void;
+  fixedTicketCapacityInput?: string;
+  onFixedTicketCapacityInputChange?: (value: string) => void;
 };
 
 export default function EventsFormModal({
   isOpen,
   editingId,
   isSubmitting,
+  submittingMessage = null,
   canSubmit,
   freeEventNameMode = false,
   eventName,
@@ -75,7 +84,6 @@ export default function EventsFormModal({
   publicSection,
   onPublicSectionChange,
   lockPublicSection = false,
-  editExperienceType = null,
   existingImages,
   pendingFiles,
   pendingPreviewUrls,
@@ -84,25 +92,38 @@ export default function EventsFormModal({
   onPickCatalogImages,
   onRemovePendingAt,
   onRemoveExistingImage,
-  reservationEventTemplates = [],
-  reservationTemplatesLoading = false,
-  reservationEventTemplateId = "",
-  onReservationEventTemplateIdChange,
+  experienceMode = "NORMAL",
+  onExperienceModeChange,
+  schedule,
+  onScheduleChange,
+  enableVenueSeating = false,
+  onEnableVenueSeatingChange,
+  fixedTicketCapacityInput = "",
+  onFixedTicketCapacityInputChange,
 }: Props) {
   return (
-    <AdminModal
-      title={
-        freeEventNameMode
-          ? editingId
-            ? "Edit upcoming event"
-            : "New upcoming event"
-          : editingId
-            ? "Edit event"
-            : "New event"
-      }
-      isOpen={isOpen}
-      onClose={onClose}
-    >
+    <>
+      <ShamellBusyOverlay
+        active={isSubmitting}
+        title={submittingMessage ?? "Saving event…"}
+        description="Please wait while we save your event and catalog media."
+        overlayZClass={ADMIN_BUSY_OVERLAY_Z_CLASS}
+      />
+      <AdminModal
+        title={
+          freeEventNameMode
+            ? editingId
+              ? "Edit upcoming event"
+              : "New upcoming event"
+            : editingId
+              ? "Edit event"
+              : "New event"
+        }
+        isOpen={isOpen}
+        onClose={() => {
+          if (!isSubmitting) onClose();
+        }}
+      >
       <form id="event-form" noValidate onSubmit={onSubmit} className="space-y-6">
         {freeEventNameMode ? (
           <label className="block">
@@ -120,12 +141,18 @@ export default function EventsFormModal({
           </label>
         ) : null}
 
-        {lockPublicSection ? (
-          <ReservationEventTemplateField
-            templates={reservationEventTemplates}
-            loading={reservationTemplatesLoading}
-            value={reservationEventTemplateId}
-            onChange={(id) => onReservationEventTemplateIdChange?.(id)}
+        {lockPublicSection && schedule && onScheduleChange ? (
+          <ReservationEventScheduleSections
+            value={schedule}
+            onChange={onScheduleChange}
+            experienceMode={experienceMode}
+            onExperienceModeChange={(mode) =>
+              onExperienceModeChange?.(mode as UpcomingExperienceMode)
+            }
+            enableVenueSeating={enableVenueSeating}
+            onEnableVenueSeatingChange={onEnableVenueSeatingChange}
+            fixedTicketCapacityInput={fixedTicketCapacityInput}
+            onFixedTicketCapacityInputChange={onFixedTicketCapacityInputChange}
           />
         ) : null}
 
@@ -306,7 +333,7 @@ export default function EventsFormModal({
           </div>
         </div>
 
-        {lockPublicSection && editingId && editExperienceType === "CLASSES" ? (
+        {lockPublicSection && editingId && experienceMode === "RECURRING_WEEKLY" ? (
           <UpcomingClassSessionsPanel eventId={editingId} />
         ) : null}
 
@@ -314,19 +341,21 @@ export default function EventsFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
+            disabled={isSubmitting}
+            className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={!canSubmit}
+            disabled={!canSubmit || isSubmitting}
             className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Saving..." : editingId ? "Save changes" : "Create event"}
+            {isSubmitting ? "Saving…" : editingId ? "Save changes" : "Create event"}
           </button>
         </div>
       </form>
     </AdminModal>
+    </>
   );
 }

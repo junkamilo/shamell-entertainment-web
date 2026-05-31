@@ -7,7 +7,6 @@ import { VenueLayoutPromoEditModal } from "./VenueLayoutPromoEditModal";
 import { VenueLayoutPromoModuleSection } from "./VenueLayoutPromoModuleSection";
 import { VenueLayoutPromoPreview } from "./VenueLayoutPromoPreview";
 import { VenueLayoutPublishCard } from "./VenueLayoutPublishCard";
-import { ReservationEventsPanel } from "../reservation-events/components/ReservationEventsPanel";
 
 const emptySettings: VenueLayoutClientSettings = {
   clientEnabled: false,
@@ -33,17 +32,8 @@ export function VenueLayoutReservationTabPanel({ page }: Props) {
     <>
       <VenueLayoutPromoModuleSection
         icon={CalendarDays}
-        title="Reservation events"
-        description="Define reusable date, time, and weekday schedules. Link a schedule when you create a venue seating upcoming event."
-      >
-        <ReservationEventsPanel />
-      </VenueLayoutPromoModuleSection>
-
-      <VenueLayoutPromoModuleSection
-        icon={CalendarDays}
         title="Public site"
         description="Publish the On Coming Events block and floor plan on the client site. Sales also end early when every seat is sold."
-        className="mt-8"
       >
         <VenueLayoutPublishCard
           embedded

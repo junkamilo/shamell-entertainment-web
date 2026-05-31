@@ -1,18 +1,16 @@
 import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import type { ReservationEventTemplate } from "@/app/shamell-admin/on-coming-events/reservation-events/types/reservationEventTemplate.types";
 
 export type AdminVenueConfig = {
   id: string;
   eventId: string;
   clientEnabled: boolean;
+  fixedTicketCapacity: number | null;
   reservationEventTemplateId: string | null;
   reservationEventLabel: string | null;
   reservationOpensAt: string | null;
   reservationClosesAt: string | null;
-  reservationEventTemplate: {
-    id: string;
-    name: string;
-    summary?: string;
-  } | null;
+  reservationEventTemplate: ReservationEventTemplate | null;
 };
 
 export async function patchAdminVenueConfig(
@@ -21,6 +19,7 @@ export async function patchAdminVenueConfig(
   body: {
     reservationEventTemplateId?: string | null;
     clientEnabled?: boolean;
+    fixedTicketCapacity?: number | null;
   },
 ): Promise<{ ok: boolean; config: AdminVenueConfig | null; message?: string }> {
   const base = getAdminApiBaseUrl();

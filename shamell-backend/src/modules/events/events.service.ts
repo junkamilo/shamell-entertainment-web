@@ -8,13 +8,20 @@ import {
   EventPublicSection,
   EventTypeOccasionUsage,
   GalleryMediaType,
+  ReservationEventScheduleMode,
   UpcomingExperienceType,
 } from '@prisma/client';
 import { ensureUniqueEventSlug } from '../../common/event-slug.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GalleryService } from '../gallery/gallery.service';
+import { resolveUpcomingPurchaseContext } from '../upcoming-events/upcoming-purchase-mode.util';
 import {
-  evaluateSalesWindow,
+  fixedEventStartsAtIso,
+  fixedTicketPublicStats,
+} from '../upcoming-events/upcoming-fixed-ticket.util';
+import { venueTablePublicStats } from '../upcoming-events/upcoming-venue-table.util';
+import {
+  eventDateForReservations,
   resolveReservationWindow,
 } from '../venue-layout-settings/reservation-sales-window.util';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -124,9 +131,9 @@ export class EventsService {
           dto.eventTypeName?.trim() || eventType?.name || 'event',
         ))
       : null;
-    const experienceType = isUpcoming
-      ? (dto.experienceType ?? UpcomingExperienceType.CLASSES)
-      : null;
+    // Upcoming events may be NORMAL (no experience) when no schedule is chosen;
+    // the inline form sends VENUE_SEATING / CLASSES explicitly when applicable.
+    const experienceType = isUpcoming ? (dto.experienceType ?? null) : null;
 
     try {
       const created = await this.prisma.event.create({
@@ -987,7 +994,6 @@ export class EventsService {
     return Promise.all(
       events.map(async (event) => {
         let hasActiveSessions = false;
-        let salesOpen = false;
         if (event.experienceType === UpcomingExperienceType.CLASSES) {
           const count = await this.prisma.upcomingClassSession.count({
             where: {
@@ -997,20 +1003,95 @@ export class EventsService {
             },
           });
           hasActiveSessions = count > 0;
-        } else if (event.experienceType === UpcomingExperienceType.VENUE_SEATING) {
-          const config = await this.prisma.upcomingVenueConfig.findUnique({
-            where: { eventId: event.id },
+        }
+
+        const config = await this.prisma.upcomingVenueConfig.findUnique({
+          where: { eventId: event.id },
+          include: { reservationEventTemplate: true },
+        });
+
+        const templateScheduleMode = config?.reservationEventTemplate?.scheduleMode ?? null;
+        const clientEnabled = config?.clientEnabled ?? false;
+        let ticketsRemaining: number | undefined;
+        let fixedTicketCapacity: number | null | undefined;
+        let ticketsSold: number | undefined;
+        let tablesRemaining: number | undefined;
+        let tableCapacity: number | undefined;
+        let tablesSold: number | undefined;
+        let eventStartsAt: string | null | undefined;
+
+        if (
+          templateScheduleMode === ReservationEventScheduleMode.FIXED_EVENT &&
+          !clientEnabled &&
+          config?.fixedTicketCapacity != null &&
+          config.fixedTicketCapacity >= 1
+        ) {
+          fixedTicketCapacity = config.fixedTicketCapacity;
+          const stats = await fixedTicketPublicStats(
+            this.prisma,
+            event.id,
+            config.fixedTicketCapacity,
+          );
+          ticketsRemaining = stats.ticketsRemaining;
+          ticketsSold = stats.ticketsSold;
+          eventStartsAt = fixedEventStartsAtIso(config.reservationEventDate);
+        }
+
+        if (
+          event.experienceType === UpcomingExperienceType.VENUE_SEATING &&
+          clientEnabled &&
+          config
+        ) {
+          eventStartsAt = fixedEventStartsAtIso(
+            config.reservationEventDate ?? config.reservationOpensAt,
+          );
+          const window = resolveReservationWindow({
+            reservationOpensAt: config.reservationOpensAt ?? null,
+            reservationClosesAt: config.reservationClosesAt ?? null,
+            reservationEventDate: config.reservationEventDate ?? null,
           });
-          if (config?.clientEnabled) {
-            const window = resolveReservationWindow({
-              reservationOpensAt: config.reservationOpensAt,
-              reservationClosesAt: config.reservationClosesAt,
-              reservationEventDate: config.reservationEventDate,
+          const eventDate = eventDateForReservations(window);
+          if (eventDate) {
+            const stats = await venueTablePublicStats(this.prisma, {
+              eventId: event.id,
+              eventDate,
+              floorLayoutId: config.floorLayoutId ?? null,
             });
-            salesOpen = evaluateSalesWindow(window).open;
+            if (stats.tableCapacity >= 1) {
+              tableCapacity = stats.tableCapacity;
+              tablesRemaining = stats.tablesRemaining;
+              tablesSold = stats.tablesSold;
+            }
           }
         }
-        return { ...event, hasActiveSessions, salesOpen };
+
+        const purchaseCtx = resolveUpcomingPurchaseContext({
+          experienceType: event.experienceType ?? null,
+          price: event.price,
+          clientEnabled,
+          templateScheduleMode,
+          reservationOpensAt: config?.reservationOpensAt ?? null,
+          reservationClosesAt: config?.reservationClosesAt ?? null,
+          reservationEventDate: config?.reservationEventDate ?? null,
+          hasActiveSessions,
+          fixedTicketCapacity,
+          ticketsRemaining,
+        });
+
+        return {
+          ...event,
+          hasActiveSessions,
+          salesOpen: purchaseCtx.salesOpen,
+          purchaseMode: purchaseCtx.purchaseMode,
+          purchasable: purchaseCtx.purchasable,
+          ...(ticketsRemaining !== undefined ? { ticketsRemaining } : {}),
+          ...(fixedTicketCapacity != null ? { fixedTicketCapacity } : {}),
+          ...(ticketsSold !== undefined ? { ticketsSold } : {}),
+          ...(eventStartsAt != null ? { eventStartsAt } : {}),
+          ...(tableCapacity !== undefined ? { tableCapacity } : {}),
+          ...(tablesRemaining !== undefined ? { tablesRemaining } : {}),
+          ...(tablesSold !== undefined ? { tablesSold } : {}),
+        };
       }),
     );
   }

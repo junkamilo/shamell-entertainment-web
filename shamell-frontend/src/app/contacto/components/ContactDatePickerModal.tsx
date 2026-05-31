@@ -197,7 +197,7 @@ export default function ContactDatePickerModal({
         <motion.div
           key="contact-date-picker-overlay"
           className={cn(
-            "fixed inset-0 flex items-center justify-center bg-shamell-night/80 px-4 py-8 backdrop-blur-sm",
+            "admin-theme fixed inset-0 flex items-center justify-center bg-shamell-night/90 px-4 py-8 backdrop-blur-sm",
             overlayZClass,
           )}
           role="presentation"
@@ -213,7 +213,7 @@ export default function ContactDatePickerModal({
             role="dialog"
             aria-modal="true"
             aria-labelledby="contact-date-picker-title"
-            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-shamell-line-soft bg-shamell-surface-raised shadow-2xl"
+            className="relative w-full max-w-md overflow-hidden rounded-3xl border border-gold/35 bg-shamell-surface-deep text-foreground shadow-2xl"
             initial={{ opacity: 0, scale: 0.94, y: 18 }}
             animate={{
               opacity: 1,
@@ -238,7 +238,7 @@ export default function ContactDatePickerModal({
               <X className="h-5 w-5" aria-hidden />
             </button>
 
-            <div className="border-b border-gold/15 bg-shamell-surface-deep px-5 py-5 pr-16">
+            <div className="border-b border-gold/20 bg-[#1f0a2e] px-5 py-5 pr-16">
               <p
                 id="contact-date-picker-title"
                 className="font-brand text-xs tracking-[0.22em] text-gold/95 uppercase"
@@ -267,7 +267,7 @@ export default function ContactDatePickerModal({
               </div>
             </div>
 
-            <div className="px-5 py-4">
+            <div className="bg-shamell-surface-deep px-5 py-4">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={monthGridKey}
@@ -275,10 +275,10 @@ export default function ContactDatePickerModal({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                  className="grid grid-cols-7 gap-1 text-center"
+                  className="grid grid-cols-7 gap-1.5 rounded-xl border border-gold/25 bg-[#1f0a2e] p-3 text-center"
                 >
                   {WEEKDAYS.map((w) => (
-                    <div key={w} className="py-2 font-brand text-xs tracking-[0.14em] text-gold/55">
+                    <div key={w} className="py-2 font-brand text-xs tracking-[0.14em] text-gold/90">
                       {w}
                     </div>
                   ))}
@@ -362,9 +362,10 @@ export default function ContactDatePickerModal({
                           type="button"
                           onClick={() => selectDay(day)}
                           className={cn(
-                            "aspect-square rounded-lg border font-body text-base transition-colors",
-                            selectable && "border-gold bg-gold/20 text-gold-light",
-                            !selectable && "border-gold/20 text-foreground hover:border-gold/45 hover:bg-gold/10",
+                            "aspect-square rounded-lg border font-body text-base font-medium transition-colors",
+                            selectable && "border-gold bg-gold/25 text-gold-bright",
+                            !selectable &&
+                              "border-gold/30 bg-[#170824] text-foreground hover:border-gold/55 hover:bg-gold/12",
                           )}
                         >
                           {day}
@@ -376,7 +377,7 @@ export default function ContactDatePickerModal({
               </AnimatePresence>
             </div>
 
-            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gold/15 bg-shamell-surface-deep px-5 py-4">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gold/20 bg-[#1f0a2e] px-5 py-4">
               <button
                 type="button"
                 onClick={onClose}

@@ -21,6 +21,8 @@ type EventsApiItem = {
   heroMediaType?: string | null;
   slug?: string;
   experienceType?: string;
+  purchaseMode?: string;
+  purchasable?: boolean;
 };
 
 type ValidEventApiItem = Required<
@@ -28,7 +30,15 @@ type ValidEventApiItem = Required<
 > &
   Pick<
     EventsApiItem,
-    "contactInquiryCode" | "price" | "images" | "heroImageUrl" | "heroMediaType" | "slug" | "experienceType"
+    | "contactInquiryCode"
+    | "price"
+    | "images"
+    | "heroImageUrl"
+    | "heroMediaType"
+    | "slug"
+    | "experienceType"
+    | "purchaseMode"
+    | "purchasable"
   >;
 
 const isValidEvent = (item: EventsApiItem): item is ValidEventApiItem =>
@@ -81,12 +91,30 @@ export default function UpcomingEventsSection() {
               explicitMt === "VIDEO" || inferredFromUrl === "VIDEO" ? "VIDEO" : "IMAGE";
             const slug = typeof item.slug === "string" ? item.slug.trim() : "";
             if (!slug) return [];
+            const purchaseMode =
+              item.purchaseMode === "venue_seating" ||
+              item.purchaseMode === "classes" ||
+              item.purchaseMode === "fixed_ticket" ||
+              item.purchaseMode === "none"
+                ? item.purchaseMode
+                : item.experienceType === "VENUE_SEATING"
+                  ? "venue_seating"
+                  : item.experienceType === "CLASSES"
+                    ? "classes"
+                    : "none";
+            const experienceType =
+              item.experienceType === "VENUE_SEATING" || item.experienceType === "CLASSES"
+                ? item.experienceType
+                : null;
             return [
               {
                 slug,
                 eventTypeName: item.eventTypeName,
                 heroImageUrl: heroUrl,
                 heroMediaType,
+                experienceType,
+                purchaseMode,
+                purchasable: item.purchasable === true,
               },
             ];
           });
