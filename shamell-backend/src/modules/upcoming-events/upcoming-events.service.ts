@@ -188,6 +188,7 @@ export class UpcomingEventsService {
       reservationOpensAt: venueConfigRow?.reservationOpensAt ?? null,
       reservationClosesAt: venueConfigRow?.reservationClosesAt ?? null,
       reservationEventDate: venueConfigRow?.reservationEventDate ?? null,
+      reservationTimezone: venueConfigRow?.reservationTimezone ?? null,
       hasActiveSessions,
       fixedTicketCapacity,
       ticketsRemaining,
@@ -930,6 +931,7 @@ export class UpcomingEventsService {
       reservationOpensAt: venueConfig.reservationOpensAt,
       reservationClosesAt: venueConfig.reservationClosesAt,
       reservationEventDate: venueConfig.reservationEventDate,
+      reservationTimezone: venueConfig.reservationTimezone,
       fixedTicketCapacity: venueConfig.fixedTicketCapacity,
       ticketsRemaining:
         venueConfig.fixedTicketCapacity != null && venueConfig.fixedTicketCapacity >= 1

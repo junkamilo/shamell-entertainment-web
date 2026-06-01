@@ -21,6 +21,7 @@ export function resolveUpcomingPurchaseContext(input: {
   reservationOpensAt: Date | null;
   reservationClosesAt: Date | null;
   reservationEventDate: Date | null;
+  reservationTimezone?: string | null;
   hasActiveSessions?: boolean;
   fixedTicketCapacity?: number | null;
   ticketsRemaining?: number;
@@ -29,6 +30,48 @@ export function resolveUpcomingPurchaseContext(input: {
   salesOpen: boolean;
   purchasable: boolean;
 } {
+  const dateOnlyWindowOpen = (
+    opensAt: Date | null,
+    closesAt: Date | null,
+    timezone?: string | null,
+  ): boolean | null => {
+    if (!opensAt || !closesAt) return null;
+    const tz = timezone?.trim() || 'America/New_York';
+    try {
+      const fmt = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      });
+      const todayIso = fmt.format(new Date());
+      const startIso = fmt.format(opensAt);
+      const endIso = fmt.format(closesAt);
+      return todayIso >= startIso && todayIso <= endIso;
+    } catch {
+      return null;
+    }
+  };
+
+  const evaluateWindowOpen = (): boolean => {
+    const window = resolveReservationWindow({
+      reservationOpensAt: input.reservationOpensAt,
+      reservationClosesAt: input.reservationClosesAt,
+      reservationEventDate: input.reservationEventDate,
+    });
+    const status = evaluateSalesWindow(window);
+    if (status.open) return true;
+    if (status.reason === 'not_started' || status.reason === 'ended') {
+      const byDateOnly = dateOnlyWindowOpen(
+        input.reservationOpensAt,
+        input.reservationClosesAt,
+        input.reservationTimezone,
+      );
+      if (byDateOnly != null) return byDateOnly;
+    }
+    return false;
+  };
+
   const hasActiveSessions = input.hasActiveSessions ?? false;
   let purchaseMode: UpcomingPurchaseMode = 'none';
   let salesOpen = false;
@@ -47,12 +90,7 @@ export function resolveUpcomingPurchaseContext(input: {
     input.clientEnabled
   ) {
     purchaseMode = 'venue_seating';
-    const window = resolveReservationWindow({
-      reservationOpensAt: input.reservationOpensAt,
-      reservationClosesAt: input.reservationClosesAt,
-      reservationEventDate: input.reservationEventDate,
-    });
-    salesOpen = evaluateSalesWindow(window).open;
+    salesOpen = evaluateWindowOpen();
     return { purchaseMode, salesOpen, purchasable: salesOpen };
   }
 
@@ -61,12 +99,7 @@ export function resolveUpcomingPurchaseContext(input: {
     !input.clientEnabled
   ) {
     purchaseMode = 'fixed_ticket';
-    const window = resolveReservationWindow({
-      reservationOpensAt: input.reservationOpensAt,
-      reservationClosesAt: input.reservationClosesAt,
-      reservationEventDate: input.reservationEventDate,
-    });
-    salesOpen = evaluateSalesWindow(window).open;
+    salesOpen = evaluateWindowOpen();
     const priceOk =
       input.price != null && !Number.isNaN(input.price) && input.price >= 0.5;
     const ticketsOk =
