@@ -161,11 +161,14 @@ export default function Footer({
             aria-hidden
           />
 
-          <div className="flex flex-col items-center justify-between gap-4 text-center sm:flex-row sm:text-left">
-            <p className="font-body text-sm font-medium tracking-wide text-foreground/75 md:text-base md:text-foreground/82">
+          <div className="flex flex-col items-center gap-4 text-center sm:grid sm:grid-cols-3 sm:items-center sm:gap-6">
+            <p className="font-body text-sm font-medium tracking-wide text-foreground/75 sm:text-left md:text-base md:text-foreground/82">
               © {year} Shamell. All rights reserved.
             </p>
-            <p className="font-brand text-xs font-semibold tracking-[0.28em] text-foreground/70 uppercase md:text-sm md:tracking-[0.32em] md:text-foreground/78">
+            <p className="font-body text-sm font-medium tracking-wide text-foreground/65 md:text-base md:text-foreground/72">
+              Technology by Roa productions
+            </p>
+            <p className="font-brand text-xs font-semibold tracking-[0.28em] text-foreground/70 uppercase sm:text-right md:text-sm md:tracking-[0.32em] md:text-foreground/78">
               Performance · Art · Events
             </p>
           </div>

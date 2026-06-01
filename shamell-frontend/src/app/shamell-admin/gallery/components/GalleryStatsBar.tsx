@@ -6,13 +6,12 @@ type Props = {
 
 export default function GalleryStatsBar({ stats }: Props) {
   return (
-    <div className="mb-6 grid grid-cols-2 gap-3 lg:mb-8 lg:grid-cols-4 lg:gap-4">
+    <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:mb-8 lg:gap-4">
       {(
         [
           ["TOTAL MEDIOS", String(stats.total)],
           ["VISIBLES", String(stats.visible)],
           ["ALBUMS IN USE", String(stats.catsWith)],
-          ["LAST UPLOAD", stats.recent],
         ] as const
       ).map(([label, value]) => (
         <div key={label} className="shamell-glass-surface rounded-xl px-4 py-3">

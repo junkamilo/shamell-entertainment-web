@@ -13,10 +13,10 @@ export function buildServiceTypeSubtitle(item: ServiceTypeItem): string {
   const svc = item.serviceCount ?? 0;
   const gal = item.galleryPhotoCount ?? 0;
   if (svc > 0) {
-    return `${svc === 1 ? "1 service" : `${svc} services`} linked. Cannot hide or delete until those links are gone.`;
+    return `${svc === 1 ? "1 catalog service" : `${svc} catalog services`} linked. Deactivate and delete are blocked until those links are removed.`;
   }
   if (gal > 0) {
-    return `${gal} linked gallery photo(s). Remove them or unlink before deleting this type.`;
+    return `${gal} linked gallery photo(s). Remove them before deleting this type.`;
   }
   return "No linked services. You can hide or delete if you do not need it.";
 }

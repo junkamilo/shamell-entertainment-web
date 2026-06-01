@@ -30,6 +30,7 @@ export default function VenueTablesPageContent() {
   const { items, loading, error, reload } = useVenueTablesList();
   const [section, setSection] = useState<VenueSeatingSection>("tables");
   const [modalOpen, setModalOpen] = useState(false);
+  const [chairsModalOpen, setChairsModalOpen] = useState(false);
   const [editing, setEditing] = useState<VenueTableConfig | null>(null);
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -43,6 +44,10 @@ export default function VenueTablesPageContent() {
   const openCreate = () => {
     setEditing(null);
     setModalOpen(true);
+  };
+
+  const openChairsCreate = () => {
+    setChairsModalOpen(true);
   };
 
   const openEdit = (item: VenueTableConfig) => {
@@ -156,10 +161,10 @@ export default function VenueTablesPageContent() {
         subtitle={
           isTablesSection
             ? "Configure tables with combo pricing and included chairs."
-            : `Set how many standalone chairs are available and their unit price for ${SEATING_LAYOUT_ADMIN_LABEL.toLowerCase()}.`
+            : `Add standalone chairs and unit pricing for ${SEATING_LAYOUT_ADMIN_LABEL.toLowerCase()}.`
         }
-        actionLabel={isTablesSection ? "Configure table" : undefined}
-        onAction={isTablesSection ? openCreate : undefined}
+        actionLabel={isTablesSection ? "Configure table" : "Configure chairs"}
+        onAction={isTablesSection ? openCreate : openChairsCreate}
         extraActions={
           <VenueSeatingSectionTabs value={section} onChange={setSection} />
         }
@@ -269,7 +274,10 @@ export default function VenueTablesPageContent() {
           />
         </>
       ) : (
-        <StandaloneChairsSection />
+        <StandaloneChairsSection
+          modalOpen={chairsModalOpen}
+          onModalOpenChange={setChairsModalOpen}
+        />
       )}
     </div>
   );

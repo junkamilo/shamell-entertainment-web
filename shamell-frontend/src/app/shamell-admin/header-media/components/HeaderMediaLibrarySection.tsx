@@ -1,4 +1,4 @@
-import { GripVertical, ImagePlus, Loader2 } from "lucide-react";
+import { ImagePlus, Loader2 } from "lucide-react";
 import AdminPagination from "@/components/admin/AdminPagination";
 import type { PaginationMeta } from "@/lib/pagination";
 import type { HeaderPhoto } from "../types/headerMedia.types";
@@ -11,7 +11,7 @@ type Props = {
   paginationMeta: PaginationMeta;
   onPageChange: (page: number) => void;
   onPerPageChange: (perPage: number) => void;
-  onView: (url: string) => void;
+  onView: (photo: HeaderPhoto, globalIndex: number) => void;
   onFocus: (photo: HeaderPhoto) => void;
   onToggle: (photo: HeaderPhoto) => void;
   onDelete: (photo: HeaderPhoto) => void;
@@ -31,19 +31,10 @@ export default function HeaderMediaLibrarySection({
 }: Props) {
   return (
     <>
-      <div className="mt-10 mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Library</h2>
-          <span className="rounded-full border border-gold/35 bg-gold/10 px-2.5 py-0.5 font-brand text-[10px] tracking-widest text-gold">
-            {isLoading ? "…" : `${paginationMeta.totalItems} item${paginationMeta.totalItems === 1 ? "" : "s"}`}
-          </span>
-        </div>
-        <span
-          className="inline-flex cursor-not-allowed items-center gap-1.5 text-xs text-foreground/40"
-          title="Slider order requires server support (coming soon)."
-        >
-          <GripVertical className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-          Manual order unavailable
+      <div className="mt-10 mb-4 flex flex-wrap items-center gap-2">
+        <h2 className="font-brand text-lg tracking-[0.08em] text-gold">Library</h2>
+        <span className="rounded-full border border-gold/35 bg-gold/10 px-2.5 py-0.5 font-brand text-[10px] tracking-widest text-gold">
+          {isLoading ? "…" : `${paginationMeta.totalItems} item${paginationMeta.totalItems === 1 ? "" : "s"}`}
         </span>
       </div>
 

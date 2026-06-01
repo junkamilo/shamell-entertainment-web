@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { ServiceTypeItem } from "@/app/shamell-admin/service-types/types/serviceTypes.types";
 import { PAGE_SIZE } from "../lib/servicesConstants";
 import { formatPriceEn } from "../lib/servicesDisplay";
 import type { AdminService, FilterTab, ServicesStats } from "../types/services.types";
 
 type Args = {
   services: AdminService[];
-  serviceTypes: ServiceTypeItem[];
 };
 
-export function useServicesList({ services, serviceTypes }: Args) {
+export function useServicesList({ services }: Args) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
   const [typeFilterId, setTypeFilterId] = useState<string | null>(null);
@@ -70,26 +68,6 @@ export function useServicesList({ services, serviceTypes }: Args) {
     return { total, active, inactive: total - active, itemsTotal };
   }, [services]);
 
-  const typeMostUsedLabel = useMemo(() => {
-    if (services.length === 0) return "—";
-    const counts: Record<string, number> = {};
-    for (const s of services) {
-      const id = s.serviceTypeId;
-      counts[id] = (counts[id] ?? 0) + 1;
-    }
-    let bestId = "";
-    let bestCount = 0;
-    for (const [id, c] of Object.entries(counts)) {
-      if (c > bestCount || (c === bestCount && (bestId === "" || id < bestId))) {
-        bestCount = c;
-        bestId = id;
-      }
-    }
-    const name = serviceTypes.find((t) => t.id === bestId)?.name ?? bestId;
-    const raw = name.trim() || "—";
-    return raw.length > 22 ? `${raw.slice(0, 20)}…` : raw;
-  }, [services, serviceTypes]);
-
   return {
     searchQuery,
     setSearchQuery,
@@ -109,6 +87,5 @@ export function useServicesList({ services, serviceTypes }: Args) {
     safePage,
     totalPages,
     stats,
-    typeMostUsedLabel,
   };
 }

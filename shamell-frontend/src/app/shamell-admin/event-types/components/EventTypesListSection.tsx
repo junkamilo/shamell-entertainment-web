@@ -2,7 +2,8 @@ import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
 import AdminPagination from "@/components/admin/AdminPagination";
 import type { PaginationMeta } from "@/lib/pagination";
 import type { EventTypeItem } from "../types/eventTypes.types";
-import EventTypesCard from "./EventTypesCard";
+import EventTypesMobileCard from "./EventTypesMobileCard";
+import EventTypesTable from "./EventTypesTable";
 
 type Props = {
   isLoading: boolean;
@@ -14,11 +15,11 @@ type Props = {
   onPerPageChange: (perPage: number) => void;
   onCreateClick: () => void;
   togglingId: string | null;
-  canDelete: (item: EventTypeItem) => boolean;
   cannotDeactivate: (item: EventTypeItem) => boolean;
   onEdit: (item: EventTypeItem) => void;
   onDelete: (item: EventTypeItem) => void;
   onToggleActive: (item: EventTypeItem) => void;
+  onBlockedDeactivate: (item: EventTypeItem) => void;
 };
 
 export default function EventTypesListSection({
@@ -31,16 +32,25 @@ export default function EventTypesListSection({
   onPerPageChange,
   onCreateClick,
   togglingId,
-  canDelete,
   cannotDeactivate,
   onEdit,
   onDelete,
   onToggleActive,
+  onBlockedDeactivate,
 }: Props) {
+  const rowHandlers = {
+    togglingId,
+    cannotDeactivate,
+    onEdit,
+    onDelete,
+    onToggleActive,
+    onBlockedDeactivate,
+  };
+
   return (
-    <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
+    <section className="shamell-glass-surface min-w-0 overflow-hidden rounded-xl p-4 md:p-5">
       {isLoading ? (
-        <p className="py-16 text-center font-body text-sm text-foreground/65">Loading...</p>
+        <p className="py-12 text-center font-body text-sm text-foreground/65">Loading...</p>
       ) : filteredCount === 0 ? (
         typesCount === 0 ? (
           <AdminCatalogEmptyState
@@ -58,20 +68,25 @@ export default function EventTypesListSection({
         )
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid min-w-0 gap-3 lg:hidden">
             {pagedTypes.map((item) => (
-              <EventTypesCard
+              <EventTypesMobileCard
                 key={item.id}
                 item={item}
-                deletable={canDelete(item)}
-                blockDeactivate={cannotDeactivate(item)}
+                deactivateBlocked={cannotDeactivate(item)}
                 isToggling={togglingId === item.id}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onToggleActive={onToggleActive}
+                onBlockedDeactivate={onBlockedDeactivate}
               />
             ))}
           </div>
+
+          <div className="hidden min-w-0 w-full lg:block">
+            <EventTypesTable types={pagedTypes} {...rowHandlers} />
+          </div>
+
           <AdminPagination
             className="mt-6 border-t border-gold/10 pt-4"
             meta={paginationMeta}
@@ -80,6 +95,10 @@ export default function EventTypesListSection({
           />
         </>
       )}
+
+      {isLoading && filteredCount > 0 ? (
+        <p className="mt-3 text-sm text-foreground/65">Refreshing...</p>
+      ) : null}
     </section>
   );
 }

@@ -2,7 +2,8 @@ import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
 import AdminPagination from "@/components/admin/AdminPagination";
 import type { PaginationMeta } from "@/lib/pagination";
 import type { OccasionTypeItem } from "../types/occasionTypes.types";
-import OccasionTypesRow from "./OccasionTypesRow";
+import OccasionTypesMobileCard from "./OccasionTypesMobileCard";
+import OccasionTypesTable from "./OccasionTypesTable";
 
 type Props = {
   isLoading: boolean;
@@ -14,11 +15,11 @@ type Props = {
   onPerPageChange: (perPage: number) => void;
   onCreateClick: () => void;
   togglingId: string | null;
-  canDelete: (item: OccasionTypeItem) => boolean;
   cannotDeactivate: (item: OccasionTypeItem) => boolean;
   onEdit: (item: OccasionTypeItem) => void;
   onDelete: (item: OccasionTypeItem) => void;
   onToggleActive: (item: OccasionTypeItem) => void;
+  onBlockedDeactivate: (item: OccasionTypeItem) => void;
 };
 
 export default function OccasionTypesListSection({
@@ -31,16 +32,25 @@ export default function OccasionTypesListSection({
   onPerPageChange,
   onCreateClick,
   togglingId,
-  canDelete,
   cannotDeactivate,
   onEdit,
   onDelete,
   onToggleActive,
+  onBlockedDeactivate,
 }: Props) {
+  const rowHandlers = {
+    togglingId,
+    cannotDeactivate,
+    onEdit,
+    onDelete,
+    onToggleActive,
+    onBlockedDeactivate,
+  };
+
   return (
-    <section className="shamell-glass-surface rounded-xl p-5 md:p-7">
+    <section className="shamell-glass-surface min-w-0 overflow-hidden rounded-xl p-4 md:p-5">
       {isLoading ? (
-        <p className="py-16 text-center font-body text-sm text-foreground/65">Loading...</p>
+        <p className="py-12 text-center font-body text-sm text-foreground/65">Loading...</p>
       ) : filteredCount === 0 ? (
         rowsCount === 0 ? (
           <AdminCatalogEmptyState
@@ -61,19 +71,23 @@ export default function OccasionTypesListSection({
         )
       ) : (
         <>
-          <div className="grid gap-3">
+          <div className="grid min-w-0 gap-3 lg:hidden">
             {pagedRows.map((item) => (
-              <OccasionTypesRow
+              <OccasionTypesMobileCard
                 key={item.id}
                 item={item}
-                deletable={canDelete(item)}
-                blockDeactivate={cannotDeactivate(item)}
-                togglingId={togglingId}
+                deactivateBlocked={cannotDeactivate(item)}
+                isToggling={togglingId === item.id}
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onToggleActive={onToggleActive}
+                onBlockedDeactivate={onBlockedDeactivate}
               />
             ))}
+          </div>
+
+          <div className="hidden min-w-0 w-full lg:block">
+            <OccasionTypesTable rows={pagedRows} {...rowHandlers} />
           </div>
 
           <AdminPagination
@@ -84,6 +98,10 @@ export default function OccasionTypesListSection({
           />
         </>
       )}
+
+      {isLoading && filteredCount > 0 ? (
+        <p className="mt-3 text-sm text-foreground/65">Refreshing...</p>
+      ) : null}
     </section>
   );
 }

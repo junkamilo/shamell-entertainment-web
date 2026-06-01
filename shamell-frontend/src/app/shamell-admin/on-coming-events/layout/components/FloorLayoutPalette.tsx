@@ -36,7 +36,7 @@ function PaletteTile({ id, label, count, paletteDrag, renderIcon }: PaletteTileP
       {...listeners}
       {...attributes}
       className={cn(
-        "flex flex-col items-center gap-1 rounded-lg border border-shamell-line-soft bg-shamell-twilight/40 px-3 py-2 text-xs text-shamell-text-primary transition hover:border-shamell-gold/50",
+        "flex shrink-0 flex-col items-center gap-1 rounded-lg border border-shamell-line-soft bg-shamell-twilight/40 px-3 py-2 text-xs text-shamell-text-primary transition hover:border-shamell-gold/50 min-w-[5.5rem] lg:min-w-0",
       )}
       aria-label={`Drag ${label} onto floor plan`}
     >
@@ -108,7 +108,10 @@ export default function FloorLayoutPalette({ palette }: Props) {
         <p className="text-xs font-semibold uppercase tracking-wide text-shamell-gold">
           Palette
         </p>
-        <p className="hidden max-w-xl text-[10px] leading-snug text-shamell-text-primary/60 sm:block">
+        <p className="max-w-xl text-[10px] leading-snug text-shamell-text-primary/60 lg:hidden">
+          Drag onto the floor plan. Counts decrease as you place items.
+        </p>
+        <p className="hidden max-w-xl text-[10px] leading-snug text-shamell-text-primary/60 lg:block">
           From Table seating inventory. Drag from here to place on the floor plan. Counts
           decrease as you place items.
         </p>
@@ -118,7 +121,7 @@ export default function FloorLayoutPalette({ palette }: Props) {
           No tables or chairs available. Configure them in Table seating.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 shamell-scrollbar lg:mx-0 lg:grid lg:grid-cols-4 lg:gap-3 lg:overflow-visible lg:px-0 lg:pb-0">
           {visibleTiles.map((tile) => (
             <PaletteTile key={tile.id} {...tile} />
           ))}

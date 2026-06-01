@@ -3,7 +3,12 @@
 import { type FormEvent, useCallback, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { getOccasionTypesBearerToken } from "../lib/occasionTypesAuth";
-import { canDeleteOccasionType, cannotDeactivateWhileActive } from "../lib/occasionTypesUsage";
+import {
+  canDeleteOccasionType,
+  cannotDeactivateWhileActive,
+  getDeactivateBlockedDescription,
+  getDeleteBlockedDescription,
+} from "../lib/occasionTypesUsage";
 import { deleteAdminOccasionType } from "../services/deleteAdminOccasionType";
 import {
   patchAdminOccasionType,
@@ -114,14 +119,7 @@ export function useOccasionTypesPage() {
 
   const onToggleActive = useCallback(
     async (item: OccasionTypeItem) => {
-      if (cannotDeactivateWhileActive(item)) {
-        toast({
-          variant: "destructive",
-          title: "Cannot turn off",
-          description: "This occasion type has linked bookings.",
-        });
-        return;
-      }
+      if (cannotDeactivateWhileActive(item)) return;
 
       const token = getOccasionTypesBearerToken();
       if (!token) return;
@@ -141,14 +139,7 @@ export function useOccasionTypesPage() {
   );
 
   const openDeleteConfirm = useCallback((item: OccasionTypeItem) => {
-    if (!canDeleteOccasionType(item)) {
-      toast({
-        variant: "destructive",
-        title: "Cannot delete",
-        description: "There are bookings linked to this occasion type.",
-      });
-      return;
-    }
+    if (!canDeleteOccasionType(item)) return;
     setPendingDelete(item);
   }, []);
 
@@ -208,5 +199,7 @@ export function useOccasionTypesPage() {
     closeDeleteModal,
     canDeleteOccasionType,
     cannotDeactivateWhileActive,
+    getDeactivateBlockedDescription,
+    getDeleteBlockedDescription,
   };
 }

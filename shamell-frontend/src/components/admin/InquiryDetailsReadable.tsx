@@ -294,17 +294,21 @@ export function InquiryDetailsReadable({
   details,
   rows: rowsProp,
   viewer = "admin",
+  sectionTitle = "FORM DETAILS",
 }: {
   details?: unknown;
   rows?: InquiryDetailRow[];
   viewer?: InquiryDetailViewer;
+  sectionTitle?: string;
 }) {
   const rows = rowsProp ?? buildInquiryDetailRows(details, { viewer });
   if (rows.length === 0) return null;
 
   return (
     <div className="shamell-glass-surface rounded-xl p-4 sm:p-5">
-      <p className="mb-4 font-brand text-xs tracking-[0.18em] text-gold/75 sm:text-sm">FORM DETAILS</p>
+      <p className="mb-4 font-brand text-xs tracking-[0.18em] text-gold/75 sm:text-sm">
+        {sectionTitle}
+      </p>
       <dl className="grid gap-4 sm:grid-cols-2 sm:gap-5">
         {rows.map(({ label, value }, idx) => (
           <div key={idx} className="min-w-0 sm:col-span-1">

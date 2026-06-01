@@ -21,6 +21,20 @@ type NavItem = {
   sectionId?: string;
 };
 
+/**
+ * Vertical order of section `id`s on `app/page.tsx`.
+ * Note: `ExperiencesSection` renders SERVICE CATALOG (`id="services"`);
+ * `ServicesSection` renders TYPES OF EVENTS (`id="experiences"`).
+ */
+const HOME_SECTION_SCROLL_ORDER = [
+  "hero",
+  "services",
+  "experiences",
+  "about",
+  "on-coming-events",
+  "gallery",
+] as const;
+
 const baseNavItems: NavItem[] = [
   { label: "HOME", href: "/#hero", sectionId: "hero" },
   { label: "SERVICE CATALOG", href: "/#services", sectionId: "services" },
@@ -35,8 +49,27 @@ const baseNavItems: NavItem[] = [
 
 const onComingEventsNavItem: NavItem = {
   label: "ON COMING EVENTS",
-  href: ON_COMING_EVENTS_PUBLIC_PATH,
+  href: "/#on-coming-events",
+  sectionId: "on-coming-events",
 };
+
+function isNavItemActive(
+  pathname: string,
+  activeSection: string,
+  activeHref: string,
+  item: NavItem,
+): boolean {
+  if (pathname === "/") {
+    return Boolean(item.sectionId && item.sectionId === activeSection);
+  }
+  if (
+    item.sectionId === "on-coming-events" &&
+    pathname.startsWith(ON_COMING_EVENTS_PUBLIC_PATH)
+  ) {
+    return true;
+  }
+  return activeHref === item.href;
+}
 
 function computeHomeActiveSectionId(sectionIds: string[]): string {
   if (typeof window === "undefined") {
@@ -78,10 +111,12 @@ function DesktopNavLink({
   href,
   label,
   active,
+  underlineWhenActive = true,
 }: {
   href: string;
   label: string;
   active: boolean;
+  underlineWhenActive?: boolean;
 }) {
   return (
     <Link
@@ -106,7 +141,10 @@ function DesktopNavLink({
       <motion.span
         className="absolute bottom-1.5 left-2 right-2 h-px origin-center bg-linear-to-r from-transparent via-gold to-transparent"
         initial={false}
-        animate={{ scaleX: active ? 1 : 0, opacity: active ? 0.85 : 0 }}
+        animate={{
+          scaleX: active && underlineWhenActive ? 1 : 0,
+          opacity: active && underlineWhenActive ? 0.85 : 0,
+        }}
         whileHover={{ scaleX: 1, opacity: 0.75 }}
         transition={{ duration: 0.24, ease: "easeOut" }}
         aria-hidden
@@ -126,11 +164,12 @@ export default function SiteHeader() {
     items.splice(insertAt, 0, onComingEventsNavItem);
     return items;
   }, [onComingEventsEnabled]);
-  const homeScrollSectionIds = useMemo(
-    () =>
-      navItems.map((item) => item.sectionId).filter((id): id is string => Boolean(id)),
-    [navItems],
-  );
+  const homeScrollSectionIds = useMemo(() => {
+    if (!onComingEventsEnabled) {
+      return HOME_SECTION_SCROLL_ORDER.filter((id) => id !== "on-coming-events");
+    }
+    return [...HOME_SECTION_SCROLL_ORDER];
+  }, [onComingEventsEnabled]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
   const [showAdminEntry, setShowAdminEntry] = useState(false);
@@ -204,9 +243,7 @@ export default function SiteHeader() {
 
   const activeHref = useMemo(() => {
     if (pathname === "/") {
-      const bySection = navItems.find(
-        (item) => item.sectionId === activeSection,
-      );
+      const bySection = navItems.find((item) => item.sectionId === activeSection);
       return bySection?.href ?? "/#hero";
     }
 
@@ -214,7 +251,9 @@ export default function SiteHeader() {
 
     if (pathname.startsWith("/contacto")) return "/contacto";
 
-    if (pathname.startsWith(ON_COMING_EVENTS_PUBLIC_PATH)) return ON_COMING_EVENTS_PUBLIC_PATH;
+    if (pathname.startsWith(ON_COMING_EVENTS_PUBLIC_PATH)) {
+      return "/#on-coming-events";
+    }
 
     return "";
   }, [activeSection, pathname, navItems]);
@@ -222,11 +261,6 @@ export default function SiteHeader() {
 
   return (
     <>
-      <div
-        className="pointer-events-none fixed top-0 left-0 right-0 z-91 h-px bg-linear-to-r from-transparent via-gold/35 to-transparent opacity-90"
-        aria-hidden
-      />
-
       <motion.header
         initial={{ y: -22, opacity: 0 }}
         animate={{
@@ -246,7 +280,7 @@ export default function SiteHeader() {
           ease: [0.16, 1, 0.3, 1],
         }}
         className={cn(
-          "fixed top-px left-0 right-0 z-90 transition-[background-color,border-color] duration-500 ease-out",
+          "fixed top-0 left-0 right-0 z-90 transition-[background-color,border-color] duration-500 ease-out",
           headerElevated
             ? "border-b border-gold/28 bg-[linear-gradient(180deg,rgba(10,6,14,0.94),rgba(8,6,10,0.78))] shadow-[0_18px_56px_rgba(0,0,0,0.62)] md:backdrop-blur-xl"
             : "border-b border-gold/16 bg-[linear-gradient(180deg,rgba(12,8,16,0.68),rgba(12,8,16,0.36))] md:backdrop-blur-md",
@@ -257,6 +291,7 @@ export default function SiteHeader() {
           className="pointer-events-none absolute inset-0 opacity-80"
           aria-hidden
         >
+          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-gold/35 to-transparent" />
           <div className="absolute inset-x-0 top-0 h-10 bg-[radial-gradient(65%_120%_at_50%_0%,rgba(197,165,90,0.10),transparent_62%)]" />
         </div>
 
@@ -291,7 +326,18 @@ export default function SiteHeader() {
                       key={item.label}
                       href={item.href}
                       label={item.label.toUpperCase()}
-                      active={activeHref === item.href}
+                      active={isNavItemActive(
+                        pathname,
+                        activeSection,
+                        activeHref,
+                        item,
+                      )}
+                      underlineWhenActive={
+                        !(
+                          pathname === "/" &&
+                          item.sectionId === "on-coming-events"
+                        )
+                      }
                     />
                   ))}
                 </div>
@@ -413,7 +459,7 @@ export default function SiteHeader() {
 
             <motion.nav
               key="mobile-header-nav"
-              className="fixed left-0 right-0 top-[calc(4.25rem+1px)] z-85 flex max-h-[min(85dvh,calc(100dvh-5rem))] flex-col border-b border-gold/20 bg-[oklch(0.08_0.02_45/0.97)] shadow-[0_24px_48px_rgba(0,0,0,0.65)] backdrop-blur-2xl md:hidden"
+              className="fixed top-17 right-0 left-0 z-85 flex max-h-[min(85dvh,calc(100dvh-5rem))] flex-col border-b border-gold/20 bg-[oklch(0.08_0.02_45/0.97)] shadow-[0_24px_48px_rgba(0,0,0,0.65)] backdrop-blur-2xl md:hidden"
               aria-label="Mobile menu"
               initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -428,7 +474,7 @@ export default function SiteHeader() {
                       onClick={() => setIsMenuOpen(false)}
                       className={cn(
                         "block border-b border-white/6 py-4 font-brand text-base font-medium tracking-[0.2em] uppercase transition-colors duration-300",
-                        activeHref === item.href
+                        isNavItemActive(pathname, activeSection, activeHref, item)
                           ? "text-gold"
                           : "text-foreground/75 hover:text-gold-light",
                       )}

@@ -9,6 +9,8 @@ type ContactInquiryFieldProps = {
   required?: boolean;
   hint?: string;
   min?: number;
+  max?: number;
+  maxLength?: number;
   inputMode?: HTMLAttributes<HTMLInputElement>["inputMode"];
   inputClassName?: string;
   labelClassName?: string;
@@ -24,6 +26,8 @@ export default function ContactInquiryField({
   required,
   hint,
   min,
+  max,
+  maxLength,
   inputMode,
   inputClassName,
   labelClassName,
@@ -44,6 +48,8 @@ export default function ContactInquiryField({
           type={type}
           value={value}
           min={min !== undefined ? min : undefined}
+          max={max !== undefined ? max : undefined}
+          maxLength={maxLength}
           inputMode={inputMode}
           onChange={(e) => onChange(e.target.value)}
           required={required}

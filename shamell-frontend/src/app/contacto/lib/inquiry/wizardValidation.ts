@@ -4,10 +4,25 @@ import {
   startOfTodayLocal,
 } from "@/lib/contactLogisticsUtils";
 import { isValidInquiryCode, type ServiceTypeCode } from "@/lib/contactInquiryConstants";
-import { isBespoke, isGalaOrVip } from "./inquiryCodeUtils";
+import { isBespoke } from "./inquiryCodeUtils";
 import type { CatalogSnapshot, ContactLine, Phase, WizardData } from "./wizardTypes";
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export const LOGISTICS_LOCATION_MIN = 2;
+export const LOGISTICS_LOCATION_MAX = 300;
+export const LOGISTICS_ADDRESS_MIN = 5;
+export const LOGISTICS_ADDRESS_MAX = 400;
+export const LOGISTICS_GUEST_MIN = 1;
+export const LOGISTICS_GUEST_MAX = 50_000;
+export const LOGISTICS_PROJECT_NOTE_MIN = 5;
+export const LOGISTICS_PROJECT_NOTE_MAX = 500;
+
+export type WizardValidationOpts = {
+  catalogDismissed: boolean;
+  catalogSnapshot: CatalogSnapshot | null;
+  hadServiceTypeInUrl: boolean;
+};
 
 export function emptyWizard(initialServiceType?: ServiceTypeCode): WizardData {
   return {
@@ -45,22 +60,113 @@ export function phaseFlow(inquiryCode: string): Phase[] {
   return flow;
 }
 
+function lineUsesBespokeDateRule(
+  d: WizardData,
+  line: ContactLine | undefined,
+): boolean {
+  if (isBespoke(d.inquiryCode)) return true;
+  return (
+    (line?.occasionBespokeProject?.length ?? 0) > 0 ||
+    (line?.occasionBespokeRole?.length ?? 0) > 0
+  );
+}
+
+function validateVenueAndGuests(d: WizardData): string | null {
+  const location = d.location.trim();
+  if (!location) return "City / venue is required.";
+  if (location.length < LOGISTICS_LOCATION_MIN) {
+    return `City / venue must be at least ${LOGISTICS_LOCATION_MIN} characters.`;
+  }
+  if (location.length > LOGISTICS_LOCATION_MAX) {
+    return `City / venue must be at most ${LOGISTICS_LOCATION_MAX} characters.`;
+  }
+
+  const address = d.eventAddress.trim();
+  if (!address) return "Event address is required.";
+  if (address.length < LOGISTICS_ADDRESS_MIN) {
+    return `Event address must be at least ${LOGISTICS_ADDRESS_MIN} characters.`;
+  }
+  if (address.length > LOGISTICS_ADDRESS_MAX) {
+    return `Event address must be at most ${LOGISTICS_ADDRESS_MAX} characters.`;
+  }
+
+  const guestRaw = d.guestCount.trim();
+  if (!guestRaw) return "Approx. guest count is required.";
+  const n = Number(guestRaw);
+  if (!Number.isFinite(n) || !Number.isInteger(n)) {
+    return "Guest count must be a whole number.";
+  }
+  if (n < LOGISTICS_GUEST_MIN || n > LOGISTICS_GUEST_MAX) {
+    return `Guest count must be between ${LOGISTICS_GUEST_MIN} and ${LOGISTICS_GUEST_MAX.toLocaleString()}.`;
+  }
+
+  return null;
+}
+
+function validatePerformanceTimes(d: WizardData): string | null {
+  if (!d.eventTimeStart.trim()) return "Please select a performance start time.";
+  if (!d.eventTimeEnd.trim()) return "Please select a performance end time.";
+
+  const ts = hhmmToMinutes(d.eventTimeStart);
+  const te = hhmmToMinutes(d.eventTimeEnd);
+  if (ts === null) return "Invalid performance start time.";
+  if (te === null) return "Invalid performance end time.";
+  if (te <= ts) return "Performance end must be after performance start.";
+  return null;
+}
+
+function validateEventDateField(d: WizardData): string | null {
+  if (!d.eventDate.trim()) return "Please choose an event date.";
+  const dt = parseISOLocal(d.eventDate);
+  if (!dt) return "Invalid event date.";
+  if (dt < startOfTodayLocal()) return "Event date cannot be in the past.";
+  return null;
+}
+
+export function validateLogisticsFields(
+  d: WizardData,
+  bespokeDateRule: boolean,
+): string | null {
+  const note = d.projectDeadlineNote.trim();
+  if (note.length > LOGISTICS_PROJECT_NOTE_MAX) {
+    return `Project deadline note must be at most ${LOGISTICS_PROJECT_NOTE_MAX} characters.`;
+  }
+
+  const hasDate = Boolean(d.eventDate.trim());
+
+  if (bespokeDateRule) {
+    const noteOk = note.length >= LOGISTICS_PROJECT_NOTE_MIN;
+    if (!hasDate && !noteOk) {
+      return "Provide an event date or a project deadline / date window (at least 5 characters).";
+    }
+    if (!hasDate) {
+      return validateVenueAndGuests(d);
+    }
+  }
+
+  const dateErr = validateEventDateField(d);
+  if (dateErr) return dateErr;
+
+  const timesErr = validatePerformanceTimes(d);
+  if (timesErr) return timesErr;
+
+  return validateVenueAndGuests(d);
+}
+
 export function validatePhase(
   phase: Phase,
   d: WizardData,
   contactLines: ContactLine[],
-  opts: {
-    catalogDismissed: boolean;
-    catalogSnapshot: CatalogSnapshot | null;
-    hadServiceTypeInUrl: boolean;
-  },
+  opts: WizardValidationOpts,
 ): string | null {
-  const serviceCatalogActive = opts.catalogSnapshot?.kind === "service" && !opts.catalogDismissed;
+  const serviceCatalogActive =
+    opts.catalogSnapshot?.kind === "service" && !opts.catalogDismissed;
 
   switch (phase) {
     case "service": {
       if (contactLines.length === 0) {
-        return null;
+        if (serviceCatalogActive && isValidInquiryCode(d.inquiryCode)) return null;
+        return "Catalog offerings are not available. Please try again later.";
       }
       if (!d.contactLineId) return "Please select one of the catalog offerings below.";
       return null;
@@ -94,25 +200,13 @@ export function validatePhase(
     case "experiences":
       return null;
     case "logistics": {
-      if (isGalaOrVip(d.inquiryCode)) {
-        if (!d.eventDate.trim()) return "Please choose an event date (approximate is fine).";
-        return null;
-      }
       const line = contactLines.find((l) => l.id === d.contactLineId);
-      const lineHasBespokeGroups =
-        (line?.occasionBespokeProject?.length ?? 0) > 0 || (line?.occasionBespokeRole?.length ?? 0) > 0;
-      if (isBespoke(d.inquiryCode) || lineHasBespokeGroups) {
-        const hasDate = Boolean(d.eventDate.trim());
-        const noteOk = d.projectDeadlineNote.trim().length >= 5;
-        if (!hasDate && !noteOk) {
-          return "Provide an event date or a project deadline / date window (at least 5 characters).";
-        }
-        return null;
-      }
-      return null;
+      return validateLogisticsFields(d, lineUsesBespokeDateRule(d, line));
     }
     case "expectations": {
-      if (d.message.trim().length < 10) return "Please share at least 10 characters about your vision.";
+      if (d.message.trim().length < 10) {
+        return "Please share at least 10 characters about your vision.";
+      }
       if (d.message.length > 4000) return "Description must be at most 4000 characters.";
       return null;
     }
@@ -135,24 +229,20 @@ export function validatePhase(
   }
 }
 
-export function validateLogisticsFields(d: WizardData): string | null {
-  if (d.location.length > 300) return "Location must be at most 300 characters.";
-  if (d.eventAddress.length > 400) return "Event address must be at most 400 characters.";
-  if (d.eventDate.trim()) {
-    const dt = parseISOLocal(d.eventDate);
-    if (!dt) return "Invalid date.";
-    if (dt < startOfTodayLocal()) return "Event date cannot be in the past.";
-  }
-  const ts = d.eventTimeStart.trim() ? hhmmToMinutes(d.eventTimeStart) : null;
-  const te = d.eventTimeEnd.trim() ? hhmmToMinutes(d.eventTimeEnd) : null;
-  if (d.eventTimeStart.trim() && ts === null) return "Invalid performance start time.";
-  if (d.eventTimeEnd.trim() && te === null) return "Invalid performance end time.";
-  if (ts !== null && te !== null && te <= ts) {
-    return "Performance end must be after performance start.";
-  }
-  if (d.guestCount.trim()) {
-    const n = Number(d.guestCount);
-    if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) return "Guest count must be a whole number.";
-  }
-  return null;
+export function getPhaseValidationError(
+  phase: Phase,
+  d: WizardData,
+  contactLines: ContactLine[],
+  opts: WizardValidationOpts,
+): string | null {
+  return validatePhase(phase, d, contactLines, opts);
+}
+
+export function canAdvanceFromPhase(
+  phase: Phase,
+  d: WizardData,
+  contactLines: ContactLine[],
+  opts: WizardValidationOpts,
+): boolean {
+  return getPhaseValidationError(phase, d, contactLines, opts) === null;
 }

@@ -6,7 +6,6 @@ import { OCCASION_TYPES_PATH } from "@/app/shamell-admin/occasion-types/lib/occa
 import { SERVICE_TYPES_PATH } from "@/app/shamell-admin/service-types/lib/serviceTypesRoutes";
 import { SERVICES_PATH } from "@/app/shamell-admin/services/lib/servicesRoutes";
 import { GALLERY_CATEGORIES_PATH, GALLERY_PATH } from "@/app/shamell-admin/gallery/lib/galleryRoutes";
-import { VENUE_RESERVATIONS_ADMIN_PATH } from "@/app/shamell-admin/venue-reservations/lib/venueReservationsRoutes";
 import { VENUE_TABLES_PATH } from "@/app/shamell-admin/venue-tables/lib/venueTablesRoutes";
 import {
   ON_COMING_EVENTS_ADMIN_PATH,
@@ -26,7 +25,6 @@ import {
   Shapes,
   Store,
   Tags,
-  Ticket,
   UserPlus,
   type LucideIcon,
 } from "lucide-react";
@@ -34,14 +32,12 @@ import {
 export const UPCOMING_EVENTS_NAV_GROUP_ID = "upcoming-events";
 export const UPCOMING_EVENTS_NAV_EXPANDED_KEY = "admin-nav-upcoming-expanded";
 
-export type AdminNavBadge = "reservations";
-
 export type AdminNavLinkItem = {
   type: "link";
   href: string;
   label: string;
   icon: LucideIcon;
-  badge?: AdminNavBadge;
+  badge?: "reservations";
 };
 
 export type AdminNavGroupItem = {
@@ -81,19 +77,13 @@ export const upcomingEventsNavGroup: AdminNavGroupItem = {
       href: ON_COMING_EVENTS_LAYOUT_ADMIN_PATH,
       label: SEATING_LAYOUT_ADMIN_LABEL,
       icon: LayoutGrid,
+      badge: "reservations",
     },
     {
       type: "link",
       href: ON_COMING_EVENTS_ADMIN_PATH,
       label: "On Coming Events (site)",
       icon: Store,
-    },
-    {
-      type: "link",
-      href: VENUE_RESERVATIONS_ADMIN_PATH,
-      label: "Seat reservations",
-      icon: Ticket,
-      badge: "reservations",
     },
     {
       type: "link",

@@ -35,17 +35,6 @@ export default function GalleryPageContent({ state }: Props) {
       <GalleryToolbar
         searchQuery={library.searchQuery}
         onSearchChange={library.setSearchQuery}
-        filterDropdownOpen={library.filterDropdownOpen}
-        onFilterDropdownOpenChange={library.setFilterDropdownOpen}
-        filterDropdownRef={library.filterDropdownRef}
-        listCategoryFilter={library.listCategoryFilter}
-        onListCategoryFilterChange={library.setListCategoryFilter}
-        filterSummaryLabel={library.filterSummaryLabel}
-        filterCount={library.filterCount}
-        filterMedioLabel={library.filterMedioLabel}
-        totalForFilterAll={library.totalForFilterAll}
-        sortedActiveCategories={library.sortedActiveCategories}
-        countByCategory={library.countByCategory}
       />
 
       <GalleryLibrarySection
@@ -72,9 +61,6 @@ export default function GalleryPageContent({ state }: Props) {
         imageFiles={form.imageFiles}
         onImageFilesChange={form.setImageFiles}
         sortedActiveCategories={library.sortedActiveCategories}
-        countByCategory={library.countByCategory}
-        selectedCategoryName={form.selectedCategoryName}
-        selectedCategorySlug={form.selectedCategorySlug}
         onClose={state.closePhotoModal}
         onSubmit={state.onSubmitPhoto}
       />

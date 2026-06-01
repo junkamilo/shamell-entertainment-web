@@ -17,14 +17,13 @@ import {
 import { formatContactSubjectForAdmin } from "@/lib/adminContactDisplay";
 import {
   buildContactInboxAgendarHref,
-  buildLegacyBookingInquiryRows,
   contactClientCommentFromRequest,
   structuredDetailsForPeticionRow,
 } from "@/lib/contactRequestBooking";
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
-import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
 import { cn } from "@/lib/utils";
+import { buildAdminBookingDetailRows } from "../lib/buildAdminBookingDetailRows";
 import { buildBookingEditHref } from "../lib/peticionesBookingHref";
 import { AGENDAR_PATH } from "../lib/peticionesRoutes";
 import { formatRequestDate } from "../lib/peticionesConstants";
@@ -105,17 +104,13 @@ export default function PeticionesRequestCard({
   );
 
   const inquiryRows = useMemo(() => {
+    if (booking) {
+      return buildAdminBookingDetailRows(booking, structuredDetails, bookingTz);
+    }
     const fromJson = buildInquiryDetailRows(structuredDetails);
     if (fromJson.length > 0) return fromJson;
-    if (booking) return buildLegacyBookingInquiryRows(booking, bookingTz);
     return [];
   }, [structuredDetails, booking, bookingTz]);
-
-  const showLegacyBookingHint = Boolean(
-    booking &&
-    buildInquiryDetailRows(structuredDetails).length === 0 &&
-    inquiryRows.length > 0,
-  );
 
   const clientComment = useMemo(() => {
     if (contact) {
@@ -180,6 +175,14 @@ export default function PeticionesRequestCard({
           ? "border-red-400/25 ring-1 ring-red-400/10 opacity-85"
           : "border-gold/40 ring-1 ring-gold/15";
 
+  const clientDisplayName =
+    contact?.fullName ||
+    booking?.guestFullName ||
+    booking?.user?.fullName ||
+    "Client";
+  const clientDisplayEmail =
+    contact?.email || booking?.guestEmail || booking?.user?.email || "";
+
   return (
     <article
       className={cn(
@@ -198,10 +201,7 @@ export default function PeticionesRequestCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
             <span className="font-brand text-base tracking-wide text-gold sm:text-lg">
-              {contact?.fullName ||
-                booking?.guestFullName ||
-                booking?.user?.fullName ||
-                "Client"}
+              {clientDisplayName}
             </span>
             {bookingBadge ? (
               <span className={bookingBadge.className}>{bookingBadge.label}</span>
@@ -220,16 +220,15 @@ export default function PeticionesRequestCard({
             )}
           </div>
           <p className="truncate text-sm text-foreground/60 sm:text-base">
-            {contact?.email || booking?.guestEmail || booking?.user?.email}
+            {clientDisplayEmail}
           </p>
-          <p className="mt-1 line-clamp-2 font-body text-sm text-foreground/70 sm:text-base">
-            {contact
-              ? formatContactSubjectForAdmin(contact.subject)
-              : booking?.event?.name ||
-                booking?.eventType?.name ||
-                bookingServiceDisplayLine(booking) ||
-                "Admin booking"}
-          </p>
+          {!booking && !contact ? null : (
+            <p className="mt-1 line-clamp-2 font-body text-sm text-foreground/70 sm:text-base">
+              {contact
+                ? formatContactSubjectForAdmin(contact.subject)
+                : booking?.event?.name || "Admin booking"}
+            </p>
+          )}
           <p className="mt-1 font-brand text-xs tracking-widest text-foreground/45 sm:text-sm">
             {formatRequestDate(row.createdAt)}
           </p>
@@ -250,6 +249,22 @@ export default function PeticionesRequestCard({
       {expanded ? (
         <div className="mt-4 min-w-0 space-y-4 border-t border-gold/10 pt-4 pl-0 md:pl-12">
           <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-3 sm:text-base">
+            <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">
+              NAME
+            </dt>
+            <dd className="min-w-0 wrap-break-word font-body text-foreground/85">
+              {clientDisplayName}
+            </dd>
+            {clientDisplayEmail ? (
+              <>
+                <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">
+                  EMAIL
+                </dt>
+                <dd className="min-w-0 wrap-break-word font-body text-foreground/85">
+                  {clientDisplayEmail}
+                </dd>
+              </>
+            ) : null}
             {contact?.phone || booking?.guestPhone ? (
               <>
                 <dt className="font-brand text-xs tracking-widest text-gold/65 sm:text-sm">
@@ -287,13 +302,10 @@ export default function PeticionesRequestCard({
             ) : null}
           </dl>
           {inquiryRows.length > 0 ? (
-            <InquiryDetailsReadable rows={inquiryRows} />
-          ) : null}
-          {showLegacyBookingHint ? (
-            <p className="font-body text-xs leading-relaxed text-foreground/50 sm:text-sm">
-              No structured form snapshot on this booking; showing catalog
-              fields only.
-            </p>
+            <InquiryDetailsReadable
+              rows={inquiryRows}
+              sectionTitle={booking ? "BOOKING DETAILS" : "FORM DETAILS"}
+            />
           ) : null}
           {!(
             (contact ?? linkedContact) &&
@@ -403,7 +415,7 @@ export default function PeticionesRequestCard({
               {contact && contactIsBookingInquiry(contact)
                 ? "Booking inquiry from the public form: use Reserve only if a calendar booking was not created automatically (missing phone or catalog match)."
                 : booking
-                  ? "Green = fully paid, orange = deposit paid, gold = awaiting payment, red = canceled."
+                  ? "Green = fully paid, orange = deposit paid, cyan = payment link sent, gold = awaiting payment, red = canceled."
                   : "Bookings from the public form or Book appear here as reserved (green)."}
             </p>
           ) : null}

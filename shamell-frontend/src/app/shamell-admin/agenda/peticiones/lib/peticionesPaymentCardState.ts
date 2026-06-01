@@ -4,6 +4,7 @@ export type PaymentCardVisual =
   | "paid_full"
   | "deposit_partial"
   | "cancelled"
+  | "payment_in_progress"
   | "awaiting_payment";
 
 export function resolveBookingPaymentCardState(
@@ -17,11 +18,24 @@ export function resolveBookingPaymentCardState(
   >,
 ): PaymentCardVisual {
   if (booking.status === "CANCELLED") return "cancelled";
-  if (booking.status === "CONFIRMED") return "paid_full";
-  if (booking.depositPaidAt && !booking.balancePaidAt) return "deposit_partial";
-  if (booking.quoteSentAt && booking.status === "PENDING") {
-    return "awaiting_payment";
+
+  if (booking.depositPaidAt && !booking.balancePaidAt) {
+    return "deposit_partial";
   }
+
+  const fullyPaid =
+    Boolean(booking.balancePaidAt) ||
+    (booking.status === "CONFIRMED" && booking.quoteModel === "FULL");
+  if (fullyPaid) return "paid_full";
+
+  if (
+    booking.quoteSentAt &&
+    booking.status === "PENDING" &&
+    !booking.depositPaidAt
+  ) {
+    return "payment_in_progress";
+  }
+
   return "awaiting_payment";
 }
 
@@ -33,6 +47,8 @@ export function paymentCardBorderClass(visual: PaymentCardVisual): string {
       return "border-orange-400/35 ring-1 ring-orange-400/15";
     case "cancelled":
       return "border-red-400/25 ring-1 ring-red-400/10 opacity-85";
+    case "payment_in_progress":
+      return "border-cyan-400/35 ring-1 ring-cyan-400/15";
     case "awaiting_payment":
       return "border-gold/40 ring-1 ring-gold/15";
   }
@@ -60,6 +76,12 @@ export function paymentCardBadge(visual: PaymentCardVisual): {
         label: "CANCELED",
         className:
           "rounded border border-red-400/45 px-2 py-0.5 font-brand text-[10px] tracking-widest text-red-200 sm:text-xs",
+      };
+    case "payment_in_progress":
+      return {
+        label: "PAYMENT IN PROGRESS",
+        className:
+          "rounded border border-cyan-400/45 px-2 py-0.5 font-brand text-[10px] tracking-widest text-cyan-200 sm:text-xs",
       };
     case "awaiting_payment":
       return {

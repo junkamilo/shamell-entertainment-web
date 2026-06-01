@@ -1,9 +1,11 @@
+import AdminBlockedActionModal from "@/components/admin/AdminBlockedActionModal";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
+import { useAdminBlockedActionWarning } from "@/components/admin/useAdminBlockedActionWarning";
 import type { useEventsPage } from "../hooks/useEventsPage";
+import type { AdminEvent } from "../types/events.types";
 import EventsDeleteModal from "./EventsDeleteModal";
 import EventsFormModal from "./EventsFormModal";
 import EventsListSection from "./EventsListSection";
-import EventsNoTypesBanner from "./EventsNoTypesBanner";
 import EventsSearchBar from "./EventsSearchBar";
 import EventsStatsBar from "./EventsStatsBar";
 import EventsViewOverlay from "./EventsViewOverlay";
@@ -16,9 +18,33 @@ type Props = {
 
 export default function EventsPageContent({ state }: Props) {
   const { catalog, list, form } = state;
-  const hasActiveTypes = catalog.eventTypes.some((item) => item.isActive);
+  const blockedWarning = useAdminBlockedActionWarning();
 
-  const wrapperClass = state.embedded ? "w-full" : "mx-auto w-full max-w-6xl";
+  const showDeactivateBlocked = (item: AdminEvent) => {
+    blockedWarning.openWarning({
+      title: "Cannot deactivate",
+      description: state.getDeactivateBlockedDescription(item),
+    });
+  };
+
+  const showDeleteBlocked = (item: AdminEvent) => {
+    blockedWarning.openWarning({
+      title: "Cannot delete",
+      description: state.getDeleteBlockedDescription(item),
+    });
+  };
+
+  const handleDelete = (item: AdminEvent) => {
+    if (!state.canDeleteEvent(item)) {
+      showDeleteBlocked(item);
+      return;
+    }
+    state.openDeleteConfirm(item);
+  };
+
+  const wrapperClass = state.embedded
+    ? "w-full min-w-0 overflow-x-hidden"
+    : "mx-auto min-w-0 w-full max-w-6xl overflow-x-hidden";
 
   return (
     <div className={wrapperClass}>
@@ -41,8 +67,6 @@ export default function EventsPageContent({ state }: Props) {
         />
       )}
 
-      {!state.upcomingOnly && !hasActiveTypes ? <EventsNoTypesBanner /> : null}
-
       <EventsStatsBar
         stats={list.stats}
         variant={state.upcomingOnly ? "upcomingSite" : "general"}
@@ -53,12 +77,13 @@ export default function EventsPageContent({ state }: Props) {
         onSearchChange={list.setSearchQuery}
         sectionFilter={list.sectionFilter}
         onSectionFilterChange={list.setSectionFilter}
-        hideSectionFilter={state.upcomingOnly}
+        hideSectionFilter
+        upcomingOnly={state.upcomingOnly}
       />
 
       <EventsListSection
         isLoading={catalog.isLoading}
-        eventsCount={list.searchedEvents.length}
+        sectionEventsCount={list.sectionEventsCount}
         searchedCount={list.searchedEvents.length}
         paginatedEvents={list.paginatedEvents}
         pageOffset={list.pageOffset}
@@ -67,12 +92,12 @@ export default function EventsPageContent({ state }: Props) {
         onPageChange={list.setPage}
         onCreateClick={state.openCreateModal}
         togglingId={state.togglingId}
-        canDelete={state.canDeleteEvent}
         cannotDeactivate={state.cannotDeactivateWhileActive}
         onView={state.setViewEvent}
         onEdit={state.startEdit}
-        onDelete={state.openDeleteConfirm}
-        onToggleActive={state.onToggleActive}
+        onDelete={handleDelete}
+        onToggleActive={(item) => void state.onToggleActive(item)}
+        onBlockedDeactivate={showDeactivateBlocked}
       />
 
       <EventsFormModal
@@ -128,6 +153,13 @@ export default function EventsPageContent({ state }: Props) {
       />
 
       <EventsViewOverlay viewEvent={state.viewEvent} onClose={() => state.setViewEvent(null)} />
+
+      <AdminBlockedActionModal
+        isOpen={blockedWarning.isOpen}
+        onClose={blockedWarning.closeWarning}
+        title={blockedWarning.title}
+        description={blockedWarning.description}
+      />
     </div>
   );
 }

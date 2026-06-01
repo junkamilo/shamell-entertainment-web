@@ -2,10 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
+  canAdvanceFromPhase,
   emptyWizard,
+  getPhaseValidationError,
   phaseFlow,
-  validateLogisticsFields,
-  validatePhase,
 } from "../lib/inquiry/wizardValidation";
 import type { CatalogSnapshot, ContactLine, ExperienceAddon, Phase, WizardData } from "../lib/inquiry/wizardTypes";
 import type { ServiceTypeCode } from "@/lib/contactInquiryConstants";
@@ -81,10 +81,7 @@ export function useContactInquiryWizard({
     const phase = flow[phaseIndex];
     if (!phase) return;
 
-    const err =
-      phase === "logistics"
-        ? validatePhase(phase, data, contactLines, validationOpts) || validateLogisticsFields(data)
-        : validatePhase(phase, data, contactLines, validationOpts);
+    const err = getPhaseValidationError(phase, data, contactLines, validationOpts);
     if (err) {
       setStepError(err);
       return;
@@ -162,6 +159,11 @@ export function useContactInquiryWizard({
     [hadServiceTypeInUrl, setData, setPhaseIndex, setStepError],
   );
 
+  const canContinue = useMemo(
+    () => canAdvanceFromPhase(currentPhase, data, contactLines, validationOpts),
+    [currentPhase, data, contactLines, validationOpts],
+  );
+
   const phaseLabel = useCallback((p: Phase): string => {
     switch (p) {
       case "service":
@@ -207,5 +209,6 @@ export function useContactInquiryWizard({
     toggleUuidList,
     selectContactLine,
     phaseLabel,
+    canContinue,
   };
 }

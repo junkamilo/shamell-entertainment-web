@@ -87,6 +87,7 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
     selectContactLine,
     offeringStepLocked,
     detailPhaseIndex,
+    canContinue,
     phaseLabel,
     occasionPickerOpen,
     setOccasionPickerOpen,
@@ -278,7 +279,8 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
             <button
               type="button"
               onClick={goNext}
-              className="btn-outline-gold min-w-40 justify-center px-4 py-2.5 text-sm font-brand tracking-[0.14em] sm:min-w-48"
+              disabled={!canContinue}
+              className="btn-outline-gold min-w-40 justify-center px-4 py-2.5 text-sm font-brand tracking-[0.14em] disabled:pointer-events-none disabled:opacity-45 sm:min-w-48"
             >
               {currentPhase === "contact" ? "Continue to review" : "Continue"}
             </button>

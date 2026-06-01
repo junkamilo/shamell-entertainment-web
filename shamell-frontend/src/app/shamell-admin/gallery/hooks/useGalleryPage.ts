@@ -41,7 +41,6 @@ export function useGalleryPage() {
   const form = useGalleryPhotoForm({
     activeCategories: library.activeCategories,
     sortedActiveCategories: library.sortedActiveCategories,
-    listCategoryFilter: library.listCategoryFilter,
   });
 
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAdminContactRequests } from "@/hooks/use-admin-contact-requests";
 import { useAdminBookings } from "@/hooks/use-admin-bookings";
+import { markPeticionesLaneSeenNow } from "@/lib/peticionesNotifications";
+import { usePeticionesLaneBadge } from "../../hooks/usePeticionesLaneBadge";
 import type {
   ConfirmDeleteState,
   PeticionesLane,
@@ -27,7 +29,18 @@ export function usePeticionesPage() {
     useState(true);
 
   const inbox = usePeticionesInbox(true, { page, perPage, lane: activeLane });
+  const guidanceUnread = usePeticionesLaneBadge("guidance");
   const catalog = usePeticionesCatalogMaps();
+
+  useEffect(() => {
+    markPeticionesLaneSeenNow("bookings");
+  }, []);
+
+  useEffect(() => {
+    if (activeLane === "guidance") {
+      markPeticionesLaneSeenNow("guidance");
+    }
+  }, [activeLane]);
 
   const contactMutations = useAdminContactRequests(false);
   const bookingMutations = useAdminBookings(false);
@@ -103,6 +116,7 @@ export function usePeticionesPage() {
     perPage,
     setPerPage,
     activeLane,
+    guidanceUnread,
     onLaneChange,
     expandedId,
     setExpandedId,

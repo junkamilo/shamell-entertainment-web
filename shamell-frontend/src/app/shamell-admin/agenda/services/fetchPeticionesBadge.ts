@@ -2,7 +2,7 @@ import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
 
 export type FetchPeticionesBadgeOptions = {
   since?: number;
-  lane?: "bookings";
+  lane?: "bookings" | "guidance";
 };
 
 export async function fetchPeticionesBadge(

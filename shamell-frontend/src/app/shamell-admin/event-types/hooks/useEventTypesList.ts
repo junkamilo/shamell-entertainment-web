@@ -91,17 +91,7 @@ export function useEventTypesList() {
     const total = types.length;
     const active = types.filter((t) => t.isActive).length;
     const inactive = total - active;
-    let recentLabel = "—";
-    if (types.length > 0) {
-      const sorted = [...types].sort((a, b) => {
-        const ta = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
-        const tb = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
-        return tb - ta;
-      });
-      const top = sorted[0];
-      if (top) recentLabel = top.name.length > 18 ? `${top.name.slice(0, 16)}…` : top.name;
-    }
-    return { total, active, inactive, recentLabel };
+    return { total, active, inactive };
   }, [types]);
 
   const onPerPageChange = useCallback((next: number) => {

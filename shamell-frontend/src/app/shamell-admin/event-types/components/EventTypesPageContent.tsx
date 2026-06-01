@@ -1,6 +1,11 @@
+import AdminBlockedActionModal from "@/components/admin/AdminBlockedActionModal";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
+import { useAdminBlockedActionWarning } from "@/components/admin/useAdminBlockedActionWarning";
 import type { useEventTypesPage } from "../hooks/useEventTypesPage";
-import EventTypesDeleteModal from "./EventTypesDeleteModal";
+import type { EventTypeItem } from "../types/eventTypes.types";
+import AdminDeleteConfirmModal, {
+  AdminDeleteConfirmMessage,
+} from "@/components/admin/AdminDeleteConfirmModal";
 import EventTypesFormModal from "./EventTypesFormModal";
 import EventTypesListSection from "./EventTypesListSection";
 import EventTypesStatsBar from "./EventTypesStatsBar";
@@ -14,9 +19,32 @@ type Props = {
 
 export default function EventTypesPageContent({ state }: Props) {
   const { list, form } = state;
+  const blockedWarning = useAdminBlockedActionWarning();
+
+  const showDeactivateBlocked = (item: EventTypeItem) => {
+    blockedWarning.openWarning({
+      title: "Cannot deactivate",
+      description: state.getDeactivateBlockedDescription(item),
+    });
+  };
+
+  const showDeleteBlocked = (item: EventTypeItem) => {
+    blockedWarning.openWarning({
+      title: "Cannot delete",
+      description: state.getDeleteBlockedDescription(item),
+    });
+  };
+
+  const handleDelete = (item: EventTypeItem) => {
+    if (!state.canDeleteEventType(item)) {
+      showDeleteBlocked(item);
+      return;
+    }
+    state.openDeleteConfirm(item);
+  };
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto min-w-0 w-full max-w-6xl overflow-x-hidden">
       <AdminModuleHero
         title="Event types"
         actionLabel="New type"
@@ -43,11 +71,11 @@ export default function EventTypesPageContent({ state }: Props) {
         onPerPageChange={list.onPerPageChange}
         onCreateClick={state.openCreateModal}
         togglingId={state.togglingId}
-        canDelete={state.canDeleteEventType}
         cannotDeactivate={state.cannotDeactivateWhileActive}
         onEdit={state.startEdit}
-        onDelete={state.openDeleteConfirm}
+        onDelete={handleDelete}
         onToggleActive={(item) => void state.onToggleActive(item)}
+        onBlockedDeactivate={showDeactivateBlocked}
       />
 
       <EventTypesFormModal
@@ -67,11 +95,28 @@ export default function EventTypesPageContent({ state }: Props) {
         onToggleLinkedOccasion={form.toggleLinkedOccasion}
       />
 
-      <EventTypesDeleteModal
-        pendingDelete={state.pendingDelete}
+      <AdminDeleteConfirmModal
+        title="Delete event type"
+        isOpen={Boolean(state.pendingDelete)}
         isDeleting={state.isDeleting}
         onClose={state.closeDeleteModal}
         onConfirm={() => void state.onConfirmDelete()}
+      >
+        <AdminDeleteConfirmMessage
+          entityLabel="event type"
+          name={state.pendingDelete?.name ?? ""}
+          consequences={[
+            "Occasion-type links on this type will also be removed.",
+            "This action cannot be undone.",
+          ]}
+        />
+      </AdminDeleteConfirmModal>
+
+      <AdminBlockedActionModal
+        isOpen={blockedWarning.isOpen}
+        onClose={blockedWarning.closeWarning}
+        title={blockedWarning.title}
+        description={blockedWarning.description}
       />
     </div>
   );

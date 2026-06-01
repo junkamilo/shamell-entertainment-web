@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { formatRelativeEn } from "../lib/galleryDisplay";
+import { useMemo, useState } from "react";
 import { sortActiveCategories } from "../lib/gallerySort";
 import type { GalleryCategory, GalleryPhoto, GalleryStats } from "../types/gallery.types";
 
@@ -12,20 +11,7 @@ type Args = {
 
 export function useGalleryLibrary({ categories, photos }: Args) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [listCategoryFilter, setListCategoryFilter] = useState<string | null>(null);
-  const [filterDropdownOpen, setFilterDropdownOpen] = useState(false);
   const [expandedAlbumIds, setExpandedAlbumIds] = useState<Set<string>>(() => new Set());
-  const filterDropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!filterDropdownOpen) return;
-    const onDoc = (e: MouseEvent) => {
-      const el = filterDropdownRef.current;
-      if (el && !el.contains(e.target as Node)) setFilterDropdownOpen(false);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [filterDropdownOpen]);
 
   const activeCategories = useMemo(() => categories.filter((c) => c.isActive), [categories]);
   const sortedActiveCategories = useMemo(
@@ -33,13 +19,7 @@ export function useGalleryLibrary({ categories, photos }: Args) {
     [categories],
   );
 
-  const categoriesForLibrary = useMemo(() => {
-    if (listCategoryFilter) {
-      const one = sortedActiveCategories.find((c) => c.id === listCategoryFilter);
-      return one ? [one] : [];
-    }
-    return sortedActiveCategories;
-  }, [sortedActiveCategories, listCategoryFilter]);
+  const categoriesForLibrary = sortedActiveCategories;
 
   const countByCategory = useMemo(() => {
     const m: Record<string, number> = {};
@@ -54,36 +34,17 @@ export function useGalleryLibrary({ categories, photos }: Args) {
     const total = photos.length;
     const visible = photos.filter((p) => p.isActive).length;
     const catsWith = categories.filter((c) => (countByCategory[c.id] ?? 0) > 0).length;
-    let recent = "—";
-    if (photos.length > 0) {
-      const sorted = [...photos].sort((a, b) => {
-        const ta = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
-        const tb = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
-        return tb - ta;
-      });
-      recent = formatRelativeEn(sorted[0]?.updatedAt ?? sorted[0]?.createdAt);
-    }
-    return { total, visible, catsWith, recent };
+    return { total, visible, catsWith };
   }, [photos, categories, countByCategory]);
 
   const filteredPhotos = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    if (!q) return photos;
     return photos.filter((photo) => {
-      if (listCategoryFilter && photo.category.id !== listCategoryFilter) return false;
-      if (!q) return true;
       const searchable = `${photo.category.name} ${photo.category.slug}`.toLowerCase();
       return searchable.includes(q);
     });
-  }, [photos, searchQuery, listCategoryFilter]);
-
-  const totalForFilterAll = photos.length;
-  const filterCount =
-    listCategoryFilter === null ? totalForFilterAll : (countByCategory[listCategoryFilter] ?? 0);
-  const filterMedioLabel = filterCount === 1 ? "file" : "files";
-  const filterSummaryLabel =
-    listCategoryFilter === null
-      ? "All categories"
-      : (activeCategories.find((c) => c.id === listCategoryFilter)?.name ?? "Category");
+  }, [photos, searchQuery]);
 
   const toggleAlbumExpanded = (categoryId: string) => {
     setExpandedAlbumIds((prev) => {
@@ -97,11 +58,6 @@ export function useGalleryLibrary({ categories, photos }: Args) {
   return {
     searchQuery,
     setSearchQuery,
-    listCategoryFilter,
-    setListCategoryFilter,
-    filterDropdownOpen,
-    setFilterDropdownOpen,
-    filterDropdownRef,
     expandedAlbumIds,
     toggleAlbumExpanded,
     activeCategories,
@@ -110,9 +66,5 @@ export function useGalleryLibrary({ categories, photos }: Args) {
     countByCategory,
     stats,
     filteredPhotos,
-    totalForFilterAll,
-    filterCount,
-    filterMedioLabel,
-    filterSummaryLabel,
   };
 }

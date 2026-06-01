@@ -82,20 +82,20 @@ export function useHeaderMediaUpload() {
     [mergeFiles],
   );
 
-  const onDropzoneDragOver = useCallback((e: DragEvent<HTMLButtonElement>) => {
+  const onDropzoneDragOver = useCallback((e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(true);
   }, []);
 
-  const onDropzoneDragLeave = useCallback((e: DragEvent<HTMLButtonElement>) => {
+  const onDropzoneDragLeave = useCallback((e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     e.stopPropagation();
     setDragOver(false);
   }, []);
 
   const onDropzoneDrop = useCallback(
-    (e: DragEvent<HTMLButtonElement>) => {
+    (e: DragEvent<HTMLElement>) => {
       e.preventDefault();
       e.stopPropagation();
       setDragOver(false);

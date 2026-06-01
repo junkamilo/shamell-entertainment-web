@@ -32,7 +32,6 @@ export type GalleryStats = {
   total: number;
   visible: number;
   catsWith: number;
-  recent: string;
 };
 
 export type GalleryPhotoBatchResponse = {

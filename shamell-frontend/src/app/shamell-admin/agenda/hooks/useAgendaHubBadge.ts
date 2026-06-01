@@ -3,11 +3,30 @@
 import { useEffect, useState } from "react";
 import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import { readPaymentHistoryLastSeenAt } from "@/lib/paymentHistoryNotifications";
-import { readPeticionesLastSeenAt } from "@/lib/peticionesNotifications";
+import {
+  PETICIONES_BADGE_REFRESH_EVENT,
+  readPeticionesLastSeenAt,
+} from "@/lib/peticionesNotifications";
 import { fetchPaymentHistoryBadge } from "../payment-history/services/fetchAdminPayments";
 import { fetchPeticionesBadge } from "../services/fetchPeticionesBadge";
 
 const BADGE_POLL_MS = 45000;
+
+async function fetchInboxBadgeTotal(token: string): Promise<number> {
+  const bookingsSince = readPeticionesLastSeenAt("bookings");
+  const guidanceSince = readPeticionesLastSeenAt("guidance");
+  const [bookingsCount, guidanceCount] = await Promise.all([
+    fetchPeticionesBadge(token, {
+      lane: "bookings",
+      since: bookingsSince > 0 ? bookingsSince : undefined,
+    }),
+    fetchPeticionesBadge(token, {
+      lane: "guidance",
+      since: guidanceSince > 0 ? guidanceSince : undefined,
+    }),
+  ]);
+  return bookingsCount + guidanceCount;
+}
 
 export type AgendaHubBadges = {
   peticionesBadge: number;
@@ -29,13 +48,9 @@ export function useAgendaHubBadge(): AgendaHubBadges {
 
     const loadBadges = async () => {
       try {
-        const peticionesLastSeen = readPeticionesLastSeenAt();
         const paymentLastSeen = readPaymentHistoryLastSeenAt();
         const [peticionesCount, paymentCount] = await Promise.all([
-          fetchPeticionesBadge(token, {
-            lane: "bookings",
-            since: peticionesLastSeen > 0 ? peticionesLastSeen : undefined,
-          }),
+          fetchInboxBadgeTotal(token),
           fetchPaymentHistoryBadge(
             token,
             paymentLastSeen > 0 ? paymentLastSeen : undefined,
@@ -55,9 +70,14 @@ export function useAgendaHubBadge(): AgendaHubBadges {
 
     void loadBadges();
     const interval = window.setInterval(loadBadges, BADGE_POLL_MS);
+    const onRefresh = () => void loadBadges();
+    window.addEventListener(PETICIONES_BADGE_REFRESH_EVENT, onRefresh);
+    window.addEventListener("focus", onRefresh);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      window.removeEventListener(PETICIONES_BADGE_REFRESH_EVENT, onRefresh);
+      window.removeEventListener("focus", onRefresh);
     };
   }, []);
 

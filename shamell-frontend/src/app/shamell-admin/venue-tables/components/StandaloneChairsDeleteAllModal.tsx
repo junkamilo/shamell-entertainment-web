@@ -1,27 +1,32 @@
+"use client";
+
 import AdminModal from "@/components/admin/AdminModal";
-import { headerLibraryItemIsVideo } from "../lib/headerMediaUtils";
-import type { HeaderPhoto } from "../types/headerMedia.types";
 
 type Props = {
-  pendingDelete: HeaderPhoto | null;
+  open: boolean;
+  chairCount: number;
   isDeleting: boolean;
   onClose: () => void;
   onConfirm: () => void;
 };
 
-export default function HeaderMediaDeleteModal({
-  pendingDelete,
+export default function StandaloneChairsDeleteAllModal({
+  open,
+  chairCount,
   isDeleting,
   onClose,
   onConfirm,
 }: Props) {
   return (
-    <AdminModal title="Remove header media" isOpen={Boolean(pendingDelete)} onClose={onClose}>
+    <AdminModal title="Delete all chairs" isOpen={open} onClose={onClose}>
       <div className="space-y-5 font-body text-sm text-foreground/85">
         <p>
-          Permanently remove this{" "}
-          {pendingDelete && headerLibraryItemIsVideo(pendingDelete) ? "video" : "image"} from the main
-          header? You will not be able to recover it.
+          This will permanently delete{" "}
+          <span className="font-brand text-gold">
+            {chairCount} standalone chair{chairCount === 1 ? "" : "s"}
+          </span>
+          . References on the venue floor layout will be removed as well. This action cannot be
+          undone.
         </p>
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button
@@ -38,7 +43,7 @@ export default function HeaderMediaDeleteModal({
             disabled={isDeleting}
             className="rounded-xl border border-red-400/45 bg-red-500/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-red-200 transition hover:bg-red-500/25 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isDeleting ? "Deleting..." : "Delete"}
+            {isDeleting ? "Deleting..." : "Delete permanently"}
           </button>
         </div>
       </div>

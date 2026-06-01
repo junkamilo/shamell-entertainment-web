@@ -3,6 +3,79 @@
  * Applies inside .admin-main and .admin-modal-scroll (max-width: 639px). Desktop unchanged.
  */
 
+/* Delete / destructive confirmations — readable at all breakpoints (sans, larger than form labels). */
+.admin-theme .admin-delete-confirm-body {
+  font-family: var(--font-shamell-admin-sans), Inter, sans-serif;
+  font-size: 1.25rem;
+  line-height: 1.65;
+  color: color-mix(in srgb, var(--shamell-text-primary, #f5f0e8) 92%, transparent);
+}
+
+.admin-theme .admin-delete-confirm-body p {
+  margin: 0;
+}
+
+.admin-theme .admin-delete-confirm-highlight {
+  font-size: 1.05em;
+  font-weight: 600;
+}
+
+.admin-theme .admin-delete-confirm-item {
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--shamell-gold, #c9a227) 22%, transparent);
+  background: color-mix(in srgb, var(--shamell-gold, #c9a227) 6%, transparent);
+  padding: 0.875rem 1rem;
+}
+
+.admin-theme .admin-delete-confirm-item-meta {
+  margin: 0 0 0.35rem;
+  font-family: var(--font-shamell-admin-sans), Inter, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--shamell-text-primary, #f5f0e8) 55%, transparent);
+}
+
+.admin-theme .admin-delete-confirm-item-name {
+  margin: 0;
+  font-family: var(--font-shamell-admin-sans), Inter, sans-serif;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--shamell-text-primary, #f5f0e8);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  text-transform: none;
+  word-break: break-word;
+}
+
+.admin-theme .admin-delete-confirm-consequence {
+  margin: 0;
+  font-size: 0.9375em;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--shamell-text-primary, #f5f0e8) 72%, transparent);
+}
+
+.admin-theme .admin-delete-confirm-btn {
+  font-family: var(--font-shamell-admin-sans), Inter, sans-serif;
+  font-size: 1.0625rem;
+  line-height: 1.4;
+}
+
+@media (min-width: 640px) {
+  .admin-theme .admin-delete-confirm-body {
+    font-size: 1.375rem;
+    line-height: 1.6;
+  }
+
+  .admin-theme .admin-delete-confirm-btn {
+    font-size: 1.125rem;
+  }
+}
+
 @media (max-width: 639px) {
   .admin-theme :is(.admin-main, .admin-modal-scroll) {
     font-size: 1.0625rem;

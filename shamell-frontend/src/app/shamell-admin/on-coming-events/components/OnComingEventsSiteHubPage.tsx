@@ -30,7 +30,7 @@ function OnComingEventsSiteHubPageInner() {
   );
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="mx-auto w-full min-w-0 max-w-6xl overflow-x-hidden">
       <AdminModuleHero
         title="On Coming Events (site)"
         bordered={false}

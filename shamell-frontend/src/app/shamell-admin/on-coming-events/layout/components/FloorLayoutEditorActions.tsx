@@ -46,7 +46,7 @@ export default function FloorLayoutEditorActions({
         </p>
       ) : null}
       <div
-        className="flex flex-wrap items-center justify-start gap-2 max-sm:left-2 max-sm:right-2"
+        className="flex flex-wrap items-center justify-start gap-2 sm:justify-end"
         role="toolbar"
         aria-label="Layout editor actions"
       >

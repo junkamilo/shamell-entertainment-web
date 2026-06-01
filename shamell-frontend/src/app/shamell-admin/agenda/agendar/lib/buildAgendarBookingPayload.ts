@@ -16,11 +16,14 @@ export function buildAgendarBookingPayload(
     guestPhone: data.guestPhone,
     guestCount: data.guestCount,
     notes: data.notes || undefined,
-    status: "CONFIRMED",
+    status: "PENDING",
     bookingDetails: {
       eventTimeStart: data.eventTimeStart,
       eventTimeEnd: data.eventTimeEnd,
       serviceIds: data.serviceIds,
+      eventTypeId: data.eventTypeId,
+      occasionTypeId: data.occasionTypeId,
+      guestCount: data.guestCount,
     },
   };
 }

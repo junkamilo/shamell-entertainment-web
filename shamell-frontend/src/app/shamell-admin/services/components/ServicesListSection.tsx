@@ -12,13 +12,12 @@ type Props = {
   totalPages: number;
   onPageChange: (page: number) => void;
   togglingId: string | null;
-  canDelete: (service: AdminService) => boolean;
   cannotDeactivate: (service: AdminService) => boolean;
-  getDeleteBlockedTitle: (service: AdminService) => string;
   onView: (service: AdminService) => void;
   onEdit: (service: AdminService) => void;
   onDelete: (service: AdminService) => void;
   onToggle: (service: AdminService) => void;
+  onBlockedDeactivate: (service: AdminService) => void;
 };
 
 export default function ServicesListSection({
@@ -30,23 +29,21 @@ export default function ServicesListSection({
   totalPages,
   onPageChange,
   togglingId,
-  canDelete,
   cannotDeactivate,
-  getDeleteBlockedTitle,
   onView,
   onEdit,
   onDelete,
   onToggle,
+  onBlockedDeactivate,
 }: Props) {
   const rowHandlers = {
     togglingId,
-    canDelete,
     cannotDeactivate,
-    getDeleteBlockedTitle,
     onView,
     onEdit,
     onDelete,
     onToggle,
+    onBlockedDeactivate,
   };
 
   return (
@@ -65,13 +62,12 @@ export default function ServicesListSection({
                 key={service.id}
                 service={service}
                 togglingId={togglingId}
-                deletable={canDelete(service)}
-                blockDeactivate={cannotDeactivate(service)}
-                deleteBlockedTitle={getDeleteBlockedTitle(service)}
+                deactivateBlocked={cannotDeactivate(service)}
                 onView={() => onView(service)}
                 onEdit={() => onEdit(service)}
                 onDelete={() => onDelete(service)}
                 onToggle={() => onToggle(service)}
+                onBlockedDeactivate={() => onBlockedDeactivate(service)}
               />
             ))}
           </div>
