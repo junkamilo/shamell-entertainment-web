@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { Volume2, VolumeX } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import portrait from "@/assets/gallery-2.jpg";
 import OrnamentDivider from "./OrnamentDivider";
 import RevealOnView from "@/components/shared/RevealOnView";
@@ -8,6 +10,70 @@ import { useAboutContent } from "@/hooks/use-about-content";
 import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
 import { splitAboutParagraphs } from "@/lib/aboutParagraphs";
 import { cn } from "@/lib/utils";
+
+function AboutHeroVideo({ src }: { src: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.muted = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const section = document.getElementById("about");
+    if (!video || !section) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) {
+          void video.play().catch(() => undefined);
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: 0.25 },
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [src]);
+
+  const toggleMute = () => {
+    setIsMuted((prev) => !prev);
+    const video = videoRef.current;
+    if (video?.paused) void video.play().catch(() => undefined);
+  };
+
+  return (
+    <div className="absolute inset-0">
+      <video
+        ref={videoRef}
+        src={src}
+        className="absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-700 ease-out group-hover/portrait:opacity-95 sm:p-4"
+        playsInline
+        loop
+        preload="metadata"
+        aria-label="Video about Shamell"
+      />
+      <button
+        type="button"
+        onClick={toggleMute}
+        aria-label={isMuted ? "Unmute video" : "Mute video"}
+        aria-pressed={isMuted}
+        className="absolute bottom-5 right-5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/55 text-gold backdrop-blur-sm transition hover:border-gold/45 hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 sm:bottom-6 sm:right-6"
+      >
+        {isMuted ? (
+          <VolumeX className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+        ) : (
+          <Volume2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+        )}
+      </button>
+    </div>
+  );
+}
 
 const AboutSection = () => {
   const { about, isLoading } = useAboutContent();
@@ -47,16 +113,7 @@ const AboutSection = () => {
               {!isLoading ? (
                 <>
                   {about.imageUrl && heroIsVideo ? (
-                    <video
-                      src={about.imageUrl}
-                      className="absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-700 ease-out group-hover/portrait:opacity-95 sm:p-4"
-                      muted
-                      playsInline
-                      loop
-                      autoPlay
-                      preload="metadata"
-                      aria-label="Video about Shamell"
-                    />
+                    <AboutHeroVideo src={about.imageUrl} />
                   ) : (
                     <Image
                       src={about.imageUrl ?? portrait}

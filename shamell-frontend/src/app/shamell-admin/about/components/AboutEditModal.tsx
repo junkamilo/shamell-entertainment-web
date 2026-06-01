@@ -109,8 +109,9 @@ export function AboutEditModal({
           />
           {!record ? (
             <p className="mt-2 font-body text-[11px] text-foreground/45">
-              First publish requires a hero file: any common image format, or video (e.g. MP4, WebM, MOV). Max
-              100&nbsp;MB. The public About section will show it automatically as photo or video.
+              First publish requires a hero file: any common image format, or video (e.g. MP4, WebM,
+              MOV). Long videos are supported. The public About section will show it automatically as
+              photo or video.
             </p>
           ) : (
             <p className="mt-2 font-body text-[11px] text-foreground/45">

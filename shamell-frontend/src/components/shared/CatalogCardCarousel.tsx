@@ -77,7 +77,8 @@ export default function CatalogCardCarousel({
 
   const items = Children.toArray(children).filter(isValidElement);
   const count = items.length;
-  const useCarousel = count > visibleOnDesktop;
+  const showArrows = isMdUp && count > visibleOnDesktop;
+  const horizontalRail = count > 1;
 
   const scrollByPage = useCallback(
     (direction: -1 | 1) => {
@@ -102,8 +103,8 @@ export default function CatalogCardCarousel({
       : "100%";
 
   return (
-    <div className={cn("relative", useCarousel && "md:px-12", className)}>
-      {useCarousel && isMdUp ? (
+    <div className={cn("relative", showArrows && "md:px-12", className)}>
+      {showArrows ? (
         <>
           <button
             type="button"
@@ -130,10 +131,10 @@ export default function CatalogCardCarousel({
         ref={scrollerRef}
         role="region"
         aria-label={ariaLabel}
-        aria-roledescription={useCarousel ? "carousel" : undefined}
-        tabIndex={useCarousel ? 0 : undefined}
+        aria-roledescription={horizontalRail ? "carousel" : undefined}
+        tabIndex={horizontalRail ? 0 : undefined}
         onKeyDown={(e) => {
-          if (!useCarousel) return;
+          if (!horizontalRail) return;
           if (e.key === "ArrowLeft") {
             e.preventDefault();
             scrollByPage(-1);
@@ -145,9 +146,9 @@ export default function CatalogCardCarousel({
         }}
         className={cn(
           "flex items-stretch gap-6 pb-2 md:gap-8",
-          useCarousel
+          horizontalRail
             ? "snap-x snap-mandatory overflow-x-auto overscroll-x-contain shamell-scrollbar [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] max-md:px-1"
-            : "flex-col md:flex-row md:flex-nowrap",
+            : "flex-row flex-nowrap justify-center",
         )}
       >
         {items.map((child, index) => (
@@ -155,14 +156,18 @@ export default function CatalogCardCarousel({
             key={child.key ?? `catalog-slide-${index}`}
             className={cn(
               "min-w-0 shrink-0",
-              useCarousel && "snap-start snap-always",
-              useCarousel
+              horizontalRail && "snap-start snap-always",
+              horizontalRail
                 ? "w-[min(88vw,22rem)] md:w-auto md:max-w-none md:flex-[0_0_auto]"
-                : "w-full md:flex-1",
+                : "w-full max-w-[min(100%,17.5rem)]",
             )}
             style={
-              useCarousel && isMdUp
-                ? { flexBasis: desktopBasis, width: desktopBasis, maxWidth: desktopBasis }
+              horizontalRail && isMdUp
+                ? {
+                    flexBasis: desktopBasis,
+                    width: desktopBasis,
+                    maxWidth: desktopBasis,
+                  }
                 : undefined
             }
           >
@@ -171,7 +176,7 @@ export default function CatalogCardCarousel({
         ))}
       </div>
 
-      {useCarousel && !isMdUp ? (
+      {horizontalRail && !showArrows ? (
         <p className="mt-3 text-center font-body text-xs text-foreground/55 md:hidden">
           Swipe sideways to see more
         </p>

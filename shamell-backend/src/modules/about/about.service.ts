@@ -4,6 +4,7 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
+import { promises as fs } from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpsertAboutContentDto } from './dto/upsert-about-content.dto';
@@ -187,7 +188,7 @@ export class AboutService {
   }
 
   private ensureHeroMediaFile(mediaFile?: Express.Multer.File) {
-    if (!mediaFile?.buffer) {
+    if (!mediaFile?.buffer && !mediaFile?.path) {
       throw new BadRequestException('Media file is required.');
     }
     const ok =
@@ -198,13 +199,99 @@ export class AboutService {
     }
   }
 
-  private uploadHeroMediaToCloudinary(
+  private async uploadHeroMediaToCloudinary(
     file: Express.Multer.File,
   ): Promise<{ secureUrl: string; publicId: string; mediaType: AboutHeroMediaType }> {
     const isVideo = file.mimetype.startsWith('video/');
     const resourceType = isVideo ? 'video' : 'image';
     const mediaType: AboutHeroMediaType = isVideo ? 'VIDEO' : 'IMAGE';
 
+    try {
+      if (file.path) {
+        const result = isVideo
+          ? await this.uploadVideoLargeFromPath(file.path)
+          : await this.uploadFileFromPath(file.path, resourceType);
+        return { secureUrl: result.secureUrl, publicId: result.publicId, mediaType };
+      }
+
+      if (!file.buffer) {
+        throw new BadRequestException('Media file is required.');
+      }
+
+      const streamed = await this.uploadBufferToCloudinary(
+        file.buffer,
+        resourceType,
+        isVideo,
+      );
+      return { secureUrl: streamed.secureUrl, publicId: streamed.publicId, mediaType };
+    } finally {
+      if (file.path) {
+        await fs.unlink(file.path).catch(() => null);
+      }
+    }
+  }
+
+  private uploadFileFromPath(
+    filePath: string,
+    resourceType: 'image' | 'video',
+  ): Promise<{ secureUrl: string; publicId: string }> {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.upload(
+        filePath,
+        { folder: 'shamell/about', resource_type: resourceType },
+        (error, result) => {
+          if (error || !result?.secure_url || !result.public_id) {
+            reject(
+              new InternalServerErrorException(
+                this.cloudinaryUploadErrorMessage(resourceType, error),
+              ),
+            );
+            return;
+          }
+          resolve({
+            secureUrl: result.secure_url,
+            publicId: result.public_id,
+          });
+        },
+      );
+    });
+  }
+
+  /** Chunked upload for large hero videos (no in-app size cap). */
+  private uploadVideoLargeFromPath(
+    filePath: string,
+  ): Promise<{ secureUrl: string; publicId: string }> {
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_large(
+        filePath,
+        {
+          folder: 'shamell/about',
+          resource_type: 'video',
+          chunk_size: 6_000_000,
+        },
+        (error, result) => {
+          if (error || !result?.secure_url || !result.public_id) {
+            reject(
+              new InternalServerErrorException(
+                this.cloudinaryUploadErrorMessage('video', error),
+              ),
+            );
+            return;
+          }
+          resolve({
+            secureUrl: result.secure_url,
+            publicId: result.public_id,
+          });
+        },
+      );
+    });
+  }
+
+  private uploadBufferToCloudinary(
+    buffer: Buffer,
+    resourceType: 'image' | 'video',
+    isVideo: boolean,
+  ): Promise<{ secureUrl: string; publicId: string }> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
@@ -215,7 +302,10 @@ export class AboutService {
           if (error || !result?.secure_url || !result.public_id) {
             reject(
               new InternalServerErrorException(
-                `${isVideo ? 'Video' : 'Image'} upload failed.`,
+                this.cloudinaryUploadErrorMessage(
+                  isVideo ? 'video' : 'image',
+                  error,
+                ),
               ),
             );
             return;
@@ -223,13 +313,27 @@ export class AboutService {
           resolve({
             secureUrl: result.secure_url,
             publicId: result.public_id,
-            mediaType,
           });
         },
       );
 
-      uploadStream.end(file.buffer);
+      uploadStream.end(buffer);
     });
+  }
+
+  private cloudinaryUploadErrorMessage(
+    kind: 'image' | 'video',
+    error: unknown,
+  ): string {
+    const label = kind === 'video' ? 'Video' : 'Image';
+    const detail =
+      error && typeof error === 'object' && 'message' in error
+        ? String((error as { message?: unknown }).message ?? '').trim()
+        : '';
+    if (detail) {
+      return `${label} upload failed: ${detail}`;
+    }
+    return `${label} upload failed.`;
   }
 
   private normalizeHeroMediaType(raw: string | null | undefined): AboutHeroMediaType {
