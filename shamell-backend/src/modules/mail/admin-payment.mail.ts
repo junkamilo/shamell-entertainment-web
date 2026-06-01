@@ -1,6 +1,7 @@
 import {
   buildEmailLogoWordmarkHtml,
   plainTextBrandLead,
+  type EmailBranding,
 } from './email-html-branding';
 
 export type AdminPaymentOutcome =
@@ -18,6 +19,7 @@ export type AdminPaymentFlowLabel =
 type AdminPaymentMailInput = {
   appPublicName: string;
   frontendBaseUrl?: string;
+  branding?: EmailBranding;
   outcome: AdminPaymentOutcome;
   flowLabel: AdminPaymentFlowLabel;
   customerName: string;
@@ -74,7 +76,7 @@ export function buildAdminPaymentOutcomeSubject(
 export function buildAdminPaymentOutcomeHtml(
   input: AdminPaymentMailInput,
 ): string {
-  const logoBlock = buildEmailLogoWordmarkHtml(input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
   const color = outcomeColor(input.outcome);
   const headline = outcomeHeadline(input.outcome);
 

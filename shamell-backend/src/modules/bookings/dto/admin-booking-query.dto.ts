@@ -1,7 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { BookingSource, BookingStatus } from '@prisma/client';
 import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsIn,
@@ -31,6 +33,13 @@ export class AdminBookingQueryDto {
   @IsOptional()
   @IsEnum(BookingStatus)
   status?: BookingStatus;
+
+  /** When true, returns PENDING + CONFIRMED (excludes CANCELLED/COMPLETED). Ignored if status is set. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  activeOnly?: boolean;
 
   @ApiPropertyOptional({ enum: BookingSource })
   @IsOptional()

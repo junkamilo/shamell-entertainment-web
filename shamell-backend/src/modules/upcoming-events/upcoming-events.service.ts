@@ -42,6 +42,7 @@ import {
   normalizeFixedTicketCapacity,
 } from './upcoming-fixed-ticket.util';
 import { venueTablePublicStats } from './upcoming-venue-table.util';
+import { emailBrandingFromProcessEnv } from '../mail/email-html-branding';
 import {
   buildClassEnrollmentConfirmationHtml,
   buildClassEnrollmentConfirmationSubject,
@@ -1331,6 +1332,7 @@ export class UpcomingEventsService {
       (venueConfig?.reservationEventDate ?
         venueConfig.reservationEventDate.toISOString()
       : 'See event details');
+    const branding = emailBrandingFromProcessEnv();
     await this.mail.sendTransactional({
       to: enrollment.customerEmail,
       toName: enrollment.customerName,
@@ -1341,6 +1343,7 @@ export class UpcomingEventsService {
         ticketNumber: enrollment.ticketNumber,
         eventDateLabel,
         amount,
+        siteBaseUrl: branding.siteBaseUrl,
       }),
       html: buildFixedTicketConfirmationHtml({
         eventName,
@@ -1348,6 +1351,7 @@ export class UpcomingEventsService {
         ticketNumber: enrollment.ticketNumber,
         eventDateLabel,
         amount,
+        branding,
       }),
     });
   }
@@ -1369,6 +1373,7 @@ export class UpcomingEventsService {
     const eventName = enrollment.session.event.eventType.name;
     const amount = `${Number(enrollment.amount).toFixed(2)} ${enrollment.currency.toUpperCase()}`;
     const sessionLabel = this.sessionLabel(enrollment.session);
+    const branding = emailBrandingFromProcessEnv();
     await this.mail.sendTransactional({
       to: enrollment.customerEmail,
       toName: enrollment.customerName,
@@ -1378,12 +1383,14 @@ export class UpcomingEventsService {
         customerName: enrollment.customerName,
         sessionLabel,
         amount,
+        siteBaseUrl: branding.siteBaseUrl,
       }),
       html: buildClassEnrollmentConfirmationHtml({
         eventName,
         customerName: enrollment.customerName,
         sessionLabel,
         amount,
+        branding,
       }),
     });
   }

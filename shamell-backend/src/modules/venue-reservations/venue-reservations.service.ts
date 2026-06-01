@@ -15,6 +15,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FloorLayoutService } from '../floor-layout/floor-layout.service';
+import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { StripeService } from '../stripe/stripe.service';
@@ -195,15 +196,14 @@ export class VenueReservationsService {
       if (layoutItem.kind !== 'standalone_chair') {
         throw new BadRequestException('Invalid chair selection.');
       }
-      const chairConfig =
-        await this.prisma.venueStandaloneChairConfig.findFirst({
-          where: { isActive: true },
-          orderBy: { updatedAt: 'desc' },
-        });
-      if (!chairConfig) {
-        throw new BadRequestException('Standalone chairs are not configured.');
+      const chairId = layoutItem.venueStandaloneChairId;
+      const chair = await this.prisma.venueStandaloneChair.findFirst({
+        where: { id: chairId, isActive: true },
+      });
+      if (!chair) {
+        throw new NotFoundException('Standalone chair not found.');
       }
-      amount = chairConfig.unitPrice;
+      amount = chair.unitPrice;
       productName = 'Standalone chair';
     }
 
@@ -893,8 +893,8 @@ export class VenueReservationsService {
       const appPublicName =
         this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
         'Shamell Entertainment';
-      const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
-      const frontendBaseUrl = frontendRaw?.split(',')[0]?.trim();
+      const branding = emailBrandingFromConfig(this.config);
+      const frontendBaseUrl = branding.siteBaseUrl;
       let reservationTimezone = 'America/New_York';
       if (row.upcomingEventId) {
         const config = await this.prisma.upcomingVenueConfig.findUnique({
@@ -916,6 +916,7 @@ export class VenueReservationsService {
         recipientName,
         appPublicName,
         frontendBaseUrl,
+        branding,
         eventDate: row.eventDate,
         reservationTimezone,
         reservationKindLabel,

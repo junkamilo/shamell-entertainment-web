@@ -1,12 +1,14 @@
 import {
   buildEmailLogoWordmarkHtml,
   plainTextBrandLead,
+  type EmailBranding,
 } from '../mail/email-html-branding';
 
 type QuoteMailInput = {
   recipientName: string;
   appPublicName: string;
   frontendBaseUrl?: string;
+  branding?: EmailBranding;
   bookingReference: string;
   totalAmountUsd: string;
   depositAmountUsd?: string;
@@ -27,7 +29,7 @@ export function buildBookingQuoteSubject(appPublicName: string): string {
 }
 
 export function buildBookingQuoteHtml(input: QuoteMailInput): string {
-  const logoBlock = buildEmailLogoWordmarkHtml(input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
   return `
   <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
     <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">
@@ -81,11 +83,12 @@ export function buildBookingDepositPaidHtml(input: {
   recipientName: string;
   appPublicName: string;
   frontendBaseUrl?: string;
+  branding?: EmailBranding;
   bookingReference: string;
   amountUsd: string;
   eventDateLabel?: string;
 }): string {
-  const logoBlock = buildEmailLogoWordmarkHtml(input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
   return `
   <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
     <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">
@@ -127,11 +130,12 @@ export function buildBookingFullyPaidHtml(input: {
   recipientName: string;
   appPublicName: string;
   frontendBaseUrl?: string;
+  branding?: EmailBranding;
   bookingReference: string;
   amountUsd: string;
   eventDateLabel?: string;
 }): string {
-  const logoBlock = buildEmailLogoWordmarkHtml(input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
   return `
   <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
     <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">
@@ -170,7 +174,7 @@ export function buildBookingBalanceLinkSubject(appPublicName: string): string {
 }
 
 export function buildBookingBalanceLinkHtml(input: QuoteMailInput): string {
-  const logoBlock = buildEmailLogoWordmarkHtml(input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
   return `
   <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
     <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">

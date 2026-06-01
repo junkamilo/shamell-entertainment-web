@@ -39,6 +39,7 @@ import {
   buildConciergeInquiryAckText,
 } from './concierge-inquiry-ack.mail';
 import { buildConciergeVisionSnapshot } from './concierge-vision-snapshot';
+import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { BookingsService } from '../bookings/bookings.service';
 
@@ -423,8 +424,7 @@ export class ContactService {
       const appPublicName =
         this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
         'Shamell Entertainment';
-      const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
-      const siteUrl = frontendRaw?.split(',')[0]?.trim();
+      const branding = emailBrandingFromConfig(this.config);
 
       const toName = dto.fullName.trim() || to;
       const recipientFirstName = toName.split(/\s+/)[0] || toName;
@@ -432,7 +432,8 @@ export class ContactService {
       const templateInput = {
         recipientFirstName,
         appPublicName,
-        siteUrl: siteUrl || undefined,
+        siteUrl: branding.siteBaseUrl,
+        branding,
       };
 
       const { ok } = await this.mail.sendTransactional({
@@ -472,8 +473,7 @@ export class ContactService {
       const appPublicName =
         this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
         'Shamell Entertainment';
-      const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
-      const siteUrl = frontendRaw?.split(',')[0]?.trim();
+      const branding = emailBrandingFromConfig(this.config);
 
       const toName = dto.fullName.trim() || to;
       const recipientFirstName = toName.split(/\s+/)[0] || toName;
@@ -481,7 +481,8 @@ export class ContactService {
       const templateInput = {
         recipientFirstName,
         appPublicName,
-        siteUrl: siteUrl || undefined,
+        siteUrl: branding.siteBaseUrl,
+        branding,
         guideInvestment: guide,
       };
 

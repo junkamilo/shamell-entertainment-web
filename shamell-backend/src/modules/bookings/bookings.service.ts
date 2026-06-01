@@ -42,6 +42,7 @@ import {
   timesFromDetails,
   type BookingConfirmationTemplateInput,
 } from './booking-confirmation.mail';
+import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { StripeService } from '../stripe/stripe.service';
@@ -122,6 +123,11 @@ export class BookingsService {
     private readonly stripeService: StripeService,
   ) {}
 
+  /** Public SPA origin for pay links and email footers (skips localhost in production). */
+  private emailBrandingForTemplates() {
+    return emailBrandingFromConfig(this.config);
+  }
+
   private async enrichBookingDetails(
     details: SanitizedInquiryDetails,
   ): Promise<SanitizedInquiryDetails> {
@@ -172,6 +178,30 @@ export class BookingsService {
       out.serviceLabels = details.serviceIds
         .map((id) => nameById[id] ?? '')
         .filter((s) => s.length > 0);
+    }
+    return out;
+  }
+
+  /** Copies top-level Book catalog fields into `bookingDetails` before label enrichment. */
+  private mergeAdminCatalogIntoDetails(
+    details: SanitizedInquiryDetails | undefined,
+    refs: {
+      eventTypeId?: string | null;
+      occasionTypeId?: string | null;
+      guestCount?: number | null;
+    },
+  ): SanitizedInquiryDetails {
+    const out: SanitizedInquiryDetails = { ...(details ?? {}) };
+    const eventTypeId = refs.eventTypeId?.trim();
+    if (eventTypeId) out.eventTypeId = eventTypeId;
+    const occasionTypeId = refs.occasionTypeId?.trim();
+    if (occasionTypeId) out.occasionTypeId = occasionTypeId;
+    if (
+      refs.guestCount != null &&
+      Number.isFinite(refs.guestCount) &&
+      refs.guestCount > 0
+    ) {
+      out.guestCount = Math.round(refs.guestCount);
     }
     return out;
   }
@@ -296,7 +326,7 @@ export class BookingsService {
     const slots = await this.prisma.booking.findMany({
       where: {
         eventDate: { gte: dayStart, lte: dayEnd },
-        status: BookingStatus.CONFIRMED,
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
         ...(excludeId ? { NOT: { id: excludeId } } : {}),
       },
       select: { id: true, eventDate: true, bookingDetails: true },
@@ -334,7 +364,7 @@ export class BookingsService {
     const bookings = await this.prisma.booking.findMany({
       where: {
         eventDate: { gte: dayStart, lte: dayEnd },
-        status: BookingStatus.CONFIRMED,
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
       },
       select: { eventDate: true, bookingDetails: true },
     });
@@ -409,15 +439,26 @@ export class BookingsService {
       }
     }
 
-    const detailsRaw = dto.bookingDetails
+    const sanitizedDetails = dto.bookingDetails
       ? sanitizeInquiryDetails(dto.bookingDetails)
       : undefined;
-    this.validateBookingTimeRange(detailsRaw);
-    await this.assertAdminBookingServiceOrder(dto.serviceId, detailsRaw);
-    const enriched =
-      detailsRaw && Object.keys(detailsRaw).length > 0
-        ? await this.enrichBookingDetails(detailsRaw)
-        : undefined;
+    const detailsForEnrich = this.mergeAdminCatalogIntoDetails(
+      sanitizedDetails,
+      {
+        eventTypeId: dto.eventTypeId ?? null,
+        occasionTypeId: dto.occasionTypeId ?? null,
+        guestCount: dto.guestCount ?? null,
+      },
+    );
+    const hasDetails = Object.keys(detailsForEnrich).length > 0;
+    this.validateBookingTimeRange(hasDetails ? detailsForEnrich : undefined);
+    await this.assertAdminBookingServiceOrder(
+      dto.serviceId,
+      hasDetails ? detailsForEnrich : undefined,
+    );
+    const enriched = hasDetails
+      ? await this.enrichBookingDetails(detailsForEnrich)
+      : undefined;
 
     const eventDate = new Date(dto.eventDate);
     if (Number.isNaN(eventDate.getTime())) {
@@ -665,8 +706,8 @@ export class BookingsService {
       const appPublicName =
         this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
         'Shamell Entertainment';
-      const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
-      const frontendBaseUrl = frontendRaw?.split(',')[0]?.trim();
+      const branding = this.emailBrandingForTemplates();
+      const frontendBaseUrl = branding.siteBaseUrl;
 
       const templateInput: BookingConfirmationTemplateInput = {
         recipientName,
@@ -682,6 +723,7 @@ export class BookingsService {
         guestCount: booking.guestCount,
         appPublicName,
         frontendBaseUrl,
+        branding,
         emailVariant:
           booking.source === BookingSource.ADMIN_FROM_CONTACT
             ? 'inbox_from_contact'
@@ -716,7 +758,13 @@ export class BookingsService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Number(query.perPage ?? 10);
     const where: Prisma.BookingWhereInput = {};
-    if (query.status) where.status = query.status;
+    if (query.status) {
+      where.status = query.status;
+    } else if (query.activeOnly) {
+      where.status = {
+        in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+      };
+    }
     if (query.source) where.source = query.source;
     if (query.from || query.to) {
       where.eventDate = {};
@@ -783,25 +831,45 @@ export class BookingsService {
     }
 
     let mergedDetailsUnknown: unknown = existing.bookingDetails;
-    if (dto.bookingDetails !== undefined) {
+    const catalogFieldsChanged =
+      dto.eventTypeId !== undefined ||
+      dto.occasionTypeId !== undefined ||
+      dto.guestCount !== undefined ||
+      dto.serviceId !== undefined;
+
+    if (dto.bookingDetails !== undefined || catalogFieldsChanged) {
       const prev =
         existing.bookingDetails &&
         typeof existing.bookingDetails === 'object' &&
         !Array.isArray(existing.bookingDetails)
           ? (existing.bookingDetails as Record<string, unknown>)
           : {};
-      mergedDetailsUnknown = { ...prev, ...dto.bookingDetails };
+      mergedDetailsUnknown =
+        dto.bookingDetails !== undefined
+          ? { ...prev, ...dto.bookingDetails }
+          : prev;
     }
 
     let enrichedDetails: SanitizedInquiryDetails | undefined;
-    if (dto.bookingDetails !== undefined) {
+    if (dto.bookingDetails !== undefined || catalogFieldsChanged) {
       const sanitizedMerge = sanitizeInquiryDetails(mergedDetailsUnknown);
       if (!sanitizedMerge) {
         throw new BadRequestException('Invalid bookingDetails merge.');
       }
-      this.validateBookingTimeRange(sanitizedMerge);
-      await this.assertAdminBookingServiceOrder(serviceId, sanitizedMerge);
-      enrichedDetails = await this.enrichBookingDetails(sanitizedMerge);
+      const detailsForEnrich = this.mergeAdminCatalogIntoDetails(
+        sanitizedMerge,
+        {
+          eventTypeId: eventTypeId ?? null,
+          occasionTypeId: occasionTypeId ?? null,
+          guestCount:
+            dto.guestCount !== undefined
+              ? dto.guestCount
+              : existing.guestCount,
+        },
+      );
+      this.validateBookingTimeRange(detailsForEnrich);
+      await this.assertAdminBookingServiceOrder(serviceId, detailsForEnrich);
+      enrichedDetails = await this.enrichBookingDetails(detailsForEnrich);
     }
 
     let eventDate = existing.eventDate;
@@ -988,10 +1056,8 @@ export class BookingsService {
     const appPublicName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
       'Shamell Entertainment';
-    const frontendBaseUrl = this.config
-      .get<string>('FRONTEND_URL')
-      ?.split(',')[0]
-      ?.trim();
+    const branding = this.emailBrandingForTemplates();
+    const frontendBaseUrl = branding.siteBaseUrl;
     const payUrl = this.buildQuotePayUrl(rawToken);
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
     await this.mail.sendTransactional({
@@ -1003,6 +1069,7 @@ export class BookingsService {
           booking.user?.fullName ?? booking.guestFullName ?? 'Client',
         appPublicName,
         frontendBaseUrl,
+        branding,
         bookingReference: bookingRef,
         totalAmountUsd: this.usd(total),
         depositAmountUsd: deposit > 0 ? this.usd(deposit) : undefined,
@@ -1104,10 +1171,8 @@ export class BookingsService {
     const appPublicName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
       'Shamell Entertainment';
-    const frontendBaseUrl = this.config
-      .get<string>('FRONTEND_URL')
-      ?.split(',')[0]
-      ?.trim();
+    const branding = this.emailBrandingForTemplates();
+    const frontendBaseUrl = branding.siteBaseUrl;
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
     await this.mail.sendTransactional({
       to: customerEmail,
@@ -1118,6 +1183,7 @@ export class BookingsService {
           booking.user?.fullName ?? booking.guestFullName ?? 'Client',
         appPublicName,
         frontendBaseUrl,
+        branding,
         bookingReference: bookingRef,
         totalAmountUsd: this.usd(balanceAmount),
         payUrl,
@@ -1462,10 +1528,8 @@ export class BookingsService {
     const appPublicName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
       'Shamell Entertainment';
-    const frontendBaseUrl = this.config
-      .get<string>('FRONTEND_URL')
-      ?.split(',')[0]
-      ?.trim();
+    const branding = this.emailBrandingForTemplates();
+    const frontendBaseUrl = branding.siteBaseUrl;
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
     const recipientName =
       booking.user?.fullName ?? booking.guestFullName ?? 'Client';
@@ -1477,6 +1541,7 @@ export class BookingsService {
         recipientName,
         appPublicName,
         frontendBaseUrl,
+        branding,
         bookingReference: bookingRef,
         amountUsd: this.usd(amount),
         eventDateLabel: this.bookingEventDateLabel(booking),
@@ -1507,10 +1572,8 @@ export class BookingsService {
     const appPublicName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
       'Shamell Entertainment';
-    const frontendBaseUrl = this.config
-      .get<string>('FRONTEND_URL')
-      ?.split(',')[0]
-      ?.trim();
+    const branding = this.emailBrandingForTemplates();
+    const frontendBaseUrl = branding.siteBaseUrl;
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
     const recipientName =
       booking.user?.fullName ?? booking.guestFullName ?? 'Client';
@@ -1522,6 +1585,7 @@ export class BookingsService {
         recipientName,
         appPublicName,
         frontendBaseUrl,
+        branding,
         bookingReference: bookingRef,
         amountUsd: this.usd(amount),
         eventDateLabel: this.bookingEventDateLabel(booking),

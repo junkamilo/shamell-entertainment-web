@@ -22,6 +22,7 @@ export type PlacedLayoutItem =
       kind: 'standalone_chair';
       venueStandaloneChairId: string;
       chairName: string;
+      unitPrice?: number;
       x: number;
       y: number;
       rotation: number;

@@ -24,6 +24,10 @@ import {
   eventDateForReservations,
   resolveReservationWindow,
 } from '../venue-layout-settings/reservation-sales-window.util';
+import {
+  bookingInquiryCatalogEventWhere,
+  eventTypeIdsExcludedFromBookingInquiry,
+} from './booking-inquiry-catalog.util';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
 import { CreateOccasionTypeDto } from './dto/create-occasion-type.dto';
@@ -206,10 +210,10 @@ export class EventsService {
     return this.enrichUpcomingPublicEvents(mapped);
   }
 
-  /** Contact wizard: active events plus active event types that do not yet have an active event row. */
+  /** Contact / booking inquiry wizard: general catalog only (excludes ON COMING upcoming hub). */
   async getContactLines() {
     const events = await this.prisma.event.findMany({
-      where: { isActive: true },
+      where: bookingInquiryCatalogEventWhere,
       include: {
         galleryPhotos: {
           where: { isActive: true },
@@ -238,10 +242,17 @@ export class EventsService {
       .map((item) => this.mapContactLine(item));
 
     const coveredTypeIds = fromEvents.map((l) => l.eventTypeId);
+    const excludedFromHub = await eventTypeIdsExcludedFromBookingInquiry(
+      this.prisma,
+    );
+    const excludeTypeIds = [
+      ...new Set([...coveredTypeIds, ...excludedFromHub]),
+    ];
     const orphanTypes = await this.prisma.eventType.findMany({
       where: {
         isActive: true,
-        ...(coveredTypeIds.length > 0 ? { id: { notIn: coveredTypeIds } } : {}),
+        occasionLinks: { some: { occasionType: { isActive: true } } },
+        ...(excludeTypeIds.length > 0 ? { id: { notIn: excludeTypeIds } } : {}),
       },
       include: {
         occasionLinks: {
@@ -262,10 +273,13 @@ export class EventsService {
     return [...fromEvents, ...fromTypesOnly];
   }
 
-  /** Public snippet for contact deep-link (active event + active type only). */
+  /** Public snippet for contact deep-link (general catalog event + active type only). */
   async getPublicCatalogById(id: string) {
     const event = await this.prisma.event.findFirst({
-      where: { id, isActive: true },
+      where: {
+        id,
+        ...bookingInquiryCatalogEventWhere,
+      },
       include: {
         eventType: true,
         galleryPhotos: {

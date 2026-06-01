@@ -9,6 +9,7 @@ import {
   flowLabelFromCode,
   stageLabelFromCode,
 } from './admin-payment.mail';
+import { emailBrandingFromConfig } from './email-html-branding';
 import { MailService } from './mail.service';
 
 export type NotifyAdminPaymentInput = {
@@ -56,10 +57,8 @@ export class AdminPaymentNotifyService {
     const appPublicName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
       'Shamell Entertainment';
-    const frontendBaseUrl = this.config
-      .get<string>('FRONTEND_URL')
-      ?.split(',')[0]
-      ?.trim();
+    const branding = emailBrandingFromConfig(this.config);
+    const frontendBaseUrl = branding.siteBaseUrl;
     const flowLabel: AdminPaymentFlowLabel = flowLabelFromCode(input.flow);
     const amountUsd = this.usd(input.amount, input.currency);
     const stageLabel = stageLabelFromCode(input.stage);
@@ -67,6 +66,7 @@ export class AdminPaymentNotifyService {
     const mailInput = {
       appPublicName,
       frontendBaseUrl,
+      branding,
       outcome: input.outcome,
       flowLabel,
       customerName: input.customerName,
