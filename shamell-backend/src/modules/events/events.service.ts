@@ -1110,6 +1110,7 @@ export class EventsService {
           reservationOpensAt: config?.reservationOpensAt ?? null,
           reservationClosesAt: config?.reservationClosesAt ?? null,
           reservationEventDate: config?.reservationEventDate ?? null,
+          reservationTimezone: config?.reservationTimezone ?? null,
           hasActiveSessions,
           fixedTicketCapacity,
           ticketsRemaining,
