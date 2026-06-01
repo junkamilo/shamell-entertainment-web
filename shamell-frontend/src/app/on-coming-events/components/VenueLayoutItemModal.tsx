@@ -6,6 +6,7 @@ import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
 import type { VenueTableConfig } from "@/app/shamell-admin/venue-tables/types/venueTables.types";
 import type { StandaloneChairConfig } from "@/app/shamell-admin/venue-tables/types/standaloneChairs.types";
+import { resolveStandaloneChairUnitPrice } from "../lib/resolveStandaloneChairUnitPrice";
 import { formatPriceEn } from "@/lib/pricing";
 import { createVenueCheckoutSession } from "../services/createVenueCheckoutSession";
 import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
@@ -14,6 +15,7 @@ type Props = {
   item: PlacedLayoutItem;
   tableConfig: VenueTableConfig | null;
   standaloneChairs: StandaloneChairConfig;
+  chairPricesById: ReadonlyMap<string, number>;
   eventLabel: string | null;
   eventDateIso: string | null;
   isReserved: boolean;
@@ -42,6 +44,7 @@ export default function VenueLayoutItemModal({
   item,
   tableConfig,
   standaloneChairs,
+  chairPricesById,
   eventLabel,
   eventDateIso,
   isReserved,
@@ -87,7 +90,9 @@ export default function VenueLayoutItemModal({
 
   const isTable = item.kind === "catalog_table";
   const title = isTable ? TABLE_SIZE_LABELS[item.size] : "Standalone chair";
-  const price = isTable ? tableConfig?.bundlePrice ?? null : standaloneChairs.unitPrice;
+  const price = isTable
+    ? (tableConfig?.bundlePrice ?? null)
+    : resolveStandaloneChairUnitPrice(item, chairPricesById, standaloneChairs.unitPrice);
   const eventDisplay = formatEventDisplay(eventLabel, eventDateIso);
 
   const startCheckout = useCallback(async () => {

@@ -19,6 +19,12 @@ const FONT_SELECT_OPTIONS = HEADER_FONT_OPTIONS.map((option) => ({
 const fieldInputClass =
   "shamell-glass-trigger w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none transition focus:border-gold focus-visible:ring-2 focus-visible:ring-gold/25";
 
+const styleControlLabelClass =
+  "font-brand text-[10px] tracking-[0.16em] text-gold/75";
+
+/** Matches text inputs and pairs with compact font select in this form. */
+const styleControlRowHeightClass = "h-11 min-h-11";
+
 type Props = {
   label: string;
   text: string;
@@ -65,10 +71,10 @@ export default function HeaderTextStyleField({
         />
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block">
-          <span className="font-brand text-[10px] tracking-[0.16em] text-gold/75">FONT</span>
-          <div className="mt-1.5">
+      <div className="space-y-1.5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:items-start">
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span className={styleControlLabelClass}>FONT</span>
             <AdminAccordionSingleSelect
               options={FONT_SELECT_OPTIONS}
               value={font}
@@ -76,42 +82,58 @@ export default function HeaderTextStyleField({
               showNoneOption={false}
               required
               ariaLabel={`${label} font`}
+              className="[&_button]:min-h-11 [&_button]:py-2.5 [&_button]:text-sm"
             />
           </div>
-        </label>
 
-        <label className="block">
-          <span className="font-brand text-[10px] tracking-[0.16em] text-gold/75">COLOR</span>
-          <div className="mt-1.5 flex items-center gap-2">
-            <div className="relative shrink-0">
-              <input
-                type="color"
-                value={colorInputFromHex(color)}
-                onChange={(event) => onColorChange(hexFromColorInput(event.target.value))}
-                className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                aria-label={`${label} color picker`}
-              />
-              <div
-                className="shamell-glass-trigger flex h-10 w-12 items-center justify-center rounded-lg border border-gold/30 p-1"
-                aria-hidden
-              >
-                <span
-                  className="h-full w-full rounded-md border border-white/10 shadow-inner"
-                  style={{ backgroundColor: colorInputFromHex(color) }}
+          <div className="flex min-w-0 flex-col gap-1.5">
+            <span className={styleControlLabelClass}>COLOR</span>
+            <div
+              className={cn(
+                "flex items-stretch gap-2",
+                styleControlRowHeightClass,
+              )}
+            >
+              <div className="relative h-full w-12 shrink-0">
+                <input
+                  type="color"
+                  value={colorInputFromHex(color)}
+                  onChange={(event) =>
+                    onColorChange(hexFromColorInput(event.target.value))
+                  }
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  aria-label={`${label} color picker`}
                 />
+                <div
+                  className="shamell-glass-trigger flex h-full w-full items-center justify-center rounded-xl border border-gold/30 p-1"
+                  aria-hidden
+                >
+                  <span
+                    className="h-full w-full rounded-md border border-white/10 shadow-inner"
+                    style={{ backgroundColor: colorInputFromHex(color) }}
+                  />
+                </div>
               </div>
+              <input
+                value={color}
+                onChange={(event) =>
+                  onColorChange(normalizeHexColor(event.target.value))
+                }
+                placeholder="#RRGGBB"
+                className={cn(
+                  fieldInputClass,
+                  styleControlRowHeightClass,
+                  "min-w-0 flex-1 font-mono",
+                )}
+              />
             </div>
-            <input
-              value={color}
-              onChange={(event) => onColorChange(normalizeHexColor(event.target.value))}
-              placeholder="#RRGGBB"
-              className={cn(fieldInputClass, "h-10 min-w-0 flex-1 font-mono")}
-            />
           </div>
-          {colorInvalid ? (
-            <p className="mt-1 text-[11px] text-destructive">Use format #RRGGBB</p>
-          ) : null}
-        </label>
+        </div>
+        {colorInvalid ? (
+          <p className="text-[11px] text-destructive sm:text-right">
+            Use format #RRGGBB
+          </p>
+        ) : null}
       </div>
     </fieldset>
   );

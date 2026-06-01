@@ -41,5 +41,4 @@ export type EventTypesStats = {
   total: number;
   active: number;
   inactive: number;
-  recentLabel: string;
 };

@@ -1,5 +1,9 @@
 import type { GuideInvestmentCompute } from './booking-guide-investment';
-import { buildEmailLogoWordmarkHtml, plainTextBrandLead } from '../mail/email-html-branding';
+import {
+  buildEmailLogoWordmarkHtml,
+  plainTextBrandLead,
+  type EmailBranding,
+} from '../mail/email-html-branding';
 
 export type BookingInquiryAckTemplateInput = {
   /** First word of full name, or full display name. */
@@ -7,6 +11,8 @@ export type BookingInquiryAckTemplateInput = {
   appPublicName: string;
   /** Optional public site URL for footer link and logo asset. */
   siteUrl?: string;
+  /** Resolved logo URL (embedded PNG when site URL is localhost-only). */
+  branding?: EmailBranding;
   /** Optional catalog guide total from server (same logic as site pricing preview). */
   guideInvestment?: GuideInvestmentCompute;
 };
@@ -101,7 +107,7 @@ export function buildBookingInquiryAckHtml(
           <a href="${escapeHtml(siteUrl)}" style="color:#e8d5a3;text-decoration:underline;">Visit our website</a>
         </p>`
     : '';
-  const logoBlock = buildEmailLogoWordmarkHtml(siteUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? siteUrl);
 
   return `
 <!DOCTYPE html>

@@ -31,6 +31,7 @@ export default function PeticionesPageContent() {
       <PeticionesLaneTabs
         activeLane={page.activeLane}
         onLaneChange={page.onLaneChange}
+        guidanceUnread={page.guidanceUnread}
       />
 
       <PeticionesStatsBar

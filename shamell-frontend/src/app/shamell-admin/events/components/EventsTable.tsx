@@ -1,93 +1,166 @@
-import { Calendar } from "lucide-react";
-import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
-import type { AdminEvent } from "../types/events.types";
-import EventsTableRow from "./EventsTableRow";
+"use client";
 
-type Props = {
-  paginatedEvents: AdminEvent[];
-  eventsCount: number;
-  searchedCount: number;
-  isLoading: boolean;
-  canDelete: (item: AdminEvent) => boolean;
-  cannotDeactivate: (item: AdminEvent) => boolean;
+import { Calendar, Eye, Pencil, Trash2 } from "lucide-react";
+import AdminActiveToggleButton from "@/components/admin/AdminActiveToggleButton";
+import AdminTable from "@/components/admin/AdminTable";
+import type { AdminTableColumn } from "@/components/admin/adminTable.types";
+import AdminTableTruncatedText from "@/components/admin/AdminTableTruncatedText";
+import AdminTableRowActions, {
+  adminTableIconBtnClass,
+  adminTableIconBtnDangerClass,
+} from "@/components/admin/AdminTableRowActions";
+import { cn } from "@/lib/utils";
+import { displayEventHeading, pillClassForTypeName } from "../lib/eventsDisplay";
+import { formatPriceEn } from "../lib/eventsPrice";
+import type { AdminEvent } from "../types/events.types";
+
+type RowHandlers = {
   togglingId: string | null;
-  onCreateClick: () => void;
+  cannotDeactivate: (item: AdminEvent) => boolean;
   onView: (item: AdminEvent) => void;
   onEdit: (item: AdminEvent) => void;
   onDelete: (item: AdminEvent) => void;
   onToggleActive: (item: AdminEvent) => void;
+  onBlockedDeactivate: (item: AdminEvent) => void;
 };
 
-export default function EventsTable({
-  paginatedEvents,
-  eventsCount,
-  searchedCount,
-  isLoading,
-  canDelete,
-  cannotDeactivate,
-  togglingId,
-  onCreateClick,
-  onView,
-  onEdit,
-  onDelete,
-  onToggleActive,
-}: Props) {
-  return (
-    <div className="hidden overflow-x-auto rounded-xl border border-gold/14 md:block">
-      <table className="w-full min-w-[960px] border-collapse text-left">
-        <thead>
-          <tr className="border-b border-gold/12">
-            <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
-            <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">EVENT</th>
-            <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TYPE</th>
-            <th className="w-16 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
-            <th className="min-w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRICE</th>
-            <th className="min-w-36 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">STATUS</th>
-            <th className="w-32 px-3 py-3 text-right font-brand text-[10px] tracking-[0.14em] text-gold/80">
-              ACTIONS
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {paginatedEvents.map((item) => (
-            <EventsTableRow
-              key={item.id}
-              item={item}
-              deletable={canDelete(item)}
-              blockDeactivate={cannotDeactivate(item)}
-              isToggling={togglingId === item.id}
-              onView={onView}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onToggleActive={onToggleActive}
+type Props = {
+  events: AdminEvent[];
+} & RowHandlers;
+
+export default function EventsTable({ events, ...handlers }: Props) {
+  const columns: AdminTableColumn<AdminEvent>[] = [
+    {
+      id: "icon",
+      header: "",
+      headerClassName: "w-14 px-2",
+      cellClassName: "px-2",
+      cell: () => (
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-gold/22 bg-gold/10">
+          <Calendar className="h-4 w-4 text-gold/85" strokeWidth={1.4} />
+        </div>
+      ),
+    },
+    {
+      id: "event",
+      header: "EVENT",
+      cellClassName: "max-w-[12rem] md:max-w-[16rem]",
+      cell: (item) => {
+        const { title, subtitle } = displayEventHeading(item.description);
+        const bk = item.bookingCount ?? 0;
+        return (
+          <>
+            <AdminTableTruncatedText primary={title} secondary={subtitle || undefined} />
+            {bk > 0 ? (
+              <p className="mt-1 truncate font-body text-[10px] text-foreground/45">
+                {bk === 1 ? "1 booking" : `${bk} bookings`}
+              </p>
+            ) : null}
+          </>
+        );
+      },
+    },
+    {
+      id: "type",
+      header: "TYPE",
+      cellClassName: "max-w-[10rem] md:max-w-[12rem]",
+      cell: (item) => (
+        <span
+          className={cn(
+            "inline-flex max-w-full truncate rounded-full border px-2.5 py-1 font-body text-[11px]",
+            pillClassForTypeName(item.eventTypeName),
+          )}
+          title={item.eventTypeName}
+        >
+          {item.eventTypeName}
+        </span>
+      ),
+    },
+    {
+      id: "items",
+      header: "ITEMS",
+      headerClassName: "w-20",
+      cellClassName: "font-body text-sm text-foreground/75",
+      cell: (item) => item.items.length,
+    },
+    {
+      id: "price",
+      header: "PRICE",
+      headerClassName: "w-24",
+      cellClassName: "font-body text-sm text-foreground/75 whitespace-nowrap",
+      cell: (item) => formatPriceEn(item.price),
+    },
+    {
+      id: "status",
+      header: "STATUS",
+      cellClassName: "min-w-[9rem]",
+      cell: (item) => {
+        const deactivateBlocked = handlers.cannotDeactivate(item);
+        const isToggling = handlers.togglingId === item.id;
+        return (
+          <div className="flex items-center gap-3">
+            <AdminActiveToggleButton
+              isActive={item.isActive}
+              isToggling={isToggling}
+              deactivateBlocked={deactivateBlocked}
+              onToggle={() => handlers.onToggleActive(item)}
+              onBlockedDeactivate={() => handlers.onBlockedDeactivate(item)}
+              ariaLabel={`${item.isActive ? "Deactivate" : "Activate"} event`}
             />
-          ))}
-          {!isLoading && searchedCount === 0 ? (
-            <tr>
-              <td colSpan={7} className="border-b border-gold/8 p-0 align-middle">
-                {eventsCount === 0 ? (
-                  <AdminCatalogEmptyState
-                    title="No events yet"
-                    description="Add a performance with type, description, and line items for the team."
-                    tone="primary"
-                    variant="embedded"
-                    icon={Calendar}
-                    action={{ label: "New event", onClick: onCreateClick }}
-                  />
-                ) : (
-                  <AdminCatalogEmptyState
-                    title="No matches for your search"
-                    description="Try different search words."
-                    tone="muted"
-                    variant="embedded"
-                    icon={Calendar}
-                  />
-                )}
-              </td>
-            </tr>
-          ) : null}
-        </tbody>
-      </table>
+            <span className="font-body text-xs text-foreground/55">
+              {item.isActive ? "Active" : "Hidden"}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: <span className="block text-right">ACTIONS</span>,
+      headerClassName: "w-36 text-right",
+      cell: (item) => (
+        <AdminTableRowActions>
+          <button
+            type="button"
+            onClick={() => handlers.onView(item)}
+            className={adminTableIconBtnClass}
+            aria-label="View event"
+          >
+            <Eye className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handlers.onEdit(item)}
+            className={adminTableIconBtnClass}
+            aria-label="Edit event"
+          >
+            <Pencil className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={() => handlers.onDelete(item)}
+            className={adminTableIconBtnDangerClass}
+            aria-label="Delete event permanently"
+            title="Delete from catalog (cannot undo)"
+          >
+            <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+          </button>
+        </AdminTableRowActions>
+      ),
+    },
+  ];
+
+  return (
+    <div className="hidden min-w-0 w-full lg:block">
+      <AdminTable
+        columns={columns}
+        rows={events}
+        getRowKey={(item) => item.id}
+        tableClassName="w-full min-w-[960px] border-collapse text-left"
+        scrollableBody
+        variant="embedded"
+        rowClassName={(item) => (!item.isActive ? "opacity-55" : "")}
+      />
     </div>
   );
 }

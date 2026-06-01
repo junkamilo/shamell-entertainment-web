@@ -1,28 +1,34 @@
-import type {
-  StandaloneChairConfig,
-  StandaloneChairInventoryItem,
-} from "../types/standaloneChairs.types";
-import { STANDALONE_CHAIR_DISPLAY_LABEL } from "../types/standaloneChairs.types";
+import type { StandaloneChairInventoryItem } from "../types/standaloneChairs.types";
 
 function mapChairRow(data: unknown): StandaloneChairInventoryItem | null {
   if (!data || typeof data !== "object") return null;
   const o = data as Record<string, unknown>;
-  if (typeof o.id !== "string" || typeof o.chairName !== "string") return null;
+  if (typeof o.id !== "string") return null;
+
+  const reservationStatus =
+    o.reservationStatus === "PAID" || o.reservationStatus === "PENDING_PAYMENT"
+      ? o.reservationStatus
+      : undefined;
 
   return {
     id: o.id,
-    chairName: o.chairName,
+    chairName: typeof o.chairName === "string" ? o.chairName : "Chair",
     displayLabel:
-      typeof o.displayLabel === "string" ? o.displayLabel : STANDALONE_CHAIR_DISPLAY_LABEL,
+      typeof o.displayLabel === "string" ? o.displayLabel : "Chair",
     unitPrice: Number(o.unitPrice ?? 0),
     sortOrder: Number(o.sortOrder ?? 0),
     isActive: Boolean(o.isActive ?? true),
     createdAt: String(o.createdAt ?? ""),
     updatedAt: String(o.updatedAt ?? ""),
+    isReserved: Boolean(o.isReserved),
+    reservationStatus,
+    isOnFloorPlan: Boolean(o.isOnFloorPlan),
+    canDelete: o.canDelete !== false,
+    canEditPrice: o.canEditPrice !== false,
   };
 }
 
-export function mapStandaloneChairFromApi(data: unknown): StandaloneChairConfig {
+export function mapStandaloneChairFromApi(data: unknown): import("../types/standaloneChairs.types").StandaloneChairConfig {
   if (!data || typeof data !== "object") {
     return {
       id: null,
@@ -30,6 +36,8 @@ export function mapStandaloneChairFromApi(data: unknown): StandaloneChairConfig 
       unitPrice: 0,
       updatedAt: null,
       isDefault: true,
+      reservedCount: 0,
+      totalCount: 0,
       chairs: [],
     };
   }
@@ -47,8 +55,14 @@ export function mapStandaloneChairFromApi(data: unknown): StandaloneChairConfig 
     unitPrice: Number(o.unitPrice ?? 0),
     updatedAt: o.updatedAt != null ? String(o.updatedAt) : null,
     isDefault: Boolean(o.isDefault ?? false),
+    reservedCount: Number(o.reservedCount ?? 0),
+    totalCount: Number(o.totalCount ?? chairs.length),
     chairs,
   };
+}
+
+export function formatStandaloneChairShortId(id: string): string {
+  return `#${id.replace(/-/g, "").slice(0, 6)}`;
 }
 
 export function formatStandaloneChairAdminSubtitle(chair: {

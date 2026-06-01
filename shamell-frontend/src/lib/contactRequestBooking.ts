@@ -292,7 +292,7 @@ export function buildAdminBookingPayloadFromContactRequest(
     guestFullName: row.fullName.trim(),
     guestEmail: row.email.trim(),
     guestPhone: phone,
-    status: "CONFIRMED",
+    status: "PENDING",
     source: "ADMIN_FROM_CONTACT",
     notes: notes || undefined,
     ...(guestCount !== undefined ? { guestCount } : {}),

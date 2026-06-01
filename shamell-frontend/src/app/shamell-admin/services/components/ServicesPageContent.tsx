@@ -1,7 +1,12 @@
+import AdminBlockedActionModal from "@/components/admin/AdminBlockedActionModal";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
+import { useAdminBlockedActionWarning } from "@/components/admin/useAdminBlockedActionWarning";
+import type { AdminService } from "../types/services.types";
 import type { useServicesPage } from "../hooks/useServicesPage";
 import ServicesClearMediaModal from "./ServicesClearMediaModal";
-import ServicesDeleteModal from "./ServicesDeleteModal";
+import AdminDeleteConfirmModal, {
+  AdminDeleteConfirmMessage,
+} from "@/components/admin/AdminDeleteConfirmModal";
 import ServicesFormLightbox from "./ServicesFormLightbox";
 import ServicesFormModal from "./ServicesFormModal";
 import ServicesListSection from "./ServicesListSection";
@@ -18,7 +23,30 @@ type Props = {
 
 export default function ServicesPageContent({ state }: Props) {
   const { catalog, list, form } = state;
+  const blockedWarning = useAdminBlockedActionWarning();
   const activeTypesCount = catalog.serviceTypes.filter((item) => item.isActive).length;
+
+  const showDeactivateBlocked = (service: AdminService) => {
+    blockedWarning.openWarning({
+      title: "Cannot deactivate",
+      description: state.getDeactivateBlockedDescription(service),
+    });
+  };
+
+  const showDeleteBlocked = (service: AdminService) => {
+    blockedWarning.openWarning({
+      title: "Cannot delete",
+      description: state.getDeleteBlockedDescription(service),
+    });
+  };
+
+  const handleDelete = (service: AdminService) => {
+    if (!state.canDeleteService(service)) {
+      showDeleteBlocked(service);
+      return;
+    }
+    state.openDeleteConfirm(service);
+  };
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl overflow-x-hidden">
@@ -31,7 +59,7 @@ export default function ServicesPageContent({ state }: Props) {
 
       {activeTypesCount === 0 ? <ServicesNoTypesBanner /> : null}
 
-      <ServicesStatsBar stats={list.stats} typeMostUsedLabel={list.typeMostUsedLabel} />
+      <ServicesStatsBar stats={list.stats} />
 
       <ServicesToolbar
         searchQuery={list.searchQuery}
@@ -55,13 +83,12 @@ export default function ServicesPageContent({ state }: Props) {
         totalPages={list.totalPages}
         onPageChange={list.setPage}
         togglingId={state.togglingId}
-        canDelete={state.canDeleteService}
         cannotDeactivate={state.cannotDeactivateWhileActive}
-        getDeleteBlockedTitle={state.getDeleteBlockedTitle}
         onView={state.setViewService}
         onEdit={state.startEdit}
-        onDelete={state.openDeleteConfirm}
+        onDelete={handleDelete}
         onToggle={(service) => void state.onToggleActive(service)}
+        onBlockedDeactivate={showDeactivateBlocked}
       />
 
       <ServicesFormModal
@@ -111,12 +138,29 @@ export default function ServicesPageContent({ state }: Props) {
         onConfirm={() => void state.onConfirmClearMedia()}
       />
 
-      <ServicesDeleteModal
+      <AdminDeleteConfirmModal
+        title="Delete service"
         isOpen={Boolean(state.pendingDelete)}
-        title={state.pendingDeleteTitle}
         isDeleting={state.isDeleting}
         onClose={state.closeDeleteModal}
         onConfirm={() => void state.onConfirmDelete()}
+      >
+        <AdminDeleteConfirmMessage
+          entityLabel="service"
+          name={state.pendingDeleteTitle}
+          meta={state.pendingDelete?.serviceTypeName}
+          consequences={[
+            "It will be removed from the catalog and from cloud storage.",
+            "This action cannot be undone.",
+          ]}
+        />
+      </AdminDeleteConfirmModal>
+
+      <AdminBlockedActionModal
+        isOpen={blockedWarning.isOpen}
+        onClose={blockedWarning.closeWarning}
+        title={blockedWarning.title}
+        description={blockedWarning.description}
       />
     </div>
   );

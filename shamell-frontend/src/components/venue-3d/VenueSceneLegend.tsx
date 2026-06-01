@@ -85,7 +85,7 @@ export default function VenueSceneLegend({
       {showEditorHints ? (
         <div className="mt-3 border-t border-shamell-gold/20 pt-2 text-shamell-text-primary/80">
           <p>Drag a table or chair to move it.</p>
-          <p className="mt-1">Right-click drag to pan · scroll to zoom · one finger pan on touch.</p>
+          <p className="mt-1">One finger to orbit · two fingers to pan and pinch to zoom.</p>
         </div>
       ) : null}
       {showReservationKey ? (

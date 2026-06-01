@@ -1,4 +1,5 @@
 import { PrismaService } from '../../prisma/prisma.service';
+import { bookingInquiryCatalogEventWhere } from '../events/booking-inquiry-catalog.util';
 import type { SanitizedInquiryDetails } from './contact-inquiry-details';
 
 export type GuideInvestmentCompute = {
@@ -38,8 +39,8 @@ export async function computeBookingGuideInvestmentUsd(
   let eventUsd: number | null = null;
 
   if (details.eventId) {
-    const ev = await prisma.event.findUnique({
-      where: { id: details.eventId },
+    const ev = await prisma.event.findFirst({
+      where: { id: details.eventId, ...bookingInquiryCatalogEventWhere },
       select: { price: true },
     });
     if (!ev) {
@@ -50,8 +51,11 @@ export async function computeBookingGuideInvestmentUsd(
       else eventUsd = p;
     }
   } else if (details.eventTypeId) {
-    const ev = await prisma.event.findUnique({
-      where: { eventTypeId: details.eventTypeId },
+    const ev = await prisma.event.findFirst({
+      where: {
+        eventTypeId: details.eventTypeId,
+        ...bookingInquiryCatalogEventWhere,
+      },
       select: { price: true },
     });
     if (!ev) {

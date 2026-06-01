@@ -1,44 +1,42 @@
 import { Eye, Pencil, Trash2 } from "lucide-react";
+import AdminActiveToggleButton from "@/components/admin/AdminActiveToggleButton";
 import { cn } from "@/lib/utils";
 import { displayServiceHeading, formatPriceEn, pillClassForTypeName } from "../lib/servicesDisplay";
 import type { AdminService } from "../types/services.types";
-import ServiceListMediaThumb from "./ServiceListMediaThumb";
+import AdminTableTruncatedText from "@/components/admin/AdminTableTruncatedText";
+import ServiceCatalogListIcon from "./ServiceCatalogListIcon";
 
 type Props = {
   service: AdminService;
   togglingId: string | null;
-  deletable: boolean;
-  blockDeactivate: boolean;
-  deleteBlockedTitle: string;
+  deactivateBlocked: boolean;
   onView: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onToggle: () => void;
+  onBlockedDeactivate: () => void;
 };
 
 export default function ServicesMobileCard({
   service,
   togglingId,
-  deletable,
-  blockDeactivate,
-  deleteBlockedTitle,
+  deactivateBlocked,
   onView,
   onEdit,
   onDelete,
   onToggle,
+  onBlockedDeactivate,
 }: Props) {
-  const { title } = displayServiceHeading(service.description);
+  const { title, subtitle } = displayServiceHeading(service.description);
   const bk = service.bookingCount ?? 0;
   const gal = service.galleryPhotoCount ?? 0;
 
   return (
     <article className="shamell-glass-surface flex min-w-0 flex-col gap-3 overflow-hidden rounded-xl border border-gold/14 p-4">
       <div className="flex min-w-0 gap-3">
-        <ServiceListMediaThumb imageUrl={service.imageUrl} size="md" />
+        <ServiceCatalogListIcon size="md" />
         <div className="min-w-0 flex-1 overflow-hidden">
-          <p className="line-clamp-2 break-words font-brand text-sm leading-snug tracking-[0.04em] text-gold">
-            {title}
-          </p>
+          <AdminTableTruncatedText primary={title} secondary={subtitle || undefined} />
           {bk > 0 || gal > 0 ? (
             <p className="mt-1 font-body text-[10px] leading-snug text-foreground/45">
               {bk > 0 ? `${bk} booking(s)` : null}
@@ -71,28 +69,14 @@ export default function ServicesMobileCard({
           <span className="shrink-0 font-body text-xs text-foreground/55">
             {service.isActive ? "Activo" : "Inactivo"}
           </span>
-          <button
-            type="button"
-            onClick={onToggle}
-            disabled={togglingId === service.id || blockDeactivate}
-            title={blockDeactivate ? "This service has bookings and cannot be turned off." : undefined}
-            className={cn(
-              "relative h-7 w-12 shrink-0 rounded-full border transition",
-              service.isActive
-                ? "border-emerald-400/45 bg-emerald-500/22"
-                : "border-gold/40 bg-gold/10 ring-1 ring-gold/20",
-              togglingId === service.id && "cursor-not-allowed opacity-60",
-              blockDeactivate && "cursor-not-allowed opacity-45",
-            )}
-            aria-label={`${service.isActive ? "Hide" : "Show"} service`}
-          >
-            <span
-              className={cn(
-                "absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition",
-                service.isActive ? "left-6" : "left-1",
-              )}
-            />
-          </button>
+          <AdminActiveToggleButton
+            isActive={service.isActive}
+            isToggling={togglingId === service.id}
+            deactivateBlocked={deactivateBlocked}
+            onToggle={onToggle}
+            onBlockedDeactivate={onBlockedDeactivate}
+            ariaLabel={`${service.isActive ? "Deactivate" : "Activate"} service`}
+          />
         </div>
       </div>
 
@@ -116,15 +100,9 @@ export default function ServicesMobileCard({
         <button
           type="button"
           onClick={onDelete}
-          disabled={!deletable}
-          className={cn(
-            "flex min-h-11 items-center justify-center rounded-lg border transition",
-            deletable
-              ? "border-red-400/25 text-foreground/55 hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
-              : "cursor-not-allowed border-gold/10 text-foreground/30",
-          )}
+          className="flex min-h-11 items-center justify-center rounded-lg border border-red-400/25 text-foreground/55 transition hover:border-red-400/45 hover:bg-red-500/10 hover:text-red-300"
           aria-label="Delete service permanently"
-          title={!deletable ? deleteBlockedTitle : "Delete from catalog (irreversible)"}
+          title="Delete from catalog (irreversible)"
         >
           <Trash2 className="h-4 w-4" strokeWidth={1.5} />
         </button>

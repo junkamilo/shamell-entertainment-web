@@ -1,4 +1,5 @@
 import type { PrismaService } from '../../prisma/prisma.service';
+import { bookingInquiryCatalogEventWhere } from '../events/booking-inquiry-catalog.util';
 import type { ContactInquiryCode } from '../../common/contact-inquiry-codes';
 import type { SanitizedInquiryDetails } from './contact-inquiry-details';
 
@@ -88,8 +89,8 @@ export async function resolvePrimaryServiceIdForInquiry(
 
   const eventId = trimUuid(details?.eventId);
   if (eventId) {
-    const ev = await prisma.event.findUnique({
-      where: { id: eventId },
+    const ev = await prisma.event.findFirst({
+      where: { id: eventId, ...bookingInquiryCatalogEventWhere },
       select: { eventType: { select: { contactInquiryCode: true } } },
     });
     const code = ev?.eventType.contactInquiryCode?.trim();

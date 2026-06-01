@@ -43,6 +43,10 @@ function mapPlacedItem(raw: unknown): PlacedLayoutItem | null {
       kind: "standalone_chair",
       venueStandaloneChairId: o.venueStandaloneChairId,
       chairName: typeof o.chairName === "string" ? o.chairName : "Chair",
+      unitPrice:
+        typeof o.unitPrice === "number" && Number.isFinite(o.unitPrice)
+          ? o.unitPrice
+          : undefined,
       x,
       y,
       rotation,

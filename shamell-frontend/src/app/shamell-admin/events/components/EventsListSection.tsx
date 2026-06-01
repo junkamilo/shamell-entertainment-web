@@ -7,7 +7,7 @@ import EventsTable from "./EventsTable";
 
 type Props = {
   isLoading: boolean;
-  eventsCount: number;
+  sectionEventsCount: number;
   searchedCount: number;
   paginatedEvents: AdminEvent[];
   pageOffset: number;
@@ -16,17 +16,17 @@ type Props = {
   onPageChange: (page: number) => void;
   onCreateClick: () => void;
   togglingId: string | null;
-  canDelete: (item: AdminEvent) => boolean;
   cannotDeactivate: (item: AdminEvent) => boolean;
   onView: (item: AdminEvent) => void;
   onEdit: (item: AdminEvent) => void;
   onDelete: (item: AdminEvent) => void;
   onToggleActive: (item: AdminEvent) => void;
+  onBlockedDeactivate: (item: AdminEvent) => void;
 };
 
 export default function EventsListSection({
   isLoading,
-  eventsCount,
+  sectionEventsCount,
   searchedCount,
   paginatedEvents,
   pageOffset,
@@ -35,89 +35,80 @@ export default function EventsListSection({
   onPageChange,
   onCreateClick,
   togglingId,
-  canDelete,
   cannotDeactivate,
   onView,
   onEdit,
   onDelete,
   onToggleActive,
+  onBlockedDeactivate,
 }: Props) {
-  const rowProps = {
-    canDelete,
-    cannotDeactivate,
+  const rowHandlers = {
     togglingId,
+    cannotDeactivate,
     onView,
     onEdit,
     onDelete,
-    onToggleActive: (item: AdminEvent) => void onToggleActive(item),
+    onToggleActive,
+    onBlockedDeactivate,
   };
 
   return (
-    <section className="shamell-glass-surface rounded-xl p-4 md:p-5">
-      <div className="md:hidden space-y-3 rounded-xl border border-gold/14 p-3">
-        {isLoading ? (
-          <p className="py-10 text-center font-body text-sm text-foreground/65">Loading...</p>
-        ) : searchedCount === 0 ? (
-          eventsCount === 0 ? (
-            <AdminCatalogEmptyState
-              title="No events yet"
-              description="Add a performance with type, description, and line items for the team."
-              tone="primary"
-              variant="embedded"
-              icon={Calendar}
-              action={{ label: "New event", onClick: onCreateClick }}
-            />
-          ) : (
-            <AdminCatalogEmptyState
-              title="No matches for your search"
-              description="Try different search words."
-              tone="muted"
-              variant="embedded"
-              icon={Calendar}
-            />
-          )
+    <section className="shamell-glass-surface min-w-0 overflow-hidden rounded-xl p-4 md:p-5">
+      {isLoading ? (
+        <p className="py-12 text-center font-body text-sm text-foreground/65">Loading...</p>
+      ) : searchedCount === 0 ? (
+        sectionEventsCount === 0 ? (
+          <AdminCatalogEmptyState
+            title="No events yet"
+            description="Add a performance with type, description, and line items for the team."
+            tone="primary"
+            icon={Calendar}
+            action={{ label: "New event", onClick: onCreateClick }}
+          />
         ) : (
-          paginatedEvents.map((item) => (
-            <EventsMobileCard
-              key={item.id}
-              item={item}
-              deletable={canDelete(item)}
-              blockDeactivate={cannotDeactivate(item)}
-              isToggling={togglingId === item.id}
-              onView={onView}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onToggleActive={rowProps.onToggleActive}
-            />
-          ))
-        )}
-      </div>
+          <AdminCatalogEmptyState
+            title="No matches for your search"
+            description="Try different search words."
+            tone="muted"
+            icon={Calendar}
+          />
+        )
+      ) : (
+        <>
+          <div className="grid min-w-0 gap-3 lg:hidden">
+            {paginatedEvents.map((item) => (
+              <EventsMobileCard
+                key={item.id}
+                item={item}
+                togglingId={togglingId}
+                deactivateBlocked={cannotDeactivate(item)}
+                onView={() => onView(item)}
+                onEdit={() => onEdit(item)}
+                onDelete={() => onDelete(item)}
+                onToggleActive={() => onToggleActive(item)}
+                onBlockedDeactivate={() => onBlockedDeactivate(item)}
+              />
+            ))}
+          </div>
 
-      <EventsTable
-        paginatedEvents={paginatedEvents}
-        eventsCount={eventsCount}
-        searchedCount={searchedCount}
-        isLoading={isLoading}
-        canDelete={canDelete}
-        cannotDeactivate={cannotDeactivate}
-        togglingId={togglingId}
-        onCreateClick={onCreateClick}
-        onView={onView}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        onToggleActive={rowProps.onToggleActive}
-      />
+          <EventsTable events={paginatedEvents} {...rowHandlers} />
+        </>
+      )}
 
-      {isLoading ? <p className="mt-4 hidden text-sm text-foreground/65 md:block">Loading...</p> : null}
+      {searchedCount > 0 ? (
+        <EventsPagination
+          searchedCount={searchedCount}
+          pageOffset={pageOffset}
+          paginatedCount={paginatedEvents.length}
+          safePage={safePage}
+          totalPages={totalPages}
+          onPageChange={onPageChange}
+        />
+      ) : null}
 
-      <EventsPagination
-        searchedCount={searchedCount}
-        pageOffset={pageOffset}
-        paginatedCount={paginatedEvents.length}
-        safePage={safePage}
-        totalPages={totalPages}
-        onPageChange={onPageChange}
-      />
+      {isLoading && searchedCount > 0 ? (
+        <p className="mt-3 text-sm text-foreground/65">Refreshing...</p>
+      ) : null}
     </section>
   );
 }

@@ -1,15 +1,27 @@
+"use client";
+
+import { Eye, Pencil, Trash2 } from "lucide-react";
+import AdminActiveToggleButton from "@/components/admin/AdminActiveToggleButton";
+import AdminTable from "@/components/admin/AdminTable";
+import type { AdminTableColumn } from "@/components/admin/adminTable.types";
+import AdminTableTruncatedText from "@/components/admin/AdminTableTruncatedText";
+import AdminTableRowActions, {
+  adminTableIconBtnClass,
+  adminTableIconBtnDangerClass,
+} from "@/components/admin/AdminTableRowActions";
+import { cn } from "@/lib/utils";
+import { displayServiceHeading, formatPriceEn, pillClassForTypeName } from "../lib/servicesDisplay";
 import type { AdminService } from "../types/services.types";
-import ServicesTableRow from "./ServicesTableRow";
+import ServiceCatalogListIcon from "./ServiceCatalogListIcon";
 
 type RowHandlers = {
   togglingId: string | null;
-  canDelete: (service: AdminService) => boolean;
   cannotDeactivate: (service: AdminService) => boolean;
-  getDeleteBlockedTitle: (service: AdminService) => string;
   onView: (service: AdminService) => void;
   onEdit: (service: AdminService) => void;
   onDelete: (service: AdminService) => void;
   onToggle: (service: AdminService) => void;
+  onBlockedDeactivate: (service: AdminService) => void;
 };
 
 type Props = {
@@ -17,41 +29,139 @@ type Props = {
 } & RowHandlers;
 
 export default function ServicesTable({ services, ...handlers }: Props) {
-  return (
-    <div className="hidden overflow-x-auto rounded-xl border border-gold/14 lg:block">
-      <table className="w-full min-w-[920px] border-collapse text-left">
-        <thead>
-          <tr className="border-b border-gold/12">
-            <th className="w-14 px-2 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/70" />
-            <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">SERVICE</th>
-            <th className="px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">TYPE</th>
-            <th className="w-20 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">ITEMS</th>
-            <th className="w-24 px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">PRECIO</th>
-            <th className="min-w-[9rem] px-3 py-3 font-brand text-[10px] tracking-[0.14em] text-gold/80">
-              ESTADO
-            </th>
-            <th className="w-36 px-3 py-3 text-right font-brand text-[10px] tracking-[0.14em] text-gold/80">
-              ACCIONES
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {services.map((service) => (
-            <ServicesTableRow
-              key={service.id}
-              service={service}
-              togglingId={handlers.togglingId}
-              deletable={handlers.canDelete(service)}
-              blockDeactivate={handlers.cannotDeactivate(service)}
-              deleteBlockedTitle={handlers.getDeleteBlockedTitle(service)}
-              onView={() => handlers.onView(service)}
-              onEdit={() => handlers.onEdit(service)}
-              onDelete={() => handlers.onDelete(service)}
+  const columns: AdminTableColumn<AdminService>[] = [
+    {
+      id: "icon",
+      header: "",
+      headerClassName: "w-14 px-2",
+      cellClassName: "px-2",
+      cell: () => <ServiceCatalogListIcon size="sm" />,
+    },
+    {
+      id: "service",
+      header: "SERVICE",
+      cellClassName: "max-w-[12rem] md:max-w-[16rem]",
+      cell: (service) => {
+        const { title, subtitle } = displayServiceHeading(service.description);
+        const bk = service.bookingCount ?? 0;
+        const gal = service.galleryPhotoCount ?? 0;
+        return (
+          <>
+            <AdminTableTruncatedText primary={title} secondary={subtitle || undefined} />
+            {bk > 0 || gal > 0 ? (
+              <p
+                className="mt-1 truncate font-body text-[10px] text-foreground/45"
+                title={`${bk > 0 ? `${bk} booking(s)` : ""}${bk > 0 && gal > 0 ? " · " : ""}${gal > 0 ? `${gal} in gallery` : ""}`}
+              >
+                {bk > 0 ? `${bk} booking(s)` : null}
+                {bk > 0 && gal > 0 ? " · " : null}
+                {gal > 0 ? `${gal} in gallery` : null}
+              </p>
+            ) : null}
+          </>
+        );
+      },
+    },
+    {
+      id: "type",
+      header: "TYPE",
+      cellClassName: "max-w-[10rem] md:max-w-[12rem]",
+      cell: (service) => (
+        <span
+          className={cn(
+            "inline-flex max-w-full truncate rounded-full border px-2.5 py-1 font-body text-[11px]",
+            pillClassForTypeName(service.serviceTypeName),
+          )}
+          title={service.serviceTypeName}
+        >
+          {service.serviceTypeName}
+        </span>
+      ),
+    },
+    {
+      id: "items",
+      header: "ITEMS",
+      headerClassName: "w-20",
+      cellClassName: "font-body text-sm text-foreground/75",
+      cell: (service) => service.items.length,
+    },
+    {
+      id: "price",
+      header: "PRECIO",
+      headerClassName: "w-24",
+      cellClassName: "font-body text-sm text-foreground/75",
+      cell: (service) => formatPriceEn(service.price),
+    },
+    {
+      id: "status",
+      header: "ESTADO",
+      cellClassName: "min-w-[9rem]",
+      cell: (service) => {
+        const deactivateBlocked = handlers.cannotDeactivate(service);
+        const isToggling = handlers.togglingId === service.id;
+        return (
+          <div className="flex items-center gap-3">
+            <AdminActiveToggleButton
+              isActive={service.isActive}
+              isToggling={isToggling}
+              deactivateBlocked={deactivateBlocked}
               onToggle={() => handlers.onToggle(service)}
+              onBlockedDeactivate={() => handlers.onBlockedDeactivate(service)}
+              ariaLabel={`${service.isActive ? "Deactivate" : "Activate"} service`}
             />
-          ))}
-        </tbody>
-      </table>
+            <span className="font-body text-xs text-foreground/55">
+              {service.isActive ? "Activo" : "Inactivo"}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: <span className="block text-right">ACCIONES</span>,
+      headerClassName: "w-36 text-right",
+      cell: (service) => (
+          <AdminTableRowActions>
+            <button
+              type="button"
+              onClick={() => handlers.onView(service)}
+              className={adminTableIconBtnClass}
+              aria-label="View service"
+            >
+              <Eye className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handlers.onEdit(service)}
+              className={adminTableIconBtnClass}
+              aria-label="Edit service"
+            >
+              <Pencil className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handlers.onDelete(service)}
+              className={adminTableIconBtnDangerClass}
+              aria-label="Delete service permanently"
+              title="Delete from catalog (irreversible)"
+            >
+              <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+            </button>
+          </AdminTableRowActions>
+        ),
+    },
+  ];
+
+  return (
+    <div className="hidden min-w-0 w-full lg:block">
+      <AdminTable
+        columns={columns}
+        rows={services}
+        getRowKey={(service) => service.id}
+        tableClassName="w-full min-w-[920px] border-collapse text-left"
+        scrollableBody
+        variant="embedded"
+      />
     </div>
   );
 }

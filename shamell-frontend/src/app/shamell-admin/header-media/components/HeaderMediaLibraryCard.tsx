@@ -7,7 +7,7 @@ import HeaderMediaLibraryMedia from "./HeaderMediaLibraryMedia";
 type Props = {
   photo: HeaderPhoto;
   globalIndex: number;
-  onView: (url: string) => void;
+  onView: (photo: HeaderPhoto, globalIndex: number) => void;
   onFocus: (photo: HeaderPhoto) => void;
   onToggle: (photo: HeaderPhoto) => void;
   onDelete: (photo: HeaderPhoto) => void;
@@ -50,9 +50,9 @@ export default function HeaderMediaLibraryCard({
       <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gold/12 bg-black/20 px-2.5 py-2">
         <button
           type="button"
-          onClick={() => onView(photo.imageUrl)}
+          onClick={() => onView(photo, globalIndex)}
           className="shrink-0 rounded-lg border border-gold/25 p-1.5 text-gold transition hover:bg-gold/10"
-          aria-label="Open in new tab"
+          aria-label="Preview media"
         >
           <Eye className="h-3.5 w-3.5" />
         </button>

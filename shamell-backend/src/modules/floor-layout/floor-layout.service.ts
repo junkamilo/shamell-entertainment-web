@@ -47,7 +47,7 @@ export class FloorLayoutService {
     if (!row) {
       return this.mapVirtualLayout(null);
     }
-    return this.mapRow(row);
+    return this.enrichLayoutChairPrices(this.mapRow(row));
   }
 
   private async assertClientPublishEnabled() {
@@ -72,7 +72,7 @@ export class FloorLayoutService {
     if (!row) {
       return this.mapVirtualLayout(null);
     }
-    return this.mapRow(row);
+    return this.enrichLayoutChairPrices(this.mapRow(row));
   }
 
   async getAdminPalette() {
@@ -420,6 +420,99 @@ export class FloorLayoutService {
       updatedAt: row.updatedAt,
       isDefault: false,
       hasLegacyItems,
+    };
+  }
+
+  /**
+   * Writes current DB chair prices into the active layout JSON so every consumer
+   * (public 3D, admin editor, cached clients) sees the same unitPrice.
+   */
+  async syncStandaloneChairUnitPricesInActiveLayout(): Promise<void> {
+    const layout = await this.findActiveRow();
+    if (!layout || !Array.isArray(layout.items)) return;
+
+    const chairIds = new Set<string>();
+    for (const entry of layout.items) {
+      if (!entry || typeof entry !== 'object') continue;
+      const o = entry as Record<string, unknown>;
+      if (
+        o.kind === 'standalone_chair' &&
+        typeof o.venueStandaloneChairId === 'string'
+      ) {
+        chairIds.add(o.venueStandaloneChairId);
+      }
+    }
+    if (chairIds.size === 0) return;
+
+    const chairs = await this.prisma.venueStandaloneChair.findMany({
+      where: { id: { in: [...chairIds] }, isActive: true },
+      select: { id: true, unitPrice: true },
+    });
+    const priceById = new Map(
+      chairs.map((chair) => [chair.id, Number(chair.unitPrice)]),
+    );
+
+    let changed = false;
+    const nextItems = (layout.items as unknown[]).map((entry) => {
+      if (!entry || typeof entry !== 'object') return entry;
+      const o = entry as Record<string, unknown>;
+      if (
+        o.kind !== 'standalone_chair' ||
+        typeof o.venueStandaloneChairId !== 'string'
+      ) {
+        return entry;
+      }
+      const nextPrice = priceById.get(o.venueStandaloneChairId);
+      if (nextPrice === undefined) return entry;
+      const current =
+        typeof o.unitPrice === 'number' && Number.isFinite(o.unitPrice)
+          ? o.unitPrice
+          : undefined;
+      if (current === nextPrice) return entry;
+      changed = true;
+      return { ...o, unitPrice: nextPrice };
+    });
+
+    if (!changed) return;
+
+    await this.prisma.venueFloorLayout.update({
+      where: { id: layout.id },
+      data: { items: nextItems as Prisma.JsonArray },
+    });
+  }
+
+  private async enrichLayoutChairPrices<
+    T extends { items: PlacedLayoutItem[] },
+  >(layout: T): Promise<T> {
+    const chairIds = layout.items
+      .filter(
+        (item): item is Extract<PlacedLayoutItem, { kind: 'standalone_chair' }> =>
+          item.kind === 'standalone_chair',
+      )
+      .map((item) => item.venueStandaloneChairId);
+
+    if (chairIds.length === 0) {
+      return layout;
+    }
+
+    const chairs = await this.prisma.venueStandaloneChair.findMany({
+      where: { id: { in: chairIds }, isActive: true },
+      select: { id: true, unitPrice: true },
+    });
+    const priceById = new Map(
+      chairs.map((chair) => [chair.id, Number(chair.unitPrice)]),
+    );
+
+    return {
+      ...layout,
+      items: layout.items.map((item) =>
+        item.kind === 'standalone_chair'
+          ? {
+              ...item,
+              unitPrice: priceById.get(item.venueStandaloneChairId) ?? 0,
+            }
+          : item,
+      ),
     };
   }
 

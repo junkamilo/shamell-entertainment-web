@@ -3,7 +3,13 @@
 import { type FormEvent, useCallback, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import { getEventTypesBearerToken } from "../lib/eventTypesAuth";
-import { canDeleteEventType, cannotDeactivateWhileActive, hasBlockingUsage } from "../lib/eventTypesUsage";
+import {
+  canDeleteEventType,
+  cannotDeactivateWhileActive,
+  getDeactivateBlockedDescription,
+  getDeleteBlockedDescription,
+  hasBlockingUsage,
+} from "../lib/eventTypesUsage";
 import { deleteAdminEventType } from "../services/deleteAdminEventType";
 import { patchAdminEventType, patchAdminEventTypeActive } from "../services/patchAdminEventType";
 import { postAdminEventType } from "../services/postAdminEventType";
@@ -116,15 +122,7 @@ export function useEventTypesPage() {
 
   const onToggleActive = useCallback(
     async (item: EventTypeItem) => {
-      if (item.isActive && hasBlockingUsage(item)) {
-        toast({
-          variant: "destructive",
-          title: "Cannot turn off",
-          description:
-            "This type has catalog events, bookings, or gallery photos linked. Remove or reassign that data first.",
-        });
-        return;
-      }
+      if (item.isActive && hasBlockingUsage(item)) return;
 
       const token = getEventTypesBearerToken();
       if (!token) {
@@ -161,15 +159,7 @@ export function useEventTypesPage() {
   );
 
   const openDeleteConfirm = useCallback((item: EventTypeItem) => {
-    if (!canDeleteEventType(item)) {
-      toast({
-        variant: "destructive",
-        title: "Cannot delete",
-        description:
-          "There are catalog events, bookings, or gallery photos linked to this type. Remove or reassign them first.",
-      });
-      return;
-    }
+    if (!canDeleteEventType(item)) return;
     setPendingDelete(item);
   }, []);
 
@@ -230,5 +220,7 @@ export function useEventTypesPage() {
     closeDeleteModal,
     cannotDeactivateWhileActive,
     canDeleteEventType,
+    getDeactivateBlockedDescription,
+    getDeleteBlockedDescription,
   };
 }

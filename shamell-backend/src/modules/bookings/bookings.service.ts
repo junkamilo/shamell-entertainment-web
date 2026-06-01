@@ -42,13 +42,20 @@ import {
   timesFromDetails,
   type BookingConfirmationTemplateInput,
 } from './booking-confirmation.mail';
+import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
+import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { StripeService } from '../stripe/stripe.service';
 import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
 import { SendBookingBalanceLinkDto } from './dto/send-booking-balance-link.dto';
 import {
+  buildBookingBalanceLinkHtml,
+  buildBookingBalanceLinkSubject,
+  buildBookingBalanceLinkText,
+  buildBookingDepositPaidHtml,
   buildBookingDepositPaidSubject,
   buildBookingDepositPaidText,
+  buildBookingFullyPaidHtml,
   buildBookingFullyPaidSubject,
   buildBookingFullyPaidText,
   buildBookingQuoteHtml,
@@ -111,9 +118,15 @@ export class BookingsService {
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityService,
     private readonly mail: MailService,
+    private readonly adminPaymentNotify: AdminPaymentNotifyService,
     private readonly config: ConfigService,
     private readonly stripeService: StripeService,
   ) {}
+
+  /** Public SPA origin for pay links and email footers (skips localhost in production). */
+  private emailBrandingForTemplates() {
+    return emailBrandingFromConfig(this.config);
+  }
 
   private async enrichBookingDetails(
     details: SanitizedInquiryDetails,
@@ -165,6 +178,30 @@ export class BookingsService {
       out.serviceLabels = details.serviceIds
         .map((id) => nameById[id] ?? '')
         .filter((s) => s.length > 0);
+    }
+    return out;
+  }
+
+  /** Copies top-level Book catalog fields into `bookingDetails` before label enrichment. */
+  private mergeAdminCatalogIntoDetails(
+    details: SanitizedInquiryDetails | undefined,
+    refs: {
+      eventTypeId?: string | null;
+      occasionTypeId?: string | null;
+      guestCount?: number | null;
+    },
+  ): SanitizedInquiryDetails {
+    const out: SanitizedInquiryDetails = { ...(details ?? {}) };
+    const eventTypeId = refs.eventTypeId?.trim();
+    if (eventTypeId) out.eventTypeId = eventTypeId;
+    const occasionTypeId = refs.occasionTypeId?.trim();
+    if (occasionTypeId) out.occasionTypeId = occasionTypeId;
+    if (
+      refs.guestCount != null &&
+      Number.isFinite(refs.guestCount) &&
+      refs.guestCount > 0
+    ) {
+      out.guestCount = Math.round(refs.guestCount);
     }
     return out;
   }
@@ -289,7 +326,7 @@ export class BookingsService {
     const slots = await this.prisma.booking.findMany({
       where: {
         eventDate: { gte: dayStart, lte: dayEnd },
-        status: BookingStatus.CONFIRMED,
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
         ...(excludeId ? { NOT: { id: excludeId } } : {}),
       },
       select: { id: true, eventDate: true, bookingDetails: true },
@@ -327,7 +364,7 @@ export class BookingsService {
     const bookings = await this.prisma.booking.findMany({
       where: {
         eventDate: { gte: dayStart, lte: dayEnd },
-        status: BookingStatus.CONFIRMED,
+        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
       },
       select: { eventDate: true, bookingDetails: true },
     });
@@ -402,15 +439,26 @@ export class BookingsService {
       }
     }
 
-    const detailsRaw = dto.bookingDetails
+    const sanitizedDetails = dto.bookingDetails
       ? sanitizeInquiryDetails(dto.bookingDetails)
       : undefined;
-    this.validateBookingTimeRange(detailsRaw);
-    await this.assertAdminBookingServiceOrder(dto.serviceId, detailsRaw);
-    const enriched =
-      detailsRaw && Object.keys(detailsRaw).length > 0
-        ? await this.enrichBookingDetails(detailsRaw)
-        : undefined;
+    const detailsForEnrich = this.mergeAdminCatalogIntoDetails(
+      sanitizedDetails,
+      {
+        eventTypeId: dto.eventTypeId ?? null,
+        occasionTypeId: dto.occasionTypeId ?? null,
+        guestCount: dto.guestCount ?? null,
+      },
+    );
+    const hasDetails = Object.keys(detailsForEnrich).length > 0;
+    this.validateBookingTimeRange(hasDetails ? detailsForEnrich : undefined);
+    await this.assertAdminBookingServiceOrder(
+      dto.serviceId,
+      hasDetails ? detailsForEnrich : undefined,
+    );
+    const enriched = hasDetails
+      ? await this.enrichBookingDetails(detailsForEnrich)
+      : undefined;
 
     const eventDate = new Date(dto.eventDate);
     if (Number.isNaN(eventDate.getTime())) {
@@ -658,8 +706,8 @@ export class BookingsService {
       const appPublicName =
         this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
         'Shamell Entertainment';
-      const frontendRaw = this.config.get<string>('FRONTEND_URL')?.trim();
-      const frontendBaseUrl = frontendRaw?.split(',')[0]?.trim();
+      const branding = this.emailBrandingForTemplates();
+      const frontendBaseUrl = branding.siteBaseUrl;
 
       const templateInput: BookingConfirmationTemplateInput = {
         recipientName,
@@ -675,6 +723,7 @@ export class BookingsService {
         guestCount: booking.guestCount,
         appPublicName,
         frontendBaseUrl,
+        branding,
         emailVariant:
           booking.source === BookingSource.ADMIN_FROM_CONTACT
             ? 'inbox_from_contact'
@@ -709,7 +758,13 @@ export class BookingsService {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Number(query.perPage ?? 10);
     const where: Prisma.BookingWhereInput = {};
-    if (query.status) where.status = query.status;
+    if (query.status) {
+      where.status = query.status;
+    } else if (query.activeOnly) {
+      where.status = {
+        in: [BookingStatus.PENDING, BookingStatus.CONFIRMED],
+      };
+    }
     if (query.source) where.source = query.source;
     if (query.from || query.to) {
       where.eventDate = {};
@@ -776,25 +831,45 @@ export class BookingsService {
     }
 
     let mergedDetailsUnknown: unknown = existing.bookingDetails;
-    if (dto.bookingDetails !== undefined) {
+    const catalogFieldsChanged =
+      dto.eventTypeId !== undefined ||
+      dto.occasionTypeId !== undefined ||
+      dto.guestCount !== undefined ||
+      dto.serviceId !== undefined;
+
+    if (dto.bookingDetails !== undefined || catalogFieldsChanged) {
       const prev =
         existing.bookingDetails &&
         typeof existing.bookingDetails === 'object' &&
         !Array.isArray(existing.bookingDetails)
           ? (existing.bookingDetails as Record<string, unknown>)
           : {};
-      mergedDetailsUnknown = { ...prev, ...dto.bookingDetails };
+      mergedDetailsUnknown =
+        dto.bookingDetails !== undefined
+          ? { ...prev, ...dto.bookingDetails }
+          : prev;
     }
 
     let enrichedDetails: SanitizedInquiryDetails | undefined;
-    if (dto.bookingDetails !== undefined) {
+    if (dto.bookingDetails !== undefined || catalogFieldsChanged) {
       const sanitizedMerge = sanitizeInquiryDetails(mergedDetailsUnknown);
       if (!sanitizedMerge) {
         throw new BadRequestException('Invalid bookingDetails merge.');
       }
-      this.validateBookingTimeRange(sanitizedMerge);
-      await this.assertAdminBookingServiceOrder(serviceId, sanitizedMerge);
-      enrichedDetails = await this.enrichBookingDetails(sanitizedMerge);
+      const detailsForEnrich = this.mergeAdminCatalogIntoDetails(
+        sanitizedMerge,
+        {
+          eventTypeId: eventTypeId ?? null,
+          occasionTypeId: occasionTypeId ?? null,
+          guestCount:
+            dto.guestCount !== undefined
+              ? dto.guestCount
+              : existing.guestCount,
+        },
+      );
+      this.validateBookingTimeRange(detailsForEnrich);
+      await this.assertAdminBookingServiceOrder(serviceId, detailsForEnrich);
+      enrichedDetails = await this.enrichBookingDetails(detailsForEnrich);
     }
 
     let eventDate = existing.eventDate;
@@ -844,6 +919,14 @@ export class BookingsService {
 
     if (dto.status === BookingStatus.CANCELLED && existing.contactRequestId) {
       await this.cancelLinkedContactRequest(existing.contactRequestId);
+    }
+
+    if (
+      dto.status === BookingStatus.CANCELLED &&
+      existing.status !== BookingStatus.CANCELLED
+    ) {
+      await this.cancelPendingBookingPayments(updated.id);
+      await this.notifyAdminBookingCancelled(updated);
     }
 
     return updated;
@@ -912,6 +995,8 @@ export class BookingsService {
       Date.now() + QUOTE_TOKEN_TTL_HOURS * 60 * 60 * 1000,
     );
 
+    await this.cancelPendingBookingPayments(booking.id);
+
     const quote = await this.prisma.bookingQuote.create({
       data: {
         bookingId: booking.id,
@@ -971,10 +1056,8 @@ export class BookingsService {
     const appPublicName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
       'Shamell Entertainment';
-    const frontendBaseUrl = this.config
-      .get<string>('FRONTEND_URL')
-      ?.split(',')[0]
-      ?.trim();
+    const branding = this.emailBrandingForTemplates();
+    const frontendBaseUrl = branding.siteBaseUrl;
     const payUrl = this.buildQuotePayUrl(rawToken);
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
     await this.mail.sendTransactional({
@@ -986,6 +1069,7 @@ export class BookingsService {
           booking.user?.fullName ?? booking.guestFullName ?? 'Client',
         appPublicName,
         frontendBaseUrl,
+        branding,
         bookingReference: bookingRef,
         totalAmountUsd: this.usd(total),
         depositAmountUsd: deposit > 0 ? this.usd(deposit) : undefined,
@@ -1072,15 +1156,62 @@ export class BookingsService {
       customerName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
       adminUserId,
     });
+
+    await this.prisma.bookingPayment.updateMany({
+      where: {
+        bookingId,
+        stage: BookingPaymentStage.BALANCE,
+        status: BookingPaymentStatus.PENDING,
+        id: { not: payment.id },
+      },
+      data: { status: BookingPaymentStatus.CANCELLED },
+    });
+
     const payUrl = this.buildQuotePayUrl(rawToken);
+    const appPublicName =
+      this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+      'Shamell Entertainment';
+    const branding = this.emailBrandingForTemplates();
+    const frontendBaseUrl = branding.siteBaseUrl;
+    const bookingRef = booking.id.slice(0, 8).toUpperCase();
+    await this.mail.sendTransactional({
+      to: customerEmail,
+      toName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      subject: buildBookingBalanceLinkSubject(appPublicName),
+      html: buildBookingBalanceLinkHtml({
+        recipientName:
+          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        appPublicName,
+        frontendBaseUrl,
+        branding,
+        bookingReference: bookingRef,
+        totalAmountUsd: this.usd(balanceAmount),
+        payUrl,
+      }),
+      text: buildBookingBalanceLinkText({
+        recipientName:
+          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        appPublicName,
+        frontendBaseUrl,
+        bookingReference: bookingRef,
+        totalAmountUsd: this.usd(balanceAmount),
+        payUrl,
+      }),
+    });
+
     return {
-      message: 'Balance payment link created.',
+      message: 'Balance payment link sent successfully.',
       paymentId: payment.id,
       payUrl,
     };
   }
 
   async resolveQuotePayUrl(token: string): Promise<string> {
+    const frontendBase = this.stripeService.frontendUrl().replace(/\/$/, '');
+    return `${frontendBase}/pay/quote?token=${encodeURIComponent(token)}`;
+  }
+
+  async resolveQuoteCheckoutClientSecret(token: string): Promise<string> {
     const quote = await this.findActiveQuoteByToken(token);
     const payment = await this.prisma.bookingPayment.findFirst({
       where: {
@@ -1095,10 +1226,41 @@ export class BookingsService {
     const session = await this.stripeService.client.checkout.sessions.retrieve(
       payment.stripeCheckoutSessionId,
     );
-    if (!session.url) {
-      throw new BadRequestException('Stripe checkout URL unavailable.');
+    if (!session.client_secret) {
+      throw new BadRequestException('Stripe checkout is not available.');
     }
-    return session.url;
+    return session.client_secret;
+  }
+
+  async getQuotePaymentSessionStatus(sessionId: string) {
+    const payment = await this.prisma.bookingPayment.findUnique({
+      where: { stripeCheckoutSessionId: sessionId },
+      include: { booking: { include: { user: true } } },
+    });
+    if (!payment) {
+      throw new NotFoundException('Payment session not found.');
+    }
+    let stripeStatus: 'complete' | 'open' | 'expired' = 'open';
+    try {
+      const session =
+        await this.stripeService.client.checkout.sessions.retrieve(sessionId);
+      if (session.status === 'complete') stripeStatus = 'complete';
+      else if (session.status === 'expired') stripeStatus = 'expired';
+    } catch {
+      stripeStatus = 'expired';
+    }
+    const booking = payment.booking;
+    return {
+      stripeStatus,
+      paymentStatus: payment.status,
+      stage: payment.stage,
+      amount: Number(payment.expectedAmount),
+      currency: payment.currency,
+      customerName:
+        booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      customerEmail:
+        booking.user?.email ?? booking.guestEmail ?? '',
+    };
   }
 
   async handleBookingPaymentsWebhook(
@@ -1142,7 +1304,17 @@ export class BookingsService {
     if (!sessionId) throw new BadRequestException('Missing session id.');
     const payment = await this.prisma.bookingPayment.findUnique({
       where: { stripeCheckoutSessionId: sessionId },
-      include: { booking: true, quote: true },
+      include: {
+        booking: {
+          include: {
+            user: true,
+            eventType: true,
+            service: { include: { serviceType: true } },
+            event: { include: { eventType: true } },
+          },
+        },
+        quote: true,
+      },
     });
     if (!payment) throw new NotFoundException('Booking payment not found.');
     if (payment.status === BookingPaymentStatus.PAID) return;
@@ -1181,6 +1353,23 @@ export class BookingsService {
         payment.bookingId,
         Number(payment.expectedAmount),
       );
+      await this.adminPaymentNotify.notifyPaymentOutcome({
+        outcome: 'DEPOSIT_PAID',
+        flow: 'BOOKING_QUOTE',
+        customerName:
+          payment.booking.user?.fullName ??
+          payment.booking.guestFullName ??
+          'Client',
+        customerEmail:
+          payment.booking.user?.email ??
+          payment.booking.guestEmail ??
+          '',
+        amount: Number(payment.expectedAmount),
+        currency: payment.currency,
+        contextLabel: this.bookingContextLabel(payment.booking),
+        reference: payment.bookingId.slice(0, 8).toUpperCase(),
+        stage: payment.stage,
+      });
     } else {
       await this.prisma.booking.update({
         where: { id: payment.bookingId },
@@ -1198,6 +1387,23 @@ export class BookingsService {
         payment.bookingId,
         Number(payment.expectedAmount),
       );
+      await this.adminPaymentNotify.notifyPaymentOutcome({
+        outcome: 'PAID',
+        flow: 'BOOKING_QUOTE',
+        customerName:
+          payment.booking.user?.fullName ??
+          payment.booking.guestFullName ??
+          'Client',
+        customerEmail:
+          payment.booking.user?.email ??
+          payment.booking.guestEmail ??
+          '',
+        amount: Number(payment.expectedAmount),
+        currency: payment.currency,
+        contextLabel: this.bookingContextLabel(payment.booking),
+        reference: payment.bookingId.slice(0, 8).toUpperCase(),
+        stage: payment.stage,
+      });
     }
     this.logger.log(
       `booking-payment-paid bookingId=${payment.bookingId} paymentId=${payment.id} stage=${payment.stage} eventId=${stripeEventId}`,
@@ -1207,11 +1413,34 @@ export class BookingsService {
   private async markBookingPaymentExpired(sessionId: string): Promise<void> {
     const payment = await this.prisma.bookingPayment.findUnique({
       where: { stripeCheckoutSessionId: sessionId },
+      include: {
+        booking: {
+          include: {
+            user: true,
+            eventType: true,
+            service: { include: { serviceType: true } },
+            event: { include: { eventType: true } },
+          },
+        },
+      },
     });
     if (!payment || payment.status !== BookingPaymentStatus.PENDING) return;
     await this.prisma.bookingPayment.update({
       where: { id: payment.id },
       data: { status: BookingPaymentStatus.EXPIRED },
+    });
+    const booking = payment.booking;
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'EXPIRED',
+      flow: 'BOOKING_QUOTE',
+      customerName:
+        booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      customerEmail: booking.user?.email ?? booking.guestEmail ?? '',
+      amount: Number(payment.expectedAmount),
+      currency: payment.currency,
+      contextLabel: this.bookingContextLabel(booking),
+      reference: booking.id.slice(0, 8).toUpperCase(),
+      stage: payment.stage,
     });
   }
 
@@ -1228,9 +1457,10 @@ export class BookingsService {
     const amountCents = Math.round(Number(args.amount) * 100);
     if (amountCents < 50) throw new BadRequestException('Invalid amount.');
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
-    const returnUrl = `${this.stripeService.frontendUrl()}/booking-payment/return?session_id={CHECKOUT_SESSION_ID}`;
-    const session = await this.stripeService.client.checkout.sessions.create({
-      mode: 'payment',
+    const returnUrl = `${this.stripeService.frontendUrl()}/pay/quote/return?session_id={CHECKOUT_SESSION_ID}`;
+    const sessionParams = {
+      ui_mode: 'embedded_page' as const,
+      mode: 'payment' as const,
       customer_email: args.customerEmail,
       line_items: [
         {
@@ -1251,8 +1481,7 @@ export class BookingsService {
         },
       ],
       expires_at: Math.floor(expiresAt.getTime() / 1000),
-      success_url: returnUrl,
-      cancel_url: returnUrl,
+      return_url: returnUrl,
       metadata: {
         flow: 'booking_quote',
         bookingId: args.bookingId,
@@ -1260,7 +1489,15 @@ export class BookingsService {
         stage: args.stage,
         adminUserId: args.adminUserId,
       },
-    });
+    };
+    const session = await this.stripeService.client.checkout.sessions.create(
+      sessionParams as Parameters<
+        typeof this.stripeService.client.checkout.sessions.create
+      >[0],
+    );
+    if (!session.client_secret) {
+      throw new BadRequestException('Could not start checkout.');
+    }
     const created = await this.prisma.bookingPayment.create({
       data: {
         bookingId: args.bookingId,
@@ -1281,7 +1518,7 @@ export class BookingsService {
   ): Promise<void> {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
-      include: { user: true },
+      include: bookingInclude,
     });
     if (!booking) return;
     const toEmail =
@@ -1291,17 +1528,30 @@ export class BookingsService {
     const appPublicName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
       'Shamell Entertainment';
+    const branding = this.emailBrandingForTemplates();
+    const frontendBaseUrl = branding.siteBaseUrl;
+    const bookingRef = booking.id.slice(0, 8).toUpperCase();
+    const recipientName =
+      booking.user?.fullName ?? booking.guestFullName ?? 'Client';
     await this.mail.sendTransactional({
       to: toEmail,
-      toName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      toName: recipientName,
       subject: buildBookingDepositPaidSubject(appPublicName),
-      html: `<p>We received your deposit.</p><p>Booking reference: ${booking.id.slice(0, 8).toUpperCase()}</p><p>Amount paid: ${this.usd(amount)}</p>`,
+      html: buildBookingDepositPaidHtml({
+        recipientName,
+        appPublicName,
+        frontendBaseUrl,
+        branding,
+        bookingReference: bookingRef,
+        amountUsd: this.usd(amount),
+        eventDateLabel: this.bookingEventDateLabel(booking),
+      }),
       text: buildBookingDepositPaidText({
         appPublicName,
-        recipientName:
-          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
-        bookingReference: booking.id.slice(0, 8).toUpperCase(),
+        recipientName,
+        bookingReference: bookingRef,
         amountUsd: this.usd(amount),
+        eventDateLabel: this.bookingEventDateLabel(booking),
       }),
     });
   }
@@ -1322,18 +1572,80 @@ export class BookingsService {
     const appPublicName =
       this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
       'Shamell Entertainment';
+    const branding = this.emailBrandingForTemplates();
+    const frontendBaseUrl = branding.siteBaseUrl;
+    const bookingRef = booking.id.slice(0, 8).toUpperCase();
+    const recipientName =
+      booking.user?.fullName ?? booking.guestFullName ?? 'Client';
     await this.mail.sendTransactional({
       to: toEmail,
-      toName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      toName: recipientName,
       subject: buildBookingFullyPaidSubject(appPublicName),
-      html: `<p>Your reservation is now confirmed.</p><p>Booking reference: ${booking.id.slice(0, 8).toUpperCase()}</p><p>Amount paid: ${this.usd(amount)}</p>`,
+      html: buildBookingFullyPaidHtml({
+        recipientName,
+        appPublicName,
+        frontendBaseUrl,
+        branding,
+        bookingReference: bookingRef,
+        amountUsd: this.usd(amount),
+        eventDateLabel: this.bookingEventDateLabel(booking),
+      }),
       text: buildBookingFullyPaidText({
         appPublicName,
-        recipientName:
-          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
-        bookingReference: booking.id.slice(0, 8).toUpperCase(),
+        recipientName,
+        bookingReference: bookingRef,
         amountUsd: this.usd(amount),
+        eventDateLabel: this.bookingEventDateLabel(booking),
       }),
+    });
+  }
+
+  private bookingContextLabel(booking: {
+    id: string;
+    eventType?: { name: string } | null;
+    service?: { serviceType?: { name: string } } | null;
+  }): string {
+    return (
+      booking.eventType?.name ||
+      booking.service?.serviceType?.name ||
+      `Booking ${booking.id.slice(0, 8).toUpperCase()}`
+    );
+  }
+
+  private bookingEventDateLabel(booking: Pick<BookingWithRelations, 'eventDate'>): string | undefined {
+    if (!booking.eventDate) return undefined;
+    return booking.eventDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  }
+
+  private async cancelPendingBookingPayments(bookingId: string): Promise<void> {
+    await this.prisma.bookingPayment.updateMany({
+      where: { bookingId, status: BookingPaymentStatus.PENDING },
+      data: { status: BookingPaymentStatus.CANCELLED },
+    });
+  }
+
+  private async notifyAdminBookingCancelled(
+    booking: BookingWithRelations,
+  ): Promise<void> {
+    const customerName =
+      booking.user?.fullName ?? booking.guestFullName ?? 'Client';
+    const customerEmail =
+      booking.user?.email ?? booking.guestEmail ?? '';
+    const amount = Number(booking.quoteTotalAmount ?? booking.totalAmount ?? 0);
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'CANCELLED',
+      flow: 'BOOKING_QUOTE',
+      customerName,
+      customerEmail,
+      amount: Number.isFinite(amount) && amount > 0 ? amount : 0,
+      currency: booking.quoteCurrency ?? 'usd',
+      contextLabel: this.bookingContextLabel(booking),
+      reference: booking.id.slice(0, 8).toUpperCase(),
     });
   }
 

@@ -6,6 +6,7 @@ import { getServiceTypesBearerToken } from "../lib/serviceTypesAuth";
 import {
   canDeleteServiceType,
   cannotDeactivateWhileActive,
+  getDeactivateBlockedDescription,
   getDeleteBlockedDescription,
   getDeleteBlockedTitle,
 } from "../lib/serviceTypesUsage";
@@ -121,14 +122,7 @@ export function useServiceTypesPage() {
 
   const onToggleActive = useCallback(
     async (item: ServiceTypeItem) => {
-      if (cannotDeactivateWhileActive(item)) {
-        toast({
-          variant: "destructive",
-          title: "Cannot turn off",
-          description: "This type has linked services. Reassign or remove them first.",
-        });
-        return;
-      }
+      if (cannotDeactivateWhileActive(item)) return;
 
       const token = getServiceTypesBearerToken();
       if (!token) {
@@ -165,14 +159,7 @@ export function useServiceTypesPage() {
   );
 
   const openDeleteConfirm = useCallback((item: ServiceTypeItem) => {
-    if (!canDeleteServiceType(item)) {
-      toast({
-        variant: "destructive",
-        title: "Cannot delete",
-        description: getDeleteBlockedDescription(item),
-      });
-      return;
-    }
+    if (!canDeleteServiceType(item)) return;
     setPendingDelete(item);
   }, []);
 
@@ -232,6 +219,8 @@ export function useServiceTypesPage() {
     closeDeleteModal,
     canDeleteServiceType,
     cannotDeactivateWhileActive,
+    getDeactivateBlockedDescription,
+    getDeleteBlockedDescription,
     getDeleteBlockedTitle,
   };
 }

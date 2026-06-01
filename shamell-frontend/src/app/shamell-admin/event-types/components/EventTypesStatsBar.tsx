@@ -6,13 +6,12 @@ type Props = {
 
 export default function EventTypesStatsBar({ stats }: Props) {
   return (
-    <div className="mb-6 grid grid-cols-2 gap-3 lg:mb-8 lg:grid-cols-4 lg:gap-4">
+    <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:mb-8 lg:gap-4">
       {(
         [
           ["TOTAL", String(stats.total)],
           ["ACTIVE", String(stats.active)],
           ["INACTIVE", String(stats.inactive)],
-          ["LAST UPDATED", stats.recentLabel],
         ] as const
       ).map(([label, value]) => (
         <div key={label} className="shamell-glass-surface rounded-xl px-4 py-3">

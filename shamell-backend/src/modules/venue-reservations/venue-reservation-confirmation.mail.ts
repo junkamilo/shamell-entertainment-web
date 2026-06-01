@@ -1,12 +1,14 @@
 import {
   buildEmailLogoWordmarkHtml,
   plainTextBrandLead,
+  type EmailBranding,
 } from '../mail/email-html-branding';
 
 export type VenueReservationConfirmationTemplateInput = {
   recipientName: string;
   appPublicName: string;
   frontendBaseUrl?: string;
+  branding?: EmailBranding;
   eventDate: Date;
   reservationTimezone: string;
   reservationKindLabel: 'Table' | 'Chair';
@@ -49,7 +51,7 @@ export function buildVenueReservationConfirmationHtml(
   const dateLine = escapeHtml(
     formatEventDateInZone(input.eventDate, input.reservationTimezone),
   );
-  const logoBlock = buildEmailLogoWordmarkHtml(input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
   const safeSiteUrl = input.frontendBaseUrl?.trim();
 
   return `

@@ -7,7 +7,8 @@ import { getEventsBearerToken } from "../lib/eventsAuth";
 import {
   canDeleteEvent,
   cannotDeactivateWhileActive,
-  deleteBlockedReason,
+  getDeactivateBlockedDescription,
+  getDeleteBlockedDescription,
 } from "../lib/eventsUsage";
 import { deleteAdminEvent } from "../services/deleteAdminEvent";
 import { deleteGalleryAdminPhoto } from "../services/deleteGalleryAdminPhoto";
@@ -57,7 +58,9 @@ export function useEventsPage(options?: UseEventsPageOptions) {
     pathname.startsWith("/shamell-admin/on-coming-events");
   const defaultPublicSection = isUpcomingAdminRoute ? "UPCOMING_EVENTS" : "GENERAL";
   const defaultListSectionFilter = isUpcomingAdminRoute ? "UPCOMING_EVENTS" : "GENERAL";
-  const catalogPublicSection = isUpcomingAdminRoute ? "UPCOMING_EVENTS" : undefined;
+  const catalogPublicSection: "GENERAL" | "UPCOMING_EVENTS" = isUpcomingAdminRoute
+    ? "UPCOMING_EVENTS"
+    : "GENERAL";
   const embedded = options?.embedded === true;
   const [eventTypeId, setEventTypeId] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -322,14 +325,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
 
   const onToggleActive = useCallback(
     async (item: AdminEvent) => {
-      if (item.isActive && (item.bookingCount ?? 0) > 0) {
-        toast({
-          variant: "destructive",
-          title: "Cannot deactivate",
-          description: "This event has linked bookings.",
-        });
-        return;
-      }
+      if (item.isActive && (item.bookingCount ?? 0) > 0) return;
 
       const token = getEventsBearerToken();
       if (!token) {
@@ -362,15 +358,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
   );
 
   const openDeleteConfirm = useCallback((item: AdminEvent) => {
-    const blocked = deleteBlockedReason(item);
-    if (blocked) {
-      toast({
-        variant: "destructive",
-        title: "Cannot delete",
-        description: blocked,
-      });
-      return;
-    }
+    if (!canDeleteEvent(item)) return;
     setPendingDelete(item);
   }, []);
 
@@ -440,5 +428,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
     closeDeleteModal,
     canDeleteEvent,
     cannotDeactivateWhileActive,
+    getDeactivateBlockedDescription,
+    getDeleteBlockedDescription,
   };
 }

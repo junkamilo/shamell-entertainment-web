@@ -10,9 +10,17 @@ type AdminModalProps = {
   isOpen: boolean;
   onClose: () => void;
   children: React.ReactNode;
+  /** `narrow` for short confirmations (delete, etc.). */
+  size?: "default" | "narrow";
 };
 
-export default function AdminModal({ title, isOpen, onClose, children }: AdminModalProps) {
+export default function AdminModal({
+  title,
+  isOpen,
+  onClose,
+  children,
+  size = "default",
+}: AdminModalProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -46,7 +54,11 @@ export default function AdminModal({ title, isOpen, onClose, children }: AdminMo
             role="dialog"
             aria-modal="true"
             aria-labelledby="admin-modal-title"
-            className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-shamell-line-soft bg-shamell-surface-raised shadow-2xl"
+            className={
+              size === "narrow"
+                ? "flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-shamell-line-soft bg-shamell-surface-raised shadow-2xl"
+                : "flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-shamell-line-soft bg-shamell-surface-raised shadow-2xl"
+            }
             initial={{ opacity: 0, scale: 0.94, y: 18 }}
             animate={{
               opacity: 1,
@@ -65,7 +77,11 @@ export default function AdminModal({ title, isOpen, onClose, children }: AdminMo
             <div className="flex shrink-0 items-center justify-between border-b border-gold/15 bg-shamell-surface-deep px-6 py-5">
               <h2
                 id="admin-modal-title"
-                className="admin-text-brand font-brand text-[1.75rem] leading-tight tracking-[0.08em] sm:text-3xl md:text-4xl"
+                className={
+                  size === "narrow"
+                    ? "admin-text-brand font-brand text-2xl leading-tight tracking-[0.08em] sm:text-3xl"
+                    : "admin-text-brand font-brand text-[1.75rem] leading-tight tracking-[0.08em] sm:text-3xl md:text-4xl"
+                }
               >
                 {title}
               </h2>

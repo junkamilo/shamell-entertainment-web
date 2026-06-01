@@ -3,11 +3,12 @@
 import { type FormEvent, useCallback, useState } from "react";
 import { toast } from "@/hooks/use-toast";
 import type { ServiceTypeItem } from "@/app/shamell-admin/service-types/types/serviceTypes.types";
-import { displayServiceHeading } from "../lib/servicesDisplay";
+import { serviceDeleteConfirmName } from "../lib/servicesDisplay";
 import { getServicesBearerToken } from "../lib/servicesAuth";
 import {
   canDeleteService,
   cannotDeactivateWhileActive,
+  getDeactivateBlockedDescription,
   getDeleteBlockedDescription,
   getDeleteBlockedTitle,
 } from "../lib/servicesUsage";
@@ -59,10 +60,7 @@ export function useServicesPage() {
   }, []);
 
   const catalog = useServicesCatalog(seedServiceTypes);
-  const list = useServicesList({
-    services: catalog.services,
-    serviceTypes: catalog.serviceTypes,
-  });
+  const list = useServicesList({ services: catalog.services });
   const form = useServicesForm({
     serviceTypes: catalog.serviceTypes,
     serviceTypeId,
@@ -142,14 +140,7 @@ export function useServicesPage() {
 
   const onToggleActive = useCallback(
     async (service: AdminService) => {
-      if (cannotDeactivateWhileActive(service)) {
-        toast({
-          variant: "destructive",
-          title: "Cannot deactivate",
-          description: "This service has linked bookings.",
-        });
-        return;
-      }
+      if (cannotDeactivateWhileActive(service)) return;
 
       const token = getServicesBearerToken();
       if (!token) {
@@ -184,14 +175,7 @@ export function useServicesPage() {
   );
 
   const openDeleteConfirm = useCallback((service: AdminService) => {
-    if (!canDeleteService(service)) {
-      toast({
-        variant: "destructive",
-        title: "Cannot delete",
-        description: getDeleteBlockedDescription(service),
-      });
-      return;
-    }
+    if (!canDeleteService(service)) return;
     setPendingDelete(service);
   }, []);
 
@@ -269,7 +253,7 @@ export function useServicesPage() {
   }, [isClearingMedia]);
 
   const pendingDeleteTitle = pendingDelete
-    ? displayServiceHeading(pendingDelete.description).title
+    ? serviceDeleteConfirmName(pendingDelete.description)
     : "";
 
   return {
@@ -299,6 +283,8 @@ export function useServicesPage() {
     closeClearMediaModal,
     canDeleteService,
     cannotDeactivateWhileActive,
+    getDeactivateBlockedDescription,
+    getDeleteBlockedDescription,
     getDeleteBlockedTitle,
   };
 }

@@ -161,8 +161,8 @@ function SceneContent({
         touches={
           interactive
             ? {
-                ONE: TOUCH.PAN,
-                TWO: TOUCH.ROTATE,
+                ONE: TOUCH.ROTATE,
+                TWO: TOUCH.DOLLY_PAN,
               }
             : undefined
         }

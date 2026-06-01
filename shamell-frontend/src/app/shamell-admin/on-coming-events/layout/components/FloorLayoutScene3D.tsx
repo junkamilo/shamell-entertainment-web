@@ -106,7 +106,7 @@ export default function FloorLayoutScene3D({
         />
       </div>
       <FloorLayoutEditorActions
-        className="absolute top-auto right-auto bottom-[max(1rem,env(safe-area-inset-bottom,0px))] left-4 z-[120] max-w-[min(100%,20rem)] sm:max-w-none"
+        className="absolute top-auto right-4 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] left-4 z-[120] max-w-none sm:left-auto sm:max-w-[min(100%,20rem)] lg:max-w-none"
         dirty={dirty}
         saving={saving}
         selectedId={selectedId}

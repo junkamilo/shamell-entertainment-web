@@ -41,3 +41,42 @@ export function buildEventTypeUsageLine(item: {
   if (nGal > 0) extraParts.push(nGal === 1 ? "1 gallery photo" : `${nGal} gallery photos`);
   return extraParts.length ? `${catalogLabel} · ${extraParts.join(" · ")}` : catalogLabel;
 }
+
+export function buildEventTypeSubtitle(item: {
+  eventCount?: number;
+  bookingCount?: number;
+  galleryPhotoCount?: number;
+  occasionAssignments?: { occasionTypeId: string; occasionName?: string }[];
+}): string {
+  const nEvents = item.eventCount ?? 0;
+  const nBk = item.bookingCount ?? 0;
+  const nGal = item.galleryPhotoCount ?? 0;
+  const usage = buildEventTypeUsageLine(item);
+  const occasions = formatLinkedOccasionSummary(item.occasionAssignments);
+
+  if (nEvents > 0 || nBk > 0 || nGal > 0) {
+    const occPart = occasions ? ` · ${occasions}` : "";
+    return `${usage}${occPart}. Deactivate and delete are blocked until those links are removed.`;
+  }
+
+  if (occasions) {
+    return `${occasions} linked as contact options.`;
+  }
+
+  return "No linked catalog events or occasions.";
+}
+
+function formatLinkedOccasionSummary(
+  assignments: { occasionTypeId: string; occasionName?: string }[] | undefined,
+): string | null {
+  if (!assignments?.length) return null;
+  const seen = new Set<string>();
+  let count = 0;
+  for (const a of assignments) {
+    if (seen.has(a.occasionTypeId)) continue;
+    seen.add(a.occasionTypeId);
+    count += 1;
+  }
+  if (count === 0) return null;
+  return count === 1 ? "1 occasion type" : `${count} occasion types`;
+}

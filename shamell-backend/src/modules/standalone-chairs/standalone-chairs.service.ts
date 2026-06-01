@@ -1,8 +1,18 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PlacedLayoutItem } from '../floor-layout/floor-layout.defaults';
+import { FloorLayoutService } from '../floor-layout/floor-layout.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PatchStandaloneChairDto } from './dto/patch-standalone-chair.dto';
+import { PatchStandaloneChairsBulkPriceDto } from './dto/patch-standalone-chairs-bulk-price.dto';
 import { UpsertStandaloneChairConfigDto } from './dto/upsert-standalone-chair-config.dto';
+import {
+  buildChairPlacementMap,
+  buildReservedLayoutItemMap,
+  enrichChairWithReservationState,
+  enrichChairsWithReservationState,
+  findBlockingStandaloneChairReservations,
+} from './standalone-chairs-reservation.util';
 import {
   generateTechnicalChairNameEntries,
   STANDALONE_CHAIR_DISPLAY_LABEL,
@@ -10,7 +20,10 @@ import {
 
 @Injectable()
 export class StandaloneChairsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly floorLayout: FloorLayoutService,
+  ) {}
 
   async getPublicStandaloneChairs() {
     const row = await this.findActiveConfigRow();
@@ -20,12 +33,21 @@ export class StandaloneChairsService {
       activeCount = await this.countActiveChairs();
     }
     const unitPrice = await this.resolveUnitPrice(row, activeCount);
+    const chairs = await this.prisma.venueStandaloneChair.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, unitPrice: true },
+    });
     return {
       id: row?.id ?? null,
       availableQuantity: activeCount,
       unitPrice,
       updatedAt: row?.updatedAt ?? null,
       isDefault: !row && activeCount === 0,
+      chairs: chairs.map((chair) => ({
+        id: chair.id,
+        unitPrice: Number(chair.unitPrice),
+      })),
     };
   }
 
@@ -43,6 +65,13 @@ export class StandaloneChairsService {
     });
     const activeCount = chairs.length;
     const unitPrice = await this.resolveUnitPrice(row, activeCount, chairs);
+    const { placementMap, reservations } = await this.getChairReservationContext();
+    const enrichedChairs = enrichChairsWithReservationState(
+      chairs.map((chair) => this.mapChairRow(chair)),
+      placementMap,
+      reservations,
+    );
+    const reservedCount = enrichedChairs.filter((c) => c.isReserved).length;
 
     return {
       id: row?.id ?? null,
@@ -50,8 +79,109 @@ export class StandaloneChairsService {
       unitPrice,
       updatedAt: row?.updatedAt ?? chairs[0]?.updatedAt ?? null,
       isDefault: !row && activeCount === 0,
-      chairs: chairs.map((chair) => this.mapChairRow(chair)),
+      reservedCount,
+      totalCount: activeCount,
+      chairs: enrichedChairs,
     };
+  }
+
+  async patchAdminStandaloneChair(id: string, dto: PatchStandaloneChairDto) {
+    const chair = await this.prisma.venueStandaloneChair.findFirst({
+      where: { id, isActive: true },
+    });
+    if (!chair) {
+      throw new NotFoundException('Standalone chair not found.');
+    }
+
+    const { placementMap, reservations } = await this.getChairReservationContext();
+    const reservedLayoutItems = buildReservedLayoutItemMap(reservations);
+    const flags = enrichChairWithReservationState(id, placementMap, reservedLayoutItems);
+    if (!flags.canEditPrice) {
+      throw new BadRequestException(
+        'Cannot change price: this chair has an active reservation.',
+      );
+    }
+
+    await this.prisma.venueStandaloneChair.update({
+      where: { id },
+      data: { unitPrice: dto.unitPrice },
+    });
+    await this.floorLayout.syncStandaloneChairUnitPricesInActiveLayout();
+
+    return this.getAdminStandaloneChairs();
+  }
+
+  async patchAdminStandaloneChairsBulkPrice(dto: PatchStandaloneChairsBulkPriceDto) {
+    const { placementMap, reservations } = await this.getChairReservationContext();
+    const chairs = await this.prisma.venueStandaloneChair.findMany({
+      where: { isActive: true },
+      select: { id: true },
+    });
+    const enriched = enrichChairsWithReservationState(chairs, placementMap, reservations);
+    const reservedCount = enriched.filter((c) => c.isReserved).length;
+    if (reservedCount > 0) {
+      throw new BadRequestException(
+        `Cannot change all prices: ${reservedCount} chair(s) have active reservations.`,
+      );
+    }
+
+    await this.prisma.venueStandaloneChair.updateMany({
+      where: { isActive: true },
+      data: { unitPrice: dto.unitPrice },
+    });
+    await this.floorLayout.syncStandaloneChairUnitPricesInActiveLayout();
+
+    return this.getAdminStandaloneChairs();
+  }
+
+  async deleteAdminStandaloneChair(id: string) {
+    const chair = await this.prisma.venueStandaloneChair.findFirst({
+      where: { id, isActive: true },
+    });
+    if (!chair) {
+      throw new NotFoundException('Standalone chair not found.');
+    }
+
+    const { placementMap, reservations } = await this.getChairReservationContext();
+    const reservedLayoutItems = buildReservedLayoutItemMap(reservations);
+    const flags = enrichChairWithReservationState(id, placementMap, reservedLayoutItems);
+    if (!flags.canDelete) {
+      throw new BadRequestException(
+        'Cannot delete: this chair has an active reservation.',
+      );
+    }
+
+    await this.cleanupDeletedChairReferencesFromLayout([id]);
+    await this.prisma.venueStandaloneChair.delete({ where: { id } });
+    await this.syncConfigQuantityAfterDelete();
+
+    return this.getAdminStandaloneChairs();
+  }
+
+  async deleteAllAdminStandaloneChairs() {
+    const { placementMap, reservations } = await this.getChairReservationContext();
+    const chairs = await this.prisma.venueStandaloneChair.findMany({
+      where: { isActive: true },
+      select: { id: true },
+    });
+    const enriched = enrichChairsWithReservationState(chairs, placementMap, reservations);
+    const reservedCount = enriched.filter((c) => c.isReserved).length;
+    if (reservedCount > 0) {
+      throw new BadRequestException(
+        `Cannot delete all chairs: ${reservedCount} chair(s) have active reservations.`,
+      );
+    }
+
+    const ids = chairs.map((c) => c.id);
+    if (ids.length > 0) {
+      await this.cleanupDeletedChairReferencesFromLayout(ids);
+      await this.prisma.venueStandaloneChair.deleteMany({
+        where: { id: { in: ids } },
+      });
+    }
+    await this.syncConfigQuantityAfterDelete();
+
+    return this.getAdminStandaloneChairs();
   }
 
   async upsertAdminStandaloneChairs(dto: UpsertStandaloneChairConfigDto) {
@@ -100,12 +230,7 @@ export class StandaloneChairsService {
       });
     }
 
-    if (targetQuantity > 0) {
-      await this.prisma.venueStandaloneChair.updateMany({
-        where: { isActive: true },
-        data: { unitPrice },
-      });
-    }
+    const addedChairs = targetQuantity > activeChairs.length;
 
     const existing = await this.findActiveConfigRow();
     if (existing) {
@@ -113,7 +238,7 @@ export class StandaloneChairsService {
         where: { id: existing.id },
         data: {
           availableQuantity: targetQuantity,
-          unitPrice,
+          ...(addedChairs ? { unitPrice } : {}),
         },
       });
     } else if (targetQuantity > 0) {
@@ -127,6 +252,28 @@ export class StandaloneChairsService {
     }
 
     return this.getAdminStandaloneChairs();
+  }
+
+  private async getChairReservationContext() {
+    const layout = await this.prisma.venueFloorLayout.findFirst({
+      where: { isActive: true },
+      orderBy: { updatedAt: 'desc' },
+    });
+    const layoutItems = layout ? this.parseLayoutItems(layout.items) : [];
+    const placementMap = buildChairPlacementMap(layoutItems);
+    const reservations = await findBlockingStandaloneChairReservations(this.prisma);
+    return { placementMap, reservations, layoutItems };
+  }
+
+  private async syncConfigQuantityAfterDelete() {
+    const activeCount = await this.countActiveChairs();
+    const existing = await this.findActiveConfigRow();
+    if (existing) {
+      await this.prisma.venueStandaloneChairConfig.update({
+        where: { id: existing.id },
+        data: { availableQuantity: activeCount },
+      });
+    }
   }
 
   private async countActiveChairs(): Promise<number> {

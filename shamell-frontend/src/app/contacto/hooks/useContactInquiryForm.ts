@@ -9,7 +9,7 @@ import type {
 import type { InquirySubmitFeedbackPhase } from "../components/InquirySubmitFeedbackLayer";
 import { buildInquiryDetails } from "../lib/inquiry/inquiryDetailsBuilder";
 import { isBespoke, readableInquiryCode } from "../lib/inquiry/inquiryCodeUtils";
-import { emptyWizard, validateLogisticsFields, validatePhase } from "../lib/inquiry/wizardValidation";
+import { emptyWizard, getPhaseValidationError } from "../lib/inquiry/wizardValidation";
 import type { ContactInquiryFormProps } from "../types/contacto.types";
 import { isValidInquiryCode, type ServiceTypeCode } from "@/lib/contactInquiryConstants";
 import { submitContactInquiry } from "../services/submitContactInquiry";
@@ -88,11 +88,24 @@ export function useContactInquiryForm({
   const onSubmit = async (ev: FormEvent) => {
     ev.preventDefault();
     if (submitInFlightRef.current) return;
-    const errContact = validatePhase("contact", wizard.data, catalog.contactLines, wizard.validationOpts);
-    const errExp = validatePhase("expectations", wizard.data, catalog.contactLines, wizard.validationOpts);
-    const errLog =
-      validatePhase("logistics", wizard.data, catalog.contactLines, wizard.validationOpts) ||
-      validateLogisticsFields(wizard.data);
+    const errContact = getPhaseValidationError(
+      "contact",
+      wizard.data,
+      catalog.contactLines,
+      wizard.validationOpts,
+    );
+    const errExp = getPhaseValidationError(
+      "expectations",
+      wizard.data,
+      catalog.contactLines,
+      wizard.validationOpts,
+    );
+    const errLog = getPhaseValidationError(
+      "logistics",
+      wizard.data,
+      catalog.contactLines,
+      wizard.validationOpts,
+    );
     if (errContact || errExp || errLog) {
       wizard.setStepError(errContact ?? errExp ?? errLog);
       return;

@@ -55,7 +55,6 @@ export type EventsStats = {
   activeCount: number;
   inactiveCount: number;
   itemsTotal: number;
-  nearestLabel: string;
 };
 
 export type EventsStatsBarVariant = "general" | "upcomingSite";

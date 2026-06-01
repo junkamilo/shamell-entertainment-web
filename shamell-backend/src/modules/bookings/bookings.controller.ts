@@ -122,6 +122,26 @@ export class BookingsController {
     return res.redirect(url);
   }
 
+  @Get('public/quote/checkout')
+  @ApiOperation({ summary: 'Embedded Stripe client secret for booking quote pay link' })
+  quoteCheckout(@Query('token') token: string) {
+    if (!token?.trim()) {
+      throw new BadRequestException('token is required.');
+    }
+    return this.bookingsService
+      .resolveQuoteCheckoutClientSecret(token.trim())
+      .then((clientSecret) => ({ clientSecret }));
+  }
+
+  @Get('public/quote/session-status')
+  @ApiOperation({ summary: 'Booking quote payment session status (public return page)' })
+  quoteSessionStatus(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.bookingsService.getQuotePaymentSessionStatus(sessionId.trim());
+  }
+
   @Post('public/webhook')
   handleBookingPaymentsWebhook(
     @Req() req: RawBodyRequest<Request>,

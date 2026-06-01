@@ -74,6 +74,8 @@ type AdminBookingQuery = {
   page?: number;
   perPage?: number;
   status?: string;
+  /** Backend: PENDING + CONFIRMED when true (ignored if status is set). */
+  activeOnly?: boolean;
   source?: string;
   from?: string;
   to?: string;
@@ -88,6 +90,7 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
   const page = query?.page;
   const perPage = query?.perPage;
   const status = query?.status;
+  const activeOnly = query?.activeOnly;
   const source = query?.source;
   const from = query?.from;
   const to = query?.to;
@@ -116,6 +119,7 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
     if (page) sp.set("page", String(page));
     if (perPage) sp.set("perPage", String(perPage));
     if (status) sp.set("status", status);
+    else if (activeOnly) sp.set("activeOnly", "true");
     if (source) sp.set("source", source);
     if (from) sp.set("from", from);
     if (to) sp.set("to", to);
@@ -160,7 +164,7 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
         setError(e instanceof Error ? e.message : "Error."),
       )
       .finally(() => setIsLoading(false));
-  }, [authHeaders, enabled, from, page, perPage, source, status, to]);
+  }, [authHeaders, enabled, activeOnly, from, page, perPage, source, status, to]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {

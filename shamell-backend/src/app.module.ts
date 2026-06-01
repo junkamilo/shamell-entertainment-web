@@ -21,6 +21,7 @@ import { VenueLayoutSettingsModule } from './modules/venue-layout-settings/venue
 import { VenueReservationsModule } from './modules/venue-reservations/venue-reservations.module';
 import { UpcomingEventsModule } from './modules/upcoming-events/upcoming-events.module';
 import { ReservationEventTemplatesModule } from './modules/reservation-event-templates/reservation-event-templates.module';
+import { AdminPaymentsModule } from './modules/admin-payments/admin-payments.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { ReservationEventTemplatesModule } from './modules/reservation-event-tem
     VenueReservationsModule,
     UpcomingEventsModule,
     ReservationEventTemplatesModule,
+    AdminPaymentsModule,
   ],
 })
 export class AppModule {}

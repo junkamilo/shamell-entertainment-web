@@ -1,3 +1,5 @@
+export type StandaloneChairReservationStatus = "PAID" | "PENDING_PAYMENT";
+
 export type StandaloneChairInventoryItem = {
   id: string;
   chairName: string;
@@ -7,6 +9,11 @@ export type StandaloneChairInventoryItem = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  isReserved: boolean;
+  reservationStatus?: StandaloneChairReservationStatus;
+  isOnFloorPlan: boolean;
+  canDelete: boolean;
+  canEditPrice: boolean;
 };
 
 export type StandaloneChairConfig = {
@@ -15,6 +22,8 @@ export type StandaloneChairConfig = {
   unitPrice: number;
   updatedAt: string | null;
   isDefault: boolean;
+  reservedCount?: number;
+  totalCount?: number;
   chairs?: StandaloneChairInventoryItem[];
 };
 

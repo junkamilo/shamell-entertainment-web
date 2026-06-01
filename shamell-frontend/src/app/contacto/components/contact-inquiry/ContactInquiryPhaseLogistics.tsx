@@ -1,22 +1,14 @@
-import { ChevronDown, Eye } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { formatCatalogPriceWithSuffix } from "@/lib/formatCatalogPrice";
-import {
-  EXPERIENCE_ADDON_OPTIONS,
-  SERVICE_TYPE_CODES,
-  isValidInquiryCode,
-} from "@/lib/contactInquiryConstants";
 import {
   formatDateDisplayUs,
   formatTimeDisplayUs,
 } from "@/lib/contactLogisticsUtils";
 import {
-  isBespoke,
-  isGalaOrVip,
-  mergedInquiryCodeFromSelections,
-  readableInquiryCode,
-} from "../../lib/inquiry/inquiryCodeUtils";
-import { lineDescriptionPreview } from "../../lib/inquiry/inquiryDetailsBuilder";
+  LOGISTICS_ADDRESS_MAX,
+  LOGISTICS_GUEST_MAX,
+  LOGISTICS_GUEST_MIN,
+  LOGISTICS_LOCATION_MAX,
+  LOGISTICS_PROJECT_NOTE_MAX,
+} from "../../lib/inquiry/wizardValidation";
 import ContactInquiryField from "./ContactInquiryField";
 import type { ContactInquiryPhaseProps } from "./contactInquiryPhase.types";
 
@@ -57,7 +49,9 @@ export default function ContactInquiryPhaseLogistics(props: ContactInquiryPhaseP
           <div>
             <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
               {logisticsUsesBespokeDeadlineRule ? "Key date (if any)" : "Event date"}
-              {isGalaOrVip(data.inquiryCode) ? <span className="text-red-300"> *</span> : null}
+              {!logisticsUsesBespokeDeadlineRule ? (
+                <span className="text-red-300"> *</span>
+              ) : null}
             </span>
             <button
               type="button"
@@ -78,7 +72,9 @@ export default function ContactInquiryPhaseLogistics(props: ContactInquiryPhaseP
             label="Approx. guest count"
             name="guestCount"
             type="number"
-            min={0}
+            min={LOGISTICS_GUEST_MIN}
+            max={LOGISTICS_GUEST_MAX}
+            required
             value={data.guestCount}
             onChange={(v) => update("guestCount", v)}
             inputMode="numeric"
@@ -90,6 +86,7 @@ export default function ContactInquiryPhaseLogistics(props: ContactInquiryPhaseP
           <div>
             <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
               Performance start
+              <span className="text-red-300"> *</span>
             </span>
             <button
               type="button"
@@ -109,6 +106,7 @@ export default function ContactInquiryPhaseLogistics(props: ContactInquiryPhaseP
           <div>
             <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
               Performance end
+              <span className="text-red-300"> *</span>
             </span>
             <button
               type="button"
@@ -129,6 +127,8 @@ export default function ContactInquiryPhaseLogistics(props: ContactInquiryPhaseP
         <ContactInquiryField
           label="City / venue"
           name="location"
+          required
+          maxLength={LOGISTICS_LOCATION_MAX}
           value={data.location}
           onChange={(v) => update("location", v)}
           inputClassName="rounded-xl py-3.5 text-base sm:py-4 sm:text-lg"
@@ -137,18 +137,19 @@ export default function ContactInquiryPhaseLogistics(props: ContactInquiryPhaseP
         <label className="block">
           <span className="font-brand text-base tracking-[0.12em] text-gold sm:text-lg sm:tracking-[0.14em]">
             Event address
+            <span className="text-red-300"> *</span>
           </span>
           <textarea
             name="eventAddress"
             value={data.eventAddress}
             onChange={(e) => update("eventAddress", e.target.value)}
             rows={2}
-            maxLength={400}
+            maxLength={LOGISTICS_ADDRESS_MAX}
             placeholder="Street, suite, venue name…"
             className="mt-2 min-h-[88px] w-full resize-y rounded-xl border border-gold/40 bg-black/30 px-4 py-3.5 font-body text-base text-foreground outline-none placeholder:text-foreground/45 focus:border-gold sm:min-h-[96px] sm:px-5 sm:py-4 sm:text-lg"
           />
           <p className="mt-1.5 text-end font-body text-sm text-foreground/45 sm:text-base">
-            {data.eventAddress.length}/400
+            {data.eventAddress.length}/{LOGISTICS_ADDRESS_MAX}
           </p>
         </label>
         {logisticsUsesBespokeDeadlineRule ? (
@@ -165,6 +166,7 @@ export default function ContactInquiryPhaseLogistics(props: ContactInquiryPhaseP
                 value={data.projectDeadlineNote}
                 onChange={(e) => update("projectDeadlineNote", e.target.value)}
                 rows={3}
+                maxLength={LOGISTICS_PROJECT_NOTE_MAX}
                 className="mt-2 min-h-[100px] w-full resize-y border border-gold/40 bg-black/30 px-4 py-3.5 font-body text-base text-foreground outline-none focus:border-gold sm:px-5 sm:py-4 sm:text-lg"
               />
             </label>

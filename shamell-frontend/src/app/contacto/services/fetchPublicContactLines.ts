@@ -3,7 +3,9 @@ import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
 
 export async function fetchPublicContactLines(): Promise<ContactLine[]> {
   const base = getPublicApiBaseUrl();
-  const res = await fetch(`${base}/api/v1/events/contact-lines`);
+  const res = await fetch(`${base}/api/v1/events/contact-lines`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("lines");
   const json: unknown = await res.json();
   if (!Array.isArray(json)) return [];

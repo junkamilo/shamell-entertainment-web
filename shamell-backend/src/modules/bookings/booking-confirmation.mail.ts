@@ -1,5 +1,9 @@
 import type { SanitizedInquiryDetails } from '../contact/contact-inquiry-details';
-import { buildEmailLogoWordmarkHtml, plainTextBrandLead } from '../mail/email-html-branding';
+import {
+  buildEmailLogoWordmarkHtml,
+  plainTextBrandLead,
+  type EmailBranding,
+} from '../mail/email-html-branding';
 
 export type BookingConfirmationTemplateInput = {
   recipientName: string;
@@ -17,6 +21,7 @@ export type BookingConfirmationTemplateInput = {
   guestCount?: number | null;
   appPublicName: string;
   frontendBaseUrl?: string;
+  branding?: EmailBranding;
   /** Warmer copy when the guest booking originated from the admin inbox flow. */
   emailVariant?: 'default' | 'inbox_from_contact';
 };
@@ -124,7 +129,7 @@ export function buildBookingConfirmationHtml(input: BookingConfirmationTemplateI
     .filter(Boolean)
     .join('');
 
-  const logoBlock = buildEmailLogoWordmarkHtml(input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
   const variant = input.emailVariant ?? 'default';
   const introSecond =
     variant === 'inbox_from_contact' ?

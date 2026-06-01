@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
 import {
@@ -29,6 +30,11 @@ export function OnComingEventFixedTicketBookingModal({
   const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const resetAndClose = () => {
     setCustomerName("");
@@ -40,15 +46,15 @@ export function OnComingEventFixedTicketBookingModal({
   };
 
   useEffect(() => {
-    if (!open || !checkoutSecret) return;
+    if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
     };
-  }, [open, checkoutSecret]);
+  }, [open]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const startCheckout = async () => {
     setIsSubmitting(true);
@@ -68,26 +74,36 @@ export function OnComingEventFixedTicketBookingModal({
   };
 
   if (checkoutSecret) {
-    return (
+    return createPortal(
       <StripeEmbeddedCheckoutOverlay
         clientSecret={checkoutSecret}
         onClose={resetAndClose}
         ariaLabel="Buy ticket payment"
-      />
+        closeOnBackdropClick={false}
+      />,
+      document.body,
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/70"
-        aria-label="Close ticket booking"
-        onClick={resetAndClose}
+  return createPortal(
+    <div
+      className="fixed inset-0 z-120 flex items-end justify-center sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="fixed-ticket-booking-title"
+    >
+      <div
+        className="absolute inset-0 bg-black/75 backdrop-blur-[2px]"
+        aria-hidden="true"
       />
       <div className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-gold/30 bg-[#0a0908] shadow-2xl sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-gold/20 px-4 py-3">
-          <h2 className="font-brand text-xs tracking-[0.16em] text-gold">BUY TICKET</h2>
+          <h2
+            id="fixed-ticket-booking-title"
+            className="font-brand text-xs tracking-[0.16em] text-gold"
+          >
+            BUY TICKET
+          </h2>
           <button
             type="button"
             onClick={resetAndClose}
@@ -137,6 +153,7 @@ export function OnComingEventFixedTicketBookingModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

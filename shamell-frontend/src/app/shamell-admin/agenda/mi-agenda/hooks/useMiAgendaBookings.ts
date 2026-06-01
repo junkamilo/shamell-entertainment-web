@@ -7,7 +7,8 @@ import type { CalendarRange, EnrichedBooking } from "../types/miAgenda.types";
 
 export function useMiAgendaBookings(range: CalendarRange, tz: string) {
   const { bookings, isLoading, error, patchBooking } = useAdminBookings(true, {
-    status: "CONFIRMED",
+    activeOnly: true,
+    perPage: 50,
     from: `${range.fromIso}T00:00:00.000Z`,
     to: `${range.toIso}T23:59:59.999Z`,
   });

@@ -57,11 +57,17 @@ export default function FloorLayoutPageContent() {
 
   return (
     <div className="mx-auto flex w-full max-w-6xl min-h-0 min-w-0 flex-1 flex-col">
-      <AdminModuleHero
-        title={SEATING_LAYOUT_ADMIN_LABEL}
-        subtitle="Place tables and chairs on the interactive floor plan for upcoming events."
-        bordered={false}
-      />
+      <div className="hidden shrink-0 lg:block">
+        <AdminModuleHero
+          title={SEATING_LAYOUT_ADMIN_LABEL}
+          subtitle="Place tables and chairs on the interactive floor plan for upcoming events."
+          bordered={false}
+        />
+      </div>
+      <header className="shrink-0 border-b border-shamell-line-soft px-3 py-2 lg:hidden">
+        <p className="font-brand text-[10px] tracking-[0.2em] text-gold/85">SHAMELL ADMIN</p>
+        <h1 className="font-brand text-lg tracking-[0.06em] text-gold">{SEATING_LAYOUT_ADMIN_LABEL}</h1>
+      </header>
       <DndContext
         sensors={sensors}
         onDragStart={(e) => {
@@ -100,7 +106,7 @@ export default function FloorLayoutPageContent() {
         <FloorLayoutToolbar chairTotal={editor.chairTotal} dirty={editor.dirty} />
         <div className="flex min-h-0 flex-1 flex-col">
           <FloorLayoutPalette palette={editor.palette} />
-          <div className="flex min-h-[min(360px,50dvh)] flex-1 flex-col lg:min-h-[clamp(480px,65dvh,860px)]">
+          <div className="flex min-h-[min(380px,52dvh)] flex-1 flex-col md:min-h-[min(440px,58dvh)] lg:min-h-[clamp(480px,65dvh,860px)]">
             <FloorLayoutScene3D
               sceneHandleRef={editor.sceneHandleRef}
               viewBoxWidth={editor.layoutMeta.viewBoxWidth}
@@ -121,9 +127,9 @@ export default function FloorLayoutPageContent() {
               onRotateRight={() => editor.rotateSelected(15)}
               onDelete={editor.removeSelected}
             />
-            <p className="shrink-0 border-t border-shamell-line-soft/60 px-3 py-1.5 text-center text-[10px] leading-snug text-shamell-text-primary/55 sm:text-left">
-              Drag items to move · right-click or one finger to pan · scroll or pinch to zoom ·
-              toolbar to rotate, delete, or save
+            <p className="shrink-0 border-t border-shamell-line-soft/60 px-3 py-2 text-center text-[10px] leading-snug text-shamell-text-primary/55 sm:text-left">
+              Drag palette items onto the floor · one finger to orbit · two fingers to pan and pinch to
+              zoom · toolbar to rotate selection, delete, or save
             </p>
           </div>
         </div>

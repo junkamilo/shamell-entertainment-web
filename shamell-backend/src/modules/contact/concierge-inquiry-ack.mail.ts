@@ -1,4 +1,8 @@
-import { buildEmailLogoWordmarkHtml, plainTextBrandLead } from '../mail/email-html-branding';
+import {
+  buildEmailLogoWordmarkHtml,
+  plainTextBrandLead,
+  type EmailBranding,
+} from '../mail/email-html-branding';
 
 export type ConciergeInquiryAckTemplateInput = {
   /** First word of full name, or full display name. */
@@ -6,6 +10,7 @@ export type ConciergeInquiryAckTemplateInput = {
   appPublicName: string;
   /** Optional public site URL for footer link and logo asset. */
   siteUrl?: string;
+  branding?: EmailBranding;
 };
 
 function escapeHtml(text: string): string {
@@ -33,7 +38,7 @@ export function buildConciergeInquiryAckHtml(
           <a href="${escapeHtml(siteUrl)}" style="color:#e8d5a3;text-decoration:underline;">Visit our website</a>
         </p>`
     : '';
-  const logoBlock = buildEmailLogoWordmarkHtml(siteUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? siteUrl);
 
   return `
 <!DOCTYPE html>

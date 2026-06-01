@@ -6,6 +6,7 @@ type Props = {
   sectionFilter: "ALL" | "GENERAL" | "UPCOMING_EVENTS";
   onSectionFilterChange: (value: "ALL" | "GENERAL" | "UPCOMING_EVENTS") => void;
   hideSectionFilter?: boolean;
+  upcomingOnly?: boolean;
 };
 
 export default function EventsSearchBar({
@@ -14,6 +15,7 @@ export default function EventsSearchBar({
   sectionFilter,
   onSectionFilterChange,
   hideSectionFilter = false,
+  upcomingOnly = false,
 }: Props) {
   return (
     <div
@@ -24,7 +26,7 @@ export default function EventsSearchBar({
       <AdminSearchInput
         value={searchQuery}
         onChange={onSearchChange}
-        placeholder={hideSectionFilter ? "Search upcoming events..." : "Search events..."}
+        placeholder={upcomingOnly ? "Search upcoming events..." : "Search events..."}
         className="shamell-glass-surface mx-0 min-h-12 max-w-none w-full rounded-xl"
       />
       {hideSectionFilter ? null : (

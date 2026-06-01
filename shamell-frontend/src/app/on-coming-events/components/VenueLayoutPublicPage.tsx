@@ -13,6 +13,7 @@ import type { VenueTableConfig } from "@/app/shamell-admin/venue-tables/types/ve
 import type { StandaloneChairConfig } from "@/app/shamell-admin/venue-tables/types/standaloneChairs.types";
 import type { VenueFloorLayout } from "@/components/floor-layout/layoutTypes";
 import { placedSummaryFromItems } from "../lib/placedSummaryFromItems";
+import { buildStandaloneChairPriceMap } from "../lib/resolveStandaloneChairUnitPrice";
 import { fetchPublicFloorLayout } from "../services/fetchPublicFloorLayout";
 import { fetchPublicStandaloneChairs } from "../services/fetchPublicStandaloneChairs";
 import { fetchPublicVenueTables } from "../services/fetchPublicVenueTables";
@@ -61,6 +62,11 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
   );
 
   const tablesById = useMemo(() => new Map(tables.map((t) => [t.id, t])), [tables]);
+
+  const chairPricesById = useMemo(
+    () => buildStandaloneChairPriceMap(standaloneChairs?.chairs),
+    [standaloneChairs?.chairs],
+  );
 
   const reservedIds = useMemo(() => new Set(reservedLayoutItemIds), [reservedLayoutItemIds]);
 
@@ -148,6 +154,19 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
 
   useEffect(() => {
     void load();
+  }, [load]);
+
+  useEffect(() => {
+    const refreshPrices = () => void load();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refreshPrices();
+    };
+    window.addEventListener("focus", refreshPrices);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", refreshPrices);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [load]);
 
   const handleItemSelect = useCallback(
@@ -265,6 +284,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
           item={selectedItem}
           tableConfig={selectedTableConfig}
           standaloneChairs={standaloneChairs}
+          chairPricesById={chairPricesById}
           eventLabel={eventLabel}
           eventDateIso={eventDateIso}
           isReserved={selectedIsReserved}

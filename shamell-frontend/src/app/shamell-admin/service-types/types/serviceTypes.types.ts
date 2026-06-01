@@ -18,5 +18,4 @@ export type ServiceTypesStats = {
   total: number;
   active: number;
   inactive: number;
-  recentLabel: string;
 };

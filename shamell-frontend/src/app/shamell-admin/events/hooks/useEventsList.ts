@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PAGE_SIZE } from "../lib/eventsConstants";
-import { formatShortDateUs } from "../lib/eventsDisplay";
 import { formatPriceEn } from "../lib/eventsPrice";
 import type { AdminEvent, EventsStats } from "../types/events.types";
 
@@ -17,9 +16,12 @@ export function useEventsList(
   const [page, setPage] = useState(1);
 
   const filteredBySection = useMemo(() => {
+    if (defaultSectionFilter === "GENERAL" || defaultSectionFilter === "UPCOMING_EVENTS") {
+      return events.filter((item) => item.publicSection === defaultSectionFilter);
+    }
     if (sectionFilter === "ALL") return events;
     return events.filter((item) => item.publicSection === sectionFilter);
-  }, [events, sectionFilter]);
+  }, [events, sectionFilter, defaultSectionFilter]);
 
   const searchedEvents = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -67,22 +69,11 @@ export function useEventsList(
     const total = scoped.length;
     const activeCount = scoped.filter((e) => e.isActive).length;
     const itemsTotal = scoped.reduce((acc, e) => acc + e.items.length, 0);
-    const activeWithDates = scoped.filter((e) => e.isActive);
-    let nearestLabel = "—";
-    if (activeWithDates.length > 0) {
-      const sorted = [...activeWithDates].sort((a, b) => {
-        const ta = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
-        const tb = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
-        return tb - ta;
-      });
-      nearestLabel = formatShortDateUs(sorted[0]?.updatedAt ?? sorted[0]?.createdAt);
-    }
     return {
       total,
       activeCount,
       inactiveCount: total - activeCount,
       itemsTotal,
-      nearestLabel,
     };
   }, [filteredBySection]);
 
@@ -91,6 +82,7 @@ export function useEventsList(
     setSearchQuery,
     sectionFilter,
     setSectionFilter,
+    sectionEventsCount: filteredBySection.length,
     searchedEvents,
     paginatedEvents,
     page,

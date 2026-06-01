@@ -16,6 +16,7 @@ import {
 import { buildPublicScheduleDisplay } from './upcoming-event-public-schedule.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
+import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { StripeService } from '../stripe/stripe.service';
 import {
   eventDateForReservations,
@@ -41,6 +42,7 @@ import {
   normalizeFixedTicketCapacity,
 } from './upcoming-fixed-ticket.util';
 import { venueTablePublicStats } from './upcoming-venue-table.util';
+import { emailBrandingFromProcessEnv } from '../mail/email-html-branding';
 import {
   buildClassEnrollmentConfirmationHtml,
   buildClassEnrollmentConfirmationSubject,
@@ -78,6 +80,7 @@ export class UpcomingEventsService {
     private readonly prisma: PrismaService,
     private readonly stripeService: StripeService,
     private readonly mail: MailService,
+    private readonly adminPaymentNotify: AdminPaymentNotifyService,
     private readonly reservationTemplates: ReservationEventTemplatesService,
   ) {}
 
@@ -1162,17 +1165,40 @@ export class UpcomingEventsService {
       `class-enrollment-paid id=${enrollment.id} stripeEvent=${stripeEventId}`,
     );
     await this.sendClassConfirmation(enrollment);
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'PAID',
+      flow: 'CLASS_SESSION',
+      customerName: enrollment.customerName,
+      customerEmail: enrollment.customerEmail,
+      amount: Number(enrollment.amount),
+      currency: enrollment.currency,
+      contextLabel: enrollment.session.event.eventType.name,
+      reference: enrollment.id.slice(0, 8).toUpperCase(),
+    });
   }
 
   private async markEnrollmentExpired(sessionId: string) {
     const enrollment = await this.prisma.upcomingClassEnrollment.findUnique({
       where: { stripeCheckoutSessionId: sessionId },
+      include: {
+        session: { include: { event: { include: { eventType: true } } } },
+      },
     });
     if (!enrollment) return;
     if (enrollment.status !== UpcomingClassEnrollmentStatus.PENDING_PAYMENT) return;
     await this.prisma.upcomingClassEnrollment.update({
       where: { id: enrollment.id },
       data: { status: UpcomingClassEnrollmentStatus.EXPIRED },
+    });
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'EXPIRED',
+      flow: 'CLASS_SESSION',
+      customerName: enrollment.customerName,
+      customerEmail: enrollment.customerEmail,
+      amount: Number(enrollment.amount),
+      currency: enrollment.currency,
+      contextLabel: enrollment.session.event.eventType.name,
+      reference: enrollment.id.slice(0, 8).toUpperCase(),
     });
   }
 
@@ -1250,17 +1276,38 @@ export class UpcomingEventsService {
     );
 
     await this.sendFixedTicketConfirmation(paidEnrollment, venueConfig);
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'PAID',
+      flow: 'FIXED_TICKET',
+      customerName: enrollment.customerName,
+      customerEmail: enrollment.customerEmail,
+      amount: Number(enrollment.amount),
+      currency: enrollment.currency,
+      contextLabel: `${enrollment.event.eventType.name}${paidEnrollment.ticketNumber != null ? ` — Ticket #${paidEnrollment.ticketNumber}` : ''}`,
+      reference: enrollment.id.slice(0, 8).toUpperCase(),
+    });
   }
 
   private async markFixedEnrollmentExpired(sessionId: string) {
     const enrollment = await this.prisma.upcomingFixedEventEnrollment.findUnique({
       where: { stripeCheckoutSessionId: sessionId },
+      include: { event: { include: { eventType: true } } },
     });
     if (!enrollment) return;
     if (enrollment.status !== UpcomingClassEnrollmentStatus.PENDING_PAYMENT) return;
     await this.prisma.upcomingFixedEventEnrollment.update({
       where: { id: enrollment.id },
       data: { status: UpcomingClassEnrollmentStatus.EXPIRED },
+    });
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'EXPIRED',
+      flow: 'FIXED_TICKET',
+      customerName: enrollment.customerName,
+      customerEmail: enrollment.customerEmail,
+      amount: Number(enrollment.amount),
+      currency: enrollment.currency,
+      contextLabel: enrollment.event.eventType.name,
+      reference: enrollment.id.slice(0, 8).toUpperCase(),
     });
   }
 
@@ -1285,6 +1332,7 @@ export class UpcomingEventsService {
       (venueConfig?.reservationEventDate ?
         venueConfig.reservationEventDate.toISOString()
       : 'See event details');
+    const branding = emailBrandingFromProcessEnv();
     await this.mail.sendTransactional({
       to: enrollment.customerEmail,
       toName: enrollment.customerName,
@@ -1295,6 +1343,7 @@ export class UpcomingEventsService {
         ticketNumber: enrollment.ticketNumber,
         eventDateLabel,
         amount,
+        siteBaseUrl: branding.siteBaseUrl,
       }),
       html: buildFixedTicketConfirmationHtml({
         eventName,
@@ -1302,6 +1351,7 @@ export class UpcomingEventsService {
         ticketNumber: enrollment.ticketNumber,
         eventDateLabel,
         amount,
+        branding,
       }),
     });
   }
@@ -1323,6 +1373,7 @@ export class UpcomingEventsService {
     const eventName = enrollment.session.event.eventType.name;
     const amount = `${Number(enrollment.amount).toFixed(2)} ${enrollment.currency.toUpperCase()}`;
     const sessionLabel = this.sessionLabel(enrollment.session);
+    const branding = emailBrandingFromProcessEnv();
     await this.mail.sendTransactional({
       to: enrollment.customerEmail,
       toName: enrollment.customerName,
@@ -1332,12 +1383,14 @@ export class UpcomingEventsService {
         customerName: enrollment.customerName,
         sessionLabel,
         amount,
+        siteBaseUrl: branding.siteBaseUrl,
       }),
       html: buildClassEnrollmentConfirmationHtml({
         eventName,
         customerName: enrollment.customerName,
         sessionLabel,
         amount,
+        branding,
       }),
     });
   }

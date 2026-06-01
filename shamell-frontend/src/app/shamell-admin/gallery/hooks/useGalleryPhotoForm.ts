@@ -7,13 +7,11 @@ import type { GalleryCategory, GalleryPhoto } from "../types/gallery.types";
 type Args = {
   activeCategories: GalleryCategory[];
   sortedActiveCategories: GalleryCategory[];
-  listCategoryFilter: string | null;
 };
 
 export function useGalleryPhotoForm({
   activeCategories,
   sortedActiveCategories,
-  listCategoryFilter,
 }: Args) {
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [originalCategoryId, setOriginalCategoryId] = useState<string | null>(null);
@@ -45,13 +43,9 @@ export function useGalleryPhotoForm({
   );
 
   const openPhotoCreate = useCallback(() => {
-    if (listCategoryFilter && activeCategories.some((c) => c.id === listCategoryFilter)) {
-      openUploadToCategory(listCategoryFilter);
-      return;
-    }
     const catchAll = activeCategories.find((c) => c.slug === GALLERY_CATCHALL_SLUG);
     openUploadToCategory(catchAll?.id ?? sortedActiveCategories[0]?.id ?? "");
-  }, [listCategoryFilter, activeCategories, sortedActiveCategories, openUploadToCategory]);
+  }, [activeCategories, sortedActiveCategories, openUploadToCategory]);
 
   const startPhotoEdit = useCallback((photo: GalleryPhoto) => {
     setEditingPhotoId(photo.id);

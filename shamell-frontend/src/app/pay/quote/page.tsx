@@ -1,15 +1,10 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
+import { PayQuoteCheckoutClient } from "./components/PayQuoteCheckoutClient";
 
 type Props = {
   searchParams: Promise<{ token?: string }>;
 };
-
-function backendPayQuoteUrl(token: string): string {
-  const backend = (
-    process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"
-  ).replace(/\/$/, "");
-  return `${backend}/api/v1/bookings/public/quote/pay?token=${encodeURIComponent(token)}`;
-}
 
 export default async function PayQuotePage({ searchParams }: Props) {
   const { token } = await searchParams;
@@ -18,5 +13,17 @@ export default async function PayQuotePage({ searchParams }: Props) {
     redirect("/");
   }
 
-  redirect(backendPayQuoteUrl(normalized));
+  return (
+    <Suspense
+      fallback={
+        <main className="flex min-h-screen items-center justify-center bg-[#0a0908] px-4 py-16">
+          <p className="font-brand text-xs tracking-[0.2em] text-foreground/60 uppercase">
+            Loading secure payment…
+          </p>
+        </main>
+      }
+    >
+      <PayQuoteCheckoutClient token={normalized} />
+    </Suspense>
+  );
 }
