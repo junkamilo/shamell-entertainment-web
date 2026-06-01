@@ -35,6 +35,12 @@ type UseEventsFormArgs = {
   freeEventNameMode?: boolean;
 };
 
+function defaultExperienceModeForSection(
+  publicSection: EventPublicSection,
+): UpcomingExperienceMode {
+  return publicSection === "UPCOMING_EVENTS" ? "FIXED_EVENT" : "NORMAL";
+}
+
 function experienceFieldsForMode(
   mode: UpcomingExperienceMode,
   enableVenueSeating: boolean,
@@ -66,7 +72,9 @@ export function useEventsForm({
   const [publicSection, setPublicSection] = useState<EventPublicSection>(
     defaultPublicSection,
   );
-  const [experienceMode, setExperienceMode] = useState<UpcomingExperienceMode>("NORMAL");
+  const [experienceMode, setExperienceMode] = useState<UpcomingExperienceMode>(() =>
+    defaultExperienceModeForSection(defaultPublicSection),
+  );
   const [schedule, setSchedule] = useState<ScheduleFormState>(emptyScheduleForm);
   const [enableVenueSeating, setEnableVenueSeating] = useState(false);
   const [fixedTicketCapacityInput, setFixedTicketCapacityInput] = useState("");
@@ -94,7 +102,7 @@ export function useEventsForm({
     setItemsText("");
     setPriceInput("");
     setPublicSection(defaultPublicSection);
-    setExperienceMode("NORMAL");
+    setExperienceMode(defaultExperienceModeForSection(defaultPublicSection));
     setSchedule(emptyScheduleForm());
     setEnableVenueSeating(false);
     setFixedTicketCapacityInput("");
@@ -272,7 +280,9 @@ export function useEventsForm({
 
     const mode: UpcomingExperienceMode = linkedTemplate
       ? linkedTemplate.scheduleMode
-      : "NORMAL";
+      : isUpcomingForm
+        ? "FIXED_EVENT"
+        : "NORMAL";
     const nextSchedule = linkedTemplate
       ? scheduleFormFromTemplate(linkedTemplate)
       : emptyScheduleForm();

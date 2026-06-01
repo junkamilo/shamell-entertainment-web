@@ -20,6 +20,7 @@ import {
   fetchAdminVenueConfig,
   patchAdminVenueConfig,
 } from "@/app/shamell-admin/on-coming-events/services/patchAdminVenueConfig";
+import { fetchAdminReservationEventTemplates } from "@/app/shamell-admin/on-coming-events/reservation-events/services/fetchAdminReservationEventTemplates";
 import { createAdminReservationEventTemplate } from "@/app/shamell-admin/on-coming-events/reservation-events/services/createAdminReservationEventTemplate";
 import { patchAdminReservationEventTemplate } from "@/app/shamell-admin/on-coming-events/reservation-events/services/patchAdminReservationEventTemplate";
 import { scheduleFormToTemplateBody } from "@/app/shamell-admin/on-coming-events/reservation-events/lib/scheduleFormBody";
@@ -103,20 +104,39 @@ export function useEventsPage(options?: UseEventsPageOptions) {
     form.resetForm();
   }, [form, isSubmitting]);
 
-  const uploadCatalogMedia = useCallback(
-    async (token: string, eventId: string, files: File[]) => {
+  const queueCatalogMediaUpload = useCallback(
+    (token: string, eventId: string, files: File[]) => {
       if (files.length === 0) return;
-      try {
-        await postAdminEventCatalogImages(token, eventId, files);
-      } catch (err) {
-        toast({
-          variant: "destructive",
-          title: "Media not saved",
-          description: err instanceof Error ? err.message : "Catalog media upload failed.",
-        });
-      }
+      const count = files.length;
+      toast({
+        title: "Uploading media in background",
+        description:
+          count === 1
+            ? "1 file is uploading. You can keep working."
+            : `${count} files are uploading. You can keep working.`,
+      });
+      void (async () => {
+        try {
+          await postAdminEventCatalogImages(token, eventId, files);
+          toast({
+            title: "Media uploaded",
+            description:
+              count === 1
+                ? "The catalog file was uploaded successfully."
+                : "Catalog files were uploaded successfully.",
+          });
+        } catch (err) {
+          toast({
+            variant: "destructive",
+            title: "Media not saved",
+            description: err instanceof Error ? err.message : "Catalog media upload failed.",
+          });
+        } finally {
+          await catalog.loadAllData();
+        }
+      })();
     },
-    [],
+    [catalog],
   );
 
   const syncUpcomingSchedule = useCallback(
@@ -127,11 +147,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
           reservationEventTemplateId: null,
         });
         if (!unlink.ok) {
-          toast({
-            variant: "destructive",
-            title: "Schedule not cleared",
-            description: unlink.message ?? "Could not detach the previous schedule.",
-          });
+          throw new Error(unlink.message ?? "Could not detach the previous schedule.");
         }
         return;
       }
@@ -142,59 +158,41 @@ export function useEventsPage(options?: UseEventsPageOptions) {
         : await createAdminReservationEventTemplate(token, templateBody);
 
       if (!templateResult.ok || !templateResult.template) {
-        toast({
-          variant: "destructive",
-          title: "Schedule not saved",
-          description: templateResult.message ?? "Could not save the event schedule.",
-        });
-        return;
+        throw new Error(templateResult.message ?? "Could not save the event schedule.");
       }
 
-      const linkResult = await patchAdminVenueConfig(token, eventId, {
+      const venueConfigBody: {
+        reservationEventTemplateId: string;
+        clientEnabled?: boolean;
+        fixedTicketCapacity?: number | null;
+      } = {
         reservationEventTemplateId: templateResult.template.id,
-        ...(form.experienceMode === "FIXED_EVENT"
-          ? { clientEnabled: form.enableVenueSeating }
-          : {}),
-      });
-      if (!linkResult.ok) {
-        toast({
-          variant: "destructive",
-          title: "Schedule not linked",
-          description: linkResult.message ?? "Could not apply the event schedule.",
-        });
-        return;
-      }
+      };
 
       if (form.experienceMode === "FIXED_EVENT") {
-        const capacity = Number.parseInt(form.fixedTicketCapacityInput.trim(), 10);
-        const capacityResult = await patchAdminVenueConfig(token, eventId, {
-          clientEnabled: form.enableVenueSeating,
-          fixedTicketCapacity:
-            form.enableVenueSeating
-              ? null
-              : Number.isFinite(capacity) && capacity >= 1
-                ? capacity
-                : null,
-        });
-        if (!capacityResult.ok) {
-          toast({
-            variant: "destructive",
-            title: "Ticket capacity not saved",
-            description: capacityResult.message ?? "Could not save ticket capacity.",
-          });
-          return;
-        }
-        if (
-          !form.enableVenueSeating &&
-          capacityResult.config?.fixedTicketCapacity !== capacity
-        ) {
-          toast({
-            variant: "destructive",
-            title: "Ticket capacity mismatch",
-            description: `Expected ${capacity} tickets but saved ${capacityResult.config?.fixedTicketCapacity ?? "none"}. Try saving again.`,
-          });
-          return;
-        }
+        venueConfigBody.clientEnabled = form.enableVenueSeating;
+        venueConfigBody.fixedTicketCapacity = form.enableVenueSeating
+          ? null
+          : (() => {
+              const capacity = Number.parseInt(form.fixedTicketCapacityInput.trim(), 10);
+              return Number.isFinite(capacity) && capacity >= 1 ? capacity : null;
+            })();
+      }
+
+      const linkResult = await patchAdminVenueConfig(token, eventId, venueConfigBody);
+      if (!linkResult.ok) {
+        throw new Error(linkResult.message ?? "Could not apply the event schedule.");
+      }
+
+      if (
+        form.experienceMode === "FIXED_EVENT" &&
+        !form.enableVenueSeating &&
+        venueConfigBody.fixedTicketCapacity != null &&
+        linkResult.config?.fixedTicketCapacity !== venueConfigBody.fixedTicketCapacity
+      ) {
+        throw new Error(
+          `Expected ${venueConfigBody.fixedTicketCapacity} tickets but saved ${linkResult.config?.fixedTicketCapacity ?? "none"}. Try saving again.`,
+        );
       }
     },
     [form],
@@ -230,28 +228,12 @@ export function useEventsPage(options?: UseEventsPageOptions) {
           savedId = result.id;
         }
 
-        if (savedId) {
-          const followUp: Promise<void>[] = [];
-          const hasMedia = form.pendingFiles.length > 0;
-          const hasSchedule = isUpcomingAdminRoute;
+        const pendingMediaFiles = savedId ? [...form.pendingFiles] : [];
+        const hasSchedule = Boolean(savedId) && isUpcomingAdminRoute;
 
-          if (hasMedia) {
-            followUp.push(uploadCatalogMedia(token, savedId, form.pendingFiles));
-          }
-          if (hasSchedule) {
-            followUp.push(syncUpcomingSchedule(token, savedId));
-          }
-
-          if (followUp.length > 0) {
-            setSubmittingMessage(
-              hasMedia && hasSchedule
-                ? "Uploading media and applying schedule…"
-                : hasMedia
-                  ? "Uploading catalog media…"
-                  : "Applying schedule…",
-            );
-            await Promise.all(followUp);
-          }
+        if (savedId && hasSchedule) {
+          setSubmittingMessage("Applying schedule…");
+          await syncUpcomingSchedule(token, savedId);
         }
 
         const wasEditing = Boolean(form.editingId);
@@ -263,6 +245,9 @@ export function useEventsPage(options?: UseEventsPageOptions) {
             ? "Event changes were saved successfully."
             : "The new event was created successfully.",
         });
+        if (savedId && pendingMediaFiles.length > 0) {
+          queueCatalogMediaUpload(token, savedId, pendingMediaFiles);
+        }
         void catalog.loadAllData();
       } catch (err) {
         toastApiError(err, "Error");
@@ -274,7 +259,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
     [
       form,
       isUpcomingAdminRoute,
-      uploadCatalogMedia,
+      queueCatalogMediaUpload,
       syncUpcomingSchedule,
       catalog,
     ],
@@ -292,6 +277,19 @@ export function useEventsPage(options?: UseEventsPageOptions) {
           linkedTemplate = configResult.config?.reservationEventTemplate ?? null;
           venueClientEnabled = configResult.config?.clientEnabled ?? false;
           venueFixedTicketCapacity = configResult.config?.fixedTicketCapacity ?? null;
+
+          if (!linkedTemplate) {
+            const templatesResult = await fetchAdminReservationEventTemplates(token);
+            if (templatesResult.ok) {
+              const eventName = item.eventTypeName.trim().toLowerCase();
+              linkedTemplate =
+                templatesResult.templates.find((template) => {
+                  if (template.name.trim().toLowerCase() !== eventName) return false;
+                  const linkedIds = template.linkedEventIds ?? [];
+                  return linkedIds.length === 0 || linkedIds.includes(item.id);
+                }) ?? null;
+            }
+          }
         }
       }
       form.startEdit(item, linkedTemplate, venueClientEnabled, venueFixedTicketCapacity);

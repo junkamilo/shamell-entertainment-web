@@ -3,7 +3,6 @@ import { ChevronDown, Plus, X } from "lucide-react";
 import AdminModal from "@/components/admin/AdminModal";
 import { ADMIN_BUSY_OVERLAY_Z_CLASS } from "@/components/admin/adminModalLayers";
 import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
-import { UpcomingClassSessionsPanel } from "@/app/shamell-admin/on-coming-events/components/UpcomingClassSessionsPanel";
 import {
   ReservationEventScheduleSections,
   type ScheduleFormState,
@@ -332,10 +331,6 @@ export default function EventsFormModal({
             ) : null}
           </div>
         </div>
-
-        {lockPublicSection && editingId && experienceMode === "RECURRING_WEEKLY" ? (
-          <UpcomingClassSessionsPanel eventId={editingId} />
-        ) : null}
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <button

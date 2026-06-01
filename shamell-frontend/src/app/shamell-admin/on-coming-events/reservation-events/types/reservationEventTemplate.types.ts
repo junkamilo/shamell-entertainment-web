@@ -25,6 +25,7 @@ export type ReservationEventTemplate = {
   weekdays: ReservationEventWeekday[];
   activeDayLabels: string[];
   summary: string;
+  linkedEventIds?: string[];
   updatedAt: string;
 };
 

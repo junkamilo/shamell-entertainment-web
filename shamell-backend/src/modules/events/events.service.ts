@@ -463,6 +463,13 @@ export class EventsService {
 
     await this.ensureEventCanBeDeleted(id);
 
+    const venueConfig = await this.prisma.upcomingVenueConfig.findUnique({
+      where: { eventId: id },
+      select: { reservationEventTemplateId: true },
+    });
+    const linkedTemplateId =
+      venueConfig?.reservationEventTemplateId ?? null;
+
     const catalogPhotos = await this.prisma.galleryPhoto.findMany({
       where: { eventId: id },
       select: { id: true },
@@ -472,6 +479,10 @@ export class EventsService {
     }
 
     await this.prisma.event.delete({ where: { id } });
+
+    if (linkedTemplateId) {
+      await this.deleteReservationTemplateIfUnlinked(linkedTemplateId);
+    }
 
     return {
       message: 'Event deleted successfully.',
@@ -779,6 +790,18 @@ export class EventsService {
       throw new ConflictException(
         'Cannot disable this event because it has associated bookings.',
       );
+    }
+  }
+
+  /** Removes a reservation schedule row left behind after its only venue config is deleted. */
+  private async deleteReservationTemplateIfUnlinked(templateId: string) {
+    const remainingLinks = await this.prisma.upcomingVenueConfig.count({
+      where: { reservationEventTemplateId: templateId },
+    });
+    if (remainingLinks === 0) {
+      await this.prisma.reservationEventTemplate.delete({
+        where: { id: templateId },
+      });
     }
   }
 

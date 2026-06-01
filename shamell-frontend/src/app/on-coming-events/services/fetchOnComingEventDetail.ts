@@ -44,6 +44,9 @@ export type OnComingEventDetail = {
   fixedTicketCapacity?: number;
   ticketsSold?: number;
   eventStartsAt?: string;
+  tableCapacity?: number;
+  tablesRemaining?: number;
+  tablesSold?: number;
 };
 
 export async function fetchOnComingEventDetail(slug: string): Promise<OnComingEventDetail> {

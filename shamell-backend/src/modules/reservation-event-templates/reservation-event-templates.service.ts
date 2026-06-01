@@ -17,8 +17,13 @@ import {
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+const templateInclude = {
+  weekdays: { orderBy: { weekday: 'asc' as const } },
+  venueConfigs: { select: { eventId: true } },
+} satisfies Prisma.ReservationEventTemplateInclude;
+
 type TemplateWithWeekdays = Prisma.ReservationEventTemplateGetPayload<{
-  include: { weekdays: true };
+  include: typeof templateInclude;
 }>;
 
 @Injectable()
@@ -30,7 +35,7 @@ export class ReservationEventTemplatesService {
   async listAdmin(scheduleMode?: ReservationEventScheduleMode) {
     const rows = await this.prisma.reservationEventTemplate.findMany({
       where: scheduleMode ? { scheduleMode } : undefined,
-      include: { weekdays: { orderBy: { weekday: 'asc' } } },
+      include: templateInclude,
       orderBy: { name: 'asc' },
     });
     return rows.map((row) => this.mapTemplate(row));
@@ -43,9 +48,22 @@ export class ReservationEventTemplatesService {
 
   async createAdmin(dto: CreateReservationEventTemplateDto) {
     const validated = validateTemplatePayload(dto);
+    const existing = await this.prisma.reservationEventTemplate.findUnique({
+      where: { name: validated.name },
+      include: templateInclude,
+    });
+    if (existing) {
+      if (existing.venueConfigs.length > 0) {
+        throw new ConflictException(
+          `A reservation schedule named "${validated.name}" is already linked to another event. Edit that event or choose a different name.`,
+        );
+      }
+      return this.updateAdmin(existing.id, dto);
+    }
+
     const created = await this.prisma.reservationEventTemplate.create({
       data: this.toPrismaCreate(validated),
-      include: { weekdays: { orderBy: { weekday: 'asc' } } },
+      include: templateInclude,
     });
     return this.mapTemplate(created);
   }
@@ -62,7 +80,7 @@ export class ReservationEventTemplatesService {
     const updated = await this.prisma.reservationEventTemplate.update({
       where: { id },
       data: this.toPrismaUpdate(validated),
-      include: { weekdays: { orderBy: { weekday: 'asc' } } },
+      include: templateInclude,
     });
     return this.mapTemplate(updated);
   }
@@ -84,7 +102,7 @@ export class ReservationEventTemplatesService {
   async findByIdOrThrow(id: string): Promise<TemplateWithWeekdays> {
     const row = await this.prisma.reservationEventTemplate.findUnique({
       where: { id },
-      include: { weekdays: { orderBy: { weekday: 'asc' } } },
+      include: templateInclude,
     });
     if (!row) {
       throw new NotFoundException('Reservation event not found.');
@@ -218,6 +236,7 @@ export class ReservationEventTemplatesService {
       })),
       activeDayLabels: activeDays,
       summary: buildTemplateSummary(row),
+      linkedEventIds: row.venueConfigs.map((config) => config.eventId),
       updatedAt: row.updatedAt.toISOString(),
     };
   }

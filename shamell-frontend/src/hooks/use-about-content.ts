@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { getPublicApiBaseUrl } from "@/app/contacto/lib/apiBaseUrl";
 import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
+import {
+  buildAboutHeroVideoPosterUrl,
+  buildAboutHeroVideoStreamUrl,
+} from "@/lib/aboutHeroVideoDelivery";
 
 export type AboutContentItem = {
   title: string;
@@ -10,6 +14,8 @@ export type AboutContentItem = {
   coreValues: string[];
   imageUrl: string | null;
   heroMediaType: "IMAGE" | "VIDEO";
+  videoDeliveryUrl: string | null;
+  videoPosterUrl: string | null;
 };
 
 const fallbackAboutContent: AboutContentItem = {
@@ -21,6 +27,8 @@ const fallbackAboutContent: AboutContentItem = {
   coreValues: ["Professionalism", "Excellence", "Authenticity", "Emotional Connection", "Luxury"],
   imageUrl: null,
   heroMediaType: "IMAGE",
+  videoDeliveryUrl: null,
+  videoPosterUrl: null,
 };
 
 function inferHeroMediaType(payload: {
@@ -55,12 +63,29 @@ export function useAboutContent() {
           return;
         }
 
+        const heroMediaType = inferHeroMediaType(payload);
+        const imageUrl = typeof payload.imageUrl === "string" ? payload.imageUrl : null;
+        const videoDeliveryUrl =
+          typeof payload.videoDeliveryUrl === "string"
+            ? payload.videoDeliveryUrl
+            : heroMediaType === "VIDEO"
+              ? buildAboutHeroVideoStreamUrl(imageUrl)
+              : null;
+        const videoPosterUrl =
+          typeof payload.videoPosterUrl === "string"
+            ? payload.videoPosterUrl
+            : heroMediaType === "VIDEO"
+              ? buildAboutHeroVideoPosterUrl(imageUrl)
+              : null;
+
         setAbout({
           title: payload.title,
           paragraph1: payload.paragraph1,
           coreValues: payload.coreValues,
-          imageUrl: typeof payload.imageUrl === "string" ? payload.imageUrl : null,
-          heroMediaType: inferHeroMediaType(payload),
+          imageUrl,
+          heroMediaType,
+          videoDeliveryUrl,
+          videoPosterUrl,
         });
       })
       .catch(() => {
@@ -74,6 +99,18 @@ export function useAboutContent() {
       isCancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!about.videoPosterUrl) return;
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "image";
+    link.href = about.videoPosterUrl;
+    document.head.appendChild(link);
+    return () => {
+      document.head.removeChild(link);
+    };
+  }, [about.videoPosterUrl]);
 
   return { about, isLoading };
 }
