@@ -12,7 +12,10 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
+import { randomUUID } from 'crypto';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import { tmpdir } from 'os';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { UpsertAboutContentDto } from './dto/upsert-about-content.dto';
 import { AboutService } from './about.service';
@@ -39,8 +42,15 @@ export class AboutController {
   @UseGuards(AdminJwtGuard)
   @UseInterceptors(
     FileInterceptor('media', {
-      storage: memoryStorage(),
-      limits: { fileSize: 100 * 1024 * 1024 },
+      storage: diskStorage({
+        destination: tmpdir(),
+        filename: (_req, file, cb) => {
+          const ext =
+            extname(file.originalname) ||
+            (file.mimetype.startsWith('video/') ? '.mp4' : '.jpg');
+          cb(null, `shamell-about-${randomUUID()}${ext}`);
+        },
+      }),
     }),
   )
   upsertAdminAboutContent(

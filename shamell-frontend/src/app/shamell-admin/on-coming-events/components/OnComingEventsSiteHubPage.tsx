@@ -36,7 +36,7 @@ function OnComingEventsSiteHubPageInner() {
         bordered={false}
         actionLabel={
           activeTab === ON_COMING_EVENTS_SITE_TAB_RESERVATION
-            ? "Edit promo content"
+            ? "Edit home section"
             : undefined
         }
         onAction={

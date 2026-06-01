@@ -45,8 +45,8 @@ export function VenueLayoutReservationTabPanel({ page }: Props) {
 
       <VenueLayoutPromoModuleSection
         icon={Sparkles}
-        title="Home promo preview"
-        description="Title, image, and copy for the On Coming Events block on the home page (links guests to seat reservations)."
+        title="Home section copy"
+        description="Title and description shown above the event cards on the home page (same block as About Shamell)."
         className="mt-8"
         headerAction={
           <button
@@ -54,7 +54,7 @@ export function VenueLayoutReservationTabPanel({ page }: Props) {
             onClick={page.openModal}
             className="rounded-lg border border-gold/35 bg-gold/10 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gold transition hover:bg-gold/20"
           >
-            Edit promo content
+            Edit home section
           </button>
         }
       >
@@ -77,13 +77,7 @@ export function VenueLayoutReservationTabPanel({ page }: Props) {
         setPromoTitle={page.setPromoTitle}
         promoDescription={page.promoDescription}
         setPromoDescription={page.setPromoDescription}
-        existingImageUrl={page.existingImageUrl}
-        imagePreviewUrl={page.imagePreviewUrl}
-        imageFileInputRef={page.imageFileInputRef}
-        onImageFileChange={page.onImageFileChange}
         isSubmitting={page.isSubmitting}
-        isDeletingImage={page.isDeletingImage}
-        onDeleteImage={page.deletePromoImage}
       />
     </>
   );

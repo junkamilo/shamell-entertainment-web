@@ -42,7 +42,7 @@ export function VenueLayoutPromoAdminPage() {
       <AdminModuleHero
         title="On Coming Events (site)"
         bordered={false}
-        actionLabel={activeTab === "home-promo" ? "Edit promo content" : undefined}
+        actionLabel={activeTab === "home-promo" ? "Edit home section" : undefined}
         onAction={activeTab === "home-promo" ? page.openModal : undefined}
       />
 
@@ -73,15 +73,15 @@ export function VenueLayoutPromoAdminPage() {
       ) : (
         <VenueLayoutPromoModuleSection
           icon={Sparkles}
-          title="Home promo preview"
-          description="Title, image, and copy for the venue block on the home page."
+          title="Home section copy"
+          description="Title and description shown above the event cards on the home page."
           headerAction={
             <button
               type="button"
               onClick={page.openModal}
               className="rounded-lg border border-gold/35 bg-gold/10 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-gold transition hover:bg-gold/20"
             >
-              Edit promo content
+              Edit home section
             </button>
           }
         >
@@ -105,13 +105,7 @@ export function VenueLayoutPromoAdminPage() {
         setPromoTitle={page.setPromoTitle}
         promoDescription={page.promoDescription}
         setPromoDescription={page.setPromoDescription}
-        existingImageUrl={page.existingImageUrl}
-        imagePreviewUrl={page.imagePreviewUrl}
-        imageFileInputRef={page.imageFileInputRef}
-        onImageFileChange={page.onImageFileChange}
         isSubmitting={page.isSubmitting}
-        isDeletingImage={page.isDeletingImage}
-        onDeleteImage={page.deletePromoImage}
       />
     </div>
   );
