@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { Volume2, VolumeX } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Loader2, Volume2, VolumeX } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import portrait from "@/assets/gallery-2.jpg";
 import OrnamentDivider from "./OrnamentDivider";
 import RevealOnView from "@/components/shared/RevealOnView";
@@ -11,9 +11,23 @@ import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
 import { splitAboutParagraphs } from "@/lib/aboutParagraphs";
 import { cn } from "@/lib/utils";
 
-function AboutHeroVideo({ src }: { src: string }) {
+function aboutPrefetchRootMarginPx(): string {
+  const viewportHeight =
+    typeof window !== "undefined" ? window.innerHeight : 900;
+  return `${Math.round(viewportHeight * 1.2)}px 0px 0px 0px`;
+}
+
+type AboutHeroVideoProps = {
+  src: string;
+  poster: string | null;
+};
+
+function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const [isInView, setIsInView] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(true);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -22,24 +36,52 @@ function AboutHeroVideo({ src }: { src: string }) {
   }, [isMuted]);
 
   useEffect(() => {
-    const video = videoRef.current;
     const section = document.getElementById("about");
-    if (!video || !section) return;
+    if (!section) return;
 
-    const observer = new IntersectionObserver(
+    const prefetchObserver = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) {
-          void video.play().catch(() => undefined);
-        } else {
-          video.pause();
-        }
+        if (entry?.isIntersecting) setShouldLoad(true);
+      },
+      { rootMargin: aboutPrefetchRootMarginPx(), threshold: 0 },
+    );
+
+    const playbackObserver = new IntersectionObserver(
+      ([entry]) => {
+        setIsInView(Boolean(entry?.isIntersecting));
       },
       { threshold: 0.25 },
     );
 
-    observer.observe(section);
-    return () => observer.disconnect();
-  }, [src]);
+    prefetchObserver.observe(section);
+    playbackObserver.observe(section);
+
+    return () => {
+      prefetchObserver.disconnect();
+      playbackObserver.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !shouldLoad) return;
+    video.preload = "auto";
+    video.load();
+  }, [shouldLoad, src]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !shouldLoad) return;
+
+    if (isInView) {
+      void video.play().catch(() => undefined);
+    } else {
+      video.pause();
+    }
+  }, [isInView, shouldLoad]);
+
+  const onCanPlay = useCallback(() => setIsBuffering(false), []);
+  const onWaiting = useCallback(() => setIsBuffering(true), []);
 
   const toggleMute = () => {
     setIsMuted((prev) => !prev);
@@ -49,15 +91,46 @@ function AboutHeroVideo({ src }: { src: string }) {
 
   return (
     <div className="absolute inset-0">
-      <video
-        ref={videoRef}
-        src={src}
-        className="absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-700 ease-out group-hover/portrait:opacity-95 sm:p-4"
-        playsInline
-        loop
-        preload="metadata"
-        aria-label="Video about Shamell"
-      />
+      {poster ? (
+        <Image
+          src={poster}
+          alt=""
+          fill
+          className={cn(
+            "object-contain object-center p-3 transition-opacity duration-500 sm:p-4",
+            shouldLoad && !isBuffering ? "opacity-0" : "opacity-100",
+          )}
+          sizes="(max-width: 1024px) 100vw, 40vw"
+          aria-hidden
+          unoptimized
+        />
+      ) : null}
+
+      {shouldLoad ? (
+        <video
+          ref={videoRef}
+          src={src}
+          poster={poster ?? undefined}
+          className={cn(
+            "absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-500 sm:p-4",
+            isBuffering ? "opacity-0" : "opacity-100",
+          )}
+          playsInline
+          loop
+          preload="auto"
+          onCanPlay={onCanPlay}
+          onPlaying={onCanPlay}
+          onWaiting={onWaiting}
+          aria-label="Video about Shamell"
+        />
+      ) : null}
+
+      {shouldLoad && isBuffering ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gold/70" strokeWidth={1.5} aria-hidden />
+        </div>
+      ) : null}
+
       <button
         type="button"
         onClick={toggleMute}
@@ -82,6 +155,10 @@ const AboutSection = () => {
     heroMediaType: about.heroMediaType,
     imageUrl: about.imageUrl,
   });
+  const heroVideoSrc = useMemo(
+    () => about.videoDeliveryUrl ?? about.imageUrl,
+    [about.videoDeliveryUrl, about.imageUrl],
+  );
 
   return (
     <section id="about" className="bg-transparent px-4 py-20 md:py-24">
@@ -112,8 +189,8 @@ const AboutSection = () => {
             >
               {!isLoading ? (
                 <>
-                  {about.imageUrl && heroIsVideo ? (
-                    <AboutHeroVideo src={about.imageUrl} />
+                  {heroVideoSrc && heroIsVideo ? (
+                    <AboutHeroVideo src={heroVideoSrc} poster={about.videoPosterUrl} />
                   ) : (
                     <Image
                       src={about.imageUrl ?? portrait}

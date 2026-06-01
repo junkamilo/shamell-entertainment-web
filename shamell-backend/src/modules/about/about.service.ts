@@ -8,6 +8,10 @@ import { promises as fs } from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpsertAboutContentDto } from './dto/upsert-about-content.dto';
+import {
+  buildAboutHeroVideoDeliveryUrl,
+  buildAboutHeroVideoPosterUrl,
+} from './about-video-delivery.util';
 
 type AboutHeroMediaType = 'IMAGE' | 'VIDEO';
 
@@ -29,7 +33,7 @@ export class AboutService {
     if (!latest) {
       throw new NotFoundException('About content not found.');
     }
-    return this.mapAboutContent(latest);
+    return this.mapPublicAboutContent(latest);
   }
 
   async getAdminAboutContent() {
@@ -268,6 +272,15 @@ export class AboutService {
           folder: 'shamell/about',
           resource_type: 'video',
           chunk_size: 6_000_000,
+          transformation: [
+            {
+              width: 720,
+              crop: 'limit',
+              quality: 'auto:eco',
+              video_codec: 'h264',
+              fetch_format: 'mp4',
+            },
+          ],
         },
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
@@ -355,6 +368,32 @@ export class AboutService {
         'Cloudinary media deletion failed.',
       );
     }
+  }
+
+  private mapPublicAboutContent(content: {
+    id: string;
+    title: string;
+    paragraph1: string;
+    coreValues: string[];
+    imageUrl: string | null;
+    heroMediaType?: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    const base = this.mapAboutContent(content);
+    const heroMediaType = this.normalizeHeroMediaType(content.heroMediaType);
+    return {
+      ...base,
+      videoDeliveryUrl:
+        heroMediaType === 'VIDEO'
+          ? buildAboutHeroVideoDeliveryUrl(content.imageUrl)
+          : null,
+      videoPosterUrl:
+        heroMediaType === 'VIDEO'
+          ? buildAboutHeroVideoPosterUrl(content.imageUrl)
+          : null,
+    };
   }
 
   private mapAboutContent(content: {

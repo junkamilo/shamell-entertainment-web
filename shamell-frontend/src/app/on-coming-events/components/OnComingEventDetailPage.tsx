@@ -95,12 +95,22 @@ export default function OnComingEventDetailPage({ slug }: Props) {
     event?.heroMediaType === "VIDEO" || serviceCatalogMediaTypeFromUrl(heroUrl) === "VIDEO";
   const hasPrice = event?.price != null && !Number.isNaN(Number(event.price));
   const isFixedTicket = event?.purchaseMode === "fixed_ticket";
-  const soldOut = isFixedTicket && event?.ticketsRemaining === 0;
+  const isVenueSeating = event?.purchaseMode === "venue_seating";
+  const ticketSoldOut = isFixedTicket && event?.ticketsRemaining === 0;
+  const seatingSoldOut =
+    isVenueSeating &&
+    event?.tablesRemaining === 0 &&
+    event?.tableCapacity != null &&
+    event.tableCapacity >= 1;
+  const soldOut = ticketSoldOut || seatingSoldOut;
   const showTicketInventory =
     isFixedTicket &&
     event?.fixedTicketCapacity != null &&
     event.fixedTicketCapacity >= 1;
-  const showCountdown = isFixedTicket && isFutureEventStart(event?.eventStartsAt);
+  const showTableInventory =
+    isVenueSeating && event?.tableCapacity != null && event.tableCapacity >= 1;
+  const showCountdown =
+    (isFixedTicket || isVenueSeating) && isFutureEventStart(event?.eventStartsAt);
   const hubHref = onComingEventHubHref();
   const showBusyOverlay = loading || leaving;
   const busyTitle = loading ? "Loading event…" : "Loading upcoming events…";
@@ -198,9 +208,21 @@ export default function OnComingEventDetailPage({ slug }: Props) {
               />
             ) : null}
 
+            {showTableInventory && event ? (
+              <FixedTicketInventoryDisplay
+                className={showCountdown && event.eventStartsAt ? "mt-6" : "mt-10"}
+                fixedTicketCapacity={event.tableCapacity!}
+                ticketsRemaining={event.tablesRemaining ?? event.tableCapacity!}
+                ticketsSold={event.tablesSold}
+                soldOut={soldOut}
+                size="md"
+                inventoryType="table"
+              />
+            ) : null}
+
             {soldOut ? (
               <p className="mt-4 text-center font-body text-base text-foreground/45 md:text-lg" role="status">
-                All tickets have been sold
+                {seatingSoldOut ? "All tables have been sold" : "All tickets have been sold"}
               </p>
             ) : null}
 
