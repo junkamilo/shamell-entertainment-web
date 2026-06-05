@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import SiteHeader from "@/components/SiteHeader";
+import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
 import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
 import { OnComingEventsHubHero } from "@/app/on-coming-events/components/OnComingEventsHubHero";
@@ -130,8 +130,7 @@ export default function OnComingEventsHubPage() {
 
       {showContent ? (
         <main className="relative z-10 min-h-screen text-foreground">
-          <SiteHeader />
-          <div className="mx-auto max-w-6xl px-4 pb-20 pt-28 md:pt-32">
+          <div className="mx-auto min-w-0 max-w-6xl overflow-x-hidden px-4 pb-20 pt-6 md:pt-8">
             <OnComingEventsHubHero onBackNavigateStart={handleBackNavigate} />
 
             <p className="mx-auto mb-10 max-w-2xl text-center font-body text-base text-foreground/85 md:text-lg">
@@ -142,15 +141,40 @@ export default function OnComingEventsHubPage() {
               <p className="text-center text-foreground/70">Upcoming events coming soon.</p>
             ) : null}
 
-            <div className="mx-auto flex max-w-5xl flex-wrap justify-center gap-6 md:gap-8">
-              {events.map((event) => (
-                <OnComingEventHubCard
-                  key={event.slug}
-                  event={event}
-                  onNavigateStart={handleEventNavigate}
-                />
-              ))}
-            </div>
+            {events.length > 0 ? (
+              <>
+                <div className="min-w-0 w-full sm:hidden">
+                  <div
+                    className={cn(
+                      "shamell-scrollbar -mx-4 min-w-0 overflow-x-auto px-6 pb-2",
+                      "snap-x snap-mandatory scroll-pl-6 scroll-pr-6",
+                      "overscroll-x-contain [-webkit-overflow-scrolling:touch]",
+                    )}
+                  >
+                    <div className="flex w-max gap-4">
+                      {events.map((event) => (
+                        <OnComingEventHubCard
+                          key={`mobile-${event.slug}`}
+                          event={event}
+                          onNavigateStart={handleEventNavigate}
+                          mobileCarousel
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mx-auto hidden max-w-5xl flex-wrap justify-center gap-6 sm:flex md:gap-8">
+                  {events.map((event) => (
+                    <OnComingEventHubCard
+                      key={event.slug}
+                      event={event}
+                      onNavigateStart={handleEventNavigate}
+                    />
+                  ))}
+                </div>
+              </>
+            ) : null}
           </div>
           <Footer />
         </main>

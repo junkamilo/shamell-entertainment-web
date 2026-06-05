@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import VenueLayoutCheckoutStep from "./VenueLayoutCheckoutStep";
+import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
 import {
   createClassCheckoutSession,
   type CreateClassCheckoutBody,
@@ -68,6 +69,18 @@ export function OnComingEventClassBookingModal({ slug, sessions, open, onClose }
     setCheckoutSecret(result.clientSecret);
   };
 
+  if (checkoutSecret) {
+    return createPortal(
+      <StripeEmbeddedCheckoutOverlay
+        clientSecret={checkoutSecret}
+        onClose={() => setCheckoutSecret(null)}
+        ariaLabel="Class booking payment"
+        closeOnBackdropClick={false}
+      />,
+      document.body,
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
       <button
@@ -90,76 +103,68 @@ export function OnComingEventClassBookingModal({ slug, sessions, open, onClose }
         </div>
 
         <div className="overflow-y-auto px-4 py-4 pb-safe">
-          {!checkoutSecret ? (
-            <>
-              {sessions.length === 0 ? (
-                <p className="text-sm text-foreground/70">No upcoming sessions available.</p>
-              ) : (
-                <ul className="space-y-3">
-                  {sessions.map((session) => {
-                    const selected = selectedSession?.id === session.id;
-                    const disabled = session.seatsRemaining <= 0;
-                    return (
-                      <li key={session.id}>
-                        <button
-                          type="button"
-                          disabled={disabled}
-                          onClick={() => setSelectedSession(session)}
-                          className={`w-full rounded-xl border px-4 py-4 text-left transition ${
-                            selected ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/45"
-                          } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
-                        >
-                          <p className="font-brand text-sm text-gold">{formatSessionWhen(session)}</p>
-                          <p className="mt-1 text-sm text-foreground/80">
-                            ${session.price.toFixed(2)} · {session.seatsRemaining} spot
-                            {session.seatsRemaining === 1 ? "" : "s"} left
-                          </p>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-
-              {selectedSession ? (
-                <div className="mt-6 space-y-4 rounded-xl border border-gold/25 p-4">
-                  <h3 className="font-brand text-xs tracking-[0.14em] text-gold">YOUR DETAILS</h3>
-                  <input
-                    className="w-full rounded-lg border border-gold/30 bg-black/30 px-3 py-2 text-sm"
-                    placeholder="Full name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                  <input
-                    className="w-full rounded-lg border border-gold/30 bg-black/30 px-3 py-2 text-sm"
-                    placeholder="Email"
-                    type="email"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                  />
-                  <input
-                    className="w-full rounded-lg border border-gold/30 bg-black/30 px-3 py-2 text-sm"
-                    placeholder="Phone (optional)"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                  />
-                  {checkoutError ? <p className="text-sm text-red-400">{checkoutError}</p> : null}
-                  <button
-                    type="button"
-                    disabled={isSubmitting || !customerName.trim() || !customerEmail.trim()}
-                    onClick={() => void startCheckout()}
-                    className="w-full rounded-xl border border-gold/40 bg-gold/15 py-3 font-brand text-xs tracking-[0.14em] text-gold uppercase disabled:opacity-50"
-                  >
-                    {isSubmitting ? "Starting checkout…" : "Continue to payment"}
-                  </button>
-                </div>
-              ) : null}
-            </>
+          {sessions.length === 0 ? (
+            <p className="text-sm text-foreground/70">No upcoming sessions available.</p>
           ) : (
-            <div className="min-h-[360px] rounded-xl border border-gold/20 bg-white p-2">
-              <VenueLayoutCheckoutStep clientSecret={checkoutSecret} />
-            </div>
+            <ul className="space-y-3">
+              {sessions.map((session) => {
+                const selected = selectedSession?.id === session.id;
+                const disabled = session.seatsRemaining <= 0;
+                return (
+                  <li key={session.id}>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setSelectedSession(session)}
+                      className={`w-full rounded-xl border px-4 py-4 text-left transition ${
+                        selected ? "border-gold bg-gold/10" : "border-gold/25 hover:border-gold/45"
+                      } ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+                    >
+                      <p className="font-brand text-sm text-gold">{formatSessionWhen(session)}</p>
+                      <p className="mt-1 text-sm text-foreground/80">
+                        ${session.price.toFixed(2)} · {session.seatsRemaining} spot
+                        {session.seatsRemaining === 1 ? "" : "s"} left
+                      </p>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
+
+          {selectedSession ? (
+            <div className="mt-6 space-y-4 rounded-xl border border-gold/25 p-4">
+              <h3 className="font-brand text-xs tracking-[0.14em] text-gold">YOUR DETAILS</h3>
+              <input
+                className="w-full rounded-lg border border-gold/30 bg-black/30 px-3 py-2 text-sm"
+                placeholder="Full name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+              <input
+                className="w-full rounded-lg border border-gold/30 bg-black/30 px-3 py-2 text-sm"
+                placeholder="Email"
+                type="email"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+              />
+              <input
+                className="w-full rounded-lg border border-gold/30 bg-black/30 px-3 py-2 text-sm"
+                placeholder="Phone (optional)"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+              />
+              {checkoutError ? <p className="text-sm text-red-400">{checkoutError}</p> : null}
+              <button
+                type="button"
+                disabled={isSubmitting || !customerName.trim() || !customerEmail.trim()}
+                onClick={() => void startCheckout()}
+                className="w-full rounded-xl border border-gold/40 bg-gold/15 py-3 font-brand text-xs tracking-[0.14em] text-gold uppercase disabled:opacity-50"
+              >
+                {isSubmitting ? "Starting checkout…" : "Continue to payment"}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

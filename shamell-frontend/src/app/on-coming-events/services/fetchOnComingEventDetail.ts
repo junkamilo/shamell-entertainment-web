@@ -1,6 +1,20 @@
 import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
 import type { ClassSessionPublic } from "./fetchUpcomingClassSessions";
 
+export type PublicClassSection = {
+  id: string;
+  label: string | null;
+  startTime: string;
+  endTime: string;
+  sortOrder: number;
+};
+
+export type PublicRecurringDay = {
+  weekday: number;
+  label: string;
+  sections: PublicClassSection[];
+};
+
 export type OnComingEventSchedule =
   | {
       mode: "FIXED_EVENT";
@@ -19,9 +33,20 @@ export type OnComingEventSchedule =
       weekdayLabels: string[];
       startTime: string | null;
       endTime: string | null;
+      days: PublicRecurringDay[];
     };
 
 export type UpcomingPurchaseMode = "none" | "classes" | "venue_seating" | "fixed_ticket";
+
+export type MonthPackageOffer = {
+  enabled: boolean;
+  price: number | null;
+  label: string | null;
+  currentMonthIso: string | null;
+  currentMonthSessionCount: number;
+  purchasable: boolean;
+  purchasableMonths: string[];
+};
 
 export type OnComingEventDetail = {
   id: string;
@@ -40,6 +65,7 @@ export type OnComingEventDetail = {
   purchasable: boolean;
   purchaseMode: UpcomingPurchaseMode;
   sessions: ClassSessionPublic[];
+  monthPackage?: MonthPackageOffer;
   ticketsRemaining?: number;
   fixedTicketCapacity?: number;
   ticketsSold?: number;

@@ -9,6 +9,7 @@ import {
   flowLabelFromCode,
   stageLabelFromCode,
 } from './admin-payment.mail';
+import { resolveAdminOpsEmail } from './admin-ops-email.util';
 import { emailBrandingFromConfig } from './email-html-branding';
 import { MailService } from './mail.service';
 
@@ -18,6 +19,8 @@ export type NotifyAdminPaymentInput = {
     | 'BOOKING_QUOTE'
     | 'VENUE_SEAT'
     | 'CLASS_SESSION'
+    | 'CLASS_PACKAGE'
+    | 'CLASS_DAY_BUNDLE'
     | 'FIXED_TICKET';
   customerName: string;
   customerEmail: string;
@@ -38,10 +41,7 @@ export class AdminPaymentNotifyService {
   ) {}
 
   adminOpsEmail(): string {
-    return (
-      this.config.get<string>('ADMIN_OPS_EMAIL')?.trim() ||
-      'shamellgolden@gmail.com'
-    );
+    return resolveAdminOpsEmail(this.config);
   }
 
   private usd(amount: number, currency = 'usd'): string {

@@ -5,6 +5,28 @@ export type ReservationEventWeekday = {
   isActive: boolean;
 };
 
+export type ClassSectionFormRow = {
+  weekday: number;
+  label: string;
+  startTime: string;
+  endTime: string;
+  sortOrder: number;
+  defaultCapacity: number;
+  defaultPrice: string;
+};
+
+export type ReservationEventClassSection = {
+  id: string;
+  weekday: number;
+  label: string | null;
+  startTime: string;
+  endTime: string;
+  sortOrder: number;
+  defaultCapacity: number;
+  defaultPrice: number | null;
+  isActive: boolean;
+};
+
 export type ReservationEventTemplate = {
   id: string;
   name: string;
@@ -23,6 +45,7 @@ export type ReservationEventTemplate = {
   startTime: string | null;
   endTime: string | null;
   weekdays: ReservationEventWeekday[];
+  classSections: ReservationEventClassSection[];
   activeDayLabels: string[];
   summary: string;
   linkedEventIds?: string[];
@@ -41,4 +64,14 @@ export type ReservationEventTemplateBody = {
   weekdays?: ReservationEventWeekday[];
   recurringStartTime?: string;
   recurringEndTime?: string;
+  classSections?: Array<{
+    weekday: number;
+    label?: string | null;
+    startTime: string;
+    endTime: string;
+    sortOrder?: number;
+    defaultCapacity?: number;
+    defaultPrice?: number | null;
+    isActive?: boolean;
+  }>;
 };

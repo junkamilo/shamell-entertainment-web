@@ -14,6 +14,8 @@ export type AdminPaymentFlowLabel =
   | 'Booking'
   | 'Venue seat'
   | 'Class'
+  | 'Class package'
+  | 'Same-day classes'
   | 'Fixed ticket';
 
 type AdminPaymentMailInput = {
@@ -116,7 +118,13 @@ export function buildAdminPaymentOutcomeText(
 }
 
 export function flowLabelFromCode(
-  flow: 'BOOKING_QUOTE' | 'VENUE_SEAT' | 'CLASS_SESSION' | 'FIXED_TICKET',
+  flow:
+    | 'BOOKING_QUOTE'
+    | 'VENUE_SEAT'
+    | 'CLASS_SESSION'
+    | 'CLASS_PACKAGE'
+    | 'CLASS_DAY_BUNDLE'
+    | 'FIXED_TICKET',
 ): AdminPaymentFlowLabel {
   switch (flow) {
     case 'BOOKING_QUOTE':
@@ -125,6 +133,10 @@ export function flowLabelFromCode(
       return 'Venue seat';
     case 'CLASS_SESSION':
       return 'Class';
+    case 'CLASS_PACKAGE':
+      return 'Class package';
+    case 'CLASS_DAY_BUNDLE':
+      return 'Same-day classes';
     case 'FIXED_TICKET':
       return 'Fixed ticket';
   }

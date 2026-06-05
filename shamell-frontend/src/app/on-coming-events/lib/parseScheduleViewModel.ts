@@ -6,6 +6,22 @@ import {
 } from "@/lib/contactLogisticsUtils";
 import type { OnComingEventSchedule } from "../services/fetchOnComingEventDetail";
 
+export type TimeArcSegment = {
+  startMinutes: number;
+  endMinutes: number;
+  label: string | null;
+};
+
+export type ScheduleDaySummary = {
+  weekday: number;
+  label: string;
+  sectionCount: number;
+  sections: Array<{
+    label: string | null;
+    timeRange: string;
+  }>;
+};
+
 const LABEL_TO_WEEKDAY: Record<string, number> = {
   Sun: 0,
   Mon: 1,
@@ -38,14 +54,29 @@ function formatTimeRange(start: string | null, end: string | null): string {
   return start ? fmt(start) : end ? fmt(end) : "";
 }
 
-function formatDuration(startMinutes: number | null, endMinutes: number | null): string | null {
-  if (startMinutes == null || endMinutes == null || endMinutes <= startMinutes) return null;
-  const total = endMinutes - startMinutes;
-  const h = Math.floor(total / 60);
-  const m = total % 60;
+export function formatDurationFromMinutes(total: number): string {
+  const minutes = Math.max(0, Math.round(total));
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h}h`;
   return `${m}m`;
+}
+
+function durationTotalMinutes(
+  startMinutes: number | null,
+  endMinutes: number | null,
+): number | null {
+  if (startMinutes == null || endMinutes == null || endMinutes <= startMinutes) {
+    return null;
+  }
+  return endMinutes - startMinutes;
+}
+
+function formatDuration(startMinutes: number | null, endMinutes: number | null): string | null {
+  const total = durationTotalMinutes(startMinutes, endMinutes);
+  if (total == null) return null;
+  return formatDurationFromMinutes(total);
 }
 
 function formatTimezoneLabel(tz: string): string {
@@ -75,7 +106,10 @@ export type ScheduleViewModel = {
   endMinutes: number | null;
   timeRangeLabel: string;
   durationLabel: string | null;
+  durationTotalMinutes: number | null;
   humanLines: string[];
+  timeArcs: TimeArcSegment[];
+  daySummaries: ScheduleDaySummary[];
 };
 
 export function parseScheduleViewModel(
@@ -88,7 +122,31 @@ export function parseScheduleViewModel(
   const endMinutes = schedule.endTime ? hhmmToMinutes(schedule.endTime) : null;
   const timeRangeLabel = formatTimeRange(schedule.startTime, schedule.endTime);
   const durationLabel = formatDuration(startMinutes, endMinutes);
+  const totalMinutes = durationTotalMinutes(startMinutes, endMinutes);
   const timezoneLabel = formatTimezoneLabel(schedule.timezone);
+
+  let timeArcs: TimeArcSegment[] = [];
+  if (schedule.mode === "RECURRING_WEEKLY" && schedule.days.length > 0) {
+    const seen = new Set<string>();
+    for (const day of schedule.days) {
+      for (const sec of day.sections) {
+        const sm = hhmmToMinutes(sec.startTime);
+        const em = hhmmToMinutes(sec.endTime);
+        if (sm == null || em == null || em <= sm) continue;
+        const key = `${sm}-${em}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        timeArcs.push({
+          startMinutes: sm,
+          endMinutes: em,
+          label: sec.label ?? day.label,
+        });
+      }
+    }
+    timeArcs.sort((a, b) => a.startMinutes - b.startMinutes);
+  } else if (startMinutes != null && endMinutes != null && endMinutes > startMinutes) {
+    timeArcs = [{ startMinutes, endMinutes, label: null }];
+  }
 
   if (schedule.mode === "FIXED_EVENT") {
     const humanLines: string[] = [];
@@ -114,11 +172,23 @@ export function parseScheduleViewModel(
       endMinutes,
       timeRangeLabel,
       durationLabel,
+      durationTotalMinutes: totalMinutes,
       humanLines,
+      timeArcs,
+      daySummaries: [],
     };
   }
 
   const activeWeekdays = weekdayLabelsToIndices(schedule.weekdayLabels);
+  const daySummaries: ScheduleDaySummary[] = schedule.days.map((day) => ({
+    weekday: day.weekday,
+    label: day.label,
+    sectionCount: day.sections.length,
+    sections: day.sections.map((sec) => ({
+      label: sec.label,
+      timeRange: formatTimeRange(sec.startTime, sec.endTime),
+    })),
+  }));
   const humanLines: string[] = [];
   if (schedule.effectiveFrom) {
     humanLines.push(`Weekly from ${formatDateDisplayUs(schedule.effectiveFrom)}`);
@@ -127,6 +197,11 @@ export function parseScheduleViewModel(
   }
   if (schedule.weekdayLabels.length > 0) {
     humanLines.push(`Every ${schedule.weekdayLabels.join(", ")}`);
+  }
+  if (timeArcs.length > 1) {
+    humanLines.push(
+      `${timeArcs.length} time sections across the week`,
+    );
   }
 
   return {
@@ -143,7 +218,10 @@ export function parseScheduleViewModel(
     endMinutes,
     timeRangeLabel,
     durationLabel,
+    durationTotalMinutes: totalMinutes,
     humanLines,
+    timeArcs,
+    daySummaries,
   };
 }
 

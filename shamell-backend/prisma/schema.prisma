@@ -194,8 +194,9 @@ model Event {
   galleryPhotos   GalleryPhoto[]
   bookings        Booking[]
   venueConfig     UpcomingVenueConfig?
-  classSessions   UpcomingClassSession[]
-  fixedEventEnrollments UpcomingFixedEventEnrollment[]
+  classSessions            UpcomingClassSession[]
+  classPackageEnrollments  UpcomingClassPackageEnrollment[]
+  fixedEventEnrollments    UpcomingFixedEventEnrollment[]
   seatReservations VenueSeatReservation[]
   createdAt       DateTime                @default(now())
   updatedAt       DateTime                @updatedAt
@@ -455,6 +456,10 @@ model AboutContent {
   coreValues    String[]
   imageUrl      String?
   imagePublicId String?
+  /// Pre-generated Cloudinary MP4 stream URL (eager on upload). Falls back to on-the-fly transform if null.
+  videoDeliveryUrl String?
+  /// Pre-generated poster frame JPG (eager on upload).
+  videoPosterUrl   String?
   /// IMAGE or VIDEO — Cloudinary resource type for `imagePublicId` deletion and public rendering.
   heroMediaType String   @default("IMAGE")
   isActive      Boolean  @default(true)
@@ -515,11 +520,34 @@ model ReservationEventTemplate {
   startTime              String?
   endTime                String?
   weekdays               ReservationEventWeekday[]
+  classSections          ReservationEventClassSection[]
   venueConfigs           UpcomingVenueConfig[]
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
   @@map("reservation_event_templates")
+}
+
+/// Recurring class time slot per weekday (e.g. Wed 06:00–10:00).
+model ReservationEventClassSection {
+  id              String                   @id @default(uuid())
+  templateId      String
+  template        ReservationEventTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  weekday         Int
+  label           String?
+  startTime       String
+  endTime         String
+  sortOrder       Int                      @default(0)
+  defaultCapacity Int                      @default(20)
+  defaultPrice    Decimal?                 @db.Decimal(12, 2)
+  isActive        Boolean                  @default(true)
+  sessions        UpcomingClassSession[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+
+  @@unique([templateId, weekday, sortOrder])
+  @@index([templateId, weekday])
+  @@map("reservation_event_class_sections")
 }
 
 model ReservationEventWeekday {
@@ -552,6 +580,9 @@ model UpcomingVenueConfig {
   floorLayoutId                String?
   floorLayout                  VenueFloorLayout? @relation(fields: [floorLayoutId], references: [id], onDelete: SetNull)
   fixedTicketCapacity          Int?
+  classPackageEnabled          Boolean   @default(false)
+  classPackagePrice            Decimal?  @db.Decimal(12, 2)
+  classPackageLabel            String?
   createdAt                    DateTime  @default(now())
   updatedAt                    DateTime  @updatedAt
 
@@ -560,22 +591,27 @@ model UpcomingVenueConfig {
 }
 
 model UpcomingClassSession {
-  id          String   @id @default(uuid())
+  id          String                        @id @default(uuid())
   eventId     String
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  event       Event                         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sectionId   String?
+  section     ReservationEventClassSection? @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  weekday     Int?
   startsAt    DateTime
   endsAt      DateTime
-  timezone    String   @default("America/New_York")
+  timezone    String                        @default("America/New_York")
   capacity    Int
-  price       Decimal  @db.Decimal(12, 2)
-  currency    String   @default("usd")
-  isActive    Boolean  @default(true)
-  sortOrder   Int      @default(0)
+  price       Decimal                       @db.Decimal(12, 2)
+  currency    String                        @default("usd")
+  isActive    Boolean                       @default(true)
+  sortOrder   Int                           @default(0)
   enrollments UpcomingClassEnrollment[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime                      @default(now())
+  updatedAt   DateTime                      @updatedAt
 
+  @@unique([eventId, sectionId, startsAt])
   @@index([eventId, startsAt])
+  @@index([eventId, weekday, startsAt])
   @@map("upcoming_class_sessions")
 }
 
@@ -586,18 +622,62 @@ model UpcomingClassEnrollment {
   status                  UpcomingClassEnrollmentStatus @default(PENDING_PAYMENT)
   amount                  Decimal                       @db.Decimal(12, 2)
   currency                String                        @default("usd")
-  stripeCheckoutSessionId String                        @unique
+  /// Null when enrollment is part of a class package (checkout id lives on package row).
+  stripeCheckoutSessionId String?                       @unique
   stripePaymentIntentId   String?
+  paymentMethodType       String?
+  paymentMethodBrand      String?
+  paymentMethodLast4      String?
   customerName            String
   customerEmail           String
   customerPhone           String?
   paidAt                  DateTime?
   expiresAt               DateTime?
+  packageItem             UpcomingClassPackageEnrollmentItem?
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 
   @@index([sessionId, status])
   @@map("upcoming_class_enrollments")
+}
+
+model UpcomingClassPackageEnrollment {
+  id                      String                        @id @default(uuid())
+  eventId                 String
+  event                   Event                         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  status                  UpcomingClassEnrollmentStatus @default(PENDING_PAYMENT)
+  amount                  Decimal                       @db.Decimal(12, 2)
+  currency                String                        @default("usd")
+  stripeCheckoutSessionId String                        @unique
+  stripePaymentIntentId   String?
+  paymentMethodType       String?
+  paymentMethodBrand      String?
+  paymentMethodLast4      String?
+  customerName            String
+  customerEmail           String
+  customerPhone           String?
+  /// Snapshot of purchased sessions (bundle same-day or multi-day package).
+  selections              Json
+  paidAt                  DateTime?
+  expiresAt               DateTime?
+  items                   UpcomingClassPackageEnrollmentItem[]
+  createdAt               DateTime                      @default(now())
+  updatedAt               DateTime                      @updatedAt
+
+  @@index([eventId, status])
+  @@map("upcoming_class_package_enrollments")
+}
+
+model UpcomingClassPackageEnrollmentItem {
+  id                  String                         @id @default(uuid())
+  packageEnrollmentId String
+  packageEnrollment   UpcomingClassPackageEnrollment @relation(fields: [packageEnrollmentId], references: [id], onDelete: Cascade)
+  enrollmentId        String                         @unique
+  enrollment          UpcomingClassEnrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  weekday             Int
+
+  @@index([packageEnrollmentId])
+  @@map("upcoming_class_package_enrollment_items")
 }
 
 model UpcomingFixedEventEnrollment {
@@ -609,12 +689,17 @@ model UpcomingFixedEventEnrollment {
   currency                String                        @default("usd")
   stripeCheckoutSessionId String                        @unique
   stripePaymentIntentId   String?
+  paymentMethodType       String?
+  paymentMethodBrand      String?
+  paymentMethodLast4      String?
   customerName            String
   customerEmail           String
   customerPhone           String?
   paidAt                  DateTime?
   expiresAt               DateTime?
   ticketNumber            Int?
+  customerEmailSentAt     DateTime?
+  adminNotifySentAt       DateTime?
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 
@@ -710,6 +795,9 @@ model VenueSeatReservation {
   status                  VenueSeatReservationStatus @default(PENDING_PAYMENT)
   stripeCheckoutSessionId String                     @unique
   stripePaymentIntentId   String?
+  paymentMethodType       String?
+  paymentMethodBrand      String?
+  paymentMethodLast4      String?
   customerName            String
   customerEmail           String
   customerPhone           String?
@@ -727,17 +815,31 @@ model VenueSeatReservation {
   @@map("venue_seat_reservations")
 }
 
+enum StripeWebhookProcessingStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
 model StripeWebhookEvent {
-  id          String    @id @default(uuid())
-  eventId     String    @unique
-  eventType   String
-  livemode    Boolean
-  processedAt DateTime?
-  attempts    Int       @default(0)
-  lastError   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                String                         @id @default(uuid())
+  eventId           String                         @unique
+  eventType         String
+  livemode          Boolean
+  status            StripeWebhookProcessingStatus  @default(RECEIVED)
+  metadataFlow      String?
+  checkoutSessionId String?
+  handler           String?
+  payloadSummary    Json?
+  processedAt       DateTime?
+  attempts          Int                            @default(0)
+  lastError         String?
+  createdAt         DateTime                       @default(now())
+  updatedAt         DateTime                       @updatedAt
 
   @@index([eventType, processedAt])
+  @@index([checkoutSessionId])
+  @@index([status, createdAt])
   @@map("stripe_webhook_events")
 }

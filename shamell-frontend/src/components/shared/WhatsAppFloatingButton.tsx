@@ -61,7 +61,7 @@ export default function WhatsAppFloatingButton() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+    <div className="site-floating-actions fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
       {isOpen ? (
         <div
           className="w-[min(92vw,22rem)] overflow-hidden rounded-lg border border-black/10 bg-white shadow-[0_8px_32px_rgba(0,0,0,0.28)]"

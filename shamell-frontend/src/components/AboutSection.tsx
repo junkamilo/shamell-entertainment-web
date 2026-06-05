@@ -6,16 +6,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import portrait from "@/assets/gallery-2.jpg";
 import OrnamentDivider from "./OrnamentDivider";
 import RevealOnView from "@/components/shared/RevealOnView";
+import type { AboutContentItem } from "@/lib/aboutContent";
 import { useAboutContent } from "@/hooks/use-about-content";
 import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
 import { splitAboutParagraphs } from "@/lib/aboutParagraphs";
 import { cn } from "@/lib/utils";
 
-function aboutPrefetchRootMarginPx(): string {
-  const viewportHeight =
-    typeof window !== "undefined" ? window.innerHeight : 900;
-  return `${Math.round(viewportHeight * 1.2)}px 0px 0px 0px`;
-}
+const VIDEO_LOAD_TIMEOUT_MS = 10_000;
 
 type AboutHeroVideoProps = {
   src: string;
@@ -24,10 +21,21 @@ type AboutHeroVideoProps = {
 
 function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [shouldLoad, setShouldLoad] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [isInView, setIsInView] = useState(false);
   const [isBuffering, setIsBuffering] = useState(true);
+  const [bufferProgress, setBufferProgress] = useState(0);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  const [needsTapToPlay, setNeedsTapToPlay] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setPrefersReducedMotion(mediaQuery.matches);
+    sync();
+    mediaQuery.addEventListener("change", sync);
+    return () => mediaQuery.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -39,13 +47,6 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
     const section = document.getElementById("about");
     if (!section) return;
 
-    const prefetchObserver = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) setShouldLoad(true);
-      },
-      { rootMargin: aboutPrefetchRootMarginPx(), threshold: 0 },
-    );
-
     const playbackObserver = new IntersectionObserver(
       ([entry]) => {
         setIsInView(Boolean(entry?.isIntersecting));
@@ -53,64 +54,111 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
       { threshold: 0.25 },
     );
 
-    prefetchObserver.observe(section);
     playbackObserver.observe(section);
-
-    return () => {
-      prefetchObserver.disconnect();
-      playbackObserver.disconnect();
-    };
+    return () => playbackObserver.disconnect();
   }, []);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !shouldLoad) return;
+    if (!video) return;
     video.preload = "auto";
     video.load();
-  }, [shouldLoad, src]);
+  }, [src]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || !shouldLoad) return;
+    if (!video || prefersReducedMotion) return;
 
     if (isInView) {
-      void video.play().catch(() => undefined);
+      void video.play().then(() => setNeedsTapToPlay(false)).catch(() => {
+        setNeedsTapToPlay(true);
+      });
     } else {
       video.pause();
     }
-  }, [isInView, shouldLoad]);
+  }, [isInView, prefersReducedMotion, src]);
 
-  const onCanPlay = useCallback(() => setIsBuffering(false), []);
+  useEffect(() => {
+    if (!isBuffering) {
+      setLoadTimedOut(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (isBuffering) setLoadTimedOut(true);
+    }, VIDEO_LOAD_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [isBuffering, src]);
+
+  const updateBufferProgress = useCallback(() => {
+    const video = videoRef.current;
+    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) {
+      setBufferProgress(0);
+      return;
+    }
+    const end = video.buffered.length
+      ? video.buffered.end(video.buffered.length - 1)
+      : 0;
+    setBufferProgress(Math.min(100, Math.round((end / video.duration) * 100)));
+  }, []);
+
+  const onCanPlay = useCallback(() => {
+    setIsBuffering(false);
+    setLoadTimedOut(false);
+    updateBufferProgress();
+  }, [updateBufferProgress]);
+
   const onWaiting = useCallback(() => setIsBuffering(true), []);
+
+  const retryLoad = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    setLoadTimedOut(false);
+    setIsBuffering(true);
+    setNeedsTapToPlay(false);
+    video.load();
+    void video.play().catch(() => setNeedsTapToPlay(true));
+  };
 
   const toggleMute = () => {
     setIsMuted((prev) => !prev);
     const video = videoRef.current;
-    if (video?.paused) void video.play().catch(() => undefined);
+    if (video?.paused) {
+      void video.play().catch(() => setNeedsTapToPlay(true));
+    }
   };
+
+  const tapToPlay = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    void video.play().then(() => setNeedsTapToPlay(false)).catch(() => undefined);
+  };
+
+  const showVideo = !prefersReducedMotion;
+  const posterVisible = !showVideo || isBuffering;
 
   return (
     <div className="absolute inset-0">
       {poster ? (
-        <Image
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
           src={poster}
           alt=""
-          fill
+          fetchPriority="high"
+          decoding="async"
           className={cn(
-            "object-contain object-center p-3 transition-opacity duration-500 sm:p-4",
-            shouldLoad && !isBuffering ? "opacity-0" : "opacity-100",
+            "absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-500 sm:p-4",
+            posterVisible ? "opacity-100" : "opacity-0",
           )}
-          sizes="(max-width: 1024px) 100vw, 40vw"
           aria-hidden
-          unoptimized
         />
       ) : null}
 
-      {shouldLoad ? (
+      {showVideo ? (
         <video
           ref={videoRef}
           src={src}
           poster={poster ?? undefined}
+          muted
           className={cn(
             "absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-500 sm:p-4",
             isBuffering ? "opacity-0" : "opacity-100",
@@ -121,35 +169,73 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
           onCanPlay={onCanPlay}
           onPlaying={onCanPlay}
           onWaiting={onWaiting}
+          onProgress={updateBufferProgress}
           aria-label="Video about Shamell"
         />
       ) : null}
 
-      {shouldLoad && isBuffering ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+      {showVideo && isBuffering ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-8 z-10 flex flex-col items-center gap-2 px-6">
           <Loader2 className="h-8 w-8 animate-spin text-gold/70" strokeWidth={1.5} aria-hidden />
+          {bufferProgress > 0 ? (
+            <div className="h-1 w-full max-w-[140px] overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full bg-gold/70 transition-[width] duration-300"
+                style={{ width: `${bufferProgress}%` }}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
 
-      <button
-        type="button"
-        onClick={toggleMute}
-        aria-label={isMuted ? "Unmute video" : "Mute video"}
-        aria-pressed={isMuted}
-        className="absolute bottom-5 right-5 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/55 text-gold backdrop-blur-sm transition hover:border-gold/45 hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 sm:bottom-6 sm:right-6"
-      >
-        {isMuted ? (
-          <VolumeX className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        ) : (
-          <Volume2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-        )}
-      </button>
+      {showVideo && loadTimedOut ? (
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/50 px-4 text-center">
+          <p className="font-body text-sm text-foreground/85">The video is still loading…</p>
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="rounded-lg border border-gold/40 bg-black/60 px-4 py-2 font-brand text-xs tracking-[0.14em] text-gold uppercase transition hover:border-gold/60"
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      {showVideo && needsTapToPlay && !isBuffering ? (
+        <button
+          type="button"
+          onClick={tapToPlay}
+          className="absolute inset-0 z-10 flex items-center justify-center bg-black/35 font-brand text-xs tracking-[0.16em] text-gold uppercase backdrop-blur-[2px] transition hover:bg-black/45"
+        >
+          Tap to play
+        </button>
+      ) : null}
+
+      {showVideo ? (
+        <button
+          type="button"
+          onClick={toggleMute}
+          aria-label={isMuted ? "Unmute video" : "Mute video"}
+          aria-pressed={isMuted}
+          className="absolute bottom-5 right-5 z-30 flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/55 text-gold backdrop-blur-sm transition hover:border-gold/45 hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/50 sm:bottom-6 sm:right-6"
+        >
+          {isMuted ? (
+            <VolumeX className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          ) : (
+            <Volume2 className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          )}
+        </button>
+      ) : null}
     </div>
   );
 }
 
-const AboutSection = () => {
-  const { about, isLoading } = useAboutContent();
+type AboutSectionProps = {
+  initialAbout?: AboutContentItem | null;
+};
+
+const AboutSection = ({ initialAbout }: AboutSectionProps) => {
+  const { about, isLoading } = useAboutContent(initialAbout);
   const bodyParagraphs = splitAboutParagraphs(about.paragraph1);
   const heroIsVideo = inferAboutHeroIsVideo({
     heroMediaType: about.heroMediaType,
@@ -159,6 +245,8 @@ const AboutSection = () => {
     () => about.videoDeliveryUrl ?? about.imageUrl,
     [about.videoDeliveryUrl, about.imageUrl],
   );
+  const showHeroMedia = !isLoading || Boolean(initialAbout);
+  const heroIsVideoReady = Boolean(heroVideoSrc && heroIsVideo && showHeroMedia);
 
   return (
     <section id="about" className="bg-transparent px-4 py-20 md:py-24">
@@ -184,13 +272,22 @@ const AboutSection = () => {
               className={cn(
                 "group/portrait relative aspect-3/4 w-full overflow-hidden rounded-2xl border border-white/10 bg-[radial-gradient(ellipse_at_center,rgba(32,28,24,1)_0%,#060606_70%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_16px_48px_rgba(0,0,0,0.45)] transition-[border-color,box-shadow] duration-500",
                 "hover:border-white/16 hover:shadow-[0_22px_56px_rgba(0,0,0,0.55),inset_0_0_0_1px_rgba(255,255,255,0.06)]",
-                isLoading && "animate-pulse",
+                isLoading && !initialAbout && "animate-pulse",
               )}
             >
-              {!isLoading ? (
+              {showHeroMedia ? (
                 <>
-                  {heroVideoSrc && heroIsVideo ? (
-                    <AboutHeroVideo src={heroVideoSrc} poster={about.videoPosterUrl} />
+                  {heroIsVideoReady ? (
+                    <AboutHeroVideo src={heroVideoSrc!} poster={about.videoPosterUrl} />
+                  ) : heroIsVideo && about.videoPosterUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={about.videoPosterUrl}
+                      alt=""
+                      fetchPriority="high"
+                      className="absolute inset-0 h-full w-full object-contain object-center p-3 sm:p-4"
+                      aria-hidden
+                    />
                   ) : (
                     <Image
                       src={about.imageUrl ?? portrait}
@@ -226,9 +323,10 @@ const AboutSection = () => {
                     index === 0
                       ? "text-base font-semibold text-foreground/90 md:text-lg md:leading-[1.75]"
                       : "text-base font-semibold leading-relaxed text-foreground/85 md:text-lg md:leading-relaxed md:text-foreground/88",
+                    isLoading && !initialAbout && "text-foreground/40",
                   )}
                 >
-                  {block}
+                  {isLoading && !initialAbout ? " " : block}
                 </p>
               ))}
             </div>

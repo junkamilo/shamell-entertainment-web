@@ -22,6 +22,7 @@ import { VenueReservationsModule } from './modules/venue-reservations/venue-rese
 import { UpcomingEventsModule } from './modules/upcoming-events/upcoming-events.module';
 import { ReservationEventTemplatesModule } from './modules/reservation-event-templates/reservation-event-templates.module';
 import { AdminPaymentsModule } from './modules/admin-payments/admin-payments.module';
+import { AdminStripeWebhooksModule } from './modules/admin-stripe-webhooks/admin-stripe-webhooks.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { AdminPaymentsModule } from './modules/admin-payments/admin-payments.mod
     UpcomingEventsModule,
     ReservationEventTemplatesModule,
     AdminPaymentsModule,
+    AdminStripeWebhooksModule,
   ],
 })
 export class AppModule {}

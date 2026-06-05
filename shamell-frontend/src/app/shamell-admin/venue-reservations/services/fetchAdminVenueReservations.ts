@@ -61,13 +61,24 @@ export async function fetchAdminVenueReservations(
   if (params?.layoutItemId) search.set("layoutItemId", params.layoutItemId);
 
   const qs = search.toString();
-  const response = await fetch(
-    `${base}/api/v1/venue-reservations/admin${qs ? `?${qs}` : ""}`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    },
-  );
+  let response: Response;
+  try {
+    response = await fetch(
+      `${base}/api/v1/venue-reservations/admin${qs ? `?${qs}` : ""}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      },
+    );
+  } catch {
+    return {
+      ok: false,
+      reservations: [],
+      meta: DEFAULT_PAGINATION_META,
+      message:
+        "Could not reach the server. Confirm the backend is running (default http://localhost:3001).",
+    };
+  }
   const data: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     return {

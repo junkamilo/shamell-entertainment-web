@@ -556,10 +556,30 @@
   color-scheme: dark;
 }
 
-.admin-theme .shamell-time-input::-webkit-calendar-picker-indicator {
+.admin-theme .shamell-time-input::-webkit-calendar-picker-indicator,
+.admin-theme .shamell-date-input::-webkit-calendar-picker-indicator,
+.admin-theme .shamell-datetime-input::-webkit-calendar-picker-indicator {
   cursor: pointer;
   opacity: 0.95;
   filter: sepia(1) saturate(1.9) hue-rotate(338deg) brightness(1.08);
+}
+
+.admin-theme .shamell-date-input {
+  background-color: color-mix(in srgb, var(--shamell-surface-input) 88%, transparent) !important;
+  border-color: var(--shamell-border-gold) !important;
+  color: var(--shamell-text-primary) !important;
+  backdrop-filter: var(--shamell-blur-input);
+  -webkit-backdrop-filter: var(--shamell-blur-input);
+  color-scheme: dark;
+}
+
+.admin-theme .shamell-datetime-input {
+  background-color: color-mix(in srgb, var(--shamell-surface-input) 88%, transparent) !important;
+  border-color: var(--shamell-border-gold) !important;
+  color: var(--shamell-text-primary) !important;
+  backdrop-filter: var(--shamell-blur-input);
+  -webkit-backdrop-filter: var(--shamell-blur-input);
+  color-scheme: dark;
 }
 
 .admin-theme table thead tr {
@@ -657,4 +677,25 @@
 .admin-theme .admin-modal-scroll :where(.text-xs) {
   font-size: 0.9375rem !important;
   line-height: 1.5 !important;
+}
+
+/* Stripe Embedded Checkout: let the iframe set height; avoid clipping on narrow viewports */
+.stripe-embedded-checkout-mount {
+  width: 100%;
+  min-height: 0;
+}
+
+.stripe-checkout-overlay-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 639px) {
+  .stripe-embedded-checkout-mount {
+    max-width: 100vw;
+  }
+}
+
+/* Hide floating UI while Stripe checkout is fullscreen on mobile */
+body[data-stripe-checkout-open] .site-floating-actions {
+  display: none;
 }

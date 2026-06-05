@@ -110,13 +110,14 @@ export function AboutEditModal({
           {!record ? (
             <p className="mt-2 font-body text-[11px] text-foreground/45">
               First publish requires a hero file: any common image format, or video (e.g. MP4, WebM,
-              MOV). Long videos are supported. The public About section will show it automatically as
-              photo or video.
+              MOV). For the home About slot, use a short loop (about 15–45 seconds) so it loads quickly;
+              longer files are supported but may take longer on first view until Cloudinary finishes
+              processing.
             </p>
           ) : (
             <p className="mt-2 font-body text-[11px] text-foreground/45">
-              Optional: upload a new image or video to replace the current hero (same field as when you first
-              published).
+              Optional: upload a new image or video to replace the current hero. Prefer a 15–45 s clip for
+              fastest load on the public site.
             </p>
           )}
         </label>

@@ -9,8 +9,10 @@ import { v2 as cloudinary } from 'cloudinary';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpsertAboutContentDto } from './dto/upsert-about-content.dto';
 import {
+  ABOUT_VIDEO_UPLOAD_EAGER,
   buildAboutHeroVideoDeliveryUrl,
   buildAboutHeroVideoPosterUrl,
+  videoDeliveryUrlsFromUpload,
 } from './about-video-delivery.util';
 
 type AboutHeroMediaType = 'IMAGE' | 'VIDEO';
@@ -60,6 +62,8 @@ export class AboutService {
       secureUrl: string;
       publicId: string;
       mediaType: AboutHeroMediaType;
+      videoDeliveryUrl: string | null;
+      videoPosterUrl: string | null;
     } | null = null;
     if (mediaFile) {
       this.ensureHeroMediaFile(mediaFile);
@@ -85,6 +89,8 @@ export class AboutService {
                     imageUrl: newUpload.secureUrl,
                     imagePublicId: newUpload.publicId,
                     heroMediaType: newUpload.mediaType,
+                    videoDeliveryUrl: newUpload.videoDeliveryUrl,
+                    videoPosterUrl: newUpload.videoPosterUrl,
                   }
                 : {}),
             },
@@ -97,6 +103,8 @@ export class AboutService {
               imageUrl: newUpload?.secureUrl ?? null,
               imagePublicId: newUpload?.publicId ?? null,
               heroMediaType: newUpload?.mediaType ?? 'IMAGE',
+              videoDeliveryUrl: newUpload?.videoDeliveryUrl ?? null,
+              videoPosterUrl: newUpload?.videoPosterUrl ?? null,
               isActive: true,
             },
           });
@@ -154,6 +162,8 @@ export class AboutService {
         imageUrl: null,
         imagePublicId: null,
         heroMediaType: 'IMAGE',
+        videoDeliveryUrl: null,
+        videoPosterUrl: null,
       },
     });
 
@@ -205,7 +215,13 @@ export class AboutService {
 
   private async uploadHeroMediaToCloudinary(
     file: Express.Multer.File,
-  ): Promise<{ secureUrl: string; publicId: string; mediaType: AboutHeroMediaType }> {
+  ): Promise<{
+    secureUrl: string;
+    publicId: string;
+    mediaType: AboutHeroMediaType;
+    videoDeliveryUrl: string | null;
+    videoPosterUrl: string | null;
+  }> {
     const isVideo = file.mimetype.startsWith('video/');
     const resourceType = isVideo ? 'video' : 'image';
     const mediaType: AboutHeroMediaType = isVideo ? 'VIDEO' : 'IMAGE';
@@ -215,7 +231,13 @@ export class AboutService {
         const result = isVideo
           ? await this.uploadVideoLargeFromPath(file.path)
           : await this.uploadFileFromPath(file.path, resourceType);
-        return { secureUrl: result.secureUrl, publicId: result.publicId, mediaType };
+        return {
+          secureUrl: result.secureUrl,
+          publicId: result.publicId,
+          mediaType,
+          videoDeliveryUrl: result.videoDeliveryUrl,
+          videoPosterUrl: result.videoPosterUrl,
+        };
       }
 
       if (!file.buffer) {
@@ -227,7 +249,13 @@ export class AboutService {
         resourceType,
         isVideo,
       );
-      return { secureUrl: streamed.secureUrl, publicId: streamed.publicId, mediaType };
+      return {
+        secureUrl: streamed.secureUrl,
+        publicId: streamed.publicId,
+        mediaType,
+        videoDeliveryUrl: streamed.videoDeliveryUrl,
+        videoPosterUrl: streamed.videoPosterUrl,
+      };
     } finally {
       if (file.path) {
         await fs.unlink(file.path).catch(() => null);
@@ -238,11 +266,26 @@ export class AboutService {
   private uploadFileFromPath(
     filePath: string,
     resourceType: 'image' | 'video',
-  ): Promise<{ secureUrl: string; publicId: string }> {
+  ): Promise<{
+    secureUrl: string;
+    publicId: string;
+    videoDeliveryUrl: string | null;
+    videoPosterUrl: string | null;
+  }> {
+    const isVideo = resourceType === 'video';
     return new Promise((resolve, reject) => {
       cloudinary.uploader.upload(
         filePath,
-        { folder: 'shamell/about', resource_type: resourceType },
+        {
+          folder: 'shamell/about',
+          resource_type: resourceType,
+          ...(isVideo
+            ? {
+                eager: ABOUT_VIDEO_UPLOAD_EAGER,
+                eager_async: false,
+              }
+            : {}),
+        },
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
             reject(
@@ -252,9 +295,13 @@ export class AboutService {
             );
             return;
           }
+          const delivery = isVideo
+            ? videoDeliveryUrlsFromUpload(result)
+            : { videoDeliveryUrl: null, videoPosterUrl: null };
           resolve({
             secureUrl: result.secure_url,
             publicId: result.public_id,
+            ...delivery,
           });
         },
       );
@@ -264,7 +311,12 @@ export class AboutService {
   /** Chunked upload for large hero videos (no in-app size cap). */
   private uploadVideoLargeFromPath(
     filePath: string,
-  ): Promise<{ secureUrl: string; publicId: string }> {
+  ): Promise<{
+    secureUrl: string;
+    publicId: string;
+    videoDeliveryUrl: string | null;
+    videoPosterUrl: string | null;
+  }> {
     return new Promise((resolve, reject) => {
       cloudinary.uploader.upload_large(
         filePath,
@@ -272,15 +324,8 @@ export class AboutService {
           folder: 'shamell/about',
           resource_type: 'video',
           chunk_size: 6_000_000,
-          transformation: [
-            {
-              width: 720,
-              crop: 'limit',
-              quality: 'auto:eco',
-              video_codec: 'h264',
-              fetch_format: 'mp4',
-            },
-          ],
+          eager: ABOUT_VIDEO_UPLOAD_EAGER,
+          eager_async: false,
         },
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
@@ -291,9 +336,11 @@ export class AboutService {
             );
             return;
           }
+          const delivery = videoDeliveryUrlsFromUpload(result);
           resolve({
             secureUrl: result.secure_url,
             publicId: result.public_id,
+            ...delivery,
           });
         },
       );
@@ -304,12 +351,23 @@ export class AboutService {
     buffer: Buffer,
     resourceType: 'image' | 'video',
     isVideo: boolean,
-  ): Promise<{ secureUrl: string; publicId: string }> {
+  ): Promise<{
+    secureUrl: string;
+    publicId: string;
+    videoDeliveryUrl: string | null;
+    videoPosterUrl: string | null;
+  }> {
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           folder: 'shamell/about',
           resource_type: resourceType,
+          ...(isVideo
+            ? {
+                eager: ABOUT_VIDEO_UPLOAD_EAGER,
+                eager_async: false,
+              }
+            : {}),
         },
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
@@ -323,9 +381,13 @@ export class AboutService {
             );
             return;
           }
+          const delivery = isVideo
+            ? videoDeliveryUrlsFromUpload(result)
+            : { videoDeliveryUrl: null, videoPosterUrl: null };
           resolve({
             secureUrl: result.secure_url,
             publicId: result.public_id,
+            ...delivery,
           });
         },
       );
@@ -370,43 +432,25 @@ export class AboutService {
     }
   }
 
-  private mapPublicAboutContent(content: {
-    id: string;
-    title: string;
-    paragraph1: string;
-    coreValues: string[];
-    imageUrl: string | null;
-    heroMediaType?: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  }) {
+  private mapPublicAboutContent(content: AboutContentRow) {
     const base = this.mapAboutContent(content);
     const heroMediaType = this.normalizeHeroMediaType(content.heroMediaType);
     return {
       ...base,
       videoDeliveryUrl:
         heroMediaType === 'VIDEO'
-          ? buildAboutHeroVideoDeliveryUrl(content.imageUrl)
+          ? content.videoDeliveryUrl?.trim() ||
+            buildAboutHeroVideoDeliveryUrl(content.imageUrl)
           : null,
       videoPosterUrl:
         heroMediaType === 'VIDEO'
-          ? buildAboutHeroVideoPosterUrl(content.imageUrl)
+          ? content.videoPosterUrl?.trim() ||
+            buildAboutHeroVideoPosterUrl(content.imageUrl)
           : null,
     };
   }
 
-  private mapAboutContent(content: {
-    id: string;
-    title: string;
-    paragraph1: string;
-    coreValues: string[];
-    imageUrl: string | null;
-    heroMediaType?: string | null;
-    isActive: boolean;
-    createdAt: Date;
-    updatedAt: Date;
-  }) {
+  private mapAboutContent(content: AboutContentRow) {
     const heroMediaType = this.normalizeHeroMediaType(content.heroMediaType);
     return {
       id: content.id,
@@ -415,9 +459,25 @@ export class AboutService {
       coreValues: content.coreValues,
       imageUrl: content.imageUrl,
       heroMediaType,
+      videoDeliveryUrl: content.videoDeliveryUrl,
+      videoPosterUrl: content.videoPosterUrl,
       isActive: content.isActive,
       createdAt: content.createdAt,
       updatedAt: content.updatedAt,
     };
   }
 }
+
+type AboutContentRow = {
+  id: string;
+  title: string;
+  paragraph1: string;
+  coreValues: string[];
+  imageUrl: string | null;
+  videoDeliveryUrl?: string | null;
+  videoPosterUrl?: string | null;
+  heroMediaType?: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};

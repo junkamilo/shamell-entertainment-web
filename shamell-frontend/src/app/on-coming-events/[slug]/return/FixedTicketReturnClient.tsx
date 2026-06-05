@@ -1,17 +1,46 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import { getPublicApiBaseUrl } from "@/app/on-coming-events/lib/apiBaseUrl";
-import { onComingEventDetailHref, onComingEventHubHref } from "@/lib/upcomingEventPublicRoutes";
+import {
+  ClassPaymentConfirmationFallback,
+  ClassPaymentConfirmationPanel,
+  type ConfirmationStatus,
+} from "@/app/on-coming-events/components/ClassPaymentConfirmationPanel";
 
-function FixedTicketReturnInner({ slug }: { slug: string }) {
+const POLL_INTERVAL_MS = 2000;
+const MAX_POLL_ATTEMPTS = 8;
+
+type SessionStatusResponse = {
+  stripeStatus?: string;
+  enrollment?: {
+    status?: string;
+    ticketNumber?: number;
+    customerEmail?: string;
+    eventName?: string;
+    eventSlug?: string | null;
+  };
+};
+
+async function fetchSessionStatus(
+  base: string,
+  sessionId: string,
+): Promise<SessionStatusResponse | null> {
+  const response = await fetch(
+    `${base}/api/v1/fixed-event-enrollments/session-status?session_id=${encodeURIComponent(sessionId)}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) return null;
+  return (await response.json()) as SessionStatusResponse;
+}
+
+function FixedTicketReturnInner() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
-  const [status, setStatus] = useState<"loading" | "paid" | "pending" | "error">("loading");
+  const [status, setStatus] = useState<ConfirmationStatus>("loading");
   const [ticketNumber, setTicketNumber] = useState<number | null>(null);
 
   useEffect(() => {
@@ -19,67 +48,63 @@ function FixedTicketReturnInner({ slug }: { slug: string }) {
       setStatus("error");
       return;
     }
+
+    let cancelled = false;
     const base = getPublicApiBaseUrl();
-    fetch(
-      `${base}/api/v1/fixed-event-enrollments/session-status?session_id=${encodeURIComponent(sessionId)}`,
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!data || typeof data !== "object") {
-          setStatus("error");
-          return;
+
+    const poll = async () => {
+      for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS && !cancelled; attempt++) {
+        const data = await fetchSessionStatus(base, sessionId);
+        if (!data) {
+          if (attempt === MAX_POLL_ATTEMPTS - 1) setStatus("error");
+        } else {
+          const enrollment = data.enrollment;
+          if (typeof enrollment?.ticketNumber === "number") {
+            setTicketNumber(enrollment.ticketNumber);
+          }
+          const stripeStatus = data.stripeStatus;
+          const enStatus = enrollment?.status;
+          if (stripeStatus === "complete" || enStatus === "PAID") {
+            setStatus("paid");
+            return;
+          }
+          if (stripeStatus === "expired") {
+            setStatus("error");
+            return;
+          }
+          if (attempt < MAX_POLL_ATTEMPTS - 1) {
+            await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+          } else {
+            setStatus("pending");
+          }
         }
-        const o = data as Record<string, unknown>;
-        const enrollment =
-          o.enrollment && typeof o.enrollment === "object"
-            ? (o.enrollment as Record<string, unknown>)
-            : null;
-        const stripeStatus = o.stripeStatus;
-        const enStatus = enrollment?.status;
-        if (typeof enrollment?.ticketNumber === "number") {
-          setTicketNumber(enrollment.ticketNumber);
-        }
-        if (stripeStatus === "complete" || enStatus === "PAID") setStatus("paid");
-        else if (stripeStatus === "expired") setStatus("error");
-        else setStatus("pending");
-      })
-      .catch(() => setStatus("error"));
+      }
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+    };
   }, [sessionId]);
+
+  const ticketExtra =
+    ticketNumber != null ? (
+      <p className="font-brand text-sm tracking-[0.12em] text-gold">
+        Your ticket number is #{ticketNumber}
+      </p>
+    ) : null;
 
   return (
     <main className="min-h-screen text-foreground">
       <SiteHeader />
-      <div className="mx-auto max-w-lg px-4 pb-20 pt-28 text-center">
-        {status === "loading" ? <p>Confirming your ticket…</p> : null}
-        {status === "paid" ? (
-          <>
-            <h1 className="font-display text-2xl text-gold">Ticket confirmed</h1>
-            {ticketNumber != null ? (
-              <p className="mt-4 font-brand text-sm tracking-[0.12em] text-gold">
-                Your ticket number is #{ticketNumber}
-              </p>
-            ) : null}
-            <p className="mt-3 text-sm text-foreground/80">Check your email for confirmation.</p>
-          </>
-        ) : null}
-        {status === "pending" ? (
-          <p className="text-sm text-foreground/80">Payment is still processing. Refresh in a moment.</p>
-        ) : null}
-        {status === "error" ? (
-          <p className="text-sm text-red-400">
-            We could not confirm payment. Contact us if you were charged.
-          </p>
-        ) : null}
-        <Link href={onComingEventHubHref()} className="mt-8 inline-block text-sm text-gold hover:underline">
-          On Coming Events
-        </Link>
-        <Link
-          href={onComingEventDetailHref(slug)}
-          className="mt-4 block text-sm text-foreground/70 hover:text-gold"
-        >
-          Back to event
-        </Link>
-      </div>
+      <ClassPaymentConfirmationPanel
+        status={status}
+        paidTitle="Ticket confirmed"
+        paidSubtitle="Check your email for confirmation and entry details."
+        paidExtra={ticketExtra}
+        loadingMessage="Confirming your ticket…"
+        pendingMessage="Payment is still processing. Refresh in a moment or check your email shortly."
+      />
       <Footer />
     </main>
   );
@@ -89,10 +114,14 @@ export default function FixedTicketReturnClient({ slug }: { slug: string }) {
   return (
     <Suspense
       fallback={
-        <main className="min-h-screen pt-28 text-center text-foreground/70">Loading…</main>
+        <>
+          <SiteHeader />
+          <ClassPaymentConfirmationFallback loadingMessage="Confirming your ticket…" />
+          <Footer />
+        </>
       }
     >
-      <FixedTicketReturnInner slug={slug} />
+      <FixedTicketReturnInner />
     </Suspense>
   );
 }

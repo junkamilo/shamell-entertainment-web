@@ -20,8 +20,14 @@ import {
 import { OnComingEventItemsSection } from "./OnComingEventItemsSection";
 import { OnComingEventScheduleSection } from "./OnComingEventScheduleSection";
 import { OnComingEventStickyPurchaseBar } from "./OnComingEventStickyPurchaseBar";
-import { OnComingEventClassBookingModal } from "./OnComingEventClassBookingModal";
+import { ClassBookingWizard, weekdayFromIsoDate } from "./ClassBookingWizard";
 import { OnComingEventFixedTicketBookingModal } from "./OnComingEventFixedTicketBookingModal";
+import {
+  classPriceHeroAriaLabel,
+  computeClassPriceDisplay,
+  formatClassPriceHeroLabel,
+  formatClassPriceHeroPrefix,
+} from "../lib/computeClassPriceDisplay";
 
 type Props = { slug: string };
 
@@ -39,7 +45,7 @@ function OnComingEventDetailError({
       <section className="relative min-h-[42vh] w-full overflow-hidden bg-[#0a0908] md:min-h-[50vh]">
         <div className="absolute left-4 top-4 z-10 md:left-8 md:top-6">
           <ShamellBackButton
-            href={backHref}
+            fallbackHref={backHref}
             label="Back"
             hideLabelOnMobile
             onNavigateStart={onBackNavigateStart}
@@ -65,6 +71,9 @@ export default function OnComingEventDetailPage({ slug }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingFlow, setBookingFlow] = useState<"day" | "month">("day");
+  const [bookingWeekday, setBookingWeekday] = useState<number | null>(null);
+  const [bookingDateIso, setBookingDateIso] = useState<string | null>(null);
   const [ticketOpen, setTicketOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
@@ -93,7 +102,13 @@ export default function OnComingEventDetailPage({ slug }: Props) {
   const heroUrl = event?.heroImageUrl ?? null;
   const heroIsVideo =
     event?.heroMediaType === "VIDEO" || serviceCatalogMediaTypeFromUrl(heroUrl) === "VIDEO";
-  const hasPrice = event?.price != null && !Number.isNaN(Number(event.price));
+  const isClasses = event?.purchaseMode === "classes";
+  const classPriceRange =
+    event && isClasses
+      ? computeClassPriceDisplay(event.sessions, event.price)
+      : null;
+  const hasCatalogPrice = event?.price != null && !Number.isNaN(Number(event.price));
+  const showHeroPrice = isClasses ? classPriceRange != null : hasCatalogPrice;
   const isFixedTicket = event?.purchaseMode === "fixed_ticket";
   const isVenueSeating = event?.purchaseMode === "venue_seating";
   const ticketSoldOut = isFixedTicket && event?.ticketsRemaining === 0;
@@ -111,7 +126,23 @@ export default function OnComingEventDetailPage({ slug }: Props) {
     isVenueSeating && event?.tableCapacity != null && event.tableCapacity >= 1;
   const showCountdown =
     (isFixedTicket || isVenueSeating) && isFutureEventStart(event?.eventStartsAt);
+  const showMonthPackage =
+    isClasses && Boolean(event?.purchasable && event?.monthPackage?.purchasable);
+  const monthPackageLabel = event?.monthPackage?.label ?? null;
   const hubHref = onComingEventHubHref();
+  const openBooking = (dateIso: string | null = null, weekday: number | null = null) => {
+    setBookingFlow("day");
+    setBookingDateIso(dateIso);
+    setBookingWeekday(weekday);
+    setBookingOpen(true);
+  };
+  const openMonthPackageBooking = () => {
+    setBookingFlow("month");
+    setBookingDateIso(null);
+    setBookingWeekday(null);
+    setBookingOpen(true);
+  };
+
   const showBusyOverlay = loading || leaving;
   const busyTitle = loading ? "Loading event…" : "Loading upcoming events…";
 
@@ -120,8 +151,8 @@ export default function OnComingEventDetailPage({ slug }: Props) {
       <ShamellBusyOverlay active={showBusyOverlay} title={busyTitle} />
 
       {!loading && !leaving ? (
-        <main className="relative z-10 flex min-h-screen flex-col text-foreground">
-          <div className="flex flex-1 flex-col">
+        <main className="relative z-10 flex min-h-screen flex-col overflow-x-hidden text-foreground">
+          <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
             {error ? (
               <OnComingEventDetailError
                 message={error}
@@ -158,21 +189,38 @@ export default function OnComingEventDetailPage({ slug }: Props) {
             <div className="absolute inset-0 bg-black/55" aria-hidden />
             <div className="absolute left-4 top-4 z-10 md:left-8 md:top-6">
               <ShamellBackButton
-                href={hubHref}
+                fallbackHref={hubHref}
                 label="Back"
                 hideLabelOnMobile
                 onNavigateStart={handleBackNavigate}
               />
             </div>
             <div className="relative flex min-h-[42vh] flex-col items-center justify-center px-4 py-24 md:min-h-[50vh]">
-              {hasPrice ? (
+              {showHeroPrice && event ? (
                 <div
                   className="absolute right-4 top-4 rounded-lg border border-gold/50 bg-black/60 px-4 py-2 text-center shadow-lg md:right-8 md:top-6"
-                  aria-label={`Price ${formatCatalogPriceAmount(event.price!)} USD`}
+                  aria-label={
+                    isClasses && classPriceRange
+                      ? classPriceHeroAriaLabel(classPriceRange)
+                      : `Price ${formatCatalogPriceAmount(event.price!)} USD`
+                  }
                 >
-                  <span className="font-display text-2xl text-gold md:text-3xl">
-                    {formatCatalogPriceAmount(event.price!)}
-                  </span>
+                  {isClasses && classPriceRange ? (
+                    <>
+                      {formatClassPriceHeroPrefix(classPriceRange) ? (
+                        <span className="block font-brand text-[10px] tracking-[0.2em] text-gold/80">
+                          {formatClassPriceHeroPrefix(classPriceRange).trim()}
+                        </span>
+                      ) : null}
+                      <span className="font-display text-2xl text-gold md:text-3xl">
+                        {formatClassPriceHeroLabel(classPriceRange)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="font-display text-2xl text-gold md:text-3xl">
+                      {formatCatalogPriceAmount(event.price!)}
+                    </span>
+                  )}
                   <span className="mt-0.5 block font-brand text-[10px] tracking-[0.2em] text-gold/80">
                     USD
                   </span>
@@ -184,9 +232,9 @@ export default function OnComingEventDetailPage({ slug }: Props) {
             </div>
                 </section>
 
-                <div className="mx-auto max-w-3xl px-4 pb-36 pt-10 md:max-w-4xl md:pb-40">
+                <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col items-center overflow-x-hidden px-4 pt-10 md:max-w-4xl">
             {event.description ? (
-              <p className="text-center font-body text-base leading-relaxed text-foreground/88 md:text-lg">
+              <p className="min-w-0 w-full max-w-2xl text-center font-body text-base leading-relaxed break-all text-pretty text-foreground/88 sm:break-normal sm:wrap-anywhere md:text-lg">
                 {event.description}
               </p>
             ) : null}
@@ -227,9 +275,15 @@ export default function OnComingEventDetailPage({ slug }: Props) {
             ) : null}
 
             <OnComingEventItemsSection items={event.items} />
-
-            <OnComingEventScheduleSection schedule={event.schedule} />
                 </div>
+
+            <OnComingEventScheduleSection
+              schedule={event.schedule}
+              calendarBookable={isClasses && event.purchasable}
+              onCalendarDateClick={(iso) => {
+                openBooking(iso, weekdayFromIsoDate(iso));
+              }}
+            />
 
                 {event.purchaseMode !== "none" ? (
                   <OnComingEventStickyPurchaseBar
@@ -239,17 +293,29 @@ export default function OnComingEventDetailPage({ slug }: Props) {
               salesOpen={event.salesOpen}
               hasActiveSessions={event.hasActiveSessions}
               ticketsRemaining={event.ticketsRemaining}
-              onBookClasses={() => setBookingOpen(true)}
+              showMonthPackage={showMonthPackage}
+              monthPackageLabel={monthPackageLabel}
+              onBuyMonthPackage={openMonthPackageBooking}
               onBuyTicket={() => setTicketOpen(true)}
                   />
                 ) : null}
 
                 {event.purchaseMode === "classes" ? (
-                  <OnComingEventClassBookingModal
+                  <ClassBookingWizard
                     slug={slug}
                     sessions={event.sessions}
+                    schedule={event.schedule}
+                    monthPackage={event.monthPackage}
+                    entryFlow={bookingFlow}
                     open={bookingOpen}
-                    onClose={() => setBookingOpen(false)}
+                    initialWeekday={bookingWeekday}
+                    initialDateIso={bookingDateIso}
+                    onClose={() => {
+                      setBookingOpen(false);
+                      setBookingFlow("day");
+                      setBookingWeekday(null);
+                      setBookingDateIso(null);
+                    }}
                   />
                 ) : null}
 

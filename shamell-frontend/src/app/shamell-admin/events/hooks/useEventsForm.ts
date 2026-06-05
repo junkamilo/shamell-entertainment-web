@@ -79,6 +79,9 @@ export function useEventsForm({
   const [enableVenueSeating, setEnableVenueSeating] = useState(false);
   const [fixedTicketCapacityInput, setFixedTicketCapacityInput] = useState("");
   const [linkedTemplateId, setLinkedTemplateId] = useState<string | null>(null);
+  const [monthPackageEnabled, setMonthPackageEnabled] = useState(false);
+  const [monthPackagePrice, setMonthPackagePrice] = useState("");
+  const [monthPackageLabel, setMonthPackageLabel] = useState("");
   const [existingImages, setExistingImages] = useState<CatalogImage[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [originalSnapshot, setOriginalSnapshot] = useState<EventFormSnapshot | null>(null);
@@ -107,6 +110,9 @@ export function useEventsForm({
     setEnableVenueSeating(false);
     setFixedTicketCapacityInput("");
     setLinkedTemplateId(null);
+    setMonthPackageEnabled(false);
+    setMonthPackagePrice("");
+    setMonthPackageLabel("");
     setExistingImages([]);
     setPendingFiles([]);
     setEditingId(null);
@@ -145,7 +151,10 @@ export function useEventsForm({
               (experienceMode !== (originalSnapshot.experienceMode ?? "NORMAL") ||
                 scheduleKey !== (originalSnapshot.scheduleKey ?? "") ||
                 enableVenueSeating !== (originalSnapshot.enableVenueSeating ?? false) ||
-                fixedTicketCapacityInput !== (originalSnapshot.fixedTicketCapacityInput ?? ""))) ||
+                fixedTicketCapacityInput !== (originalSnapshot.fixedTicketCapacityInput ?? "") ||
+                monthPackageEnabled !== (originalSnapshot.monthPackageEnabled ?? false) ||
+                monthPackagePrice !== (originalSnapshot.monthPackagePrice ?? "") ||
+                monthPackageLabel !== (originalSnapshot.monthPackageLabel ?? ""))) ||
             pendingFiles.length > 0 ||
             (priceResult.ok &&
               (originalSnapshot.price ?? null) !== (priceResult.value ?? null))),
@@ -159,7 +168,10 @@ export function useEventsForm({
           (isUpcomingForm &&
             (experienceMode !== "NORMAL" ||
               enableVenueSeating ||
-              fixedTicketCapacityInput.trim())) ||
+              fixedTicketCapacityInput.trim() ||
+              monthPackageEnabled ||
+              monthPackagePrice.trim() ||
+              monthPackageLabel.trim())) ||
           pendingFiles.length > 0,
       );
 
@@ -201,8 +213,30 @@ export function useEventsForm({
       if (!schedule.weekdays.some((w) => w.isActive)) {
         return "Select at least one weekday for the class schedule.";
       }
-      if (!schedule.recurringStartTime || !schedule.recurringEndTime) {
-        return "Set the class start and end time.";
+      const activeDays = schedule.weekdays.filter((w) => w.isActive).map((w) => w.weekday);
+      for (const wd of activeDays) {
+        const daySections = schedule.classSections.filter((s) => s.weekday === wd);
+        if (daySections.length === 0) {
+          return "Each active weekday needs at least one class section.";
+        }
+        for (const s of daySections) {
+          if (!s.startTime || !s.endTime) return "Complete all section start/end times.";
+        }
+      }
+      if (!priceResult.ok || priceResult.value == null) {
+        return "Set the event base price for classes (required for recurring schedules).";
+      }
+      if (priceResult.value < 0.5) {
+        return "Event base price must be at least $0.50.";
+      }
+      if (monthPackageEnabled) {
+        const pkgPrice = parseOptionalPrice(monthPackagePrice, "create");
+        if (!pkgPrice.ok || pkgPrice.value == null) {
+          return "Set a full month package price when the package is enabled.";
+        }
+        if (pkgPrice.value < 0.5) {
+          return "Full month package price must be at least $0.50.";
+        }
       }
     }
     return null;
@@ -266,6 +300,11 @@ export function useEventsForm({
     linkedTemplate: ReservationEventTemplate | null = null,
     venueClientEnabled = false,
     venueFixedTicketCapacity: number | null = null,
+    venueMonthPackage: {
+      enabled: boolean;
+      price: number | null;
+      label: string | null;
+    } | null = null,
   ) => {
     setEditingId(item.id);
     if (!freeEventNameMode) {
@@ -299,7 +338,17 @@ export function useEventsForm({
         ? String(venueFixedTicketCapacity)
         : "",
     );
-
+    setMonthPackageEnabled(
+      mode === "RECURRING_WEEKLY" && (venueMonthPackage?.enabled ?? false),
+    );
+    setMonthPackagePrice(
+      mode === "RECURRING_WEEKLY" && venueMonthPackage?.price != null
+        ? formatPriceInput(venueMonthPackage.price)
+        : "",
+    );
+    setMonthPackageLabel(
+      mode === "RECURRING_WEEKLY" ? (venueMonthPackage?.label ?? "") : "",
+    );
     setExistingImages(item.catalogImages);
     setPendingFiles([]);
     setOriginalSnapshot({
@@ -319,6 +368,14 @@ export function useEventsForm({
         mode === "FIXED_EVENT" && venueFixedTicketCapacity != null
           ? String(venueFixedTicketCapacity)
           : "",
+      monthPackageEnabled:
+        mode === "RECURRING_WEEKLY" && (venueMonthPackage?.enabled ?? false),
+      monthPackagePrice:
+        mode === "RECURRING_WEEKLY" && venueMonthPackage?.price != null
+          ? formatPriceInput(venueMonthPackage.price)
+          : "",
+      monthPackageLabel:
+        mode === "RECURRING_WEEKLY" ? (venueMonthPackage?.label ?? "") : "",
     });
     setIsTypeDropdownOpen(false);
   };
@@ -370,6 +427,12 @@ export function useEventsForm({
     schedule,
     setSchedule,
     linkedTemplateId,
+    monthPackageEnabled,
+    setMonthPackageEnabled,
+    monthPackagePrice,
+    setMonthPackagePrice,
+    monthPackageLabel,
+    setMonthPackageLabel,
     eventName,
     setEventName,
     freeEventNameMode,

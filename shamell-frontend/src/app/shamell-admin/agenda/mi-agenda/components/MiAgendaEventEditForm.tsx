@@ -1,4 +1,5 @@
 import ShamellTime12hColumns from "@/components/ShamellTime12hColumns";
+import { ShamellDateField } from "@/components/admin/ShamellDateField";
 import { hhmmToParts, partsToHHMM } from "@/lib/contactLogisticsUtils";
 
 type Props = {
@@ -34,15 +35,12 @@ export default function MiAgendaEventEditForm({
 }: Props) {
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <label className="block">
-        <span className="font-brand text-[10px] tracking-widest text-gold/70">DATE</span>
-        <input
-          type="date"
-          value={editDateIso}
-          onChange={(e) => onEditDateChange(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-gold/20 bg-black/25 px-3 py-2 text-sm text-foreground outline-none focus:border-gold/40"
-        />
-      </label>
+      <ShamellDateField
+        label="DATE"
+        value={editDateIso}
+        onChange={onEditDateChange}
+        placeholder="Choose date"
+      />
       <label className="block">
         <span className="font-brand text-[10px] tracking-widest text-gold/70">LOCATION</span>
         <input

@@ -9,6 +9,7 @@ import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { FloorLayoutModule } from '../floor-layout/floor-layout.module';
 import { StripeModule } from '../stripe/stripe.module';
 import { StripeWebhookController } from './stripe-webhook.controller';
+import { StripeWebhookDispatchService } from './stripe-webhook-dispatch.service';
 import { VenueReservationsController } from './venue-reservations.controller';
 import { VenueReservationsService } from './venue-reservations.service';
 
@@ -28,6 +29,11 @@ import { VenueReservationsService } from './venue-reservations.service';
     }),
   ],
   controllers: [VenueReservationsController, StripeWebhookController],
-  providers: [VenueReservationsService, AdminJwtGuard, ThrottlerGuard],
+  providers: [
+    VenueReservationsService,
+    StripeWebhookDispatchService,
+    AdminJwtGuard,
+    ThrottlerGuard,
+  ],
 })
 export class VenueReservationsModule {}

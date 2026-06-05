@@ -64,9 +64,11 @@ function showTableInventory(event: OnComingEventHubCardItem): boolean {
 export function OnComingEventHubCard({
   event,
   onNavigateStart,
+  mobileCarousel,
 }: {
   event: OnComingEventHubCardItem;
   onNavigateStart?: () => void;
+  mobileCarousel?: boolean;
 }) {
   const purchaseMode = event.purchaseMode ?? (
     event.experienceType === "VENUE_SEATING"
@@ -99,7 +101,10 @@ export function OnComingEventHubCard({
   return (
     <article
       className={cn(
-        "group/card relative mx-auto flex w-full max-w-[min(100%,17.5rem)] min-h-0 flex-col overflow-hidden rounded-2xl",
+        "group/card relative flex min-h-0 flex-col overflow-hidden rounded-2xl",
+        mobileCarousel
+          ? "w-[17.5rem] max-w-[85vw] shrink-0 snap-start"
+          : "mx-auto w-full max-w-[min(100%,17.5rem)]",
         "border border-gold/30",
         "bg-[linear-gradient(168deg,rgba(18,15,12,0.98)_0%,rgba(8,7,5,1)_48%,rgba(3,2,2,1)_100%)]",
         "shadow-[0_18px_56px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.035)]",

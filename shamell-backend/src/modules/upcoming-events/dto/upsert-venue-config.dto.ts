@@ -3,6 +3,7 @@ import {
   IsBoolean,
   IsInt,
   IsISO8601,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
@@ -64,4 +65,23 @@ export class UpsertVenueConfigDto {
   @Min(1)
   @Max(99999)
   fixedTicketCapacity?: number | null;
+
+  /** @deprecated Full class package removed; cleared on RECURRING_WEEKLY save. */
+  @IsOptional()
+  @IsBoolean()
+  classPackageEnabled?: boolean;
+
+  /** @deprecated See classPackageEnabled. */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  classPackagePrice?: number | null;
+
+  /** @deprecated See classPackageEnabled. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  classPackageLabel?: string | null;
 }

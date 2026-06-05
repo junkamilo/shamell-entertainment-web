@@ -18,6 +18,7 @@ import { FloorLayoutService } from '../floor-layout/floor-layout.service';
 import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
+import { fetchPaymentMethodDetails } from '../stripe/stripe-payment-details.util';
 import { StripeService } from '../stripe/stripe.service';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
 import {
@@ -324,6 +325,7 @@ export class VenueReservationsService {
     };
   }
 
+  /** @deprecated Use unified POST /api/v1/stripe/webhook dispatch */
   async handleWebhookEvent(
     rawBody: Buffer,
     signature: string | string[] | undefined,
@@ -331,55 +333,50 @@ export class VenueReservationsService {
     if (!signature || Array.isArray(signature)) {
       throw new BadRequestException('Missing stripe-signature header.');
     }
+    const event = this.stripeService.client.webhooks.constructEvent(
+      rawBody,
+      signature,
+      this.stripeService.webhookSecret,
+    ) as StripeWebhookEventLite;
+    return this.processStripeWebhookEvent(event);
+  }
 
-    let event: StripeWebhookEventLite;
-    try {
-      event = this.stripeService.client.webhooks.constructEvent(
-        rawBody,
-        signature,
-        this.stripeService.webhookSecret,
-      );
-    } catch (err) {
-      this.logger.warn(
-        `stripe-webhook-invalid-signature reason=${err instanceof Error ? err.message : String(err)}`,
-      );
-      throw new BadRequestException('Invalid stripe-signature header.');
-    }
-
-    const alreadyProcessed = await this.isStripeEventProcessed(event.id);
-    if (alreadyProcessed) {
-      this.logger.log(
-        `stripe-webhook-duplicate eventId=${event.id} type=${event.type}`,
-      );
-      return { received: true, deduplicated: true };
-    }
-
-    await this.trackStripeWebhookAttempt(event);
-
-    try {
-      if (event.type === 'checkout.session.completed') {
-        const session = this.parseCheckoutSession(event.data.object);
-        if (session.metadata?.flow === 'class_session') {
-          return { received: true, skipped: true };
-        }
-        await this.markPaidFromSession(session, event.id);
-      } else if (event.type === 'checkout.session.expired') {
-        const session = this.parseCheckoutSession(event.data.object);
-        const sessionId = session.id?.trim();
-        if (!sessionId) {
-          throw new BadRequestException(
-            'Invalid checkout.session.expired payload.',
-          );
-        }
-        await this.markExpiredFromSession(sessionId);
+  async processStripeWebhookEvent(
+    event: StripeWebhookEventLite,
+  ): Promise<{ received: true; handled?: boolean }> {
+    if (event.type === 'checkout.session.completed') {
+      const session = this.parseCheckoutSession(event.data.object);
+      const flow = session.metadata?.flow?.trim();
+      if (
+        flow === 'class_session' ||
+        flow === 'fixed_event_ticket' ||
+        flow === 'booking_quote'
+      ) {
+        return { received: true, handled: false };
       }
-
-      await this.markStripeEventProcessed(event.id);
-      return { received: true };
-    } catch (err) {
-      await this.markStripeEventFailed(event.id, err);
-      throw err;
+      const paid = await this.markPaidFromSession(session, event.id);
+      return { received: true, handled: paid };
     }
+    if (event.type === 'checkout.session.expired') {
+      const session = this.parseCheckoutSession(event.data.object);
+      const flow = session.metadata?.flow?.trim();
+      if (
+        flow === 'class_session' ||
+        flow === 'fixed_event_ticket' ||
+        flow === 'booking_quote'
+      ) {
+        return { received: true, handled: false };
+      }
+      const sessionId = session.id?.trim();
+      if (!sessionId) {
+        throw new BadRequestException(
+          'Invalid checkout.session.expired payload.',
+        );
+      }
+      await this.markExpiredFromSession(sessionId);
+      return { received: true, handled: true };
+    }
+    return { received: true, handled: false };
   }
 
   async listAdminReservations(query: {
@@ -484,7 +481,7 @@ export class VenueReservationsService {
   private async markPaidFromSession(
     session: StripeCheckoutSessionLite,
     stripeEventId: string,
-  ) {
+  ): Promise<boolean> {
     const sessionId = session.id?.trim();
     if (!sessionId) {
       throw new BadRequestException('Invalid checkout session id.');
@@ -496,13 +493,13 @@ export class VenueReservationsService {
       this.logger.warn(
         `webhook-paid-missing-reservation session=${sessionId} eventId=${stripeEventId}`,
       );
-      return;
+      return false;
     }
     if (reservation.status === VenueSeatReservationStatus.PAID) {
       this.logger.log(
         `webhook-paid-already-processed reservationId=${reservation.id} session=${sessionId} eventId=${stripeEventId}`,
       );
-      return;
+      return true;
     }
 
     if (session.payment_status !== 'paid') {
@@ -537,6 +534,10 @@ export class VenueReservationsService {
       typeof paymentIntent === 'string'
         ? paymentIntent
         : (paymentIntent?.id ?? null);
+    const paymentDetails = await fetchPaymentMethodDetails(
+      this.stripeService.client,
+      session,
+    );
 
     const saved = await this.prisma.venueSeatReservation.update({
       where: { id: reservation.id },
@@ -545,6 +546,9 @@ export class VenueReservationsService {
         paidAt: new Date(),
         stripePaymentIntentId: paymentIntentId,
         expiresAt: null,
+        paymentMethodType: paymentDetails.paymentMethodType,
+        paymentMethodBrand: paymentDetails.paymentMethodBrand,
+        paymentMethodLast4: paymentDetails.paymentMethodLast4,
       },
       include: {
         venueTableConfig: { select: { tableName: true, size: true } },
@@ -567,6 +571,7 @@ export class VenueReservationsService {
       contextLabel: await this.venueReservationContextLabel(saved),
       reference: saved.id.slice(0, 8).toUpperCase(),
     });
+    return true;
   }
 
   private async venueReservationContextLabel(
@@ -981,70 +986,6 @@ export class VenueReservationsService {
       // Falls back gracefully when floor layout is unavailable.
     }
     return 'Reserved chair';
-  }
-
-  private async isStripeEventProcessed(eventId: string): Promise<boolean> {
-    const rows = await this.prisma.$queryRaw<
-      Array<{ processedAt: Date | null }>
-    >(
-      Prisma.sql`SELECT "processedAt" FROM "stripe_webhook_events" WHERE "eventId" = ${eventId} LIMIT 1`,
-    );
-    return Boolean(rows[0]?.processedAt);
-  }
-
-  private async trackStripeWebhookAttempt(
-    event: StripeWebhookEventLite,
-  ): Promise<void> {
-    try {
-      await this.prisma.$executeRaw(
-        Prisma.sql`
-          INSERT INTO "stripe_webhook_events" ("id", "eventId", "eventType", "livemode", "attempts", "createdAt", "updatedAt")
-          VALUES (${event.id}, ${event.id}, ${event.type}, ${event.livemode}, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          ON CONFLICT ("eventId")
-          DO UPDATE SET
-            "attempts" = "stripe_webhook_events"."attempts" + 1,
-            "eventType" = EXCLUDED."eventType",
-            "livemode" = EXCLUDED."livemode",
-            "lastError" = NULL,
-            "updatedAt" = CURRENT_TIMESTAMP
-        `,
-      );
-    } catch (err) {
-      this.logger.warn(
-        `stripe-webhook-track-attempt-failed eventId=${event.id} reason=${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-  }
-
-  private async markStripeEventProcessed(eventId: string): Promise<void> {
-    await this.prisma.$executeRaw(
-      Prisma.sql`
-        UPDATE "stripe_webhook_events"
-        SET "processedAt" = CURRENT_TIMESTAMP,
-            "lastError" = NULL,
-            "updatedAt" = CURRENT_TIMESTAMP
-        WHERE "eventId" = ${eventId}
-      `,
-    );
-  }
-
-  private async markStripeEventFailed(
-    eventId: string,
-    error: unknown,
-  ): Promise<void> {
-    const reason = error instanceof Error ? error.message : String(error);
-    try {
-      await this.prisma.$executeRaw(
-        Prisma.sql`
-          UPDATE "stripe_webhook_events"
-          SET "lastError" = ${reason.slice(0, 1000)},
-              "updatedAt" = CURRENT_TIMESTAMP
-          WHERE "eventId" = ${eventId}
-        `,
-      );
-    } catch {
-      // Keep webhook error flow intact even when audit logging fails.
-    }
   }
 
   private parseCheckoutSession(raw: unknown): StripeCheckoutSessionLite {

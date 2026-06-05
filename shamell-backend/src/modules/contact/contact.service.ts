@@ -39,6 +39,7 @@ import {
   buildConciergeInquiryAckText,
 } from './concierge-inquiry-ack.mail';
 import { buildConciergeVisionSnapshot } from './concierge-vision-snapshot';
+import { AdminCustomerActivityNotifyService } from '../mail/admin-customer-activity-notify.service';
 import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -54,6 +55,7 @@ export class ContactService {
     private prisma: PrismaService,
     private availability: AvailabilityService,
     private readonly mail: MailService,
+    private readonly adminActivityNotify: AdminCustomerActivityNotifyService,
     private readonly config: ConfigService,
     private readonly bookings: BookingsService,
   ) {}
@@ -446,6 +448,12 @@ export class ContactService {
 
       if (ok) {
         this.logger.log(`Concierge inquiry ack email sent to ${to}`);
+        await this.adminActivityNotify.notifyCustomerActivity({
+          kind: 'CONCIERGE_INQUIRY',
+          customerName: toName,
+          customerEmail: to,
+          detailsLines: this.contactInquiryDetailLines(dto),
+        });
       } else {
         this.logger.warn(
           `Concierge inquiry ack email not sent to ${to} (MailerSend disabled or failed).`,
@@ -496,6 +504,19 @@ export class ContactService {
 
       if (ok) {
         this.logger.log(`Booking inquiry ack email sent to ${to}`);
+        const detailsLines = this.contactInquiryDetailLines(dto);
+        if (guide?.totalUsd != null) {
+          detailsLines.push(
+            `Guide estimate: $${guide.totalUsd.toFixed(2)} USD`,
+          );
+        }
+        await this.adminActivityNotify.notifyCustomerActivity({
+          kind: 'BOOKING_INQUIRY',
+          customerName: toName,
+          customerEmail: to,
+          contextLabel: dto.serviceType ?? dto.subject?.trim() ?? undefined,
+          detailsLines,
+        });
       } else {
         this.logger.warn(
           `Booking inquiry ack email not sent to ${to} (MailerSend disabled or failed).`,
@@ -506,6 +527,23 @@ export class ContactService {
         `Booking inquiry ack email unexpected error: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
+  }
+
+  private contactInquiryDetailLines(dto: CreateContactDto): string[] {
+    const lines: string[] = [];
+    const phone = dto.phone?.trim();
+    if (phone) lines.push(`Phone: ${phone}`);
+    const eventDate = dto.eventDate?.trim();
+    if (eventDate) lines.push(`Event date: ${eventDate}`);
+    const location = dto.location?.trim();
+    if (location) lines.push(`Location: ${location}`);
+    const message = dto.message.trim();
+    if (message) {
+      const excerpt =
+        message.length > 280 ? `${message.slice(0, 277)}…` : message;
+      lines.push(`Message: ${excerpt}`);
+    }
+    return lines;
   }
 
   async findAll(query: AdminContactQueryDto) {
