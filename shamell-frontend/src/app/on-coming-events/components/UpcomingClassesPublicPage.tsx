@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
-import VenueLayoutCheckoutStep from "./VenueLayoutCheckoutStep";
+import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
 import { onComingEventHubHref } from "@/lib/upcomingEventPublicRoutes";
 import {
   createClassCheckoutSession,
@@ -41,6 +42,11 @@ export default function UpcomingClassesPublicPage({ slug }: Props) {
   const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +84,18 @@ export default function UpcomingClassesPublicPage({ slug }: Props) {
     }
     setCheckoutSecret(result.clientSecret);
   };
+
+  if (mounted && checkoutSecret) {
+    return createPortal(
+      <StripeEmbeddedCheckoutOverlay
+        clientSecret={checkoutSecret}
+        onClose={() => setCheckoutSecret(null)}
+        ariaLabel="Class booking payment"
+        closeOnBackdropClick={false}
+      />,
+      document.body,
+    );
+  }
 
   return (
     <main className="relative z-10 min-h-screen text-foreground">
@@ -152,12 +170,6 @@ export default function UpcomingClassesPublicPage({ slug }: Props) {
             >
               {isSubmitting ? "Starting checkout…" : "Continue to payment"}
             </button>
-          </div>
-        ) : null}
-
-        {checkoutSecret ? (
-          <div className="mt-8 min-h-[420px] rounded-xl border border-gold/20 bg-white p-2">
-            <VenueLayoutCheckoutStep clientSecret={checkoutSecret} />
           </div>
         ) : null}
 

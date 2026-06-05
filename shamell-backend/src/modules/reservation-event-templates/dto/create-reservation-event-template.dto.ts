@@ -11,6 +11,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
+import { ReservationEventClassSectionDto } from './reservation-event-class-section.dto';
 import { ReservationEventWeekdayDto } from './reservation-event-weekday.dto';
 
 export class CreateReservationEventTemplateDto {
@@ -70,4 +71,14 @@ export class CreateReservationEventTemplateDto {
   )
   @IsString()
   recurringEndTime?: string;
+
+  @ValidateIf(
+    (o: CreateReservationEventTemplateDto) =>
+      o.scheduleMode === 'RECURRING_WEEKLY',
+  )
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ReservationEventClassSectionDto)
+  classSections?: ReservationEventClassSectionDto[];
 }

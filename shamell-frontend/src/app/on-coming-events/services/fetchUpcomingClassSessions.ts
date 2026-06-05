@@ -9,6 +9,11 @@ export type ClassSessionPublic = {
   price: number;
   currency: string;
   seatsRemaining: number;
+  weekday?: number | null;
+  sectionId?: string | null;
+  sectionLabel?: string | null;
+  sectionStartTime?: string | null;
+  sectionEndTime?: string | null;
 };
 
 export async function fetchUpcomingClassSessions(slug: string) {

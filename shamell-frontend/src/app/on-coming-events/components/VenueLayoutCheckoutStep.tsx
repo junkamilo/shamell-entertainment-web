@@ -36,7 +36,7 @@ export default function VenueLayoutCheckoutStep({ clientSecret }: Props) {
 
   if (stripeReady === null) {
     return (
-      <div className="flex min-h-[52dvh] items-center justify-center text-sm text-neutral-500 sm:min-h-[280px]">
+      <div className="flex min-h-[200px] items-center justify-center px-4 py-8 text-sm text-neutral-500">
         Loading payment…
       </div>
     );
@@ -44,7 +44,7 @@ export default function VenueLayoutCheckoutStep({ clientSecret }: Props) {
 
   return (
     <EmbeddedCheckoutProvider stripe={getStripePromise()} options={{ clientSecret }}>
-      <div className="h-full w-full overflow-y-auto overscroll-contain bg-white">
+      <div className="stripe-embedded-checkout-mount w-full">
         <EmbeddedCheckout />
       </div>
     </EmbeddedCheckoutProvider>

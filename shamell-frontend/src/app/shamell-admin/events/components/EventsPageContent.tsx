@@ -143,6 +143,12 @@ export default function EventsPageContent({ state }: Props) {
         onEnableVenueSeatingChange={form.setEnableVenueSeating}
         fixedTicketCapacityInput={form.fixedTicketCapacityInput}
         onFixedTicketCapacityInputChange={form.setFixedTicketCapacityInput}
+        monthPackageEnabled={form.monthPackageEnabled}
+        onMonthPackageEnabledChange={form.setMonthPackageEnabled}
+        monthPackagePrice={form.monthPackagePrice}
+        onMonthPackagePriceChange={form.setMonthPackagePrice}
+        monthPackageLabel={form.monthPackageLabel}
+        onMonthPackageLabelChange={form.setMonthPackageLabel}
       />
 
       <EventsDeleteModal

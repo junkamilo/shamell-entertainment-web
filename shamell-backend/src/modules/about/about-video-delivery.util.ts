@@ -3,6 +3,45 @@ const VIDEO_UPLOAD_MARKER = '/video/upload/';
 const STREAM_TRANSFORM = 'q_auto:eco,vc_h264,w_720,c_limit,f_mp4';
 const POSTER_TRANSFORM = 'so_0,w_720,c_limit,q_auto,f_jpg';
 
+/** Cloudinary eager transforms applied at upload time (matches delivery URLs). */
+export const ABOUT_VIDEO_EAGER_STREAM = {
+  width: 720,
+  crop: 'limit',
+  quality: 'auto:eco',
+  video_codec: 'h264',
+  fetch_format: 'mp4',
+} as const;
+
+export const ABOUT_VIDEO_EAGER_POSTER = {
+  width: 720,
+  crop: 'limit',
+  quality: 'auto',
+  format: 'jpg',
+  start_offset: '0',
+} as const;
+
+export const ABOUT_VIDEO_UPLOAD_EAGER = [
+  ABOUT_VIDEO_EAGER_STREAM,
+  ABOUT_VIDEO_EAGER_POSTER,
+];
+
+type CloudinaryEagerResult = { secure_url?: string };
+
+export function videoDeliveryUrlsFromUpload(result: {
+  secure_url?: string;
+  eager?: CloudinaryEagerResult[];
+}): { videoDeliveryUrl: string | null; videoPosterUrl: string | null } {
+  const base = result.secure_url?.trim() ?? '';
+  const eager = result.eager ?? [];
+  const stream =
+    eager[0]?.secure_url?.trim() ||
+    (base ? buildAboutHeroVideoDeliveryUrl(base) : null);
+  const poster =
+    eager[1]?.secure_url?.trim() ||
+    (base ? buildAboutHeroVideoPosterUrl(base) : null);
+  return { videoDeliveryUrl: stream, videoPosterUrl: poster };
+}
+
 function injectCloudinaryVideoTransform(
   url: string,
   transform: string,

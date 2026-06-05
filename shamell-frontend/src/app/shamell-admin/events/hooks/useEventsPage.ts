@@ -20,10 +20,12 @@ import {
   fetchAdminVenueConfig,
   patchAdminVenueConfig,
 } from "@/app/shamell-admin/on-coming-events/services/patchAdminVenueConfig";
+import { postAdminRegenerateClassSessions } from "@/app/shamell-admin/on-coming-events/services/postAdminRegenerateClassSessions";
 import { fetchAdminReservationEventTemplates } from "@/app/shamell-admin/on-coming-events/reservation-events/services/fetchAdminReservationEventTemplates";
 import { createAdminReservationEventTemplate } from "@/app/shamell-admin/on-coming-events/reservation-events/services/createAdminReservationEventTemplate";
 import { patchAdminReservationEventTemplate } from "@/app/shamell-admin/on-coming-events/reservation-events/services/patchAdminReservationEventTemplate";
 import { scheduleFormToTemplateBody } from "@/app/shamell-admin/on-coming-events/reservation-events/lib/scheduleFormBody";
+import { parseOptionalPrice } from "../lib/eventsPrice";
 import { useEventsCatalog } from "./useEventsCatalog";
 import { useEventsForm } from "./useEventsForm";
 import { useEventsList } from "./useEventsList";
@@ -165,9 +167,25 @@ export function useEventsPage(options?: UseEventsPageOptions) {
         reservationEventTemplateId: string;
         clientEnabled?: boolean;
         fixedTicketCapacity?: number | null;
+        classPackageEnabled?: boolean;
+        classPackagePrice?: number | null;
+        classPackageLabel?: string | null;
       } = {
         reservationEventTemplateId: templateResult.template.id,
       };
+
+      if (form.experienceMode === "RECURRING_WEEKLY") {
+        const pkgPrice = parseOptionalPrice(form.monthPackagePrice, "create");
+        venueConfigBody.classPackageEnabled = form.monthPackageEnabled;
+        venueConfigBody.classPackagePrice =
+          form.monthPackageEnabled && pkgPrice.ok && pkgPrice.value != null
+            ? pkgPrice.value
+            : null;
+        venueConfigBody.classPackageLabel =
+          form.monthPackageEnabled && form.monthPackageLabel.trim()
+            ? form.monthPackageLabel.trim()
+            : null;
+      }
 
       if (form.experienceMode === "FIXED_EVENT") {
         venueConfigBody.clientEnabled = form.enableVenueSeating;
@@ -182,6 +200,16 @@ export function useEventsPage(options?: UseEventsPageOptions) {
       const linkResult = await patchAdminVenueConfig(token, eventId, venueConfigBody);
       if (!linkResult.ok) {
         throw new Error(linkResult.message ?? "Could not apply the event schedule.");
+      }
+
+      if (form.experienceMode === "RECURRING_WEEKLY") {
+        const regen = await postAdminRegenerateClassSessions(token, eventId);
+        if (!regen.ok) {
+          throw new Error(
+            regen.message ??
+              "Schedule saved but class sessions could not be generated. Try saving again.",
+          );
+        }
       }
 
       if (
@@ -232,7 +260,11 @@ export function useEventsPage(options?: UseEventsPageOptions) {
         const hasSchedule = Boolean(savedId) && isUpcomingAdminRoute;
 
         if (savedId && hasSchedule) {
-          setSubmittingMessage("Applying schedule…");
+          setSubmittingMessage(
+            form.experienceMode === "RECURRING_WEEKLY"
+              ? "Saving schedule and class sessions…"
+              : "Applying schedule…",
+          );
           await syncUpcomingSchedule(token, savedId);
         }
 
@@ -270,6 +302,11 @@ export function useEventsPage(options?: UseEventsPageOptions) {
       let linkedTemplate = null;
       let venueClientEnabled = false;
       let venueFixedTicketCapacity: number | null = null;
+      let venueMonthPackage: {
+        enabled: boolean;
+        price: number | null;
+        label: string | null;
+      } | null = null;
       if (isUpcomingAdminRoute) {
         const token = getEventsBearerToken();
         if (token) {
@@ -277,6 +314,13 @@ export function useEventsPage(options?: UseEventsPageOptions) {
           linkedTemplate = configResult.config?.reservationEventTemplate ?? null;
           venueClientEnabled = configResult.config?.clientEnabled ?? false;
           venueFixedTicketCapacity = configResult.config?.fixedTicketCapacity ?? null;
+          venueMonthPackage = configResult.config
+            ? {
+                enabled: configResult.config.classPackageEnabled,
+                price: configResult.config.classPackagePrice,
+                label: configResult.config.classPackageLabel,
+              }
+            : null;
 
           if (!linkedTemplate) {
             const templatesResult = await fetchAdminReservationEventTemplates(token);
@@ -292,7 +336,13 @@ export function useEventsPage(options?: UseEventsPageOptions) {
           }
         }
       }
-      form.startEdit(item, linkedTemplate, venueClientEnabled, venueFixedTicketCapacity);
+      form.startEdit(
+        item,
+        linkedTemplate,
+        venueClientEnabled,
+        venueFixedTicketCapacity,
+        venueMonthPackage,
+      );
       setIsModalOpen(true);
     },
     [form, isUpcomingAdminRoute],

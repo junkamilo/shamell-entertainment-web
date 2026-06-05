@@ -13,6 +13,7 @@ export function buildClassEnrollmentConfirmationText(input: {
   customerName: string;
   sessionLabel: string;
   amount: string;
+  confirmationReference: string;
   siteBaseUrl?: string;
 }): string {
   return [
@@ -23,7 +24,10 @@ export function buildClassEnrollmentConfirmationText(input: {
     '',
     `Your class spot is confirmed for ${input.eventName}.`,
     `Session: ${input.sessionLabel}`,
+    `Confirmation #${input.confirmationReference}`,
     `Amount paid: ${input.amount}`,
+    '',
+    'Please present this email at check-in.',
     '',
     'Thank you,',
     'Shamell Entertainment',
@@ -36,12 +40,14 @@ export function buildClassEnrollmentConfirmationHtml(input: {
   customerName: string;
   sessionLabel: string;
   amount: string;
+  confirmationReference: string;
   branding?: string | EmailBranding;
 }): string {
   const name = escapeHtml(input.customerName);
   const event = escapeHtml(input.eventName);
   const session = escapeHtml(input.sessionLabel);
   const amount = escapeHtml(input.amount);
+  const confirmation = escapeHtml(input.confirmationReference);
   const logoBlock = buildEmailLogoWordmarkHtml(input.branding);
   return `<!DOCTYPE html>
 <html lang="en">
@@ -57,7 +63,8 @@ export function buildClassEnrollmentConfirmationHtml(input: {
         <tr><td style="padding:24px 26px 28px;font-family:Georgia,serif;">
           <p style="margin:0;font-size:15px;line-height:1.75;color:#d6cfbd;">Hello <strong style="color:#fff8e6;">${name}</strong>,</p>
           <p style="margin:16px 0 0;font-size:15px;line-height:1.75;color:#d6cfbd;">Your class spot is confirmed for <strong style="color:#fff8e6;">${event}</strong>.</p>
-          <p style="margin:16px 0 0;font-size:15px;line-height:1.75;color:#d6cfbd;"><strong>Session:</strong> ${session}<br/><strong>Amount paid:</strong> ${amount}</p>
+          <p style="margin:16px 0 0;font-size:15px;line-height:1.75;color:#d6cfbd;"><strong>Session:</strong> ${session}<br/><strong>Confirmation:</strong> <span style="color:#e8d5a3;">#${confirmation}</span><br/><strong>Amount paid:</strong> ${amount}</p>
+          <p style="margin:18px 0 0;font-size:14px;line-height:1.65;color:#b9b09f;">Please present this email at check-in.</p>
           <p style="margin:22px 0 0;font-size:14px;color:#b9b09f;">Thank you,<br/><span style="color:#e8d5a3;">Shamell Entertainment</span></p>
         </td></tr>
       </table>

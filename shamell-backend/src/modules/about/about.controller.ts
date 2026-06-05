@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Patch,
@@ -26,6 +27,7 @@ export class AboutController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
   getPublicAboutContent() {
     return this.aboutService.getPublicAboutContent();
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { getEventsBearerToken } from "@/app/shamell-admin/events/lib/eventsAuth";
 import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
@@ -110,14 +110,16 @@ export function UpcomingClassSessionsPanel({ eventId }: Props) {
       <div className="mt-4 grid gap-2 sm:grid-cols-2">
         <input
           type="datetime-local"
+          aria-label="Session starts"
           value={startsAt}
-          onChange={(e) => setStartsAt(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setStartsAt(e.target.value)}
           className="rounded-lg border border-gold/30 bg-black/30 px-2 py-2 text-sm"
         />
         <input
           type="datetime-local"
+          aria-label="Session ends"
           value={endsAt}
-          onChange={(e) => setEndsAt(e.target.value)}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setEndsAt(e.target.value)}
           className="rounded-lg border border-gold/30 bg-black/30 px-2 py-2 text-sm"
         />
         <input

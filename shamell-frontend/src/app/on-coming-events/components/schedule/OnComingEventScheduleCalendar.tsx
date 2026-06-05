@@ -20,9 +20,25 @@ import {
 
 type Props = {
   model: ScheduleViewModel;
+  /** When set, highlighted recurring days open booking for that date. */
+  onDateClick?: (iso: string) => void;
+  bookable?: boolean;
+  /** Larger, vertically centered layout for the mobile swipe panel. */
+  mobileSlide?: boolean;
 };
 
-export function OnComingEventScheduleCalendar({ model }: Props) {
+function compareIso(a: string, b: string): number {
+  if (a < b) return -1;
+  if (a > b) return 1;
+  return 0;
+}
+
+export function OnComingEventScheduleCalendar({
+  model,
+  onDateClick,
+  bookable = false,
+  mobileSlide = false,
+}: Props) {
   const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
   const initial = parseMonthFromAnchor(model.anchorDate);
   const [viewYear, setViewYear] = useState(initial.year);
@@ -66,9 +82,27 @@ export function OnComingEventScheduleCalendar({ model }: Props) {
     : null;
 
   return (
-    <div className="flex flex-col" aria-label="Event calendar">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="font-brand text-xs tracking-[0.14em] text-gold/80">CALENDAR</p>
+    <div
+      className={cn(
+        "flex w-full flex-col",
+        mobileSlide && "min-h-[min(68dvh,26rem)] justify-center py-2",
+      )}
+      aria-label="Event calendar"
+    >
+      <div
+        className={cn(
+          "mb-3 flex items-center justify-between gap-2",
+          mobileSlide && "mb-4",
+        )}
+      >
+        <p
+          className={cn(
+            "font-brand text-xs tracking-[0.14em] text-gold/80",
+            mobileSlide && "text-sm",
+          )}
+        >
+          CALENDAR
+        </p>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -78,7 +112,12 @@ export function OnComingEventScheduleCalendar({ model }: Props) {
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
-          <span className="min-w-[7.5rem] text-center font-body text-xs text-foreground/90 sm:text-sm">
+          <span
+            className={cn(
+              "min-w-[7.5rem] text-center font-body text-foreground/90",
+              mobileSlide ? "text-sm" : "text-xs sm:text-sm",
+            )}
+          >
             {monthLabel(viewYear, viewMonth)}
           </span>
           <button
@@ -93,7 +132,14 @@ export function OnComingEventScheduleCalendar({ model }: Props) {
       </div>
 
       {/* Week strip */}
-      <div className="mb-3 grid grid-cols-7 gap-1" role="list" aria-label="Days of week">
+      <div
+        className={cn(
+          "mb-3 grid w-full grid-cols-7",
+          mobileSlide ? "gap-1.5" : "gap-1",
+        )}
+        role="list"
+        aria-label="Days of week"
+      >
         {headers.map((label, idx) => {
           const active =
             model.mode === "RECURRING_WEEKLY" && model.activeWeekdays.includes(idx);
@@ -106,10 +152,18 @@ export function OnComingEventScheduleCalendar({ model }: Props) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.04, duration: 0.35 }}
             >
-              <span className="text-[9px] font-medium tracking-wide text-foreground/50">{label}</span>
               <span
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold transition",
+                  "font-medium tracking-wide text-foreground/50",
+                  mobileSlide ? "text-[10px]" : "text-[9px]",
+                )}
+              >
+                {label}
+              </span>
+              <span
+                className={cn(
+                  "flex items-center justify-center rounded-full font-semibold transition-colors",
+                  mobileSlide ? "h-10 w-10 text-sm" : "h-8 w-8 text-xs",
                   active ?
                     "border border-gold/60 bg-gold/20 text-gold shadow-[0_0_20px_rgba(197,165,90,0.25)]"
                   : "border border-gold/15 bg-black/20 text-foreground/40",
@@ -122,52 +176,83 @@ export function OnComingEventScheduleCalendar({ model }: Props) {
         })}
       </div>
 
-      {/* Month grid */}
-      <div className="grid grid-cols-7 gap-0.5 sm:gap-1" role="grid" aria-label={`${monthLabel(viewYear, viewMonth)}`}>
+      {/* Month grid — hover cleared on grid leave to avoid flicker between adjacent cells */}
+      <div
+        className={cn(
+          "grid w-full grid-cols-7",
+          mobileSlide ? "gap-1.5" : "gap-1 sm:gap-1.5",
+        )}
+        role="grid"
+        aria-label={`${monthLabel(viewYear, viewMonth)}`}
+        onMouseLeave={() => setHoveredIso(null)}
+      >
         {headers.map((h) => (
           <div
             key={`h-${h}`}
-            className="pb-0.5 text-center text-[9px] font-medium text-foreground/45 sm:text-[10px]"
+            className={cn(
+              "pb-0.5 text-center font-medium text-foreground/45",
+              mobileSlide ? "text-xs" : "text-[10px] sm:text-xs",
+            )}
             role="columnheader"
           >
             {h}
           </div>
         ))}
-        {grid.cells.map((cell, i) => {
+        {grid.cells.map((cell) => {
           const highlight =
             cell.isEventDay || cell.isRecurringDay || cell.inSalesRange;
           const interactive = cell.inMonth && (cell.isRecurringDay || cell.isEventDay);
+          const anchor = model.anchorDate ?? null;
+          const pastOrBeforeAnchor =
+            compareIso(cell.iso, todayIso) < 0 ||
+            (anchor != null && compareIso(cell.iso, anchor) < 0);
+          const clickableBookDay =
+            bookable &&
+            onDateClick != null &&
+            model.mode === "RECURRING_WEEKLY" &&
+            cell.inMonth &&
+            cell.isRecurringDay &&
+            !pastOrBeforeAnchor;
+          const isHovered = hoveredIso === cell.iso;
 
           return (
-            <motion.button
+            <button
               key={cell.iso}
               type="button"
               role="gridcell"
-              disabled={!cell.inMonth}
+              disabled={!cell.inMonth || (bookable && cell.isRecurringDay && pastOrBeforeAnchor)}
+              onClick={() => {
+                if (clickableBookDay) onDateClick(cell.iso);
+              }}
               onMouseEnter={() => {
                 if (interactive) setHoveredIso(cell.iso);
               }}
-              onMouseLeave={() => setHoveredIso(null)}
               onFocus={() => {
                 if (interactive) setHoveredIso(cell.iso);
               }}
               onBlur={() => setHoveredIso(null)}
               className={cn(
-                "relative flex h-8 w-full items-center justify-center rounded-md text-xs transition sm:h-9 sm:rounded-lg sm:text-sm",
+                "relative flex w-full items-center justify-center rounded-md font-semibold tabular-nums transition-colors",
+                mobileSlide ?
+                  "h-11 rounded-lg text-base"
+                : "h-8 text-sm sm:h-9 sm:rounded-lg sm:text-base",
                 !cell.inMonth && "pointer-events-none opacity-0",
                 cell.inMonth && !highlight && "text-foreground/55 hover:bg-white/5",
                 cell.inSalesRange && "bg-gold/10 text-foreground/80",
-                cell.isRecurringDay && "bg-gold/18 font-medium text-gold",
+                cell.isRecurringDay && "bg-gold/18 text-gold",
                 cell.isEventDay &&
-                  "ring-2 ring-gold/70 bg-gold/25 font-semibold text-gold-light",
+                  "bg-gold/25 font-bold text-gold-light ring-2 ring-gold/70",
                 cell.isToday && !cell.isEventDay && "ring-1 ring-gold/35",
+                clickableBookDay && "cursor-pointer",
+                clickableBookDay &&
+                  (isHovered ?
+                    "bg-gold/28 ring-1 ring-gold/55"
+                  : "hover:bg-gold/22 hover:ring-1 hover:ring-gold/45"),
+                bookable && cell.isRecurringDay && pastOrBeforeAnchor && "opacity-40",
               )}
-              whileHover={
-                prefersReducedMotion || !interactive ? undefined : { scale: 1.08, y: -2 }
+              aria-label={
+                clickableBookDay ? `Book class on ${cell.iso}` : undefined
               }
-              initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.92 }}
-              animate={{ opacity: cell.inMonth ? 1 : 0, scale: 1 }}
-              transition={{ delay: (i % 7) * 0.02 + Math.floor(i / 7) * 0.03, duration: 0.25 }}
             >
               {cell.day}
               {cell.isEventDay ? (
@@ -176,21 +261,35 @@ export function OnComingEventScheduleCalendar({ model }: Props) {
                   aria-hidden
                 />
               ) : null}
-            </motion.button>
+            </button>
           );
         })}
       </div>
 
+      {bookable && model.mode === "RECURRING_WEEKLY" ?
+        <p
+          className={cn(
+            "mt-2 text-center text-foreground/60",
+            mobileSlide ? "text-xs" : "text-[10px] sm:text-xs",
+          )}
+        >
+          Tap a highlighted date to choose your class time
+        </p>
+      : null}
+
       {tooltipText ? (
-        <motion.p
-          key={tooltipText}
-          initial={prefersReducedMotion ? false : { opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-3 rounded-lg border border-gold/20 bg-gold/5 px-3 py-2 text-center text-xs text-foreground/85 sm:text-sm"
+        <p
+          className={cn(
+            "mt-3 w-full rounded-lg border border-gold/20 bg-gold/5 px-3 py-2 text-center leading-snug text-foreground/85",
+            mobileSlide ?
+              "min-h-[3rem] text-sm"
+            : "min-h-[2.75rem] text-xs sm:min-h-[3rem] sm:text-sm",
+          )}
           role="status"
+          aria-live="polite"
         >
           {tooltipText}
-        </motion.p>
+        </p>
       ) : null}
 
       {model.mode === "FIXED_EVENT" ? (

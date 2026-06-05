@@ -8,6 +8,7 @@ import {
   fetchAdminVenueConfig,
   patchAdminVenueConfig,
 } from "../services/patchAdminVenueConfig";
+import { postAdminRegenerateClassSessions } from "../services/postAdminRegenerateClassSessions";
 
 type Props = { eventId: string };
 
@@ -60,6 +61,20 @@ export function UpcomingVenueConfigPanel({ eventId }: Props) {
         description: result.message,
       });
       return;
+    }
+    if (selected?.scheduleMode === "RECURRING_WEEKLY") {
+      const regen = await postAdminRegenerateClassSessions(token, eventId);
+      if (!regen.ok) {
+        toast({
+          variant: "destructive",
+          title: "Schedule linked",
+          description:
+            regen.message ??
+            "Link saved but class sessions could not be generated. Try Apply schedule again.",
+        });
+        await load();
+        return;
+      }
     }
     toast({ title: "Reservation schedule linked" });
     await load();

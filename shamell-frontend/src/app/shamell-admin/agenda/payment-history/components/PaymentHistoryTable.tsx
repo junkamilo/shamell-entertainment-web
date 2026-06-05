@@ -28,6 +28,7 @@ export default function PaymentHistoryTable({ items }: PaymentHistoryTableProps)
             <th className="px-4 py-3">Customer</th>
             <th className="px-4 py-3">Context</th>
             <th className="px-4 py-3">Amount</th>
+            <th className="px-4 py-3">Payment</th>
             <th className="px-4 py-3">Stage</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3" />
@@ -54,6 +55,9 @@ export default function PaymentHistoryTable({ items }: PaymentHistoryTableProps)
                 </td>
                 <td className="px-4 py-3">
                   {formatPaymentAmount(row.amount, row.currency)}
+                </td>
+                <td className="px-4 py-3 text-xs text-foreground/70">
+                  {row.paymentMethodLabel ?? "—"}
                 </td>
                 <td className="px-4 py-3 text-foreground/70">
                   {stageLabel(row.stage)}

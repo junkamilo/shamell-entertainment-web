@@ -44,6 +44,7 @@ import {
 } from './booking-confirmation.mail';
 import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
+import { AdminCustomerActivityNotifyService } from '../mail/admin-customer-activity-notify.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { StripeService } from '../stripe/stripe.service';
 import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
@@ -118,6 +119,7 @@ export class BookingsService {
     private readonly prisma: PrismaService,
     private readonly availability: AvailabilityService,
     private readonly mail: MailService,
+    private readonly adminActivityNotify: AdminCustomerActivityNotifyService,
     private readonly adminPaymentNotify: AdminPaymentNotifyService,
     private readonly config: ConfigService,
     private readonly stripeService: StripeService,
@@ -746,6 +748,16 @@ export class BookingsService {
         this.logger.log(
           `Booking confirmation email sent for booking ${booking.id} to ${toEmail}`,
         );
+        await this.adminActivityNotify.notifyCustomerActivity({
+          kind: 'BOOKING_CONFIRMED',
+          customerName: recipientName,
+          customerEmail: toEmail,
+          reference: booking.id.slice(0, 8).toUpperCase(),
+          contextLabel: this.bookingContextLabel(booking),
+          detailsLines: this.bookingEventDateLabel(booking)
+            ? [`Event date: ${this.bookingEventDateLabel(booking)}`]
+            : undefined,
+        });
       }
     } catch (err) {
       this.logger.error(
@@ -1060,13 +1072,14 @@ export class BookingsService {
     const frontendBaseUrl = branding.siteBaseUrl;
     const payUrl = this.buildQuotePayUrl(rawToken);
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
-    await this.mail.sendTransactional({
+    const customerName =
+      booking.user?.fullName ?? booking.guestFullName ?? 'Client';
+    const { ok: quoteEmailSent } = await this.mail.sendTransactional({
       to: toEmail,
-      toName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      toName: customerName,
       subject: buildBookingQuoteSubject(appPublicName),
       html: buildBookingQuoteHtml({
-        recipientName:
-          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        recipientName: customerName,
         appPublicName,
         frontendBaseUrl,
         branding,
@@ -1077,8 +1090,7 @@ export class BookingsService {
         payUrl,
       }),
       text: buildBookingQuoteText({
-        recipientName:
-          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        recipientName: customerName,
         appPublicName,
         frontendBaseUrl,
         bookingReference: bookingRef,
@@ -1088,6 +1100,16 @@ export class BookingsService {
         payUrl,
       }),
     });
+    if (quoteEmailSent) {
+      await this.adminActivityNotify.notifyCustomerActivity({
+        kind: 'BOOKING_QUOTE_SENT',
+        customerName,
+        customerEmail: toEmail,
+        reference: bookingRef,
+        contextLabel: this.bookingContextLabel(booking),
+        amountUsd: this.usd(payAmount),
+      });
+    }
 
     return {
       message: 'Payment link sent successfully.',
@@ -1174,13 +1196,14 @@ export class BookingsService {
     const branding = this.emailBrandingForTemplates();
     const frontendBaseUrl = branding.siteBaseUrl;
     const bookingRef = booking.id.slice(0, 8).toUpperCase();
-    await this.mail.sendTransactional({
+    const customerName =
+      booking.user?.fullName ?? booking.guestFullName ?? 'Client';
+    const { ok: balanceEmailSent } = await this.mail.sendTransactional({
       to: customerEmail,
-      toName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      toName: customerName,
       subject: buildBookingBalanceLinkSubject(appPublicName),
       html: buildBookingBalanceLinkHtml({
-        recipientName:
-          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        recipientName: customerName,
         appPublicName,
         frontendBaseUrl,
         branding,
@@ -1189,8 +1212,7 @@ export class BookingsService {
         payUrl,
       }),
       text: buildBookingBalanceLinkText({
-        recipientName:
-          booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+        recipientName: customerName,
         appPublicName,
         frontendBaseUrl,
         bookingReference: bookingRef,
@@ -1198,6 +1220,16 @@ export class BookingsService {
         payUrl,
       }),
     });
+    if (balanceEmailSent) {
+      await this.adminActivityNotify.notifyCustomerActivity({
+        kind: 'BOOKING_BALANCE_LINK_SENT',
+        customerName,
+        customerEmail,
+        reference: bookingRef,
+        contextLabel: this.bookingContextLabel(booking),
+        amountUsd: this.usd(balanceAmount),
+      });
+    }
 
     return {
       message: 'Balance payment link sent successfully.',
@@ -1275,6 +1307,14 @@ export class BookingsService {
       signature,
       this.stripeService.webhookSecret,
     );
+    return this.processStripeWebhookEvent(event as { id: string; type: string; data: { object: unknown } });
+  }
+
+  async processStripeWebhookEvent(event: {
+    id: string;
+    type: string;
+    data: { object: unknown };
+  }): Promise<{ received: true; handled: boolean }> {
     const eventObj = this.parseStripeCheckoutSession(event.data.object);
     if (eventObj.metadata?.flow !== 'booking_quote') {
       return { received: true, handled: false };

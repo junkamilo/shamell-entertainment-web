@@ -20,10 +20,7 @@ export function ReservationEventWeekdaySelector({ weekdays, disabled, onChange }
   };
 
   return (
-    <div className="space-y-2">
-      <p className="text-xs text-foreground/70">
-        Select which weekdays apply (e.g. only Fridays for weekly classes).
-      </p>
+    <div>
       <div className="flex flex-wrap gap-2">
         {weekdays.map((row) => {
           const label = WEEKDAY_LABEL[row.weekday] ?? String(row.weekday);

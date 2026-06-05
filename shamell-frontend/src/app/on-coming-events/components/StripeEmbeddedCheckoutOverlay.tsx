@@ -1,7 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect } from "react";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const VenueLayoutCheckoutStep = dynamic(() => import("./VenueLayoutCheckoutStep"), {
   ssr: false,
@@ -23,9 +25,19 @@ export function StripeEmbeddedCheckoutOverlay({
   showCloseButton = true,
   closeOnBackdropClick = true,
 }: Props) {
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    document.body.setAttribute("data-stripe-checkout-open", "true");
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.body.removeAttribute("data-stripe-checkout-open");
+    };
+  }, []);
+
   return (
     <div
-      className="fixed inset-0 z-120 flex items-end justify-center bg-black/80 p-2 sm:items-center sm:p-4"
+      className="fixed inset-0 z-200 flex bg-[#0a0908] sm:items-center sm:justify-center sm:bg-black/80 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
@@ -33,27 +45,31 @@ export function StripeEmbeddedCheckoutOverlay({
       {closeOnBackdropClick && showCloseButton && onClose ? (
         <button
           type="button"
-          className="absolute inset-0"
+          className="absolute inset-0 hidden sm:block"
           aria-label="Close payment"
           onClick={onClose}
         />
       ) : (
-        <div className="absolute inset-0" aria-hidden="true" />
+        <div className="absolute inset-0 hidden sm:block" aria-hidden="true" />
       )}
-      <div className="relative z-10 flex h-[min(92dvh,860px)] w-full max-w-[min(100vw-0.5rem,1120px)] flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:max-w-[min(100vw-1rem,1120px)] sm:rounded-xl">
+      <div
+        className={cn(
+          "relative z-10 flex w-full flex-col overflow-hidden bg-white",
+          "h-dvh max-h-dvh rounded-none",
+          "sm:h-auto sm:max-h-[min(92dvh,860px)] sm:max-w-[min(calc(100vw-1rem),1080px)] sm:rounded-xl sm:shadow-2xl",
+        )}
+      >
         {showCloseButton && onClose ? (
-          <div className="absolute right-2 top-2 z-20 sm:right-3 sm:top-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg bg-white/90 p-2.5 text-neutral-500 shadow-sm transition hover:bg-neutral-100 hover:text-neutral-800"
-              aria-label="Close"
-            >
-              <X className="h-5 w-5" strokeWidth={1.75} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-[max(0.75rem,env(safe-area-inset-right,0px))] top-[max(0.75rem,env(safe-area-inset-top,0px))] z-30 rounded-lg bg-black/55 p-2.5 text-white shadow-md backdrop-blur-sm transition hover:bg-black/70 sm:right-3 sm:top-3"
+            aria-label="Close"
+          >
+            <X className="h-5 w-5" strokeWidth={1.75} />
+          </button>
         ) : null}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-0 py-0">
+        <div className="stripe-checkout-overlay-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom,0px)]">
           <VenueLayoutCheckoutStep clientSecret={clientSecret} />
         </div>
       </div>

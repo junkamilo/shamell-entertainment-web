@@ -26,5 +26,15 @@ export function scheduleFormToTemplateBody(
     weekdays: schedule.weekdays,
     recurringStartTime: schedule.recurringStartTime,
     recurringEndTime: schedule.recurringEndTime,
+    classSections: schedule.classSections.map((s) => ({
+      weekday: s.weekday,
+      label: s.label.trim() || undefined,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      sortOrder: s.sortOrder,
+      defaultCapacity: s.defaultCapacity,
+      defaultPrice:
+        s.defaultPrice.trim() === "" ? undefined : Number.parseFloat(s.defaultPrice),
+    })),
   };
 }

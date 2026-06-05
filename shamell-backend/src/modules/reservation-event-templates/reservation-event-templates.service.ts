@@ -11,14 +11,17 @@ import {
   buildTemplateSummary,
   inactiveWeekdays,
   validateTemplatePayload,
+  type ClassSectionInput,
   type ValidatedTemplatePayload,
   type WeekdayInput,
 } from './reservation-event-template.util';
-
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const templateInclude = {
   weekdays: { orderBy: { weekday: 'asc' as const } },
+  classSections: {
+    orderBy: [{ weekday: 'asc' as const }, { sortOrder: 'asc' as const }],
+  },
   venueConfigs: { select: { eventId: true } },
 } satisfies Prisma.ReservationEventTemplateInclude;
 
@@ -61,9 +64,16 @@ export class ReservationEventTemplatesService {
       return this.updateAdmin(existing.id, dto);
     }
 
-    const created = await this.prisma.reservationEventTemplate.create({
-      data: this.toPrismaCreate(validated),
-      include: templateInclude,
+    const created = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.reservationEventTemplate.create({
+        data: this.toPrismaCreateWithoutClassSections(validated),
+        include: templateInclude,
+      });
+      await this.replaceClassSections(tx, row.id, validated.classSections);
+      return tx.reservationEventTemplate.findUniqueOrThrow({
+        where: { id: row.id },
+        include: templateInclude,
+      });
     });
     return this.mapTemplate(created);
   }
@@ -73,14 +83,16 @@ export class ReservationEventTemplatesService {
     const merged = this.mergeDto(existing, dto);
     const validated = validateTemplatePayload(merged);
 
-    await this.prisma.reservationEventWeekday.deleteMany({
-      where: { templateId: id },
-    });
-
-    const updated = await this.prisma.reservationEventTemplate.update({
-      where: { id },
-      data: this.toPrismaUpdate(validated),
-      include: templateInclude,
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.reservationEventWeekday.deleteMany({
+        where: { templateId: id },
+      });
+      await this.replaceClassSections(tx, id, validated.classSections);
+      return tx.reservationEventTemplate.update({
+        where: { id },
+        data: this.toPrismaUpdateWithoutNestedSections(validated),
+        include: templateInclude,
+      });
     });
     return this.mapTemplate(updated);
   }
@@ -150,10 +162,23 @@ export class ReservationEventTemplatesService {
       recurringStartTime:
         dto.recurringStartTime ?? existing.recurringStartTime ?? '',
       recurringEndTime: dto.recurringEndTime ?? existing.recurringEndTime ?? '',
+      classSections:
+        dto.classSections?.length ?
+          dto.classSections
+        : existing.classSections.map((s) => ({
+          weekday: s.weekday,
+          label: s.label,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          sortOrder: s.sortOrder,
+          defaultCapacity: s.defaultCapacity,
+          defaultPrice: s.defaultPrice != null ? Number(s.defaultPrice) : null,
+          isActive: s.isActive,
+        })),
     };
   }
 
-  private toPrismaCreate(validated: ValidatedTemplatePayload) {
+  private toPrismaCreateWithoutClassSections(validated: ValidatedTemplatePayload) {
     return {
       name: validated.name,
       timezone: validated.timezone,
@@ -178,6 +203,18 @@ export class ReservationEventTemplatesService {
 
   private toPrismaUpdate(validated: ValidatedTemplatePayload) {
     return {
+      ...this.toPrismaUpdateWithoutNestedSections(validated),
+      weekdays: {
+        create: this.normalizeWeekdays(validated.weekdays),
+      },
+      classSections: {
+        create: this.normalizeClassSections(validated.classSections),
+      },
+    };
+  }
+
+  private toPrismaUpdateWithoutNestedSections(validated: ValidatedTemplatePayload) {
+    return {
       name: validated.name,
       timezone: validated.timezone,
       scheduleMode: validated.scheduleMode,
@@ -197,6 +234,64 @@ export class ReservationEventTemplatesService {
         create: this.normalizeWeekdays(validated.weekdays),
       },
     };
+  }
+
+  /** Upsert sections by (weekday, sortOrder) so IDs stay stable across admin saves. */
+  private async replaceClassSections(
+    tx: Prisma.TransactionClient,
+    templateId: string,
+    sections: ValidatedTemplatePayload['classSections'],
+  ) {
+    const rows = this.normalizeClassSections(sections);
+    const keys = rows.map((s) => ({ weekday: s.weekday, sortOrder: s.sortOrder }));
+
+    for (const row of rows) {
+      await tx.reservationEventClassSection.upsert({
+        where: {
+          templateId_weekday_sortOrder: {
+            templateId,
+            weekday: row.weekday,
+            sortOrder: row.sortOrder,
+          },
+        },
+        create: { templateId, ...row },
+        update: {
+          label: row.label,
+          startTime: row.startTime,
+          endTime: row.endTime,
+          defaultCapacity: row.defaultCapacity,
+          defaultPrice: row.defaultPrice,
+          isActive: row.isActive,
+        },
+      });
+    }
+
+    if (keys.length === 0) {
+      await tx.reservationEventClassSection.deleteMany({ where: { templateId } });
+      return;
+    }
+
+    await tx.reservationEventClassSection.deleteMany({
+      where: {
+        templateId,
+        NOT: { OR: keys },
+      },
+    });
+  }
+
+  private normalizeClassSections(
+    sections: ValidatedTemplatePayload['classSections'],
+  ) {
+    return sections.map((s) => ({
+      weekday: s.weekday,
+      label: s.label,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      sortOrder: s.sortOrder,
+      defaultCapacity: s.defaultCapacity,
+      defaultPrice: s.defaultPrice,
+      isActive: s.isActive,
+    }));
   }
 
   private normalizeWeekdays(weekdays: WeekdayInput[]) {
@@ -233,6 +328,17 @@ export class ReservationEventTemplatesService {
       weekdays: row.weekdays.map((w) => ({
         weekday: w.weekday,
         isActive: w.isActive,
+      })),
+      classSections: row.classSections.map((s) => ({
+        id: s.id,
+        weekday: s.weekday,
+        label: s.label,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        sortOrder: s.sortOrder,
+        defaultCapacity: s.defaultCapacity,
+        defaultPrice: s.defaultPrice != null ? Number(s.defaultPrice) : null,
+        isActive: s.isActive,
       })),
       activeDayLabels: activeDays,
       summary: buildTemplateSummary(row),

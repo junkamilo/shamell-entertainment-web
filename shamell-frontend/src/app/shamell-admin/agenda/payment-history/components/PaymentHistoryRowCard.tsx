@@ -48,6 +48,8 @@ export default function PaymentHistoryRowCard({ row }: PaymentHistoryRowCardProp
         <dd className="text-foreground/85">{row.contextLabel}</dd>
         <dt className="text-foreground/50">Amount</dt>
         <dd>{formatPaymentAmount(row.amount, row.currency)}</dd>
+        <dt className="text-foreground/50">Payment method</dt>
+        <dd>{row.paymentMethodLabel ?? "—"}</dd>
         <dt className="text-foreground/50">Stage</dt>
         <dd>{stageLabel(row.stage)}</dd>
         <dt className="text-foreground/50">Date</dt>

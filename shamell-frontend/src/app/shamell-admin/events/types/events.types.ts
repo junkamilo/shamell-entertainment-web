@@ -48,6 +48,9 @@ export type EventFormSnapshot = {
   scheduleKey?: string;
   enableVenueSeating?: boolean;
   fixedTicketCapacityInput?: string;
+  monthPackageEnabled?: boolean;
+  monthPackagePrice?: string;
+  monthPackageLabel?: string;
 };
 
 export type EventsStats = {

@@ -1,57 +1,176 @@
 "use client";
 
-import { useRef } from "react";
+import { type ReactNode } from "react";
 import { Clock } from "lucide-react";
-import { motion, useInView } from "motion/react";
 import { cn } from "@/lib/utils";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { ScheduleTimeGauge } from "./ScheduleTimeGauge";
+import { formatDateDisplayUs } from "@/lib/contactLogisticsUtils";
 import type { ScheduleViewModel } from "../../lib/parseScheduleViewModel";
 
-const CX = 120;
-const CY = 108;
-const R = 88;
-
-/** Map minutes 0–1440 to angle on lower semicircle (180° left → 360° right). */
-function minutesToAngle(minutes: number): number {
-  const clamped = Math.max(0, Math.min(1440, minutes));
-  const t = clamped / 1440;
-  return Math.PI + t * Math.PI;
-}
-
-function polarToXY(angle: number, radius = R): { x: number; y: number } {
-  return {
-    x: CX + radius * Math.cos(angle),
-    y: CY + radius * Math.sin(angle),
+function formatMinutesRange(start: number, end: number): string {
+  const fmt = (m: number) => {
+    const d = new Date();
+    d.setHours(Math.floor(m / 60), m % 60, 0, 0);
+    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
   };
+  return `${fmt(start)} – ${fmt(end)}`;
 }
 
-function describeArc(startMin: number, endMin: number): string {
-  const startAngle = minutesToAngle(startMin);
-  const endAngle = minutesToAngle(endMin);
-  const start = polarToXY(startAngle);
-  const end = polarToXY(endAngle);
-  const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
-  return `M ${start.x} ${start.y} A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y}`;
-}
-
-function describeTrack(): string {
-  const left = polarToXY(Math.PI);
-  const right = polarToXY(2 * Math.PI);
-  return `M ${left.x} ${left.y} A ${R} ${R} 0 0 1 ${right.x} ${right.y}`;
-}
-
-function ScheduleDetails({ model }: { model: ScheduleViewModel }) {
+function InfoBlock({
+  title,
+  children,
+  className,
+  mobileSlide = false,
+}: {
+  title: string;
+  children: ReactNode;
+  className?: string;
+  mobileSlide?: boolean;
+}) {
   return (
-    <div className="mt-4 w-full space-y-2 border-t border-gold/10 pt-4 text-center">
-      {model.humanLines.map((line) => (
-        <p
-          key={line}
-          className="font-body text-sm leading-relaxed text-foreground/88 sm:text-base sm:leading-relaxed"
-        >
-          {line}
+    <section className={cn("space-y-2", mobileSlide && "space-y-2.5", className)}>
+      <h3
+        className={cn(
+          "font-brand tracking-[0.16em] text-gold/85 uppercase",
+          mobileSlide ? "text-sm" : "text-[10px] sm:text-xs",
+        )}
+      >
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function ScheduleInfoPanel({
+  model,
+  className,
+  mobileSlide = false,
+}: {
+  model: ScheduleViewModel;
+  className?: string;
+  mobileSlide?: boolean;
+}) {
+  const bodyText = mobileSlide ? "font-body text-base leading-relaxed text-foreground/88" : "font-body text-sm text-foreground/88 sm:text-base";
+  const footerText = mobileSlide ? "font-body text-sm text-gold/75" : "font-body text-xs text-gold/75 sm:text-sm";
+  const panelPad = mobileSlide ? "p-5 gap-5" : "p-4 sm:gap-6 sm:p-5";
+  if (model.mode === "FIXED_EVENT") {
+    return (
+      <div
+        className={cn(
+          "flex w-full flex-col rounded-xl border border-gold/15 bg-black/20",
+          panelPad,
+          className,
+        )}
+      >
+        {model.salesWindow ? (
+          <InfoBlock title="Ticket sales" mobileSlide={mobileSlide}>
+            <p className={bodyText}>
+              {formatDateDisplayUs(model.salesWindow.start)} –{" "}
+              {formatDateDisplayUs(model.salesWindow.end)}
+            </p>
+          </InfoBlock>
+        ) : null}
+        {model.eventDate ? (
+          <InfoBlock title="Event date" mobileSlide={mobileSlide}>
+            <p className={bodyText}>
+              {formatDateDisplayUs(model.eventDate)}
+            </p>
+          </InfoBlock>
+        ) : null}
+        {model.timeRangeLabel ? (
+          <InfoBlock title="Show time" mobileSlide={mobileSlide}>
+            <p className={bodyText}>
+              {model.timeRangeLabel}
+              {model.durationLabel ? ` (${model.durationLabel})` : ""}
+            </p>
+          </InfoBlock>
+        ) : null}
+        <p className={cn("border-t border-gold/10 pt-3", footerText)}>
+          Times shown in {model.timezoneLabel}
         </p>
-      ))}
-      <p className="font-body text-sm text-gold/75 sm:text-base">
+      </div>
+    );
+  }
+
+  const weekdayLine =
+    model.daySummaries.length > 0 ?
+      model.daySummaries
+        .map((d) => `${d.label} (${d.sectionCount} section${d.sectionCount === 1 ? "" : "s"})`)
+        .join(" · ")
+    : null;
+
+  return (
+    <div
+      className={cn(
+        "flex w-full flex-col rounded-xl border border-gold/15 bg-black/20",
+        panelPad,
+        className,
+      )}
+    >
+      {weekdayLine ? (
+        <InfoBlock title="Classes by day" mobileSlide={mobileSlide}>
+          <p className={cn(bodyText, "leading-relaxed")}>{weekdayLine}</p>
+        </InfoBlock>
+      ) : null}
+
+      {model.timeArcs.length > 0 ? (
+        <InfoBlock title="Sessions & times" mobileSlide={mobileSlide}>
+          <ul className={cn("space-y-2", mobileSlide && "space-y-2.5")}>
+            {model.timeArcs.map((arc) => (
+              <li
+                key={`${arc.startMinutes}-${arc.endMinutes}-${arc.label ?? "slot"}`}
+                className="flex flex-wrap items-baseline gap-x-2 gap-y-1"
+              >
+                {arc.label ? (
+                  <span
+                    className={cn(
+                      "font-brand tracking-wide text-gold",
+                      mobileSlide ? "text-base" : "text-xs sm:text-sm",
+                    )}
+                  >
+                    {arc.label}
+                  </span>
+                ) : null}
+                <span
+                  className={
+                    mobileSlide ?
+                      "font-body text-base text-foreground/85"
+                    : "font-body text-sm text-foreground/85 sm:text-base"
+                  }
+                >
+                  {formatMinutesRange(arc.startMinutes, arc.endMinutes)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </InfoBlock>
+      ) : null}
+
+      <InfoBlock title="Weekly schedule" mobileSlide={mobileSlide}>
+        <ul className={cn(bodyText, "space-y-2")}>
+          {model.anchorDate ? (
+            <li>
+              <span className="text-foreground/55">Starts: </span>
+              {formatDateDisplayUs(model.anchorDate)}
+            </li>
+          ) : null}
+          {model.daySummaries.length > 0 ? (
+            <li>
+              <span className="text-foreground/55">Active days: </span>
+              {model.daySummaries.map((d) => d.label).join(", ")}
+            </li>
+          ) : null}
+          {model.timeArcs.length > 1 ? (
+            <li>
+              <span className="text-foreground/55">Offer: </span>
+              {model.timeArcs.length} time sections across the week
+            </li>
+          ) : null}
+        </ul>
+      </InfoBlock>
+
+      <p className={cn("border-t border-gold/10 pt-3", footerText)}>
         Times shown in {model.timezoneLabel}
       </p>
     </div>
@@ -60,109 +179,66 @@ function ScheduleDetails({ model }: { model: ScheduleViewModel }) {
 
 type Props = {
   model: ScheduleViewModel;
+  mobileSlide?: boolean;
 };
 
-export function OnComingEventScheduleTimeArc({ model }: Props) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.4 });
-  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+export function OnComingEventScheduleTimeArc({ model, mobileSlide = false }: Props) {
+  const arcs =
+    model.timeArcs.length > 0
+      ? model.timeArcs
+      : model.startMinutes != null &&
+          model.endMinutes != null &&
+          model.endMinutes > model.startMinutes
+        ? [
+            {
+              startMinutes: model.startMinutes,
+              endMinutes: model.endMinutes,
+              label: null,
+            },
+          ]
+        : [];
 
-  const hasTime =
-    model.startMinutes != null &&
-    model.endMinutes != null &&
-    model.endMinutes > model.startMinutes;
-
-  const trackPath = describeTrack();
-  const activePath =
-    hasTime ? describeArc(model.startMinutes!, model.endMinutes!) : "";
-
-  const startTick = hasTime ? polarToXY(minutesToAngle(model.startMinutes!), R + 6) : null;
-  const endTick = hasTime ? polarToXY(minutesToAngle(model.endMinutes!), R + 6) : null;
+  const hasTime = arcs.length > 0;
 
   return (
-    <div ref={ref} className="flex h-full flex-col items-center" aria-label="Event time">
-      <p className="mb-3 self-start font-brand text-xs tracking-[0.14em] text-gold/80">TIME</p>
+    <div
+      className={cn(
+        "flex h-full w-full flex-col",
+        mobileSlide && "min-h-[min(68dvh,26rem)] justify-center py-2",
+      )}
+      aria-label="Event time and details"
+    >
+      <p
+        className={cn(
+          "mb-4 font-brand tracking-[0.14em] text-gold/80",
+          mobileSlide ? "text-sm" : "text-xs",
+        )}
+      >
+        TIME
+      </p>
 
       {!hasTime ? (
-        <div className="flex w-full flex-1 flex-col items-center justify-center text-center">
-          <Clock className="mb-3 h-10 w-10 text-gold/25" strokeWidth={1.2} aria-hidden />
-          <p className="font-body text-sm text-foreground/60">Time to be announced</p>
-          <ScheduleDetails model={model} />
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col items-center justify-center py-4">
+            <Clock className="mb-3 h-10 w-10 text-gold/25" strokeWidth={1.2} aria-hidden />
+            <p className="font-body text-sm text-foreground/60">Time to be announced</p>
+          </div>
+          <ScheduleInfoPanel model={model} className="w-full" mobileSlide={mobileSlide} />
         </div>
       ) : (
-        <>
-          <div className="relative w-full max-w-[200px]">
-            <svg
-              viewBox="0 0 240 140"
-              className="w-full overflow-visible"
-              role="img"
-              aria-label={`${model.timeRangeLabel}${model.durationLabel ? `, duration ${model.durationLabel}` : ""}`}
-            >
-              <defs>
-                <linearGradient id="scheduleTimeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="rgba(197,165,90,0.35)" />
-                  <stop offset="100%" stopColor="rgba(197,165,90,0.95)" />
-                </linearGradient>
-              </defs>
-              <path
-                d={trackPath}
-                fill="none"
-                stroke="rgba(197,165,90,0.15)"
-                strokeWidth="10"
-                strokeLinecap="round"
-              />
-              <motion.path
-                d={activePath}
-                fill="none"
-                stroke="url(#scheduleTimeGrad)"
-                strokeWidth="10"
-                strokeLinecap="round"
-                initial={
-                  prefersReducedMotion ?
-                    { pathLength: 1, opacity: 1 }
-                  : { pathLength: 0, opacity: 0.6 }
-                }
-                animate={
-                  isInView ?
-                    { pathLength: 1, opacity: 1 }
-                  : prefersReducedMotion ?
-                    { pathLength: 1 }
-                  : { pathLength: 0, opacity: 0.6 }
-                }
-                transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
-                whileHover={prefersReducedMotion ? undefined : { strokeWidth: 12 }}
-              />
-              {startTick ? (
-                <circle cx={startTick.x} cy={startTick.y} r="4" fill="rgba(197,165,90,0.9)" />
-              ) : null}
-              {endTick ? (
-                <circle cx={endTick.x} cy={endTick.y} r="4" fill="rgba(197,165,90,0.9)" />
-              ) : null}
-            </svg>
-
-            <div className="pointer-events-none absolute inset-x-0 bottom-1 flex flex-col items-center text-center">
-              {model.durationLabel ? (
-                <span className="font-display text-xl text-gold sm:text-2xl">{model.durationLabel}</span>
-              ) : null}
-              <span
-                className={cn(
-                  "font-body text-xs text-foreground/88 sm:text-sm",
-                  model.durationLabel ? "mt-0.5" : "mt-1",
-                )}
-              >
-                {model.timeRangeLabel}
-              </span>
-            </div>
+        <div className="flex flex-col gap-5">
+          <div className="flex w-full flex-col items-center">
+            <ScheduleTimeGauge
+              arcs={arcs}
+              durationTotalMinutes={model.durationTotalMinutes}
+              durationLabel={model.durationLabel}
+              timeRangeLabel={model.timeRangeLabel}
+              mobileSlide={mobileSlide}
+            />
           </div>
 
-          <div className="mt-1 flex w-full max-w-[200px] justify-between text-[9px] text-foreground/50 sm:text-[10px]">
-            <span>12 AM</span>
-            <span>12 PM</span>
-            <span>12 AM</span>
-          </div>
-
-          <ScheduleDetails model={model} />
-        </>
+          <ScheduleInfoPanel model={model} className="w-full" mobileSlide={mobileSlide} />
+        </div>
       )}
     </div>
   );

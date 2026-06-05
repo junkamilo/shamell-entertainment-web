@@ -14,6 +14,8 @@ export const ADMIN_PAYMENT_FLOWS = [
   'BOOKING_QUOTE',
   'VENUE_SEAT',
   'CLASS_SESSION',
+  'CLASS_PACKAGE',
+  'CLASS_DAY_BUNDLE',
   'FIXED_TICKET',
 ] as const;
 

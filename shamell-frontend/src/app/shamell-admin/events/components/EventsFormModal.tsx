@@ -7,6 +7,7 @@ import {
   ReservationEventScheduleSections,
   type ScheduleFormState,
 } from "@/app/shamell-admin/on-coming-events/reservation-events/components/ReservationEventScheduleSections";
+import { UpcomingClassSessionsPanel } from "@/app/shamell-admin/on-coming-events/components/UpcomingClassSessionsPanel";
 import { cn } from "@/lib/utils";
 import { MAX_CATALOG_IMAGES } from "../lib/eventsConstants";
 import { isVideoCatalogItem, isVideoFile } from "../lib/eventsMedia";
@@ -57,6 +58,12 @@ type Props = {
   onEnableVenueSeatingChange?: (enabled: boolean) => void;
   fixedTicketCapacityInput?: string;
   onFixedTicketCapacityInputChange?: (value: string) => void;
+  monthPackageEnabled?: boolean;
+  onMonthPackageEnabledChange?: (enabled: boolean) => void;
+  monthPackagePrice?: string;
+  onMonthPackagePriceChange?: (value: string) => void;
+  monthPackageLabel?: string;
+  onMonthPackageLabelChange?: (value: string) => void;
 };
 
 export default function EventsFormModal({
@@ -99,6 +106,12 @@ export default function EventsFormModal({
   onEnableVenueSeatingChange,
   fixedTicketCapacityInput = "",
   onFixedTicketCapacityInputChange,
+  monthPackageEnabled = false,
+  onMonthPackageEnabledChange,
+  monthPackagePrice = "",
+  onMonthPackagePriceChange,
+  monthPackageLabel = "",
+  onMonthPackageLabelChange,
 }: Props) {
   return (
     <>
@@ -152,7 +165,17 @@ export default function EventsFormModal({
             onEnableVenueSeatingChange={onEnableVenueSeatingChange}
             fixedTicketCapacityInput={fixedTicketCapacityInput}
             onFixedTicketCapacityInputChange={onFixedTicketCapacityInputChange}
+            monthPackageEnabled={monthPackageEnabled}
+            onMonthPackageEnabledChange={onMonthPackageEnabledChange}
+            monthPackagePrice={monthPackagePrice}
+            onMonthPackagePriceChange={onMonthPackagePriceChange}
+            monthPackageLabel={monthPackageLabel}
+            onMonthPackageLabelChange={onMonthPackageLabelChange}
           />
+        ) : null}
+
+        {lockPublicSection && editingId && experienceMode === "RECURRING_WEEKLY" ? (
+          <UpcomingClassSessionsPanel eventId={editingId} />
         ) : null}
 
         {!freeEventNameMode ? (

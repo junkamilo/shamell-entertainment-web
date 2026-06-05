@@ -31,21 +31,19 @@ type Props = {
 const textInputClass =
   "mt-1 w-full rounded-lg border border-gold/20 bg-black/30 px-3 py-2 text-sm text-foreground";
 
-type PickerButtonProps = {
-  label: string;
-  display: string;
-  placeholder: string;
-  badge: "CALENDAR" | "TIME";
-  onClick: () => void;
-};
-
-function ShamellPickerButton({
+function PickerButton({
   label,
   display,
   placeholder,
   badge,
   onClick,
-}: PickerButtonProps) {
+}: {
+  label: string;
+  display: string;
+  placeholder: string;
+  badge: "CALENDAR" | "TIME";
+  onClick: () => void;
+}) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <span className={`${fieldLabelClass} block`}>{label}</span>
@@ -55,7 +53,9 @@ function ShamellPickerButton({
         >
           {display || placeholder}
         </span>
-        <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">{badge}</span>
+        <span className="shrink-0 font-brand text-xs tracking-[0.14em] text-gold">
+          {badge}
+        </span>
       </button>
     </div>
   );
@@ -166,14 +166,14 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
             <legend className="px-1 text-xs font-medium uppercase tracking-wider text-gold/90">
               Sales open
             </legend>
-            <ShamellPickerButton
+            <PickerButton
               label="Start date"
               display={openDateDisplay}
               placeholder="Choose date"
               badge="CALENDAR"
               onClick={() => setDatePickerTarget("open")}
             />
-            <ShamellPickerButton
+            <PickerButton
               label="Start time"
               display={openTimeDisplay}
               placeholder="Choose time"
@@ -186,14 +186,14 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
             <legend className="px-1 text-xs font-medium uppercase tracking-wider text-gold/90">
               Sales close
             </legend>
-            <ShamellPickerButton
+            <PickerButton
               label="End date"
               display={closeDateDisplay}
               placeholder="Choose date"
               badge="CALENDAR"
               onClick={() => setDatePickerTarget("close")}
             />
-            <ShamellPickerButton
+            <PickerButton
               label="End time"
               display={closeTimeDisplay}
               placeholder="Choose time"

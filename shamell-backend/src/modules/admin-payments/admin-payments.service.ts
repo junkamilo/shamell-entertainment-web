@@ -10,6 +10,7 @@ import {
   VenueSeatReservation,
   VenueSeatReservationStatus,
 } from '@prisma/client';
+import { formatPaymentMethodLabel } from '../stripe/stripe-payment-details.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { AdminStripePaymentRow } from './admin-payments.types';
 import type {
@@ -92,6 +93,18 @@ function mapBookingPaymentStatus(
 
 function iso(d: Date | null | undefined): string | null {
   return d ? d.toISOString() : null;
+}
+
+function paymentLabelFromRow(row: {
+  paymentMethodType: string | null;
+  paymentMethodBrand: string | null;
+  paymentMethodLast4: string | null;
+}): string | null {
+  return formatPaymentMethodLabel({
+    paymentMethodType: row.paymentMethodType,
+    paymentMethodBrand: row.paymentMethodBrand,
+    paymentMethodLast4: row.paymentMethodLast4,
+  });
 }
 
 @Injectable()
@@ -379,6 +392,7 @@ export class AdminPaymentsService {
       eventId: b.eventId,
       reservationId: null,
       stripeCheckoutSessionId: p.stripeCheckoutSessionId,
+      paymentMethodLabel: null,
       createdAt: p.createdAt.toISOString(),
       paidAt: iso(p.paidAt),
       expiresAt: iso(p.expiresAt),
@@ -410,6 +424,7 @@ export class AdminPaymentsService {
       eventId: r.upcomingEventId,
       reservationId: r.id,
       stripeCheckoutSessionId: r.stripeCheckoutSessionId,
+      paymentMethodLabel: paymentLabelFromRow(r),
       createdAt: r.createdAt.toISOString(),
       paidAt: iso(r.paidAt),
       expiresAt: iso(r.expiresAt),
@@ -433,7 +448,8 @@ export class AdminPaymentsService {
       eventSlug: event.slug ?? null,
       eventId: event.id,
       reservationId: null,
-      stripeCheckoutSessionId: e.stripeCheckoutSessionId,
+      stripeCheckoutSessionId: e.stripeCheckoutSessionId ?? '',
+      paymentMethodLabel: paymentLabelFromRow(e),
       createdAt: e.createdAt.toISOString(),
       paidAt: iso(e.paidAt),
       expiresAt: iso(e.expiresAt),
@@ -460,6 +476,7 @@ export class AdminPaymentsService {
       eventId: event.id,
       reservationId: null,
       stripeCheckoutSessionId: e.stripeCheckoutSessionId,
+      paymentMethodLabel: paymentLabelFromRow(e),
       createdAt: e.createdAt.toISOString(),
       paidAt: iso(e.paidAt),
       expiresAt: iso(e.expiresAt),

@@ -50,6 +50,11 @@ export class StripeService implements OnModuleInit {
         'Unsafe Stripe configuration: NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY is test-mode while NODE_ENV=production.',
       );
     }
+    if (isProduction && !webhookSecret) {
+      throw new Error(
+        'Unsafe Stripe configuration: STRIPE_WEBHOOK_SECRET is required when NODE_ENV=production.',
+      );
+    }
     if (
       key &&
       publishableKey &&

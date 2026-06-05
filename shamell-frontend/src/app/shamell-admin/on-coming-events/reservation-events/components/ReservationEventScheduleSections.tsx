@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import {
   fieldLabelClass,
   logisticsPickerTriggerClass,
@@ -15,6 +15,8 @@ import type {
   ReservationEventTemplate,
   ReservationEventWeekday,
 } from "../types/reservationEventTemplate.types";
+import ContactTimePickerModal from "@/app/contacto/components/ContactTimePickerModal";
+import { ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS } from "@/components/admin/adminModalLayers";
 import { ReservationEventWeekdaySelector } from "./ReservationEventWeekdaySelector";
 import {
   ReservationEventSchedulePickers,
@@ -22,6 +24,18 @@ import {
   type ScheduleTimeTarget,
 } from "./ReservationEventSchedulePickers";
 import { ScheduleModeToggleSection } from "./ScheduleModeToggleSection";
+
+import type { ClassSectionFormRow } from "../types/reservationEventTemplate.types";
+import { RecurringClassSectionsEditor } from "./RecurringClassSectionsEditor";
+import {
+  BULK_SECTION_WEEKDAY,
+  RecurringClassBulkSectionsEditor,
+} from "./RecurringClassBulkSectionsEditor";
+import {
+  defaultBlueprint,
+  inferBlueprintFromActiveDays,
+  type ClassSectionBlueprint,
+} from "../lib/recurringClassSectionsBulk.util";
 
 export type ScheduleFormState = {
   scheduleMode: ReservationEventScheduleMode;
@@ -33,6 +47,7 @@ export type ScheduleFormState = {
   weekdays: ReservationEventWeekday[];
   recurringStartTime: string;
   recurringEndTime: string;
+  classSections: ClassSectionFormRow[];
 };
 
 export function emptyScheduleForm(): ScheduleFormState {
@@ -46,7 +61,37 @@ export function emptyScheduleForm(): ScheduleFormState {
     weekdays: defaultReservationWeekdays(),
     recurringStartTime: "10:00",
     recurringEndTime: "12:00",
+    classSections: [],
   };
+}
+
+function classSectionsFromTemplate(
+  template: import("../types/reservationEventTemplate.types").ReservationEventTemplate,
+): ClassSectionFormRow[] {
+  if (template.classSections?.length) {
+    return template.classSections.map((s) => ({
+      weekday: s.weekday,
+      label: s.label ?? "",
+      startTime: s.startTime,
+      endTime: s.endTime,
+      sortOrder: s.sortOrder,
+      defaultCapacity: s.defaultCapacity,
+      defaultPrice: s.defaultPrice != null ? String(s.defaultPrice) : "",
+    }));
+  }
+  const start = template.recurringStartTime ?? "10:00";
+  const end = template.recurringEndTime ?? "12:00";
+  return (template.weekdays ?? [])
+    .filter((w) => w.isActive)
+    .map((w) => ({
+      weekday: w.weekday,
+      label: "Section 1",
+      startTime: start,
+      endTime: end,
+      sortOrder: 0,
+      defaultCapacity: 20,
+      defaultPrice: "",
+    }));
 }
 
 export function scheduleFormFromTemplate(
@@ -66,6 +111,7 @@ export function scheduleFormFromTemplate(
     weekdays,
     recurringStartTime: template.recurringStartTime ?? "10:00",
     recurringEndTime: template.recurringEndTime ?? "12:00",
+    classSections: classSectionsFromTemplate(template),
   };
 }
 
@@ -119,6 +165,12 @@ type Props = {
   onEnableVenueSeatingChange?: (enabled: boolean) => void;
   fixedTicketCapacityInput?: string;
   onFixedTicketCapacityInputChange?: (value: string) => void;
+  monthPackageEnabled?: boolean;
+  onMonthPackageEnabledChange?: (enabled: boolean) => void;
+  monthPackagePrice?: string;
+  onMonthPackagePriceChange?: (value: string) => void;
+  monthPackageLabel?: string;
+  onMonthPackageLabelChange?: (value: string) => void;
 };
 
 export function ReservationEventScheduleSections({
@@ -130,10 +182,36 @@ export function ReservationEventScheduleSections({
   onEnableVenueSeatingChange,
   fixedTicketCapacityInput = "",
   onFixedTicketCapacityInputChange,
+  monthPackageEnabled = false,
+  onMonthPackageEnabledChange,
+  monthPackagePrice = "",
+  onMonthPackagePriceChange,
+  monthPackageLabel = "",
+  onMonthPackageLabelChange,
 }: Props) {
   const minDate = todayIsoDateInTimezone();
   const [dateTarget, setDateTarget] = useState<ScheduleDateTarget>(null);
   const [timeTarget, setTimeTarget] = useState<ScheduleTimeTarget>(null);
+  const [sectionTimePick, setSectionTimePick] = useState<{
+    weekday: number;
+    sortOrder: number;
+    field: "start" | "end";
+  } | null>(null);
+  const [bulkBlueprint, setBulkBlueprint] = useState<ClassSectionBlueprint[]>(defaultBlueprint);
+  const prevActiveDayCountRef = useRef(0);
+
+  const activeWeekdayList = value.weekdays.filter((w) => w.isActive).map((w) => w.weekday);
+
+  useEffect(() => {
+    const count = activeWeekdayList.length;
+    if (count >= 2 && prevActiveDayCountRef.current < 2) {
+      setBulkBlueprint(
+        inferBlueprintFromActiveDays(value.classSections, activeWeekdayList) ??
+          defaultBlueprint(),
+      );
+    }
+    prevActiveDayCountRef.current = count;
+  }, [activeWeekdayList.join(","), value.classSections]);
 
   const threeState = experienceMode !== undefined;
 
@@ -284,7 +362,6 @@ export function ReservationEventScheduleSections({
 
       <ScheduleModeToggleSection
         title="RECURRING WEEKDAYS (CLASSES)"
-        description="From today onward, on the selected weekdays, with a daily start and end time."
         modeValue="RECURRING_WEEKLY"
         active={recurringActive}
         onSelect={() => toggleMode("RECURRING_WEEKLY", recurringActive)}
@@ -293,28 +370,132 @@ export function ReservationEventScheduleSections({
           <ReservationEventWeekdaySelector
             weekdays={value.weekdays}
             disabled={!recurringActive}
-            onChange={(weekdays) => patch({ weekdays })}
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
-            <PickerButton
-              label="Start time"
-              display={
-                value.recurringStartTime ? formatTimeDisplayUs(value.recurringStartTime) : ""
+            onChange={(weekdays) => {
+              const active = weekdays.filter((w) => w.isActive).map((w) => w.weekday);
+              let nextSections = value.classSections.filter((s) =>
+                active.includes(s.weekday),
+              );
+              for (const wd of active) {
+                if (!nextSections.some((s) => s.weekday === wd)) {
+                  nextSections = [
+                    ...nextSections,
+                    {
+                      weekday: wd,
+                      label: "Section 1",
+                      startTime: value.recurringStartTime || "10:00",
+                      endTime: value.recurringEndTime || "12:00",
+                      sortOrder: 0,
+                      defaultCapacity: 20,
+                      defaultPrice: "",
+                    },
+                  ];
+                }
               }
-              placeholder="Choose time"
-              badge="TIME"
-              onClick={() => setTimeTarget("recurStart")}
+              patch({ weekdays, classSections: nextSections });
+            }}
+          />
+          {activeWeekdayList.length >= 2 ? (
+            <RecurringClassBulkSectionsEditor
+              activeWeekdays={activeWeekdayList}
+              sections={value.classSections}
+              disabled={!recurringActive}
+              blueprint={bulkBlueprint}
+              onBlueprintChange={setBulkBlueprint}
+              onApply={(classSections) => {
+                const first = classSections[0];
+                patch({
+                  classSections,
+                  ...(first
+                    ? {
+                        recurringStartTime: first.startTime,
+                        recurringEndTime: first.endTime,
+                      }
+                    : {}),
+                });
+              }}
+              onPickTime={(sortOrder, field) =>
+                setSectionTimePick({
+                  weekday: BULK_SECTION_WEEKDAY,
+                  sortOrder,
+                  field,
+                })
+              }
             />
-            <PickerButton
-              label="End time"
-              display={value.recurringEndTime ? formatTimeDisplayUs(value.recurringEndTime) : ""}
-              placeholder="Choose time"
-              badge="TIME"
-              onClick={() => setTimeTarget("recurEnd")}
-            />
-          </div>
+          ) : null}
+          <RecurringClassSectionsEditor
+            activeWeekdays={activeWeekdayList}
+            sections={value.classSections}
+            disabled={!recurringActive}
+            sharedBlueprint={activeWeekdayList.length >= 2 ? bulkBlueprint : null}
+            showSharedHint={activeWeekdayList.length >= 2}
+            onChange={(classSections) => {
+              const first = classSections[0];
+              patch({
+                classSections,
+                ...(first
+                  ? {
+                      recurringStartTime: first.startTime,
+                      recurringEndTime: first.endTime,
+                    }
+                  : {}),
+              });
+            }}
+            onPickTime={(weekday, sortOrder, field) =>
+              setSectionTimePick({ weekday, sortOrder, field })
+            }
+          />
         </div>
       </ScheduleModeToggleSection>
+
+      {experienceMode === "RECURRING_WEEKLY" && onMonthPackageEnabledChange ? (
+        <section className="mt-6 space-y-4 rounded-xl border border-gold/20 bg-black/20 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="font-brand text-[11px] tracking-[0.16em] text-gold/90 uppercase">
+                Full month package
+              </h3>
+              <p className="mt-1 max-w-xl font-body text-xs leading-relaxed text-foreground/65 sm:text-sm">
+                Let clients buy all classes on every active weekday for a calendar month in one
+                payment. Price is fixed here, not the sum of individual sessions.
+              </p>
+            </div>
+            <label className="flex min-h-10 cursor-pointer items-center gap-2.5 text-sm text-foreground/85">
+              <input
+                type="checkbox"
+                checked={monthPackageEnabled}
+                onChange={(e) => onMonthPackageEnabledChange(e.target.checked)}
+                className="h-4 w-4 accent-gold"
+              />
+              Enable
+            </label>
+          </div>
+          {monthPackageEnabled ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className={`${fieldLabelClass} block`}>Package price (USD)</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={monthPackagePrice}
+                  onChange={(e) => onMonthPackagePriceChange?.(e.target.value)}
+                  placeholder="e.g. 299.00"
+                  className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+                />
+              </label>
+              <label className="block">
+                <span className={`${fieldLabelClass} block`}>Display label (optional)</span>
+                <input
+                  type="text"
+                  value={monthPackageLabel}
+                  onChange={(e) => onMonthPackageLabelChange?.(e.target.value)}
+                  placeholder="Full month pass"
+                  className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
+                />
+              </label>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <ReservationEventSchedulePickers
         dateTarget={dateTarget}
@@ -358,6 +539,54 @@ export function ReservationEventScheduleSections({
           setTimeTarget(null);
         }}
       />
+
+      {sectionTimePick ? (
+        <ContactTimePickerModal
+          isOpen
+          title={sectionTimePick.field === "start" ? "Section start" : "Section end"}
+          value={
+            sectionTimePick.weekday === BULK_SECTION_WEEKDAY
+              ? (bulkBlueprint.find((s) => s.sortOrder === sectionTimePick.sortOrder)?.[
+                  sectionTimePick.field === "start" ? "startTime" : "endTime"
+                ] ?? "10:00")
+              : (value.classSections.find(
+                  (s) =>
+                    s.weekday === sectionTimePick.weekday &&
+                    s.sortOrder === sectionTimePick.sortOrder,
+                )?.[sectionTimePick.field === "start" ? "startTime" : "endTime"] ?? "10:00")
+          }
+          onClose={() => setSectionTimePick(null)}
+          onConfirm={(hhmm) => {
+            const { weekday, sortOrder, field } = sectionTimePick;
+            if (weekday === BULK_SECTION_WEEKDAY) {
+              setBulkBlueprint((prev) =>
+                prev.map((s) =>
+                  s.sortOrder === sortOrder
+                    ? field === "start"
+                      ? { ...s, startTime: hhmm }
+                      : { ...s, endTime: hhmm }
+                    : s,
+                ),
+              );
+              setSectionTimePick(null);
+              return;
+            }
+            const next = value.classSections.map((s) => {
+              if (s.weekday !== weekday || s.sortOrder !== sortOrder) return s;
+              return field === "start" ? { ...s, startTime: hhmm } : { ...s, endTime: hhmm };
+            });
+            const first = next[0];
+            patch({
+              classSections: next,
+              ...(first
+                ? { recurringStartTime: first.startTime, recurringEndTime: first.endTime }
+                : {}),
+            });
+            setSectionTimePick(null);
+          }}
+          overlayZClass={ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS}
+        />
+      ) : null}
     </>
   );
 }

@@ -6,6 +6,9 @@ export type AdminVenueConfig = {
   eventId: string;
   clientEnabled: boolean;
   fixedTicketCapacity: number | null;
+  classPackageEnabled: boolean;
+  classPackagePrice: number | null;
+  classPackageLabel: string | null;
   reservationEventTemplateId: string | null;
   reservationEventLabel: string | null;
   reservationOpensAt: string | null;
@@ -20,6 +23,9 @@ export async function patchAdminVenueConfig(
     reservationEventTemplateId?: string | null;
     clientEnabled?: boolean;
     fixedTicketCapacity?: number | null;
+    classPackageEnabled?: boolean;
+    classPackagePrice?: number | null;
+    classPackageLabel?: string | null;
   },
 ): Promise<{ ok: boolean; config: AdminVenueConfig | null; message?: string }> {
   const base = getAdminApiBaseUrl();

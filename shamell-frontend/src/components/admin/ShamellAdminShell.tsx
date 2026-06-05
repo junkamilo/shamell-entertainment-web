@@ -127,21 +127,25 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
         setOnComingEventsBadgeCount(0);
         return;
       }
-      const result = await fetchAdminVenueReservations(token, {
-        status: "PAID",
-        page: 1,
-        perPage: 50,
-      });
-      if (!result.ok) {
+      try {
+        const result = await fetchAdminVenueReservations(token, {
+          status: "PAID",
+          page: 1,
+          perPage: 50,
+        });
+        if (!result.ok) {
+          setOnComingEventsBadgeCount(0);
+          return;
+        }
+        const lastSeenAt = readLastSeenPaidReservationAtMs();
+        const count = result.reservations.filter((r) => {
+          const createdAtMs = Date.parse(r.createdAt);
+          return Number.isFinite(createdAtMs) && createdAtMs > lastSeenAt;
+        }).length;
+        setOnComingEventsBadgeCount(count);
+      } catch {
         setOnComingEventsBadgeCount(0);
-        return;
       }
-      const lastSeenAt = readLastSeenPaidReservationAtMs();
-      const count = result.reservations.filter((r) => {
-        const createdAtMs = Date.parse(r.createdAt);
-        return Number.isFinite(createdAtMs) && createdAtMs > lastSeenAt;
-      }).length;
-      setOnComingEventsBadgeCount(count);
     };
 
     void loadBadge();
