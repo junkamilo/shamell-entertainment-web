@@ -78,7 +78,9 @@ export class CreateEventDto {
   @IsString()
   @MaxLength(120)
   @Transform(({ value }) =>
-    value === undefined || value === null ? undefined : String(value).trim().toLowerCase(),
+    value === undefined || value === null
+      ? undefined
+      : String(value).trim().toLowerCase(),
   )
   slug?: string;
 

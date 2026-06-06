@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PlacedLayoutItem } from '../floor-layout/floor-layout.defaults';
 import { FloorLayoutService } from '../floor-layout/floor-layout.service';
@@ -65,7 +69,8 @@ export class StandaloneChairsService {
     });
     const activeCount = chairs.length;
     const unitPrice = await this.resolveUnitPrice(row, activeCount, chairs);
-    const { placementMap, reservations } = await this.getChairReservationContext();
+    const { placementMap, reservations } =
+      await this.getChairReservationContext();
     const enrichedChairs = enrichChairsWithReservationState(
       chairs.map((chair) => this.mapChairRow(chair)),
       placementMap,
@@ -93,9 +98,14 @@ export class StandaloneChairsService {
       throw new NotFoundException('Standalone chair not found.');
     }
 
-    const { placementMap, reservations } = await this.getChairReservationContext();
+    const { placementMap, reservations } =
+      await this.getChairReservationContext();
     const reservedLayoutItems = buildReservedLayoutItemMap(reservations);
-    const flags = enrichChairWithReservationState(id, placementMap, reservedLayoutItems);
+    const flags = enrichChairWithReservationState(
+      id,
+      placementMap,
+      reservedLayoutItems,
+    );
     if (!flags.canEditPrice) {
       throw new BadRequestException(
         'Cannot change price: this chair has an active reservation.',
@@ -111,13 +121,20 @@ export class StandaloneChairsService {
     return this.getAdminStandaloneChairs();
   }
 
-  async patchAdminStandaloneChairsBulkPrice(dto: PatchStandaloneChairsBulkPriceDto) {
-    const { placementMap, reservations } = await this.getChairReservationContext();
+  async patchAdminStandaloneChairsBulkPrice(
+    dto: PatchStandaloneChairsBulkPriceDto,
+  ) {
+    const { placementMap, reservations } =
+      await this.getChairReservationContext();
     const chairs = await this.prisma.venueStandaloneChair.findMany({
       where: { isActive: true },
       select: { id: true },
     });
-    const enriched = enrichChairsWithReservationState(chairs, placementMap, reservations);
+    const enriched = enrichChairsWithReservationState(
+      chairs,
+      placementMap,
+      reservations,
+    );
     const reservedCount = enriched.filter((c) => c.isReserved).length;
     if (reservedCount > 0) {
       throw new BadRequestException(
@@ -142,9 +159,14 @@ export class StandaloneChairsService {
       throw new NotFoundException('Standalone chair not found.');
     }
 
-    const { placementMap, reservations } = await this.getChairReservationContext();
+    const { placementMap, reservations } =
+      await this.getChairReservationContext();
     const reservedLayoutItems = buildReservedLayoutItemMap(reservations);
-    const flags = enrichChairWithReservationState(id, placementMap, reservedLayoutItems);
+    const flags = enrichChairWithReservationState(
+      id,
+      placementMap,
+      reservedLayoutItems,
+    );
     if (!flags.canDelete) {
       throw new BadRequestException(
         'Cannot delete: this chair has an active reservation.',
@@ -159,12 +181,17 @@ export class StandaloneChairsService {
   }
 
   async deleteAllAdminStandaloneChairs() {
-    const { placementMap, reservations } = await this.getChairReservationContext();
+    const { placementMap, reservations } =
+      await this.getChairReservationContext();
     const chairs = await this.prisma.venueStandaloneChair.findMany({
       where: { isActive: true },
       select: { id: true },
     });
-    const enriched = enrichChairsWithReservationState(chairs, placementMap, reservations);
+    const enriched = enrichChairsWithReservationState(
+      chairs,
+      placementMap,
+      reservations,
+    );
     const reservedCount = enriched.filter((c) => c.isReserved).length;
     if (reservedCount > 0) {
       throw new BadRequestException(
@@ -397,7 +424,7 @@ export class StandaloneChairsService {
 
     await this.prisma.venueFloorLayout.update({
       where: { id: layout.id },
-      data: { items: nextItems as unknown as Prisma.JsonArray },
+      data: { items: nextItems },
     });
   }
 

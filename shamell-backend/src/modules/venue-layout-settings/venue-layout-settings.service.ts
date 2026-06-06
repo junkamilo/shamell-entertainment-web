@@ -36,13 +36,18 @@ export class VenueLayoutSettingsService {
   async upsertAdminSettings(dto: UpsertVenueLayoutSettingsDto) {
     const existing = await this.findLatestRow();
 
-    if (dto.reservationOpensAt !== undefined && dto.reservationClosesAt !== undefined) {
-      const opens = dto.reservationOpensAt ? new Date(dto.reservationOpensAt) : null;
-      const closes = dto.reservationClosesAt ? new Date(dto.reservationClosesAt) : null;
+    if (
+      dto.reservationOpensAt !== undefined &&
+      dto.reservationClosesAt !== undefined
+    ) {
+      const opens = dto.reservationOpensAt
+        ? new Date(dto.reservationOpensAt)
+        : null;
+      const closes = dto.reservationClosesAt
+        ? new Date(dto.reservationClosesAt)
+        : null;
       if (opens && closes && closes.getTime() <= opens.getTime()) {
-        throw new BadRequestException(
-          'Sales close must be after sales open.',
-        );
+        throw new BadRequestException('Sales close must be after sales open.');
       }
     }
 
@@ -53,7 +58,9 @@ export class VenueLayoutSettingsService {
             ...(dto.clientEnabled !== undefined
               ? { clientEnabled: dto.clientEnabled }
               : {}),
-            ...(dto.promoTitle !== undefined ? { promoTitle: dto.promoTitle } : {}),
+            ...(dto.promoTitle !== undefined
+              ? { promoTitle: dto.promoTitle }
+              : {}),
             ...(dto.promoDescription !== undefined
               ? { promoDescription: dto.promoDescription }
               : {}),
@@ -293,9 +300,7 @@ export class VenueLayoutSettingsService {
         },
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
-            reject(
-              new InternalServerErrorException('Image upload failed.'),
-            );
+            reject(new InternalServerErrorException('Image upload failed.'));
             return;
           }
           resolve({

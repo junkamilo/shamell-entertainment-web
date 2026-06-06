@@ -19,7 +19,9 @@ export type StandaloneChairReservationFlags = {
   canEditPrice: boolean;
 };
 
-export function blockingReservationStatusWhere(now = new Date()): Prisma.VenueSeatReservationWhereInput {
+export function blockingReservationStatusWhere(
+  now = new Date(),
+): Prisma.VenueSeatReservationWhereInput {
   return {
     OR: [
       { status: VenueSeatReservationStatus.PAID },
@@ -107,16 +109,16 @@ export function enrichChairWithReservationState(
   return {
     isReserved,
     reservationStatus:
-      reservationStatus === VenueSeatReservationStatus.PAID ? 'PAID' : undefined,
+      reservationStatus === VenueSeatReservationStatus.PAID
+        ? 'PAID'
+        : undefined,
     isOnFloorPlan,
     canDelete: !isReserved,
     canEditPrice: !isReserved,
   };
 }
 
-export function enrichChairsWithReservationState<
-  T extends { id: string },
->(
+export function enrichChairsWithReservationState<T extends { id: string }>(
   chairs: T[],
   placementMap: Map<string, string>,
   reservations: BlockingStandaloneChairReservation[],
@@ -124,6 +126,10 @@ export function enrichChairsWithReservationState<
   const reservedLayoutItems = buildReservedLayoutItemMap(reservations);
   return chairs.map((chair) => ({
     ...chair,
-    ...enrichChairWithReservationState(chair.id, placementMap, reservedLayoutItems),
+    ...enrichChairWithReservationState(
+      chair.id,
+      placementMap,
+      reservedLayoutItems,
+    ),
   }));
 }

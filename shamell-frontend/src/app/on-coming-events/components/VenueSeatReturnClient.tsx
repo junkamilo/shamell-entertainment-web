@@ -127,20 +127,22 @@ function VenueSeatReturnInner({ slug }: { slug: string }) {
             {reservation.customerEmail}
           </p>
         ) : null}
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href={onComingEventSeatsHref(slug)}
-            className="rounded-xl border border-gold/30 px-4 py-2 font-brand text-xs tracking-[0.12em] text-gold uppercase transition hover:border-gold/50 hover:bg-gold/10"
-          >
-            View floor plan
-          </Link>
-          <Link
-            href={onComingEventDetailHref(slug)}
-            className="rounded-xl border border-gold/20 px-4 py-2 font-brand text-xs tracking-[0.12em] text-foreground/75 uppercase transition hover:border-gold/35 hover:text-gold"
-          >
-            Event details
-          </Link>
-        </div>
+        {slug ? (
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href={onComingEventSeatsHref(slug)}
+              className="rounded-xl border border-gold/30 px-4 py-2 font-brand text-xs tracking-[0.12em] text-gold uppercase transition hover:border-gold/50 hover:bg-gold/10"
+            >
+              View floor plan
+            </Link>
+            <Link
+              href={onComingEventDetailHref(slug)}
+              className="rounded-xl border border-gold/20 px-4 py-2 font-brand text-xs tracking-[0.12em] text-foreground/75 uppercase transition hover:border-gold/35 hover:text-gold"
+            >
+              Event details
+            </Link>
+          </div>
+        ) : null}
       </div>
     ) : null;
 

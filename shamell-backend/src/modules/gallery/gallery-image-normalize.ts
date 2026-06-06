@@ -5,7 +5,8 @@ const MAX_DIMENSION = 8192;
 /** Detect common raster signatures (used for application/octet-stream uploads). */
 export function isLikelyRasterImageByMagic(buffer: Buffer): boolean {
   if (!buffer || buffer.length < 12) return false;
-  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) return true;
+  if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff)
+    return true;
   if (
     buffer[0] === 0x89 &&
     buffer[1] === 0x50 &&

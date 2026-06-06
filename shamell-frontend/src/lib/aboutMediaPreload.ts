@@ -1,7 +1,7 @@
 import type { AboutContentItem } from "@/lib/aboutContent";
 import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
 
-/** URLs to preload for About hero video (stream + poster). */
+/** URLs to preload for About hero video (poster only; MP4 loads near viewport). */
 export function aboutHeroPreloadUrls(about: AboutContentItem): {
   poster: string | null;
   video: string | null;
@@ -43,21 +43,31 @@ function upsertPreloadLink(
   };
 }
 
-/** Client: inject preload links as soon as About video URLs are known. */
+/** Client: inject poster preload as soon as About video URLs are known. */
 export function preloadAboutHeroMedia(about: AboutContentItem): () => void {
   if (typeof document === "undefined") return () => undefined;
 
-  const { poster, video } = aboutHeroPreloadUrls(about);
-  const cleanups: Array<() => void> = [];
+  const { poster } = aboutHeroPreloadUrls(about);
+  if (!poster) return () => undefined;
 
-  if (poster) {
-    cleanups.push(upsertPreloadLink("preload", "image", poster, "high"));
-  }
-  if (video) {
-    cleanups.push(upsertPreloadLink("preload", "video", video, "low"));
+  return upsertPreloadLink("preload", "image", poster, "high");
+}
+
+/** Prefetch MP4 when the user scrolls near #about (low priority, on demand). */
+export function prefetchAboutHeroVideo(videoUrl: string): () => void {
+  if (typeof document === "undefined" || !videoUrl.trim()) {
+    return () => undefined;
   }
 
-  return () => {
-    for (const fn of cleanups) fn();
-  };
+  const connection = (
+    navigator as Navigator & {
+      connection?: { saveData?: boolean; effectiveType?: string };
+    }
+  ).connection;
+  if (connection?.saveData) return () => undefined;
+  if (connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g") {
+    return () => undefined;
+  }
+
+  return upsertPreloadLink("prefetch", "video", videoUrl, "low");
 }

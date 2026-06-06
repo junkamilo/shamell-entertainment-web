@@ -9,25 +9,52 @@ import RevealOnView from "@/components/shared/RevealOnView";
 import type { AboutContentItem } from "@/lib/aboutContent";
 import { useAboutContent } from "@/hooks/use-about-content";
 import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
+import { prefetchAboutHeroVideo } from "@/lib/aboutMediaPreload";
 import { splitAboutParagraphs } from "@/lib/aboutParagraphs";
 import { cn } from "@/lib/utils";
 
 const VIDEO_LOAD_TIMEOUT_MS = 10_000;
+const ABOUT_NEAR_VIEW_ROOT_MARGIN = "320px 0px";
 
 type AboutHeroVideoProps = {
   src: string;
   poster: string | null;
 };
 
+function AboutHeroPosterFallback() {
+  return (
+    <Image
+      src={portrait}
+      alt=""
+      fill
+      className="object-contain object-center p-3 sm:p-4"
+      sizes="(max-width: 1024px) 100vw, 40vw"
+      aria-hidden
+    />
+  );
+}
+
 function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isMuted, setIsMuted] = useState(true);
+  const [isNearView, setIsNearView] = useState(false);
   const [isInView, setIsInView] = useState(false);
-  const [isBuffering, setIsBuffering] = useState(true);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [bufferProgress, setBufferProgress] = useState(0);
   const [loadTimedOut, setLoadTimedOut] = useState(false);
   const [needsTapToPlay, setNeedsTapToPlay] = useState(false);
+  const [posterFailed, setPosterFailed] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  const showVideo = !prefersReducedMotion && isNearView;
+  const posterSrc = poster && !posterFailed ? poster : null;
+  const posterVisible = !showVideo || isBuffering || !posterSrc;
+
+  useEffect(() => {
+    setPosterFailed(false);
+    setIsBuffering(false);
+    setLoadTimedOut(false);
+  }, [poster, src]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -47,39 +74,50 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
     const section = document.getElementById("about");
     if (!section) return;
 
+    const nearObserver = new IntersectionObserver(
+      ([entry]) => setIsNearView(Boolean(entry?.isIntersecting)),
+      { rootMargin: ABOUT_NEAR_VIEW_ROOT_MARGIN, threshold: 0 },
+    );
     const playbackObserver = new IntersectionObserver(
-      ([entry]) => {
-        setIsInView(Boolean(entry?.isIntersecting));
-      },
+      ([entry]) => setIsInView(Boolean(entry?.isIntersecting)),
       { threshold: 0.25 },
     );
 
+    nearObserver.observe(section);
     playbackObserver.observe(section);
-    return () => playbackObserver.disconnect();
+    return () => {
+      nearObserver.disconnect();
+      playbackObserver.disconnect();
+    };
   }, []);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.preload = "auto";
-    video.load();
-  }, [src]);
+    if (!isNearView || prefersReducedMotion) return;
+    return prefetchAboutHeroVideo(src);
+  }, [isNearView, prefersReducedMotion, src]);
+
+  useEffect(() => {
+    if (!showVideo) return;
+    setIsBuffering(true);
+  }, [showVideo, src]);
 
   useEffect(() => {
     const video = videoRef.current;
-    if (!video || prefersReducedMotion) return;
+    if (!video || prefersReducedMotion || !showVideo) return;
 
     if (isInView) {
+      video.preload = "auto";
       void video.play().then(() => setNeedsTapToPlay(false)).catch(() => {
         setNeedsTapToPlay(true);
       });
     } else {
       video.pause();
+      video.preload = "metadata";
     }
-  }, [isInView, prefersReducedMotion, src]);
+  }, [isInView, prefersReducedMotion, showVideo, src]);
 
   useEffect(() => {
-    if (!isBuffering) {
+    if (!showVideo || !isBuffering) {
       setLoadTimedOut(false);
       return;
     }
@@ -87,7 +125,7 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
       if (isBuffering) setLoadTimedOut(true);
     }, VIDEO_LOAD_TIMEOUT_MS);
     return () => window.clearTimeout(timer);
-  }, [isBuffering, src]);
+  }, [isBuffering, showVideo, src]);
 
   const updateBufferProgress = useCallback(() => {
     const video = videoRef.current;
@@ -133,31 +171,31 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
     void video.play().then(() => setNeedsTapToPlay(false)).catch(() => undefined);
   };
 
-  const showVideo = !prefersReducedMotion;
-  const posterVisible = !showVideo || isBuffering;
-
   return (
     <div className="absolute inset-0">
-      {poster ? (
+      {posterSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={poster}
+          src={posterSrc}
           alt=""
           fetchPriority="high"
           decoding="async"
+          onError={() => setPosterFailed(true)}
           className={cn(
             "absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-500 sm:p-4",
             posterVisible ? "opacity-100" : "opacity-0",
           )}
           aria-hidden
         />
-      ) : null}
+      ) : (
+        <AboutHeroPosterFallback />
+      )}
 
       {showVideo ? (
         <video
           ref={videoRef}
           src={src}
-          poster={poster ?? undefined}
+          poster={posterSrc ?? undefined}
           muted
           className={cn(
             "absolute inset-0 h-full w-full object-contain object-center p-3 transition-opacity duration-500 sm:p-4",
@@ -165,7 +203,7 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
           )}
           playsInline
           loop
-          preload="auto"
+          preload={isInView ? "auto" : "metadata"}
           onCanPlay={onCanPlay}
           onPlaying={onCanPlay}
           onWaiting={onWaiting}

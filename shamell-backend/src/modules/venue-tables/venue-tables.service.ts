@@ -7,10 +7,7 @@ import { Prisma, VenueTableConfig, VenueTableSize } from '@prisma/client';
 import { PlacedLayoutItem } from '../floor-layout/floor-layout.defaults';
 import { FloorLayoutService } from '../floor-layout/floor-layout.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  CHAIR_LIMITS,
-  clampChairsForSize,
-} from './venue-tables.constants';
+import { CHAIR_LIMITS, clampChairsForSize } from './venue-tables.constants';
 import { BulkCreateVenueTableConfigDto } from './dto/bulk-create-venue-table-config.dto';
 import {
   BulkDeleteVenueTableConfigDto,
@@ -167,7 +164,9 @@ export class VenueTablesService {
     return this.mapRow(updated);
   }
 
-  async bulkUpdateAdminVenueTablesBundlePrice(dto: PatchVenueTablesBulkPriceDto) {
+  async bulkUpdateAdminVenueTablesBundlePrice(
+    dto: PatchVenueTablesBulkPriceDto,
+  ) {
     if (dto.scope !== VenueTableBulkDeleteScope.SIZE || !dto.size) {
       throw new BadRequestException(
         'scope SIZE with size is required for bulk bundle price updates.',
@@ -237,7 +236,9 @@ export class VenueTablesService {
   }
 
   private async findById(id: string): Promise<VenueTableConfig> {
-    const row = await this.prisma.venueTableConfig.findUnique({ where: { id } });
+    const row = await this.prisma.venueTableConfig.findUnique({
+      where: { id },
+    });
     if (!row) {
       throw new NotFoundException('Venue table configuration not found.');
     }
@@ -289,7 +290,7 @@ export class VenueTablesService {
 
     await tx.venueFloorLayout.update({
       where: { id: layout.id },
-      data: { items: nextItems as unknown as Prisma.JsonArray },
+      data: { items: nextItems },
     });
   }
 
@@ -336,9 +337,7 @@ export class VenueTablesService {
           kind: 'standalone_chair',
           venueStandaloneChairId: item.venueStandaloneChairId,
           chairName:
-            typeof item.chairName === 'string'
-              ? item.chairName
-              : 'Chair',
+            typeof item.chairName === 'string' ? item.chairName : 'Chair',
           x: item.x,
           y: item.y,
           rotation: item.rotation,

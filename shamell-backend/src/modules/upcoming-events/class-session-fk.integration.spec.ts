@@ -97,9 +97,13 @@ const run = process.env.CLASS_SESSION_INTEGRATION === '1';
     await prisma.upcomingVenueConfig.deleteMany({ where: { eventId } });
     await prisma.event.deleteMany({ where: { id: eventId } });
     await prisma.eventType.deleteMany({ where: { id: eventTypeId } });
-    await prisma.reservationEventClassSection.deleteMany({ where: { templateId } });
+    await prisma.reservationEventClassSection.deleteMany({
+      where: { templateId },
+    });
     await prisma.reservationEventWeekday.deleteMany({ where: { templateId } });
-    await prisma.reservationEventTemplate.deleteMany({ where: { id: templateId } });
+    await prisma.reservationEventTemplate.deleteMany({
+      where: { id: templateId },
+    });
     await prisma.$disconnect();
     await pool.end();
   });

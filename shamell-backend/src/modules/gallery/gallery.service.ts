@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { GalleryMediaType } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
+import { cloudinaryDeliveryUrl } from '../../common/util/cloudinary-delivery.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateGalleryCategoryDto } from './dto/create-gallery-category.dto';
 import { CreateGalleryPhotoDto } from './dto/create-gallery-photo.dto';
@@ -89,7 +90,7 @@ export class GalleryService {
     ]);
 
     return {
-      items: items.map((item) => this.mapPhoto(item)),
+      items: items.map((item) => this.mapPublicPhoto(item)),
       pagination: {
         page,
         limit,
@@ -376,7 +377,9 @@ export class GalleryService {
   /**
    * Normalizes raster images when possible (JPEG for Cloudinary); videos pass through unchanged.
    */
-  private async prepareMulterFileForCloudinary(file: Express.Multer.File): Promise<{
+  private async prepareMulterFileForCloudinary(
+    file: Express.Multer.File,
+  ): Promise<{
     buffer: Buffer;
     mimetype: string;
     originalname: string;
@@ -490,7 +493,8 @@ export class GalleryService {
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
             const detail =
-              error && typeof (error as { message?: string }).message === 'string'
+              error &&
+              typeof (error as { message?: string }).message === 'string'
                 ? (error as { message: string }).message
                 : 'Unknown error';
             reject(
@@ -581,6 +585,17 @@ export class GalleryService {
       isActive: category.isActive,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
+    };
+  }
+
+  private mapPublicPhoto(photo: PhotoWithCategory) {
+    const mapped = this.mapPhoto(photo);
+    if (mapped.mediaType !== GalleryMediaType.IMAGE) return mapped;
+    return {
+      ...mapped,
+      imageUrl:
+        cloudinaryDeliveryUrl(mapped.imageUrl, { width: 1200 }) ??
+        mapped.imageUrl,
     };
   }
 

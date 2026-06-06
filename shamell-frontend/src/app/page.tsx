@@ -7,24 +7,25 @@ import HeroSection from "@/components/HeroSection";
 import SiteHeader from "@/components/SiteHeader";
 import ServicesSection from "@/components/ServicesSection";
 import { fetchPublicAbout } from "@/lib/fetchPublicAbout";
+import { fetchPublicHeaderMedia } from "@/lib/fetchPublicHeaderMedia";
 import { aboutHeroPreloadUrls } from "@/lib/aboutMediaPreload";
 import { preload } from "react-dom";
 
 /** Home: `#services` / `#experiences` blocks; then `#about` before `#gallery` (matches header nav). */
 export default async function Home() {
-  const about = await fetchPublicAbout();
-  const { poster, video } = aboutHeroPreloadUrls(about);
+  const [about, headerPhotos] = await Promise.all([
+    fetchPublicAbout(),
+    fetchPublicHeaderMedia(),
+  ]);
+  const { poster } = aboutHeroPreloadUrls(about);
   if (poster) {
-    preload(poster, { as: "image", fetchPriority: "high" });
-  }
-  if (video) {
-    preload(video, { as: "video", fetchPriority: "low" });
+    preload(poster, { as: "image", fetchPriority: "low" });
   }
 
   return (
     <main className="relative z-10 min-h-screen text-foreground">
       <SiteHeader />
-      <HeroSection />
+      <HeroSection initialPhotos={headerPhotos} />
       <ExperiencesSection />
       <ServicesSection />
       <AboutSection initialAbout={about} />

@@ -4,7 +4,9 @@ import {
   type EmailBranding,
 } from '../mail/email-html-branding';
 
-export function buildClassEnrollmentConfirmationSubject(eventName: string): string {
+export function buildClassEnrollmentConfirmationSubject(
+  eventName: string,
+): string {
   return `Class confirmed — ${eventName}`;
 }
 

@@ -38,8 +38,12 @@ function createWordmarkTexture(): THREE.CanvasTexture {
  * Uses only WebGL meshes (no Html portal) so admin toolbar stays clickable.
  */
 export default function StageBackdropSignage() {
-  const logoTexture = useTexture(SHAMELL_LOGO_SRC);
-  logoTexture.colorSpace = THREE.SRGBColorSpace;
+  const logoTextureSource = useTexture(SHAMELL_LOGO_SRC);
+  const logoTexture = useMemo(() => {
+    const texture = logoTextureSource.clone();
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }, [logoTextureSource]);
 
   const [wordmarkTexture, setWordmarkTexture] = useState<THREE.CanvasTexture | null>(null);
 

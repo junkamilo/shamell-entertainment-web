@@ -29,6 +29,8 @@ export class UpcomingEventsController {
 
   @Get('class-enrollments/session-status')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   getClassSessionStatus(@Query('session_id') sessionId: string) {
     if (!sessionId?.trim()) {
       throw new BadRequestException('session_id is required.');
@@ -64,11 +66,15 @@ export class UpcomingEventsController {
 
   @Get('fixed-event-enrollments/session-status')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   getFixedEventSessionStatus(@Query('session_id') sessionId: string) {
     if (!sessionId?.trim()) {
       throw new BadRequestException('session_id is required.');
     }
-    return this.upcomingEventsService.getFixedEventSessionStatus(sessionId.trim());
+    return this.upcomingEventsService.getFixedEventSessionStatus(
+      sessionId.trim(),
+    );
   }
 
   @Get('upcoming-events/admin/events/:eventId/sessions')
@@ -96,7 +102,11 @@ export class UpcomingEventsController {
     @Param('sessionId', new ParseUUIDPipe()) sessionId: string,
     @Body() dto: UpsertClassSessionDto,
   ) {
-    return this.upcomingEventsService.updateAdminSession(eventId, sessionId, dto);
+    return this.upcomingEventsService.updateAdminSession(
+      eventId,
+      sessionId,
+      dto,
+    );
   }
 
   @Delete('upcoming-events/admin/events/:eventId/sessions/:sessionId')

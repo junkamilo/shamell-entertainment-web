@@ -1,37 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Cormorant_Garamond, Geist, Geist_Mono, Great_Vibes, Cinzel } from "next/font/google";
+import {
+  cinzel,
+  cormorant,
+  geistMono,
+  geistSans,
+  greatVibes,
+} from "@/lib/shamellFonts";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import PublicBackgroundGate from "@/components/shared/PublicBackgroundGate";
 import WhatsAppFloatingButton from "@/components/shared/WhatsAppFloatingButton";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const cinzel = Cinzel({
-  variable: "--font-cinzel",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const greatVibes = Great_Vibes({
-  variable: "--font-great-vibes",
-  subsets: ["latin"],
-  weight: ["400"],
-});
-
-const cormorant = Cormorant_Garamond({
-  variable: "--font-cormorant",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-});
 
 export const metadata: Metadata = {
   title: "Shamell Entertainment — Performance & Events",

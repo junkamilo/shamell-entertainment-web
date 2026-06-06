@@ -51,7 +51,9 @@ export function buildVenueReservationConfirmationHtml(
   const dateLine = escapeHtml(
     formatEventDateInZone(input.eventDate, input.reservationTimezone),
   );
-  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(
+    input.branding ?? input.frontendBaseUrl,
+  );
   const safeSiteUrl = input.frontendBaseUrl?.trim();
 
   return `

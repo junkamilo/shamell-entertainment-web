@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    optimizePackageImports: ["lucide-react", "motion/react"],
+  },
   async redirects() {
     return [
       {
@@ -38,15 +41,39 @@ const nextConfig: NextConfig = {
         destination: "/shamell-admin/on-coming-events/layout/:path*",
         permanent: true,
       },
+      {
+        source: "/on-coming-events/seats/return",
+        destination: "/on-coming-events/return",
+        permanent: false,
+      },
+      {
+        source: "/on-coming-events/:slug/seats/return",
+        destination: "/on-coming-events/return?event_slug=:slug",
+        permanent: false,
+      },
     ];
   },
   images: {
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "res.cloudinary.com",
       },
     ],
+  },
+  async headers() {
+    return [
+      {
+        source: "/venue-3d/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
   },
 };
 

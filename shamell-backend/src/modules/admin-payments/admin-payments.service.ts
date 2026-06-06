@@ -63,7 +63,9 @@ type ClassRow = UpcomingClassEnrollment &
   Prisma.UpcomingClassEnrollmentGetPayload<{ include: typeof classInclude }>;
 
 type FixedRow = UpcomingFixedEventEnrollment &
-  Prisma.UpcomingFixedEventEnrollmentGetPayload<{ include: typeof fixedInclude }>;
+  Prisma.UpcomingFixedEventEnrollmentGetPayload<{
+    include: typeof fixedInclude;
+  }>;
 
 function mapVenueStatus(
   status: VenueSeatReservationStatus,
@@ -88,7 +90,7 @@ function mapEnrollmentStatus(
 function mapBookingPaymentStatus(
   status: BookingPaymentStatus,
 ): AdminPaymentStatus {
-  return status as AdminPaymentStatus;
+  return status;
 }
 
 function iso(d: Date | null | undefined): string | null {
@@ -164,11 +166,13 @@ export class AdminPaymentsService {
     }
 
     if (flows.includes('FIXED_TICKET')) {
-      const fixedRows = await this.prisma.upcomingFixedEventEnrollment.findMany({
-        where: this.fixedWhere(query.status, q, from, to),
-        include: fixedInclude,
-        orderBy: { updatedAt: 'desc' },
-      });
+      const fixedRows = await this.prisma.upcomingFixedEventEnrollment.findMany(
+        {
+          where: this.fixedWhere(query.status, q, from, to),
+          include: fixedInclude,
+          orderBy: { updatedAt: 'desc' },
+        },
+      );
       for (const e of fixedRows) {
         rows.push(this.mapFixedEnrollment(e));
       }
@@ -257,7 +261,7 @@ export class AdminPaymentsService {
     to: Date | null,
   ): Prisma.BookingPaymentWhereInput {
     const where: Prisma.BookingPaymentWhereInput = {};
-    if (status) where.status = status as BookingPaymentStatus;
+    if (status) where.status = status;
     if (from || to) {
       where.updatedAt = {};
       if (from) where.updatedAt.gte = from;
@@ -293,7 +297,7 @@ export class AdminPaymentsService {
       where.status =
         status === 'PENDING'
           ? VenueSeatReservationStatus.PENDING_PAYMENT
-          : (status as VenueSeatReservationStatus);
+          : status;
     }
     if (from || to) {
       where.updatedAt = {};
@@ -320,7 +324,7 @@ export class AdminPaymentsService {
       where.status =
         status === 'PENDING'
           ? UpcomingClassEnrollmentStatus.PENDING_PAYMENT
-          : (status as UpcomingClassEnrollmentStatus);
+          : status;
     }
     if (from || to) {
       where.updatedAt = {};
@@ -347,7 +351,7 @@ export class AdminPaymentsService {
       where.status =
         status === 'PENDING'
           ? UpcomingClassEnrollmentStatus.PENDING_PAYMENT
-          : (status as UpcomingClassEnrollmentStatus);
+          : status;
     }
     if (from || to) {
       where.updatedAt = {};
@@ -406,8 +410,7 @@ export class AdminPaymentsService {
     const tableLabel = r.venueTableConfig?.tableName
       ? ` — ${r.venueTableConfig.tableName}`
       : '';
-    const eventName =
-      r.upcomingEvent?.eventType?.name ?? 'Venue event';
+    const eventName = r.upcomingEvent?.eventType?.name ?? 'Venue event';
 
     return {
       id: r.id,
@@ -459,8 +462,7 @@ export class AdminPaymentsService {
 
   private mapFixedEnrollment(e: FixedRow): AdminStripePaymentRow {
     const event = e.event;
-    const ticket =
-      e.ticketNumber != null ? ` — Ticket #${e.ticketNumber}` : '';
+    const ticket = e.ticketNumber != null ? ` — Ticket #${e.ticketNumber}` : '';
     return {
       id: e.id,
       flow: 'FIXED_TICKET',

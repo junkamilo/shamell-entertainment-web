@@ -15,7 +15,6 @@ import {
   getDefaultLayoutItems,
   isLegacyLayoutKind,
   LAYOUT_SHAPE_KINDS,
-  type LayoutShapeKind,
   type PlacedLayoutItem,
   VENUE_TABLE_SIZES,
   type VenueTableSizeLabel,
@@ -24,7 +23,6 @@ import {
   DEFAULT_FLOOR_SCENE_ZONES,
   mergeFloorSceneZones,
   normalizeFloorSceneZonesInput,
-  type FloorSceneZones,
 } from './floor-scene-zones.defaults';
 import { STANDALONE_CHAIR_DISPLAY_LABEL } from '../standalone-chairs/standalone-chair-names.util';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
@@ -83,7 +81,10 @@ export class FloorLayoutService {
 
     const placedTableIds = new Set(
       layoutItems
-        .filter((i): i is Extract<PlacedLayoutItem, { kind: 'catalog_table' }> => i.kind === 'catalog_table')
+        .filter(
+          (i): i is Extract<PlacedLayoutItem, { kind: 'catalog_table' }> =>
+            i.kind === 'catalog_table',
+        )
         .map((i) => i.venueTableConfigId),
     );
 
@@ -135,7 +136,7 @@ export class FloorLayoutService {
         id: t.id,
         tableName: t.tableName,
         displayLabel: formatVenueTableSizeLabel(t.size),
-        size: t.size as VenueTableSizeLabel,
+        size: t.size,
         includedChairs: t.includedChairs,
         sortOrder: t.sortOrder,
       }));
@@ -228,7 +229,10 @@ export class FloorLayoutService {
   ) {
     const placedIds = new Set(
       items
-        .filter((i): i is Extract<PlacedLayoutItem, { kind: 'catalog_table' }> => i.kind === 'catalog_table')
+        .filter(
+          (i): i is Extract<PlacedLayoutItem, { kind: 'catalog_table' }> =>
+            i.kind === 'catalog_table',
+        )
         .map((i) => i.venueTableConfigId),
     );
 
@@ -300,7 +304,7 @@ export class FloorLayoutService {
       }
       seenIds.add(item.id);
 
-      if (!LAYOUT_SHAPE_KINDS.includes(item.kind as LayoutShapeKind)) {
+      if (!LAYOUT_SHAPE_KINDS.includes(item.kind)) {
         throw new BadRequestException(`Invalid shape kind: ${item.kind}`);
       }
 
@@ -370,7 +374,7 @@ export class FloorLayoutService {
         kind: 'catalog_table',
         venueTableConfigId: table.id,
         tableName: formatVenueTableSizeLabel(table.size),
-        size: table.size as VenueTableSizeLabel,
+        size: table.size,
         includedChairs: table.includedChairs,
         x,
         y,
@@ -486,7 +490,9 @@ export class FloorLayoutService {
   >(layout: T): Promise<T> {
     const chairIds = layout.items
       .filter(
-        (item): item is Extract<PlacedLayoutItem, { kind: 'standalone_chair' }> =>
+        (
+          item,
+        ): item is Extract<PlacedLayoutItem, { kind: 'standalone_chair' }> =>
           item.kind === 'standalone_chair',
       )
       .map((item) => item.venueStandaloneChairId);
@@ -549,7 +555,11 @@ export class FloorLayoutService {
       const x = Number(o.x);
       const y = Number(o.y);
       const rotation = Number(o.rotation);
-      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(rotation)) {
+      if (
+        !Number.isFinite(x) ||
+        !Number.isFinite(y) ||
+        !Number.isFinite(rotation)
+      ) {
         continue;
       }
 
@@ -569,14 +579,17 @@ export class FloorLayoutService {
         continue;
       }
 
-      if (o.kind === 'catalog_table' && typeof o.venueTableConfigId === 'string') {
+      if (
+        o.kind === 'catalog_table' &&
+        typeof o.venueTableConfigId === 'string'
+      ) {
         const size = o.size as VenueTableSizeLabel;
         if (!(VENUE_TABLE_SIZES as readonly string[]).includes(size)) continue;
         result.push({
           id: o.id,
           kind: 'catalog_table',
           venueTableConfigId: o.venueTableConfigId,
-          tableName: String(o.tableName ?? ''),
+          tableName: typeof o.tableName === 'string' ? o.tableName : '',
           size,
           includedChairs: Number(o.includedChairs ?? 0),
           x,

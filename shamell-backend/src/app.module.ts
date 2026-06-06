@@ -23,6 +23,7 @@ import { UpcomingEventsModule } from './modules/upcoming-events/upcoming-events.
 import { ReservationEventTemplatesModule } from './modules/reservation-event-templates/reservation-event-templates.module';
 import { AdminPaymentsModule } from './modules/admin-payments/admin-payments.module';
 import { AdminStripeWebhooksModule } from './modules/admin-stripe-webhooks/admin-stripe-webhooks.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { AdminStripeWebhooksModule } from './modules/admin-stripe-webhooks/admin
     ReservationEventTemplatesModule,
     AdminPaymentsModule,
     AdminStripeWebhooksModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

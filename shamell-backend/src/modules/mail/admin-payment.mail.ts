@@ -110,7 +110,9 @@ export function buildAdminPaymentOutcomeHtml(
   input: AdminPaymentMailInput,
 ): string {
   const app = escapeHtml(input.appPublicName.trim() || 'Shamell');
-  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(
+    input.branding ?? input.frontendBaseUrl,
+  );
   const color = outcomeColor(input.outcome);
   const headline = outcomeHeadline(input.outcome);
   const subtitle = outcomeSubtitle(input.outcome);
@@ -120,15 +122,17 @@ export function buildAdminPaymentOutcomeHtml(
   const emailLink = `<a href="mailto:${customerEmail}" style="color:#e8d5a3;text-decoration:underline;">${customerEmail}</a>`;
   const context = escapeHtml(input.contextLabel);
   const siteUrl = input.branding?.siteBaseUrl ?? input.frontendBaseUrl?.trim();
-  const siteLink =
-    siteUrl ?
-      `<p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#b9b09f;text-align:center;">
+  const siteLink = siteUrl
+    ? `<p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#b9b09f;text-align:center;">
           <a href="${escapeHtml(siteUrl)}" style="color:#e8d5a3;text-decoration:underline;">Open Shamell website</a>
         </p>`
     : '';
 
   const detailRows = [
-    buildDetailRow('Customer', `<strong style="color:#fff8e6;">${customerName}</strong>`),
+    buildDetailRow(
+      'Customer',
+      `<strong style="color:#fff8e6;">${customerName}</strong>`,
+    ),
     buildDetailRow('Email', emailLink),
     buildDetailRow('Purchase', context),
     ...(input.reference

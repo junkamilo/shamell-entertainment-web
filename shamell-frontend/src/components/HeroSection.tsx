@@ -9,6 +9,7 @@ import { buildHeroWaveClipPathD } from "@/lib/heroPearlWave";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import { cn } from "@/lib/utils";
 import HeroFallbackBackground from "./HeroFallbackBackground";
+import type { PublicHeaderPhoto } from "@/lib/fetchPublicHeaderMedia";
 
 const heroWaveClipPathId = "shamell-hero-wave-clip";
 const heroClipPath = `url(#${heroWaveClipPathId})`;
@@ -72,13 +73,17 @@ function HeroSlideMedia({
   );
 }
 
-const HeroSection = () => {
+type HeroSectionProps = {
+  initialPhotos?: PublicHeaderPhoto[];
+};
+
+const HeroSection = ({ initialPhotos = [] }: HeroSectionProps) => {
   const { content: headerText } = useHeaderText();
   const apiBaseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
     [],
   );
-  const [photos, setPhotos] = useState<HeaderHeroPhoto[]>([]);
+  const [photos, setPhotos] = useState<HeaderHeroPhoto[]>(initialPhotos);
   const [activeIndex, setActiveIndex] = useState(0);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -98,6 +103,7 @@ const HeroSection = () => {
   }, []);
 
   useEffect(() => {
+    if (initialPhotos.length > 0) return;
     const load = async () => {
       try {
         const response = await fetch(`${apiBaseUrl}/api/v1/header-media`, {
@@ -135,7 +141,7 @@ const HeroSection = () => {
       }
     };
     void load();
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, initialPhotos.length]);
 
   useEffect(() => {
     if (photos.length <= 1) return;
@@ -249,6 +255,8 @@ const HeroSection = () => {
                 <img
                   src="/01_bailarina.png"
                   alt="Shamell"
+                  fetchPriority="high"
+                  decoding="async"
                   className="h-12 w-auto max-w-[min(100%,7rem)] object-contain drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)] sm:h-14 sm:max-w-[min(100%,8rem)]"
                 />
               </div>

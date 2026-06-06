@@ -50,16 +50,19 @@ export class StripeWebhookAuditService {
         eventType: event.type,
         livemode: event.livemode,
         status: StripeWebhookProcessingStatus.RECEIVED,
-        ...(ctx.metadataFlow !== undefined ?
-          { metadataFlow: ctx.metadataFlow }
-        : {}),
-        ...(ctx.checkoutSessionId !== undefined ?
-          { checkoutSessionId: ctx.checkoutSessionId }
-        : {}),
+        ...(ctx.metadataFlow !== undefined
+          ? { metadataFlow: ctx.metadataFlow }
+          : {}),
+        ...(ctx.checkoutSessionId !== undefined
+          ? { checkoutSessionId: ctx.checkoutSessionId }
+          : {}),
         ...(ctx.handler !== undefined ? { handler: ctx.handler } : {}),
-        ...(ctx.payloadSummary !== undefined ?
-          { payloadSummary: summary === Prisma.JsonNull ? Prisma.JsonNull : summary }
-        : {}),
+        ...(ctx.payloadSummary !== undefined
+          ? {
+              payloadSummary:
+                summary === Prisma.JsonNull ? Prisma.JsonNull : summary,
+            }
+          : {}),
         lastError: null,
       },
     });

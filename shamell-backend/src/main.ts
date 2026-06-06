@@ -4,10 +4,15 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { assertJwtSecretForProduction } from './common/config/jwt-secret.util';
+import { GlobalExceptionLoggerFilter } from './common/filters/global-exception-logger.filter';
 
 async function bootstrap() {
+  assertJwtSecretForProduction();
+
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableShutdownHooks();
+  app.useGlobalFilters(new GlobalExceptionLoggerFilter());
 
   // Security
   app.use(helmet());
@@ -52,15 +57,18 @@ async function bootstrap() {
   // Prefijo global para todas las rutas: /api/v1/...
   app.setGlobalPrefix('api/v1');
 
-  // Swagger - documentación automática
-  const config = new DocumentBuilder()
-    .setTitle("SHAMELL's Golden Stage API")
-    .setDescription('API for luxury Oriental dance performances')
-    .setVersion('1.0')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  const swaggerEnabled =
+    nodeEnv !== 'production' || process.env.SWAGGER_ENABLED === 'true';
+  if (swaggerEnabled) {
+    const config = new DocumentBuilder()
+      .setTitle("SHAMELL's Golden Stage API")
+      .setDescription('API for luxury Oriental dance performances')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+  }
 
   const basePort = Number(process.env.PORT ?? 3001);
   const maxAttempts = 10;

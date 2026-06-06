@@ -35,7 +35,62 @@ export class AboutService {
     if (!latest) {
       throw new NotFoundException('About content not found.');
     }
-    return this.mapPublicAboutContent(latest);
+    const withDelivery = await this.ensureVideoDeliveryUrlsPersisted(latest);
+    return this.mapPublicAboutContent(withDelivery);
+  }
+
+  /** Admin: persist derived delivery URLs and optionally warm Cloudinary CDN. */
+  async backfillVideoDeliveryUrls(options?: { warmCdn?: boolean }) {
+    const latest = await this.prisma.aboutContent.findFirst({
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (!latest) {
+      throw new NotFoundException('About content not found.');
+    }
+    if (this.normalizeHeroMediaType(latest.heroMediaType) !== 'VIDEO') {
+      return {
+        updated: false,
+        reason: 'Hero media is not a video.',
+        about: this.mapAboutContent(latest),
+      };
+    }
+    const imageUrl = latest.imageUrl?.trim() ?? '';
+    if (!imageUrl) {
+      throw new BadRequestException('Video hero is missing imageUrl.');
+    }
+
+    const videoDeliveryUrl = buildAboutHeroVideoDeliveryUrl(imageUrl);
+    const videoPosterUrl = buildAboutHeroVideoPosterUrl(imageUrl);
+    if (!videoDeliveryUrl || !videoPosterUrl) {
+      throw new BadRequestException(
+        'Could not derive Cloudinary delivery URLs from imageUrl.',
+      );
+    }
+
+    const hadDelivery = Boolean(latest.videoDeliveryUrl?.trim());
+    const hadPoster = Boolean(latest.videoPosterUrl?.trim());
+    const needsUpdate = !hadDelivery || !hadPoster;
+
+    const saved = needsUpdate
+      ? await this.prisma.aboutContent.update({
+          where: { id: latest.id },
+          data: { videoDeliveryUrl, videoPosterUrl },
+        })
+      : latest;
+
+    if (options?.warmCdn) {
+      await this.warmAboutVideoCdn(videoDeliveryUrl, videoPosterUrl);
+    }
+
+    return {
+      updated: needsUpdate,
+      warmedCdn: Boolean(options?.warmCdn),
+      hadDeliveryInDb: hadDelivery,
+      hadPosterInDb: hadPoster,
+      videoDeliveryUrl,
+      videoPosterUrl,
+      about: this.mapAboutContent(saved),
+    };
   }
 
   async getAdminAboutContent() {
@@ -150,10 +205,7 @@ export class AboutService {
     if (existing.imagePublicId) {
       this.ensureCloudinaryEnv();
       const prevType = this.normalizeHeroMediaType(existing.heroMediaType);
-      await this.deleteHeroFromCloudinary(
-        existing.imagePublicId,
-        prevType,
-      );
+      await this.deleteHeroFromCloudinary(existing.imagePublicId, prevType);
     }
 
     const saved = await this.prisma.aboutContent.update({
@@ -263,7 +315,7 @@ export class AboutService {
     }
   }
 
-  private uploadFileFromPath(
+  private async uploadFileFromPath(
     filePath: string,
     resourceType: 'image' | 'video',
   ): Promise<{
@@ -273,78 +325,82 @@ export class AboutService {
     videoPosterUrl: string | null;
   }> {
     const isVideo = resourceType === 'video';
-    return new Promise((resolve, reject) => {
-      cloudinary.uploader.upload(
-        filePath,
-        {
-          folder: 'shamell/about',
-          resource_type: resourceType,
-          ...(isVideo
-            ? {
-                eager: ABOUT_VIDEO_UPLOAD_EAGER,
-                eager_async: false,
-              }
-            : {}),
-        },
-        (error, result) => {
-          if (error || !result?.secure_url || !result.public_id) {
-            reject(
-              new InternalServerErrorException(
-                this.cloudinaryUploadErrorMessage(resourceType, error),
-              ),
-            );
-            return;
-          }
-          const delivery = isVideo
-            ? videoDeliveryUrlsFromUpload(result)
-            : { videoDeliveryUrl: null, videoPosterUrl: null };
-          resolve({
-            secureUrl: result.secure_url,
-            publicId: result.public_id,
-            ...delivery,
-          });
-        },
+    try {
+      const result = await cloudinary.uploader.upload(filePath, {
+        folder: 'shamell/about',
+        resource_type: resourceType,
+        ...(isVideo
+          ? {
+              eager: ABOUT_VIDEO_UPLOAD_EAGER,
+              eager_async: false,
+            }
+          : {}),
+      });
+      const secureUrl =
+        typeof result?.secure_url === 'string' ? result.secure_url : '';
+      const publicId =
+        typeof result?.public_id === 'string' ? result.public_id : '';
+      if (!secureUrl || !publicId) {
+        throw new InternalServerErrorException(
+          this.cloudinaryUploadErrorMessage(resourceType, null),
+        );
+      }
+      const delivery = isVideo
+        ? videoDeliveryUrlsFromUpload(result)
+        : { videoDeliveryUrl: null, videoPosterUrl: null };
+      return {
+        secureUrl,
+        publicId,
+        ...delivery,
+      };
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) throw error;
+      throw new InternalServerErrorException(
+        this.cloudinaryUploadErrorMessage(resourceType, error),
       );
-    });
+    }
   }
 
   /** Chunked upload for large hero videos (no in-app size cap). */
-  private uploadVideoLargeFromPath(
-    filePath: string,
-  ): Promise<{
+  private async uploadVideoLargeFromPath(filePath: string): Promise<{
     secureUrl: string;
     publicId: string;
     videoDeliveryUrl: string | null;
     videoPosterUrl: string | null;
   }> {
-    return new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_large(
-        filePath,
-        {
-          folder: 'shamell/about',
-          resource_type: 'video',
-          chunk_size: 6_000_000,
-          eager: ABOUT_VIDEO_UPLOAD_EAGER,
-          eager_async: false,
-        },
-        (error, result) => {
-          if (error || !result?.secure_url || !result.public_id) {
-            reject(
-              new InternalServerErrorException(
-                this.cloudinaryUploadErrorMessage('video', error),
-              ),
-            );
-            return;
-          }
-          const delivery = videoDeliveryUrlsFromUpload(result);
-          resolve({
-            secureUrl: result.secure_url,
-            publicId: result.public_id,
-            ...delivery,
-          });
-        },
+    try {
+      const result = (await cloudinary.uploader.upload_large(filePath, {
+        folder: 'shamell/about',
+        resource_type: 'video',
+        chunk_size: 6_000_000,
+        eager: ABOUT_VIDEO_UPLOAD_EAGER,
+        eager_async: false,
+      })) as {
+        secure_url?: string;
+        public_id?: string;
+        eager?: { secure_url?: string }[];
+      };
+      const secureUrl =
+        typeof result?.secure_url === 'string' ? result.secure_url : '';
+      const publicId =
+        typeof result?.public_id === 'string' ? result.public_id : '';
+      if (!secureUrl || !publicId) {
+        throw new InternalServerErrorException(
+          this.cloudinaryUploadErrorMessage('video', null),
+        );
+      }
+      const delivery = videoDeliveryUrlsFromUpload(result);
+      return {
+        secureUrl,
+        publicId,
+        ...delivery,
+      };
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) throw error;
+      throw new InternalServerErrorException(
+        this.cloudinaryUploadErrorMessage('video', error),
       );
-    });
+    }
   }
 
   private uploadBufferToCloudinary(
@@ -402,16 +458,23 @@ export class AboutService {
   ): string {
     const label = kind === 'video' ? 'Video' : 'Image';
     const detail =
-      error && typeof error === 'object' && 'message' in error
-        ? String((error as { message?: unknown }).message ?? '').trim()
-        : '';
+      error instanceof Error
+        ? error.message.trim()
+        : error &&
+            typeof error === 'object' &&
+            'message' in error &&
+            typeof (error as { message?: unknown }).message === 'string'
+          ? (error as { message: string }).message.trim()
+          : '';
     if (detail) {
       return `${label} upload failed: ${detail}`;
     }
     return `${label} upload failed.`;
   }
 
-  private normalizeHeroMediaType(raw: string | null | undefined): AboutHeroMediaType {
+  private normalizeHeroMediaType(
+    raw: string | null | undefined,
+  ): AboutHeroMediaType {
     return raw === 'VIDEO' ? 'VIDEO' : 'IMAGE';
   }
 
@@ -430,6 +493,45 @@ export class AboutService {
         'Cloudinary media deletion failed.',
       );
     }
+  }
+
+  private async ensureVideoDeliveryUrlsPersisted(
+    row: AboutContentRow,
+  ): Promise<AboutContentRow> {
+    if (this.normalizeHeroMediaType(row.heroMediaType) !== 'VIDEO') {
+      return row;
+    }
+    const imageUrl = row.imageUrl?.trim() ?? '';
+    if (!imageUrl) return row;
+
+    const videoDeliveryUrl = buildAboutHeroVideoDeliveryUrl(imageUrl);
+    const videoPosterUrl = buildAboutHeroVideoPosterUrl(imageUrl);
+    if (!videoDeliveryUrl || !videoPosterUrl) return row;
+
+    if (row.videoDeliveryUrl?.trim() && row.videoPosterUrl?.trim()) {
+      return row;
+    }
+
+    return await this.prisma.aboutContent.update({
+      where: { id: row.id },
+      data: {
+        videoDeliveryUrl: row.videoDeliveryUrl?.trim() || videoDeliveryUrl,
+        videoPosterUrl: row.videoPosterUrl?.trim() || videoPosterUrl,
+      },
+    });
+  }
+
+  private async warmAboutVideoCdn(
+    videoDeliveryUrl: string,
+    videoPosterUrl: string,
+  ): Promise<void> {
+    await Promise.allSettled([
+      fetch(videoPosterUrl, { method: 'GET' }),
+      fetch(videoDeliveryUrl, {
+        method: 'GET',
+        headers: { Range: 'bytes=0-1' },
+      }),
+    ]);
   }
 
   private mapPublicAboutContent(content: AboutContentRow) {
@@ -474,6 +576,7 @@ type AboutContentRow = {
   paragraph1: string;
   coreValues: string[];
   imageUrl: string | null;
+  imagePublicId?: string | null;
   videoDeliveryUrl?: string | null;
   videoPosterUrl?: string | null;
   heroMediaType?: string | null;

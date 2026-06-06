@@ -8,6 +8,8 @@ import {
   HttpCode,
   HttpStatus,
   Patch,
+  Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -73,5 +75,14 @@ export class AboutController {
   @UseGuards(AdminJwtGuard)
   deleteAdminAboutHeroMedia() {
     return this.aboutService.deleteAdminAboutHeroMedia();
+  }
+
+  @Post('admin/backfill-video-delivery')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  backfillVideoDelivery(@Query('warm') warm?: string) {
+    return this.aboutService.backfillVideoDeliveryUrls({
+      warmCdn: warm === '1' || warm === 'true',
+    });
   }
 }

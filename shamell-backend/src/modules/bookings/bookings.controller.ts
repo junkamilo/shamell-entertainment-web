@@ -5,17 +5,17 @@ import {
   Delete,
   Get,
   Headers,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
-  Req,
   Res,
   UseGuards,
 } from '@nestjs/common';
-import type { RawBodyRequest } from '@nestjs/common';
-import type { Request, Response } from 'express';
+import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { CurrentAdmin } from '../auth/decorators/current-admin.decorator';
@@ -25,6 +25,7 @@ import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
 import { CreateAdminBookingDto } from './dto/create-admin-booking.dto';
 import { SendBookingBalanceLinkDto } from './dto/send-booking-balance-link.dto';
 import { UpdateAdminBookingDto } from './dto/update-admin-booking.dto';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { BookingsService } from './bookings.service';
 
 @ApiTags('Bookings')
@@ -114,16 +115,18 @@ export class BookingsController {
   }
 
   @Get('public/quote/pay')
-  async quotePayRedirect(@Query('token') token: string, @Res() res: Response) {
+  quotePayRedirect(@Query('token') token: string, @Res() res: Response) {
     if (!token?.trim()) {
       throw new BadRequestException('token is required.');
     }
-    const url = await this.bookingsService.resolveQuotePayUrl(token.trim());
+    const url = this.bookingsService.resolveQuotePayUrl(token.trim());
     return res.redirect(url);
   }
 
   @Get('public/quote/checkout')
-  @ApiOperation({ summary: 'Embedded Stripe client secret for booking quote pay link' })
+  @ApiOperation({
+    summary: 'Embedded Stripe client secret for booking quote pay link',
+  })
   quoteCheckout(@Query('token') token: string) {
     if (!token?.trim()) {
       throw new BadRequestException('token is required.');
@@ -133,8 +136,26 @@ export class BookingsController {
       .then((clientSecret) => ({ clientSecret }));
   }
 
+  @Post('public/quote/reconcile')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Reconcile booking quote payment from Stripe (public)',
+  })
+  quoteReconcile(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.bookingsService.getQuotePaymentSessionStatus(sessionId.trim());
+  }
+
   @Get('public/quote/session-status')
-  @ApiOperation({ summary: 'Booking quote payment session status (public return page)' })
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @ApiOperation({
+    summary: 'Booking quote payment session status (public return page)',
+  })
   quoteSessionStatus(@Query('session_id') sessionId: string) {
     if (!sessionId?.trim()) {
       throw new BadRequestException('session_id is required.');
@@ -143,19 +164,12 @@ export class BookingsController {
   }
 
   @Post('public/webhook')
-  handleBookingPaymentsWebhook(
-    @Req() req: RawBodyRequest<Request>,
-    @Headers('stripe-signature') signature?: string,
-  ) {
-    const rawBody = req.rawBody;
-    if (!rawBody) {
-      throw new BadRequestException(
-        'Raw body is required for Stripe webhook verification.',
-      );
-    }
-    return this.bookingsService.handleBookingPaymentsWebhook(
-      rawBody,
-      signature,
-    );
+  @HttpCode(HttpStatus.GONE)
+  handleBookingPaymentsWebhookDeprecated() {
+    return {
+      deprecated: true,
+      message:
+        'Use POST /api/v1/stripe/webhook instead. This endpoint is no longer active.',
+    };
   }
 }

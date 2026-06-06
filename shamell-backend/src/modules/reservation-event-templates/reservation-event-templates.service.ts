@@ -11,7 +11,6 @@ import {
   buildTemplateSummary,
   inactiveWeekdays,
   validateTemplatePayload,
-  type ClassSectionInput,
   type ValidatedTemplatePayload,
   type WeekdayInput,
 } from './reservation-event-template.util';
@@ -162,23 +161,25 @@ export class ReservationEventTemplatesService {
       recurringStartTime:
         dto.recurringStartTime ?? existing.recurringStartTime ?? '',
       recurringEndTime: dto.recurringEndTime ?? existing.recurringEndTime ?? '',
-      classSections:
-        dto.classSections?.length ?
-          dto.classSections
+      classSections: dto.classSections?.length
+        ? dto.classSections
         : existing.classSections.map((s) => ({
-          weekday: s.weekday,
-          label: s.label,
-          startTime: s.startTime,
-          endTime: s.endTime,
-          sortOrder: s.sortOrder,
-          defaultCapacity: s.defaultCapacity,
-          defaultPrice: s.defaultPrice != null ? Number(s.defaultPrice) : null,
-          isActive: s.isActive,
-        })),
+            weekday: s.weekday,
+            label: s.label,
+            startTime: s.startTime,
+            endTime: s.endTime,
+            sortOrder: s.sortOrder,
+            defaultCapacity: s.defaultCapacity,
+            defaultPrice:
+              s.defaultPrice != null ? Number(s.defaultPrice) : null,
+            isActive: s.isActive,
+          })),
     };
   }
 
-  private toPrismaCreateWithoutClassSections(validated: ValidatedTemplatePayload) {
+  private toPrismaCreateWithoutClassSections(
+    validated: ValidatedTemplatePayload,
+  ) {
     return {
       name: validated.name,
       timezone: validated.timezone,
@@ -213,7 +214,9 @@ export class ReservationEventTemplatesService {
     };
   }
 
-  private toPrismaUpdateWithoutNestedSections(validated: ValidatedTemplatePayload) {
+  private toPrismaUpdateWithoutNestedSections(
+    validated: ValidatedTemplatePayload,
+  ) {
     return {
       name: validated.name,
       timezone: validated.timezone,
@@ -243,7 +246,10 @@ export class ReservationEventTemplatesService {
     sections: ValidatedTemplatePayload['classSections'],
   ) {
     const rows = this.normalizeClassSections(sections);
-    const keys = rows.map((s) => ({ weekday: s.weekday, sortOrder: s.sortOrder }));
+    const keys = rows.map((s) => ({
+      weekday: s.weekday,
+      sortOrder: s.sortOrder,
+    }));
 
     for (const row of rows) {
       await tx.reservationEventClassSection.upsert({
@@ -267,7 +273,9 @@ export class ReservationEventTemplatesService {
     }
 
     if (keys.length === 0) {
-      await tx.reservationEventClassSection.deleteMany({ where: { templateId } });
+      await tx.reservationEventClassSection.deleteMany({
+        where: { templateId },
+      });
       return;
     }
 
@@ -295,8 +303,7 @@ export class ReservationEventTemplatesService {
   }
 
   private normalizeWeekdays(weekdays: WeekdayInput[]) {
-    const rows =
-      weekdays.length === 7 ? weekdays : inactiveWeekdays();
+    const rows = weekdays.length === 7 ? weekdays : inactiveWeekdays();
     return rows.map((w) => ({
       weekday: w.weekday,
       isActive: w.isActive,

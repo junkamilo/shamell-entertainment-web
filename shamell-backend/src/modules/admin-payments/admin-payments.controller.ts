@@ -48,7 +48,8 @@ export class AdminPaymentsController {
   @UseGuards(AdminJwtGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Reconcile a paid Stripe checkout session into a fixed ticket enrollment',
+    summary:
+      'Reconcile a paid Stripe checkout session into a fixed ticket enrollment',
   })
   reconcileFixedTicket(@Query('session_id') sessionId: string) {
     if (!sessionId?.trim()) {

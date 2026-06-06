@@ -32,9 +32,8 @@ export function buildConciergeInquiryAckHtml(
   const name = escapeHtml(input.recipientFirstName.trim() || 'Hello');
   const app = escapeHtml(input.appPublicName.trim() || 'Shamell');
   const siteUrl = input.siteUrl?.trim();
-  const siteLink =
-    siteUrl ?
-      `<p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#b9b09f;">
+  const siteLink = siteUrl
+    ? `<p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#b9b09f;">
           <a href="${escapeHtml(siteUrl)}" style="color:#e8d5a3;text-decoration:underline;">Visit our website</a>
         </p>`
     : '';

@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Query,
   HttpCode,
   HttpStatus,
@@ -37,6 +38,7 @@ export class EventsController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
   getPublicEvents(@Query() query: ListEventsQueryDto) {
     return this.eventsService.getPublicEvents(query);
   }

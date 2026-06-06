@@ -15,5 +15,5 @@ export async function withTemplateRegenerationLock<T>(
       }
     }),
   );
-  return next as Promise<T>;
+  return next;
 }

@@ -9,8 +9,9 @@ describe('withTemplateRegenerationLock', () => {
       await new Promise((r) => setTimeout(r, 30));
       order.push(1);
     });
-    const second = withTemplateRegenerationLock(templateId, async () => {
+    const second = withTemplateRegenerationLock(templateId, () => {
       order.push(2);
+      return Promise.resolve();
     });
 
     await Promise.all([first, second]);
@@ -24,8 +25,9 @@ describe('withTemplateRegenerationLock', () => {
       aDone = true;
     });
     let bStartedBeforeADone = false;
-    const b = withTemplateRegenerationLock('t2', async () => {
+    const b = withTemplateRegenerationLock('t2', () => {
       bStartedBeforeADone = !aDone;
+      return Promise.resolve();
     });
     await Promise.all([a, b]);
     expect(bStartedBeforeADone).toBe(true);

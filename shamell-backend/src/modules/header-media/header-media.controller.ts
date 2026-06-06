@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -25,6 +26,7 @@ export class HeaderMediaController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
   getPublicHeaderPhotos() {
     return this.headerMediaService.getPublicHeaderPhotos();
   }

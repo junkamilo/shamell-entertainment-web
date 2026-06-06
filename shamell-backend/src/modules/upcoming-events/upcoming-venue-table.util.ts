@@ -1,7 +1,10 @@
 import { VenueSeatReservationStatus } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 
-type PrismaLike = Pick<PrismaService, 'venueFloorLayout' | 'venueSeatReservation'>;
+type PrismaLike = Pick<
+  PrismaService,
+  'venueFloorLayout' | 'venueSeatReservation'
+>;
 
 function parseCatalogTableLayoutItemIds(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -42,7 +45,11 @@ export async function venueTablePublicStats(
     eventDate: Date;
     floorLayoutId: string | null;
   },
-): Promise<{ tableCapacity: number; tablesRemaining: number; tablesSold: number }> {
+): Promise<{
+  tableCapacity: number;
+  tablesRemaining: number;
+  tablesSold: number;
+}> {
   const tableIds = await loadCatalogTableLayoutItemIds(
     prisma,
     args.floorLayoutId,

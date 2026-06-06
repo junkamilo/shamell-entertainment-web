@@ -46,7 +46,7 @@ export function buildClassSessionBundleSelections(params: {
     sessionIds: params.sessionIds,
     items: params.items,
   };
-  return payload as Prisma.InputJsonValue;
+  return payload;
 }
 
 export function buildClassPackageSelections(params: {
@@ -58,7 +58,7 @@ export function buildClassPackageSelections(params: {
     sessionIds: params.sessionIds,
     weekdays: params.weekdays,
   };
-  return payload as Prisma.InputJsonValue;
+  return payload;
 }
 
 export function buildClassMonthPackageSelections(params: {
@@ -73,5 +73,5 @@ export function buildClassMonthPackageSelections(params: {
     sessionCount: params.sessionIds.length,
     items: params.items,
   };
-  return payload as Prisma.InputJsonValue;
+  return payload;
 }

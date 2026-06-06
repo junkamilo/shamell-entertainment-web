@@ -36,7 +36,9 @@ export class AdminStripeWebhookEventsQueryDto {
   @Max(100)
   limit?: number;
 
-  @ApiPropertyOptional({ description: 'Stripe event type, e.g. checkout.session.completed' })
+  @ApiPropertyOptional({
+    description: 'Stripe event type, e.g. checkout.session.completed',
+  })
   @IsOptional()
   @IsString()
   eventType?: string;

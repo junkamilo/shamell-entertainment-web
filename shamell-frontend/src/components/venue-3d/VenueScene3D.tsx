@@ -67,6 +67,23 @@ type SceneContentProps = Omit<
   cameraPresetKey: string;
 };
 
+function DeferredEnvironment() {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const id = window.requestAnimationFrame(() => setReady(true));
+    return () => window.cancelAnimationFrame(id);
+  }, []);
+
+  if (!ready) return null;
+  return (
+    <Environment
+      preset="apartment"
+      environmentIntensity={SCENE_LIGHTING.environmentIntensity}
+    />
+  );
+}
+
 function SceneContent({
   mode,
   viewBoxWidth,
@@ -141,7 +158,7 @@ function SceneContent({
       {interactive ? (
         <FloorPickPlane onPointerMissed={() => onBackgroundClick?.()} />
       ) : null}
-      <Environment preset="apartment" environmentIntensity={SCENE_LIGHTING.environmentIntensity} />
+      <DeferredEnvironment />
       <OrbitControls
         key={cameraPresetKey}
         ref={orbitControlsRef}
@@ -194,10 +211,11 @@ export default function VenueScene3D({
   viewportHeight = "min(72vh, 720px)",
   viewportMinHeight = "min(420px, 55vh)",
   layoutBucket = "laptop",
-  dpr = [1, 1.5],
+  dpr,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewportAspect, setViewportAspect] = useState(16 / 9);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false);
   const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
 
   useEffect(() => {
@@ -210,11 +228,18 @@ export default function VenueScene3D({
       if (w > 0 && h > 0) setViewportAspect(w / h);
     };
 
-    updateAspect();
-    const observer = new ResizeObserver(updateAspect);
+    const syncViewport = () => {
+      updateAspect();
+      setIsNarrowViewport(el.clientWidth < 768);
+    };
+
+    syncViewport();
+    const observer = new ResizeObserver(syncViewport);
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
+
+  const resolvedDpr = dpr ?? (isNarrowViewport ? [1, 1.25] : [1, 1.5]);
 
   const cameraPreset = useMemo(
     () =>
@@ -265,7 +290,7 @@ export default function VenueScene3D({
         <Canvas
           className="block! h-full! w-full! touch-none"
           shadows="percentage"
-          dpr={dpr}
+          dpr={resolvedDpr}
           camera={{
             position: cameraPreset.position,
             fov: cameraPreset.fov,

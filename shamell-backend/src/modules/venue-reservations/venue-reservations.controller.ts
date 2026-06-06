@@ -46,7 +46,20 @@ export class VenueReservationsController {
 
   @Get('session-status')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   getSessionStatus(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.venueReservationsService.getSessionStatus(sessionId.trim());
+  }
+
+  @Post('reconcile')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  reconcileSession(@Query('session_id') sessionId: string) {
     if (!sessionId?.trim()) {
       throw new BadRequestException('session_id is required.');
     }

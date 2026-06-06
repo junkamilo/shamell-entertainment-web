@@ -1,11 +1,16 @@
 "use client";
 
-import Link from "next/link";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useState } from "react";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
+import {
+  ClassPaymentConfirmationFallback,
+  ClassPaymentConfirmationPanel,
+  type ConfirmationStatus,
+} from "@/app/on-coming-events/components/ClassPaymentConfirmationPanel";
 import { formatPriceEn } from "@/lib/pricing";
+import { pollCheckoutStatus } from "@/lib/checkoutReturnPolling";
 import {
   fetchQuotePaymentSessionStatus,
   type QuotePaymentSessionStatus,
@@ -14,86 +19,97 @@ import {
 function ReturnContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
-  const [status, setStatus] = useState<QuotePaymentSessionStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<ConfirmationStatus>("loading");
+  const [quoteStatus, setQuoteStatus] = useState<QuotePaymentSessionStatus | null>(
+    null,
+  );
+  const [pollKey, setPollKey] = useState(0);
 
-  useEffect(() => {
+  const loadStatus = useCallback(async () => {
     if (!sessionId) {
-      setError("Missing checkout session.");
-      setLoading(false);
+      setStatus("error");
+      setQuoteStatus(null);
       return;
     }
-    void (async () => {
-      const result = await fetchQuotePaymentSessionStatus(sessionId);
-      if (!result) {
-        setError("Could not verify payment status.");
-      } else {
-        setStatus(result);
-      }
-      setLoading(false);
-    })();
+
+    setStatus("loading");
+    const result = await pollCheckoutStatus({
+      fetchStatus: () => fetchQuotePaymentSessionStatus(sessionId),
+      isPaid: (data) =>
+        data.stripeStatus === "complete" || data.paymentStatus === "PAID",
+      isExpired: (data) => data.stripeStatus === "expired",
+    });
+
+    if (result.data) setQuoteStatus(result.data);
+
+    if (result.outcome === "paid") setStatus("paid");
+    else if (result.outcome === "expired") setStatus("error");
+    else if (result.outcome === "pending") setStatus("pending");
+    else setStatus("error");
   }, [sessionId]);
 
-  const isSuccess =
-    status?.stripeStatus === "complete" || status?.paymentStatus === "PAID";
+  useEffect(() => {
+    void loadStatus();
+  }, [loadStatus, pollKey]);
+
+  const handleRefresh = useCallback(() => {
+    setPollKey((k) => k + 1);
+  }, []);
+
+  const paidExtra =
+    status === "paid" && quoteStatus ? (
+      <div className="mx-auto max-w-lg space-y-2 text-sm text-foreground/80">
+        <p>
+          <span className="text-foreground/60">Amount: </span>
+          <span className="font-semibold text-gold">
+            {formatPriceEn(quoteStatus.amount)}
+          </span>
+        </p>
+        {quoteStatus.customerEmail ? (
+          <p>
+            <span className="text-foreground/60">Confirmation sent to </span>
+            {quoteStatus.customerEmail}
+          </p>
+        ) : null}
+      </div>
+    ) : null;
+
+  const paidSubtitle =
+    quoteStatus?.customerName
+      ? `Thank you, ${quoteStatus.customerName}. A confirmation was sent to your email.`
+      : "A confirmation was sent to your email.";
 
   return (
-    <main className="mx-auto max-w-lg px-4 pb-16 pt-28 text-center">
-      {loading ? (
-        <p className="text-foreground/60">Confirming your payment…</p>
-      ) : error ? (
-        <>
-          <h1 className="font-display text-2xl text-red-300">Something went wrong</h1>
-          <p className="mt-3 text-sm text-foreground/65">{error}</p>
-        </>
-      ) : isSuccess ? (
-        <>
-          <h1 className="font-display text-2xl text-gold">Payment confirmed</h1>
-          <p className="mt-3 text-sm text-foreground/75">
-            Thank you, {status?.customerName}. A confirmation was sent to{" "}
-            {status?.customerEmail}.
-          </p>
-          <p className="mt-2 text-sm text-foreground">
-            Amount:{" "}
-            <span className="font-semibold text-gold">
-              {formatPriceEn(status?.amount ?? null)}
-            </span>
-          </p>
-        </>
-      ) : (
-        <>
-          <h1 className="font-display text-2xl text-gold">Payment incomplete</h1>
-          <p className="mt-3 text-sm text-foreground/65">
-            Your payment was not completed. Please use the link in your email to try again.
-          </p>
-        </>
-      )}
-
-      <Link
-        href="/"
-        className="mt-8 inline-block rounded-lg border border-gold/35 px-5 py-2.5 font-brand text-xs tracking-[0.14em] text-gold hover:bg-gold/10"
-      >
-        Return to home
-      </Link>
+    <main className="min-h-screen text-foreground">
+      <SiteHeader />
+      <ClassPaymentConfirmationPanel
+        status={status}
+        paidTitle="Payment confirmed"
+        paidSubtitle={paidSubtitle}
+        paidEyebrow="Thank you"
+        paidExtra={paidExtra}
+        loadingMessage="Confirming your payment…"
+        pendingMessage="Payment is still processing. Refresh in a moment or check your email shortly."
+        errorMessage="We could not confirm payment. Contact us if you were charged."
+        onRefresh={status === "pending" ? handleRefresh : undefined}
+      />
+      <Footer />
     </main>
   );
 }
 
 export default function PayQuoteReturnPage() {
   return (
-    <>
-      <SiteHeader />
-      <Suspense
-        fallback={
-          <main className="mx-auto max-w-lg px-4 pb-16 pt-28 text-center text-foreground/60">
-            Loading…
-          </main>
-        }
-      >
-        <ReturnContent />
-      </Suspense>
-      <Footer />
-    </>
+    <Suspense
+      fallback={
+        <>
+          <SiteHeader />
+          <ClassPaymentConfirmationFallback loadingMessage="Confirming your payment…" />
+          <Footer />
+        </>
+      }
+    >
+      <ReturnContent />
+    </Suspense>
   );
 }

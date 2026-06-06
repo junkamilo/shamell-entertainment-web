@@ -60,7 +60,9 @@ export class VenueTablesController {
   @Patch('admin/bulk-price')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  bulkUpdateAdminVenueTablesBundlePrice(@Body() dto: PatchVenueTablesBulkPriceDto) {
+  bulkUpdateAdminVenueTablesBundlePrice(
+    @Body() dto: PatchVenueTablesBulkPriceDto,
+  ) {
     return this.venueTablesService.bulkUpdateAdminVenueTablesBundlePrice(dto);
   }
 

@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -32,12 +33,14 @@ export class GalleryController {
 
   @Get('categories')
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
   getPublicCategories() {
     return this.galleryService.getPublicCategories();
   }
 
   @Get('photos')
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
   getPublicPhotos(
     @Query('category') category?: string,
     @Query('page', new ParseIntPipe({ optional: true })) page?: number,

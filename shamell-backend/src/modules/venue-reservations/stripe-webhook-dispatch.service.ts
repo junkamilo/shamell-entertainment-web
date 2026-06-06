@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { BookingsService } from '../bookings/bookings.service';
 import { UpcomingEventsService } from '../upcoming-events/upcoming-events.service';
 import { StripeWebhookAuditService } from '../stripe/stripe-webhook-audit.service';
@@ -33,17 +29,28 @@ export class StripeWebhookDispatchService {
     }
 
     let event: StripeWebhookEventLite;
+    const nodeEnv = process.env.NODE_ENV ?? 'development';
+
     try {
       event = this.stripeService.client.webhooks.constructEvent(
         rawBody,
         signature,
         this.stripeService.webhookSecret,
-      ) as StripeWebhookEventLite;
+      );
     } catch (err) {
       this.logger.warn(
         `stripe-webhook-invalid-signature reason=${err instanceof Error ? err.message : String(err)}`,
       );
       throw new BadRequestException('Invalid stripe-signature header.');
+    }
+
+    if (nodeEnv === 'production' && event.livemode === false) {
+      this.logger.warn(
+        `stripe-webhook-test-mode-rejected eventId=${event.id} type=${event.type}`,
+      );
+      throw new BadRequestException(
+        'Test-mode Stripe events are not accepted in production.',
+      );
     }
 
     if (await this.audit.isProcessed(event.id)) {
@@ -53,6 +60,21 @@ export class StripeWebhookDispatchService {
       return { received: true, deduplicated: true };
     }
 
+    return this.processVerifiedEvent(event);
+  }
+
+  async reprocessFromStripeEventId(eventId: string): Promise<boolean> {
+    if (await this.audit.isProcessed(eventId)) {
+      return false;
+    }
+    const event = (await this.stripeService.client.events.retrieve(
+      eventId,
+    )) as StripeWebhookEventLite;
+    await this.processVerifiedEvent(event);
+    return true;
+  }
+
+  private async processVerifiedEvent(event: StripeWebhookEventLite) {
     const sessionObj =
       event.type === 'checkout.session.completed' ||
       event.type === 'checkout.session.expired'
@@ -81,7 +103,9 @@ export class StripeWebhookDispatchService {
         handler = 'class_session';
         await this.audit.markProcessing(event.id, handler);
         const result =
-          await this.upcomingEventsService.processClassStripeWebhookEvent(event);
+          await this.upcomingEventsService.processClassStripeWebhookEvent(
+            event,
+          );
         handled = result.handled;
       } else if (
         flow === 'class_package' ||
@@ -99,7 +123,9 @@ export class StripeWebhookDispatchService {
         handler = 'fixed_event_ticket';
         await this.audit.markProcessing(event.id, handler);
         const result =
-          await this.upcomingEventsService.processFixedStripeWebhookEvent(event);
+          await this.upcomingEventsService.processFixedStripeWebhookEvent(
+            event,
+          );
         handled = result.handled;
       } else if (flow === 'venue_seat') {
         handler = 'venue_seat';

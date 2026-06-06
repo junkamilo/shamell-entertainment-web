@@ -78,9 +78,7 @@ export function validateClassSectionsForWeekdays(
     if (overlap) throw new BadRequestException(overlap);
   }
 
-  return normalized.filter(
-    (s) => activeWeekdays.has(s.weekday) && s.isActive,
-  );
+  return normalized.filter((s) => activeWeekdays.has(s.weekday) && s.isActive);
 }
 
 function sectionsFromLegacyRecurring(
@@ -102,7 +100,10 @@ function sectionsFromLegacyRecurring(
     }));
 }
 
-export function parseHHMM(value: string, field: string): { h: number; m: number } {
+export function parseHHMM(
+  value: string,
+  field: string,
+): { h: number; m: number } {
   const trimmed = value.trim();
   const match = HHMM_RE.exec(trimmed);
   if (!match) {
@@ -228,7 +229,10 @@ export function validateTemplatePayload(input: {
       );
     }
 
-    const salesStartDate = parseISODateOnly(input.salesStartDate, 'salesStartDate');
+    const salesStartDate = parseISODateOnly(
+      input.salesStartDate,
+      'salesStartDate',
+    );
     const salesEndDate = parseISODateOnly(input.salesEndDate, 'salesEndDate');
     const eventDate = parseISODateOnly(input.eventDate, 'eventDate');
 
@@ -237,7 +241,9 @@ export function validateTemplatePayload(input: {
     assertDateNotBeforeToday(eventDate, 'eventDate', timezone);
 
     if (salesEndDate.getTime() < salesStartDate.getTime()) {
-      throw new BadRequestException('salesEndDate must be on or after salesStartDate.');
+      throw new BadRequestException(
+        'salesEndDate must be on or after salesStartDate.',
+      );
     }
 
     const salesStartIso = salesStartDate.toISOString().slice(0, 10);
@@ -259,7 +265,9 @@ export function validateTemplatePayload(input: {
       parseHHMM(eventEndTime, 'eventEndTime').h * 60 +
       parseHHMM(eventEndTime, 'eventEndTime').m;
     if (endMins <= startMins) {
-      throw new BadRequestException('eventEndTime must be after eventStartTime.');
+      throw new BadRequestException(
+        'eventEndTime must be after eventStartTime.',
+      );
     }
 
     return {
@@ -280,7 +288,9 @@ export function validateTemplatePayload(input: {
   }
 
   if (!input.weekdays) {
-    throw new BadRequestException('weekdays are required for recurring schedules.');
+    throw new BadRequestException(
+      'weekdays are required for recurring schedules.',
+    );
   }
 
   validateWeekdaysActive(input.weekdays);
@@ -326,12 +336,15 @@ export function validateTemplatePayload(input: {
     );
   }
 
-  const first = classSections[0]!;
+  const first = classSections[0];
   const recurringStartTime = first.startTime;
   const recurringEndTime = first.endTime;
 
   const todayIso = todayISODateInTimezone(timezone);
-  const recurringEffectiveFrom = parseISODateOnly(todayIso, 'recurringEffectiveFrom');
+  const recurringEffectiveFrom = parseISODateOnly(
+    todayIso,
+    'recurringEffectiveFrom',
+  );
 
   return {
     name,
@@ -432,9 +445,7 @@ export function deriveVenueConfigFromTemplate(template: TemplateForDerive): {
     template.recurringStartTime,
   );
   const year = template.recurringEffectiveFrom.getUTCFullYear() + 1;
-  const closesAt = endOfDay(
-    new Date(`${year}-12-31T12:00:00.000Z`),
-  );
+  const closesAt = endOfDay(new Date(`${year}-12-31T12:00:00.000Z`));
 
   return {
     reservationEventLabel: template.name,
@@ -452,13 +463,13 @@ export function buildTemplateSummary(
 ): string {
   if (row.scheduleMode === ReservationEventScheduleMode.FIXED_EVENT) {
     const sales =
-      row.salesStartDate && row.salesEndDate ?
-        `Sales ${row.salesStartDate.toISOString().slice(0, 10)}–${row.salesEndDate.toISOString().slice(0, 10)}`
-      : '';
+      row.salesStartDate && row.salesEndDate
+        ? `Sales ${row.salesStartDate.toISOString().slice(0, 10)}–${row.salesEndDate.toISOString().slice(0, 10)}`
+        : '';
     const event =
-      row.eventDate && row.eventStartTime && row.eventEndTime ?
-        `Event ${row.eventDate.toISOString().slice(0, 10)} · ${row.eventStartTime}–${row.eventEndTime}`
-      : '';
+      row.eventDate && row.eventStartTime && row.eventEndTime
+        ? `Event ${row.eventDate.toISOString().slice(0, 10)} · ${row.eventStartTime}–${row.eventEndTime}`
+        : '';
     return [sales, event].filter(Boolean).join(' · ') || 'Fixed event';
   }
 
@@ -466,13 +477,12 @@ export function buildTemplateSummary(
     row.weekdays
       ?.filter((w) => w.isActive)
       .map((w) => WEEKDAY_LABELS[w.weekday] ?? String(w.weekday)) ?? [];
-  const from =
-    row.recurringEffectiveFrom ?
-      `From ${row.recurringEffectiveFrom.toISOString().slice(0, 10)}`
+  const from = row.recurringEffectiveFrom
+    ? `From ${row.recurringEffectiveFrom.toISOString().slice(0, 10)}`
     : 'From today';
   const times =
-    row.recurringStartTime && row.recurringEndTime ?
-      `${row.recurringStartTime}–${row.recurringEndTime}`
-    : '';
+    row.recurringStartTime && row.recurringEndTime
+      ? `${row.recurringStartTime}–${row.recurringEndTime}`
+      : '';
   return [from, active.join(', '), times].filter(Boolean).join(' · ');
 }

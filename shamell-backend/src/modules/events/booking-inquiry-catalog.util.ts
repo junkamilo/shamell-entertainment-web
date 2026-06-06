@@ -21,9 +21,9 @@ export const onComingHubEventMarkerWhere: Prisma.EventWhereInput = {
   ],
 };
 
-export async function eventTypeIdsExcludedFromBookingInquiry(
-  prisma: { event: { findMany: (args: object) => Promise<{ eventTypeId: string }[]> } },
-): Promise<string[]> {
+export async function eventTypeIdsExcludedFromBookingInquiry(prisma: {
+  event: { findMany: (args: object) => Promise<{ eventTypeId: string }[]> };
+}): Promise<string[]> {
   const rows = await prisma.event.findMany({
     where: onComingHubEventMarkerWhere,
     select: { eventTypeId: true },
