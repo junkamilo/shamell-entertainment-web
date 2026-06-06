@@ -19,6 +19,7 @@ jobs:
           cache: npm
           cache-dependency-path: shamell-backend/package-lock.json
       - run: npm ci
+      - run: npx prisma generate
       - run: npm run lint
       - run: npm run test
       - run: npm run build

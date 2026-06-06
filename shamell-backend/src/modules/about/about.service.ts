@@ -512,7 +512,7 @@ export class AboutService {
       return row;
     }
 
-    return this.prisma.aboutContent.update({
+    return await this.prisma.aboutContent.update({
       where: { id: row.id },
       data: {
         videoDeliveryUrl: row.videoDeliveryUrl?.trim() || videoDeliveryUrl,
