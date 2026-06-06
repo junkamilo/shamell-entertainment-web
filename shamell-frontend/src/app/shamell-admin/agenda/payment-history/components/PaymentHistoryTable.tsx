@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   flowLabel,
   formatPaymentAmount,
   formatPaymentDate,
-  paymentRowActionHref,
   stageLabel,
   statusLabel,
 } from "../lib/paymentHistoryDisplay";
@@ -15,9 +13,13 @@ import type { AdminStripePaymentRow } from "../types/paymentHistory.types";
 
 type PaymentHistoryTableProps = {
   items: AdminStripePaymentRow[];
+  onViewPayment: (row: AdminStripePaymentRow) => void;
 };
 
-export default function PaymentHistoryTable({ items }: PaymentHistoryTableProps) {
+export default function PaymentHistoryTable({
+  items,
+  onViewPayment,
+}: PaymentHistoryTableProps) {
   return (
     <div className="hidden overflow-x-auto rounded-xl border border-gold/14 md:block">
       <table className="min-w-full text-left text-sm">
@@ -37,7 +39,6 @@ export default function PaymentHistoryTable({ items }: PaymentHistoryTableProps)
         <tbody>
           {items.map((row) => {
             const { badgeClass, Icon } = paymentStatusStyles(row.status);
-            const actionHref = paymentRowActionHref(row);
             return (
               <tr key={`${row.flow}-${row.id}`} className="border-b border-white/5">
                 <td className="px-4 py-3 text-xs text-foreground/65">
@@ -74,16 +75,13 @@ export default function PaymentHistoryTable({ items }: PaymentHistoryTableProps)
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  {actionHref ? (
-                    <Link
-                      href={actionHref}
-                      className="text-xs text-gold hover:underline"
-                    >
-                      View
-                    </Link>
-                  ) : (
-                    "—"
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => onViewPayment(row)}
+                    className="text-xs text-gold hover:underline"
+                  >
+                    View
+                  </button>
                 </td>
               </tr>
             );

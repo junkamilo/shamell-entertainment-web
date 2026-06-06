@@ -13,7 +13,6 @@ import { MAX_CATALOG_IMAGES } from "../lib/eventsConstants";
 import { isVideoCatalogItem, isVideoFile } from "../lib/eventsMedia";
 import type {
   CatalogImage,
-  EventPublicSection,
   EventsEventTypeOption,
   UpcomingExperienceMode,
 } from "../types/events.types";
@@ -39,8 +38,6 @@ type Props = {
   onItemsTextChange: (value: string) => void;
   priceInput: string;
   onPriceInputChange: (value: string) => void;
-  publicSection: EventPublicSection;
-  onPublicSectionChange: (value: EventPublicSection) => void;
   lockPublicSection?: boolean;
   existingImages: CatalogImage[];
   pendingFiles: File[];
@@ -87,8 +84,6 @@ export default function EventsFormModal({
   onItemsTextChange,
   priceInput,
   onPriceInputChange,
-  publicSection,
-  onPublicSectionChange,
   lockPublicSection = false,
   existingImages,
   pendingFiles,
@@ -245,22 +240,6 @@ export default function EventsFormModal({
             placeholder={"Line 1\nLine 2\nLine 3"}
           />
         </label>
-
-        {!lockPublicSection ? (
-          <label className="block">
-            <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PUBLIC SECTION</span>
-            <select
-              value={publicSection}
-              onChange={(event) =>
-                onPublicSectionChange(event.target.value as EventPublicSection)
-              }
-              className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
-            >
-              <option value="GENERAL">General (Types of Events)</option>
-              <option value="UPCOMING_EVENTS">Upcoming Events</option>
-            </select>
-          </label>
-        ) : null}
 
         <label className="block">
           <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">PRICE (OPTIONAL)</span>

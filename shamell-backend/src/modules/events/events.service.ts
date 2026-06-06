@@ -457,7 +457,7 @@ export class EventsService {
   async deleteEvent(id: string) {
     const existing = await this.prisma.event.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, eventTypeId: true, publicSection: true },
     });
     if (!existing) throw new NotFoundException('Event not found.');
 
@@ -481,6 +481,10 @@ export class EventsService {
 
     if (linkedTemplateId) {
       await this.deleteReservationTemplateIfUnlinked(linkedTemplateId);
+    }
+
+    if (existing.publicSection === EventPublicSection.UPCOMING_EVENTS) {
+      await this.deleteOrphanInlineEventType(existing.eventTypeId);
     }
 
     return {
@@ -529,8 +533,10 @@ export class EventsService {
     return types.map((item) => this.mapEventType(item));
   }
 
-  async getAdminEventTypes() {
+  async getAdminEventTypes(query?: { publicSection?: EventPublicSection }) {
+    const section = query?.publicSection;
     const types = await this.prisma.eventType.findMany({
+      where: section ? this.adminEventTypesWhereForSection(section) : undefined,
       orderBy: { createdAt: 'asc' },
       include: {
         occasionLinks: {
@@ -836,6 +842,53 @@ export class EventsService {
         'Cannot delete this event because it has active class enrollments.',
       );
     }
+  }
+
+  private adminEventTypesWhereForSection(section: EventPublicSection) {
+    if (section === EventPublicSection.UPCOMING_EVENTS) {
+      return {
+        events: { some: { publicSection: EventPublicSection.UPCOMING_EVENTS } },
+      };
+    }
+
+    return {
+      OR: [
+        { events: { some: { publicSection: EventPublicSection.GENERAL } } },
+        {
+          events: { none: {} },
+          OR: [
+            { occasionLinks: { some: {} } },
+            { contactInquiryCode: { not: null } },
+          ],
+        },
+      ],
+    };
+  }
+
+  /** Removes event types auto-created for a single upcoming catalog entry. */
+  private async deleteOrphanInlineEventType(eventTypeId: string) {
+    const [eventCount, bookingCount, galleryCount, occasionCount] =
+      await Promise.all([
+        this.prisma.event.count({ where: { eventTypeId } }),
+        this.prisma.booking.count({ where: { eventTypeId } }),
+        this.prisma.galleryPhoto.count({ where: { eventTypeId } }),
+        this.prisma.eventTypeOccasion.count({ where: { eventTypeId } }),
+      ]);
+    if (
+      eventCount > 0 ||
+      bookingCount > 0 ||
+      galleryCount > 0 ||
+      occasionCount > 0
+    ) {
+      return;
+    }
+    const type = await this.prisma.eventType.findUnique({
+      where: { id: eventTypeId },
+      select: { contactInquiryCode: true },
+    });
+    if (type?.contactInquiryCode) return;
+
+    await this.prisma.eventType.delete({ where: { id: eventTypeId } });
   }
 
   private async ensureEventTypeHasNoBlockingUsage(eventTypeId: string) {

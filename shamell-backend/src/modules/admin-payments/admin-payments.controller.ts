@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
   Query,
   UseGuards,
@@ -11,6 +12,10 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { UpcomingEventsService } from '../upcoming-events/upcoming-events.service';
+import {
+  ADMIN_PAYMENT_DETAIL_FLOWS,
+  type AdminPaymentDetailFlow,
+} from './admin-payments-detail.types';
 import { AdminPaymentsService } from './admin-payments.service';
 import {
   AdminPaymentsBadgeQueryDto,
@@ -41,6 +46,23 @@ export class AdminPaymentsController {
   })
   countBadge(@Query() query: AdminPaymentsBadgeQueryDto) {
     return this.adminPaymentsService.countBadgeSince(query.since);
+  }
+
+  @Get(':flow/:id')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Payment detail for admin summary modal' })
+  getPaymentDetail(@Param('flow') flow: string, @Param('id') id: string) {
+    if (!ADMIN_PAYMENT_DETAIL_FLOWS.includes(flow as AdminPaymentDetailFlow)) {
+      throw new BadRequestException('Invalid payment flow.');
+    }
+    if (!id?.trim()) {
+      throw new BadRequestException('Payment id is required.');
+    }
+    return this.adminPaymentsService.getPaymentDetail(
+      flow as AdminPaymentDetailFlow,
+      id.trim(),
+    );
   }
 
   @Post('reconcile-fixed-ticket')

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   BookingPayment,
   BookingPaymentStatus,
@@ -12,6 +16,15 @@ import {
 } from '@prisma/client';
 import { formatPaymentMethodLabel } from '../stripe/stripe-payment-details.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { fixedEventStartsAtIso } from '../upcoming-events/upcoming-fixed-ticket.util';
+import type {
+  AdminPaymentDetailFlow,
+  AdminStripePaymentDetail,
+  BookingPurchaseDetails,
+  ClassPurchaseDetails,
+  FixedPurchaseDetails,
+  VenuePurchaseDetails,
+} from './admin-payments-detail.types';
 import type { AdminStripePaymentRow } from './admin-payments.types';
 import type {
   AdminPaymentFlow,
@@ -30,6 +43,7 @@ const bookingPaymentInclude = {
     include: {
       event: { include: { eventType: { select: { name: true } } } },
       eventType: { select: { name: true } },
+      occasionType: { select: { name: true } },
       service: { include: { serviceType: { select: { name: true } } } },
       user: { select: { fullName: true, email: true } },
     },
@@ -50,7 +64,14 @@ const classInclude = {
 } satisfies Prisma.UpcomingClassEnrollmentInclude;
 
 const fixedInclude = {
-  event: { include: { eventType: { select: { name: true, id: true } } } },
+  event: {
+    include: {
+      eventType: { select: { name: true, id: true } },
+      venueConfig: {
+        select: { reservationEventDate: true, reservationTimezone: true },
+      },
+    },
+  },
 } satisfies Prisma.UpcomingFixedEventEnrollmentInclude;
 
 type BookingPaymentRow = BookingPayment &
@@ -199,6 +220,59 @@ export class AdminPaymentsService {
         hasNext: page < totalPages,
       },
     };
+  }
+
+  async getPaymentDetail(
+    flow: AdminPaymentDetailFlow,
+    id: string,
+  ): Promise<AdminStripePaymentDetail> {
+    switch (flow) {
+      case 'BOOKING_QUOTE': {
+        const payment = await this.prisma.bookingPayment.findUnique({
+          where: { id },
+          include: bookingPaymentInclude,
+        });
+        if (!payment) {
+          throw new NotFoundException('Payment not found.');
+        }
+        return this.mapBookingPaymentDetail(payment);
+      }
+      case 'VENUE_SEAT': {
+        const reservation = await this.prisma.venueSeatReservation.findUnique({
+          where: { id },
+          include: venueInclude,
+        });
+        if (!reservation) {
+          throw new NotFoundException('Payment not found.');
+        }
+        return this.mapVenueReservationDetail(reservation);
+      }
+      case 'CLASS_SESSION': {
+        const enrollment = await this.prisma.upcomingClassEnrollment.findUnique(
+          {
+            where: { id },
+            include: classInclude,
+          },
+        );
+        if (!enrollment) {
+          throw new NotFoundException('Payment not found.');
+        }
+        return this.mapClassEnrollmentDetail(enrollment);
+      }
+      case 'FIXED_TICKET': {
+        const enrollment =
+          await this.prisma.upcomingFixedEventEnrollment.findUnique({
+            where: { id },
+            include: fixedInclude,
+          });
+        if (!enrollment) {
+          throw new NotFoundException('Payment not found.');
+        }
+        return this.mapFixedEnrollmentDetail(enrollment);
+      }
+      default:
+        throw new BadRequestException('Invalid payment flow.');
+    }
   }
 
   async countBadgeSince(sinceMs?: number): Promise<{ count: number }> {
@@ -457,6 +531,100 @@ export class AdminPaymentsService {
       paidAt: iso(e.paidAt),
       expiresAt: iso(e.expiresAt),
       updatedAt: e.updatedAt.toISOString(),
+    };
+  }
+
+  private bookingServicesLine(
+    booking: BookingPaymentRow['booking'],
+  ): string | null {
+    const raw = booking.bookingDetails;
+    if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+      const labels = (raw as { serviceLabels?: unknown }).serviceLabels;
+      if (Array.isArray(labels)) {
+        const parts = labels.filter(
+          (x): x is string => typeof x === 'string' && x.trim().length > 0,
+        );
+        if (parts.length > 0) return parts.join(' · ');
+      }
+    }
+    return booking.service?.serviceType?.name ?? null;
+  }
+
+  private mapBookingPaymentDetail(
+    p: BookingPaymentRow,
+  ): AdminStripePaymentDetail {
+    const base = this.mapBookingPayment(p);
+    const b = p.booking;
+    const purchaseDetails: BookingPurchaseDetails = {
+      flow: 'BOOKING_QUOTE',
+      eventType:
+        b.eventType?.name ?? b.event?.eventType?.name ?? base.contextLabel,
+      occasion: b.occasionType?.name ?? null,
+      services: this.bookingServicesLine(b),
+      eventDate: b.eventDate.toISOString(),
+      location: b.location?.trim() || null,
+      guestCount: b.guestCount ?? null,
+      quoteTotalAmount:
+        b.quoteTotalAmount != null ? Number(b.quoteTotalAmount) : null,
+      quoteDepositAmount:
+        b.quoteDepositAmount != null ? Number(b.quoteDepositAmount) : null,
+      quoteModel: b.quoteModel ?? null,
+    };
+    return {
+      ...base,
+      customerPhone: b.guestPhone?.trim() || null,
+      purchaseDetails,
+    };
+  }
+
+  private mapVenueReservationDetail(r: VenueRow): AdminStripePaymentDetail {
+    const base = this.mapVenueReservation(r);
+    const eventName = r.upcomingEvent?.eventType?.name ?? 'Venue event';
+    const purchaseDetails: VenuePurchaseDetails = {
+      flow: 'VENUE_SEAT',
+      eventName,
+      eventDate: r.eventDate.toISOString(),
+      seatKind: r.kind === VenueSeatKind.STANDALONE_CHAIR ? 'CHAIR' : 'TABLE',
+      tableName: r.venueTableConfig?.tableName ?? null,
+      layoutItemId: r.layoutItemId,
+    };
+    return {
+      ...base,
+      customerPhone: r.customerPhone?.trim() || null,
+      purchaseDetails,
+    };
+  }
+
+  private mapClassEnrollmentDetail(e: ClassRow): AdminStripePaymentDetail {
+    const base = this.mapClassEnrollment(e);
+    const session = e.session;
+    const purchaseDetails: ClassPurchaseDetails = {
+      flow: 'CLASS_SESSION',
+      eventName: session.event.eventType.name,
+      sessionStartsAt: session.startsAt.toISOString(),
+      sessionEndsAt: session.endsAt.toISOString(),
+      sessionTimezone: session.timezone,
+    };
+    return {
+      ...base,
+      customerPhone: e.customerPhone?.trim() || null,
+      purchaseDetails,
+    };
+  }
+
+  private mapFixedEnrollmentDetail(e: FixedRow): AdminStripePaymentDetail {
+    const base = this.mapFixedEnrollment(e);
+    const event = e.event;
+    const purchaseDetails: FixedPurchaseDetails = {
+      flow: 'FIXED_TICKET',
+      eventName: event.eventType.name,
+      eventDate: fixedEventStartsAtIso(event.venueConfig?.reservationEventDate),
+      ticketNumber: e.ticketNumber ?? null,
+    };
+    return {
+      ...base,
+      customerPhone: e.customerPhone?.trim() || null,
+      purchaseDetails,
     };
   }
 

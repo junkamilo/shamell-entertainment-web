@@ -1,7 +1,3 @@
-import {
-  AGENDAR_PATH,
-  AGENDA_PAYMENT_HISTORY_PATH,
-} from "../../agendar/lib/agendarRoutes";
 import type {
   AdminPaymentFlow,
   AdminPaymentStatus,
@@ -39,27 +35,6 @@ export function statusLabel(status: AdminPaymentStatus): string {
     case "CANCELLED":
       return "Cancelled";
   }
-}
-
-export function paymentRowActionHref(row: AdminStripePaymentRow): string | null {
-  if (row.flow === "BOOKING_QUOTE" && row.bookingId) {
-    const params = new URLSearchParams({
-      bookingId: row.bookingId,
-      origin: "booking",
-      returnTo: AGENDA_PAYMENT_HISTORY_PATH,
-    });
-    return `${AGENDAR_PATH}?${params.toString()}`;
-  }
-  if (row.flow === "VENUE_SEAT") {
-    return "/shamell-admin/venue-reservations";
-  }
-  if (
-    (row.flow === "CLASS_SESSION" || row.flow === "FIXED_TICKET") &&
-    row.eventId
-  ) {
-    return "/shamell-admin/events";
-  }
-  return null;
 }
 
 export function formatPaymentAmount(amount: number, currency: string): string {

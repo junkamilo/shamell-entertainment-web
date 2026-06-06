@@ -1,16 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import AdminBackButton from "@/components/admin/AdminBackButton";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminPagination from "@/components/admin/AdminPagination";
 import { AGENDA_HUB_PATH } from "../../agendar/lib/agendarRoutes";
 import { usePaymentHistoryPage } from "../hooks/usePaymentHistoryPage";
+import PaymentHistoryDetailModal from "./PaymentHistoryDetailModal";
 import PaymentHistoryFilters from "./PaymentHistoryFilters";
 import PaymentHistoryRowCard from "./PaymentHistoryRowCard";
 import PaymentHistoryTable from "./PaymentHistoryTable";
+import type { AdminStripePaymentRow } from "../types/paymentHistory.types";
 
 export default function PaymentHistoryPageContent() {
   const page = usePaymentHistoryPage();
+  const [selectedPayment, setSelectedPayment] =
+    useState<AdminStripePaymentRow | null>(null);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl">
@@ -49,10 +54,17 @@ export default function PaymentHistoryPageContent() {
         <p className="text-sm text-foreground/55">No payments found.</p>
       ) : (
         <>
-          <PaymentHistoryTable items={page.items} />
+          <PaymentHistoryTable
+            items={page.items}
+            onViewPayment={setSelectedPayment}
+          />
           <div className="mt-4 space-y-3 md:hidden">
             {page.items.map((row) => (
-              <PaymentHistoryRowCard key={`${row.flow}-${row.id}`} row={row} />
+              <PaymentHistoryRowCard
+                key={`${row.flow}-${row.id}`}
+                row={row}
+                onViewPayment={setSelectedPayment}
+              />
             ))}
           </div>
           <AdminPagination
@@ -70,6 +82,12 @@ export default function PaymentHistoryPageContent() {
           />
         </>
       )}
+
+      <PaymentHistoryDetailModal
+        row={selectedPayment}
+        isOpen={Boolean(selectedPayment)}
+        onClose={() => setSelectedPayment(null)}
+      />
     </div>
   );
 }

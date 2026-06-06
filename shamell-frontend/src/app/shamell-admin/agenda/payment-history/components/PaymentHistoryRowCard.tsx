@@ -1,12 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 import {
   flowLabel,
   formatPaymentAmount,
   formatPaymentDate,
-  paymentRowActionHref,
   stageLabel,
   statusLabel,
 } from "../lib/paymentHistoryDisplay";
@@ -15,11 +13,14 @@ import type { AdminStripePaymentRow } from "../types/paymentHistory.types";
 
 type PaymentHistoryRowCardProps = {
   row: AdminStripePaymentRow;
+  onViewPayment: (row: AdminStripePaymentRow) => void;
 };
 
-export default function PaymentHistoryRowCard({ row }: PaymentHistoryRowCardProps) {
+export default function PaymentHistoryRowCard({
+  row,
+  onViewPayment,
+}: PaymentHistoryRowCardProps) {
   const { badgeClass, Icon } = paymentStatusStyles(row.status);
-  const actionHref = paymentRowActionHref(row);
 
   return (
     <article className="shamell-glass-surface rounded-xl border border-gold/15 p-4">
@@ -55,14 +56,13 @@ export default function PaymentHistoryRowCard({ row }: PaymentHistoryRowCardProp
         <dt className="text-foreground/50">Date</dt>
         <dd>{formatPaymentDate(row.paidAt ?? row.createdAt)}</dd>
       </dl>
-      {actionHref ? (
-        <Link
-          href={actionHref}
-          className="mt-4 inline-block font-brand text-xs tracking-widest text-gold hover:underline"
-        >
-          View details →
-        </Link>
-      ) : null}
+      <button
+        type="button"
+        onClick={() => onViewPayment(row)}
+        className="mt-4 font-brand text-xs tracking-widest text-gold hover:underline"
+      >
+        View details →
+      </button>
     </article>
   );
 }

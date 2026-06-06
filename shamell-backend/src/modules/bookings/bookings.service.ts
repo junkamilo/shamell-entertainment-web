@@ -979,6 +979,11 @@ export class BookingsService {
     dto: CreateBookingQuoteDto,
   ) {
     const booking = await this.findOneAdmin(bookingId);
+    if (this.isBookingFullyPaid(booking)) {
+      throw new BadRequestException(
+        'This booking is already fully paid. A new payment link cannot be sent.',
+      );
+    }
     const toEmail =
       booking.user?.email?.trim().toLowerCase() ??
       booking.guestEmail?.trim().toLowerCase();
@@ -1770,6 +1775,19 @@ export class BookingsService {
       contextLabel: this.bookingContextLabel(booking),
       reference: booking.id.slice(0, 8).toUpperCase(),
     });
+  }
+
+  private isBookingFullyPaid(booking: {
+    status: BookingStatus;
+    depositPaidAt: Date | null;
+    balancePaidAt: Date | null;
+    quoteModel: BookingQuotePaymentModel | null;
+  }): boolean {
+    return (
+      Boolean(booking.balancePaidAt) ||
+      (booking.status === BookingStatus.CONFIRMED &&
+        booking.quoteModel === BookingQuotePaymentModel.FULL)
+    );
   }
 
   private hashQuoteToken(rawToken: string): string {

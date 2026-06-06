@@ -40,7 +40,9 @@ export function useEventsCatalog(
     setIsLoading(true);
     try {
       const [types, items] = await Promise.all([
-        fetchAdminEventTypesForEvents(token),
+        fetchAdminEventTypesForEvents(token, {
+          publicSection: options?.publicSection,
+        }),
         fetchAdminEvents(token, { publicSection: options?.publicSection }),
       ]);
       setEventTypes(types);
