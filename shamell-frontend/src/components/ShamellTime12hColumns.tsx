@@ -27,7 +27,7 @@ function resolveSelection(
   timeClamp: ShamellTime12hColumnsProps["timeClamp"],
   blockedRanges: ShamellTime12hColumnsProps["blockedRanges"],
 ): ShamellTime12hParts {
-  let h12 = patch.h12 ?? prev.h12;
+  const h12 = patch.h12 ?? prev.h12;
   let min = patch.min ?? prev.min;
   const ap = patch.ap ?? prev.ap;
 

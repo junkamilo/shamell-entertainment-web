@@ -81,7 +81,9 @@ export function buildBookingConfirmationSubject(appPublicName: string): string {
   return `${appPublicName} — Your reservation is confirmed`;
 }
 
-export function buildBookingConfirmationHtml(input: BookingConfirmationTemplateInput): string {
+export function buildBookingConfirmationHtml(
+  input: BookingConfirmationTemplateInput,
+): string {
   const safeName = escapeHtml(input.recipientName.trim() || 'Guest');
   const dateLine = formatEventDateInZone(input.eventDate, input.timeZone);
   const { line: timeLine, hasTimes } = timeRangeLine(
@@ -89,9 +91,7 @@ export function buildBookingConfirmationHtml(input: BookingConfirmationTemplateI
     input.eventTimeEnd,
   );
   const location = escapeHtml(input.location.trim());
-  const serviceHeading = escapeHtml(
-    (input.serviceHeading ?? 'Service').trim(),
-  );
+  const serviceHeading = escapeHtml((input.serviceHeading ?? 'Service').trim());
   const service = escapeHtml(input.serviceLabel.trim());
   const eventType = input.eventTypeLabel?.trim()
     ? escapeHtml(input.eventTypeLabel.trim())
@@ -106,36 +106,36 @@ export function buildBookingConfirmationHtml(input: BookingConfirmationTemplateI
       : '';
 
   const siteUrl = input.frontendBaseUrl?.trim();
-  const siteLink =
-    siteUrl ?
-      `<p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:#b9b09f;">
+  const siteLink = siteUrl
+    ? `<p style="margin:20px 0 0;font-size:13px;line-height:1.6;color:#b9b09f;">
           <a href="${escapeHtml(siteUrl)}" style="color:#e8d5a3;text-decoration:underline;">Visit our website</a>
         </p>`
     : '';
 
-  const timeBlock =
-    hasTimes ?
-      `<p style="margin:8px 0 0;font-size:15px;line-height:1.6;color:#fff8e6;"><strong>Time:</strong> ${escapeHtml(timeLine)}</p>`
+  const timeBlock = hasTimes
+    ? `<p style="margin:8px 0 0;font-size:15px;line-height:1.6;color:#fff8e6;"><strong>Time:</strong> ${escapeHtml(timeLine)}</p>`
     : '';
 
   const metaRows = [
-    eventType ?
-      `<tr><td style="padding:6px 0;color:#b9b09f;font-size:13px;width:120px;">Event type</td><td style="padding:6px 0;color:#fff8e6;font-size:14px;">${eventType}</td></tr>`
-    : '',
-    occasion ?
-      `<tr><td style="padding:6px 0;color:#b9b09f;font-size:13px;">Occasion</td><td style="padding:6px 0;color:#fff8e6;font-size:14px;">${occasion}</td></tr>`
-    : '',
+    eventType
+      ? `<tr><td style="padding:6px 0;color:#b9b09f;font-size:13px;width:120px;">Event type</td><td style="padding:6px 0;color:#fff8e6;font-size:14px;">${eventType}</td></tr>`
+      : '',
+    occasion
+      ? `<tr><td style="padding:6px 0;color:#b9b09f;font-size:13px;">Occasion</td><td style="padding:6px 0;color:#fff8e6;font-size:14px;">${occasion}</td></tr>`
+      : '',
   ]
     .filter(Boolean)
     .join('');
 
-  const logoBlock = buildEmailLogoWordmarkHtml(input.branding ?? input.frontendBaseUrl);
+  const logoBlock = buildEmailLogoWordmarkHtml(
+    input.branding ?? input.frontendBaseUrl,
+  );
   const variant = input.emailVariant ?? 'default';
   const introSecond =
-    variant === 'inbox_from_contact' ?
-      `<p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">We are pleased to confirm your reservation is on file. We look forward to seeing you on the agreed date and at the venue below.</p>
+    variant === 'inbox_from_contact'
+      ? `<p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">We are pleased to confirm your reservation is on file. We look forward to seeing you on the agreed date and at the venue below.</p>
             <p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">Here is a summary of what we have scheduled:</p>`
-    : `<p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">Your booking has been scheduled successfully. Here are the details:</p>`;
+      : `<p style="margin:14px 0 0;font-size:15px;line-height:1.7;color:#d6cfbd;">Your booking has been scheduled successfully. Here are the details:</p>`;
 
   return `
 <!DOCTYPE html>
@@ -174,7 +174,9 @@ export function buildBookingConfirmationHtml(input: BookingConfirmationTemplateI
 </html>`.trim();
 }
 
-export function buildBookingConfirmationText(input: BookingConfirmationTemplateInput): string {
+export function buildBookingConfirmationText(
+  input: BookingConfirmationTemplateInput,
+): string {
   const dateLine = formatEventDateInZone(input.eventDate, input.timeZone);
   const { line: timeLine, hasTimes } = timeRangeLine(
     input.eventTimeStart,
@@ -182,13 +184,13 @@ export function buildBookingConfirmationText(input: BookingConfirmationTemplateI
   );
   const variant = input.emailVariant ?? 'default';
   const introLines =
-    variant === 'inbox_from_contact' ?
-      [
-        'We are pleased to confirm your reservation is on file. We look forward to seeing you on the agreed date and at the venue below.',
-        '',
-        'Here is a summary of what we have scheduled:',
-      ]
-    : ['Your booking has been scheduled successfully.', '', 'Details:'];
+    variant === 'inbox_from_contact'
+      ? [
+          'We are pleased to confirm your reservation is on file. We look forward to seeing you on the agreed date and at the venue below.',
+          '',
+          'Here is a summary of what we have scheduled:',
+        ]
+      : ['Your booking has been scheduled successfully.', '', 'Details:'];
   const lines = [
     plainTextBrandLead(input.frontendBaseUrl?.trim()),
     `${input.appPublicName} — Your reservation is confirmed`,
@@ -201,19 +203,19 @@ export function buildBookingConfirmationText(input: BookingConfirmationTemplateI
     ...(hasTimes ? [`Time: ${timeLine}`] : []),
     `Where: ${input.location.trim()}`,
     `${input.serviceHeading ?? 'Service'}: ${input.serviceLabel.trim()}`,
-    ...(input.guestCount != null && input.guestCount > 0 ?
-      [`Guests: ${input.guestCount}`]
-    : []),
-    ...(input.eventTypeLabel?.trim() ?
-      [`Event type: ${input.eventTypeLabel.trim()}`]
-    : []),
-    ...(input.occasionLabel?.trim() ?
-      [`Occasion: ${input.occasionLabel.trim()}`]
-    : []),
+    ...(input.guestCount != null && input.guestCount > 0
+      ? [`Guests: ${input.guestCount}`]
+      : []),
+    ...(input.eventTypeLabel?.trim()
+      ? [`Event type: ${input.eventTypeLabel.trim()}`]
+      : []),
+    ...(input.occasionLabel?.trim()
+      ? [`Occasion: ${input.occasionLabel.trim()}`]
+      : []),
     '',
-    input.frontendBaseUrl?.trim() ?
-      `Website: ${input.frontendBaseUrl.trim()}`
-    : '',
+    input.frontendBaseUrl?.trim()
+      ? `Website: ${input.frontendBaseUrl.trim()}`
+      : '',
     '',
     'If you did not request this reservation, please contact us through our website.',
   ].filter((l) => l !== '');
@@ -228,8 +230,7 @@ export function timesFromDetails(
   const start = details.eventTimeStart?.trim();
   const end = details.eventTimeEnd?.trim();
   return {
-    start:
-      start && /^\d{2}:\d{2}$/.test(start) ? start : undefined,
+    start: start && /^\d{2}:\d{2}$/.test(start) ? start : undefined,
     end: end && /^\d{2}:\d{2}$/.test(end) ? end : undefined,
   };
 }

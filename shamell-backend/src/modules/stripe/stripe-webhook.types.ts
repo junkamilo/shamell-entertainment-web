@@ -25,7 +25,7 @@ export function parseCheckoutSession(raw: unknown): StripeCheckoutSessionLite {
   if (!raw || typeof raw !== 'object') {
     return {};
   }
-  return raw as StripeCheckoutSessionLite;
+  return raw;
 }
 
 export function checkoutSessionFlow(

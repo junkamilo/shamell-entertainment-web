@@ -28,23 +28,33 @@ export class CreateReservationEventTemplateDto {
   @IsEnum(ReservationEventScheduleMode)
   scheduleMode!: ReservationEventScheduleMode;
 
-  @ValidateIf((o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT')
+  @ValidateIf(
+    (o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT',
+  )
   @IsString()
   salesStartDate?: string;
 
-  @ValidateIf((o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT')
+  @ValidateIf(
+    (o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT',
+  )
   @IsString()
   salesEndDate?: string;
 
-  @ValidateIf((o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT')
+  @ValidateIf(
+    (o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT',
+  )
   @IsString()
   eventDate?: string;
 
-  @ValidateIf((o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT')
+  @ValidateIf(
+    (o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT',
+  )
   @IsString()
   eventStartTime?: string;
 
-  @ValidateIf((o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT')
+  @ValidateIf(
+    (o: CreateReservationEventTemplateDto) => o.scheduleMode === 'FIXED_EVENT',
+  )
   @IsString()
   eventEndTime?: string;
 

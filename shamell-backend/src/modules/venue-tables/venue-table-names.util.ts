@@ -7,13 +7,15 @@ export const VENUE_TABLE_SIZE_LABELS: Record<VenueTableSize, string> = {
   [VenueTableSize.SMALL]: 'Small',
 };
 
-export function formatVenueTableSizeLabel(size: VenueTableSize | string): string {
-  const label = VENUE_TABLE_SIZE_LABELS[size as VenueTableSize];
-  return label ?? String(size);
+export function formatVenueTableSizeLabel(size: VenueTableSize): string {
+  return VENUE_TABLE_SIZE_LABELS[size];
 }
 
 /** Unique technical slug stored in DB; not shown to end users. */
-export function buildTechnicalTableName(size: VenueTableSize, id: string): string {
+export function buildTechnicalTableName(
+  size: VenueTableSize,
+  id: string,
+): string {
   const shortId = id.replace(/-/g, '').slice(0, 8).toLowerCase();
   return `${size}-${shortId}`;
 }

@@ -72,7 +72,9 @@ export class AdminPaymentsQueryDto {
 }
 
 export class AdminPaymentsBadgeQueryDto {
-  @ApiPropertyOptional({ description: 'Unix timestamp ms — count updates after this' })
+  @ApiPropertyOptional({
+    description: 'Unix timestamp ms — count updates after this',
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()

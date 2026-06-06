@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { BookingsService } from '../bookings/bookings.service';
 import { UpcomingEventsService } from '../upcoming-events/upcoming-events.service';
 import { StripeWebhookAuditService } from '../stripe/stripe-webhook-audit.service';
@@ -40,7 +36,7 @@ export class StripeWebhookDispatchService {
         rawBody,
         signature,
         this.stripeService.webhookSecret,
-      ) as StripeWebhookEventLite;
+      );
     } catch (err) {
       this.logger.warn(
         `stripe-webhook-invalid-signature reason=${err instanceof Error ? err.message : String(err)}`,
@@ -107,7 +103,9 @@ export class StripeWebhookDispatchService {
         handler = 'class_session';
         await this.audit.markProcessing(event.id, handler);
         const result =
-          await this.upcomingEventsService.processClassStripeWebhookEvent(event);
+          await this.upcomingEventsService.processClassStripeWebhookEvent(
+            event,
+          );
         handled = result.handled;
       } else if (
         flow === 'class_package' ||
@@ -125,7 +123,9 @@ export class StripeWebhookDispatchService {
         handler = 'fixed_event_ticket';
         await this.audit.markProcessing(event.id, handler);
         const result =
-          await this.upcomingEventsService.processFixedStripeWebhookEvent(event);
+          await this.upcomingEventsService.processFixedStripeWebhookEvent(
+            event,
+          );
         handled = result.handled;
       } else if (flow === 'venue_seat') {
         handler = 'venue_seat';

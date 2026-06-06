@@ -29,7 +29,7 @@ export class AboutService {
 
   async getPublicAboutContent() {
     // Same singleton row as admin (latest save); isActive is set true on every upsert.
-    let latest = await this.prisma.aboutContent.findFirst({
+    const latest = await this.prisma.aboutContent.findFirst({
       orderBy: { updatedAt: 'desc' },
     });
     if (!latest) {
@@ -205,10 +205,7 @@ export class AboutService {
     if (existing.imagePublicId) {
       this.ensureCloudinaryEnv();
       const prevType = this.normalizeHeroMediaType(existing.heroMediaType);
-      await this.deleteHeroFromCloudinary(
-        existing.imagePublicId,
-        prevType,
-      );
+      await this.deleteHeroFromCloudinary(existing.imagePublicId, prevType);
     }
 
     const saved = await this.prisma.aboutContent.update({
@@ -364,9 +361,7 @@ export class AboutService {
   }
 
   /** Chunked upload for large hero videos (no in-app size cap). */
-  private uploadVideoLargeFromPath(
-    filePath: string,
-  ): Promise<{
+  private uploadVideoLargeFromPath(filePath: string): Promise<{
     secureUrl: string;
     publicId: string;
     videoDeliveryUrl: string | null;
@@ -457,16 +452,23 @@ export class AboutService {
   ): string {
     const label = kind === 'video' ? 'Video' : 'Image';
     const detail =
-      error && typeof error === 'object' && 'message' in error
-        ? String((error as { message?: unknown }).message ?? '').trim()
-        : '';
+      error instanceof Error
+        ? error.message.trim()
+        : error &&
+            typeof error === 'object' &&
+            'message' in error &&
+            typeof (error as { message?: unknown }).message === 'string'
+          ? (error as { message: string }).message.trim()
+          : '';
     if (detail) {
       return `${label} upload failed: ${detail}`;
     }
     return `${label} upload failed.`;
   }
 
-  private normalizeHeroMediaType(raw: string | null | undefined): AboutHeroMediaType {
+  private normalizeHeroMediaType(
+    raw: string | null | undefined,
+  ): AboutHeroMediaType {
     return raw === 'VIDEO' ? 'VIDEO' : 'IMAGE';
   }
 
@@ -519,7 +521,10 @@ export class AboutService {
   ): Promise<void> {
     await Promise.allSettled([
       fetch(videoPosterUrl, { method: 'GET' }),
-      fetch(videoDeliveryUrl, { method: 'GET', headers: { Range: 'bytes=0-1' } }),
+      fetch(videoDeliveryUrl, {
+        method: 'GET',
+        headers: { Range: 'bytes=0-1' },
+      }),
     ]);
   }
 

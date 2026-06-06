@@ -72,7 +72,9 @@ export class UpcomingEventsController {
     if (!sessionId?.trim()) {
       throw new BadRequestException('session_id is required.');
     }
-    return this.upcomingEventsService.getFixedEventSessionStatus(sessionId.trim());
+    return this.upcomingEventsService.getFixedEventSessionStatus(
+      sessionId.trim(),
+    );
   }
 
   @Get('upcoming-events/admin/events/:eventId/sessions')
@@ -100,7 +102,11 @@ export class UpcomingEventsController {
     @Param('sessionId', new ParseUUIDPipe()) sessionId: string,
     @Body() dto: UpsertClassSessionDto,
   ) {
-    return this.upcomingEventsService.updateAdminSession(eventId, sessionId, dto);
+    return this.upcomingEventsService.updateAdminSession(
+      eventId,
+      sessionId,
+      dto,
+    );
   }
 
   @Delete('upcoming-events/admin/events/:eventId/sessions/:sessionId')

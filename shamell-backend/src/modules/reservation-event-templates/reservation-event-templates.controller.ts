@@ -27,7 +27,9 @@ export class ReservationEventTemplatesController {
   @Get('admin')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  listAdmin(@Query('scheduleMode') scheduleMode?: ReservationEventScheduleMode) {
+  listAdmin(
+    @Query('scheduleMode') scheduleMode?: ReservationEventScheduleMode,
+  ) {
     const mode =
       scheduleMode === ReservationEventScheduleMode.FIXED_EVENT ||
       scheduleMode === ReservationEventScheduleMode.RECURRING_WEEKLY

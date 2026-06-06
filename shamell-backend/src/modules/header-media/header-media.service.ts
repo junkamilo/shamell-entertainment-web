@@ -86,7 +86,9 @@ export class HeaderMediaService {
 
   async uploadAdminHeaderPhotos(files: Express.Multer.File[]) {
     if (!files.length) {
-      throw new BadRequestException('At least one image or video file is required.');
+      throw new BadRequestException(
+        'At least one image or video file is required.',
+      );
     }
     const invalid = files.find(
       (file) =>
@@ -219,7 +221,8 @@ export class HeaderMediaService {
   private mapHeaderPhoto(photo: HeaderPhoto) {
     const imageUrl =
       photo.mediaType === GalleryMediaType.IMAGE
-        ? cloudinaryDeliveryUrl(photo.imageUrl, { width: 1920 }) ?? photo.imageUrl
+        ? (cloudinaryDeliveryUrl(photo.imageUrl, { width: 1920 }) ??
+          photo.imageUrl)
         : photo.imageUrl;
     return {
       id: photo.id,

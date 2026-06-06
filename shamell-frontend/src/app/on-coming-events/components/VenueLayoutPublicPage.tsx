@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Footer from "@/components/Footer";
 import { FixedTicketInventoryDisplay } from "@/components/shared/FixedTicketInventoryDisplay";
 import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
@@ -136,7 +136,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
   const [loading, setLoading] = useState(!cachedEntry);
   const [error, setError] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const hasLoadedOnceRef = useRef(Boolean(cachedEntry));
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(Boolean(cachedEntry));
 
   const hydrateFromCache = useCallback((entry: VenueLayoutPageCacheEntry) => {
     const next = stateFromCache(entry);
@@ -160,7 +160,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     setSalesClosedReason(next.salesClosedReason);
     setReservedLayoutItemIds(next.reservedLayoutItemIds);
     setPaidSeatHolders(next.paidSeatHolders);
-    hasLoadedOnceRef.current = true;
+    setHasLoadedOnce(true);
   }, []);
 
   const placedSummary = useMemo(
@@ -425,7 +425,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
             paidSeatHolders: availability.paidSeatHolders,
           });
 
-          hasLoadedOnceRef.current = true;
+          setHasLoadedOnce(true);
         } catch {
           if (!silent) {
             setError("Could not load floor plan.");
@@ -444,11 +444,11 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
         loadInFlight.delete(key);
       }
     },
-    [eventSlug, hydrateFromCache],
+    [eventSlug, hasLoadedOnce, hydrateFromCache],
   );
 
   const refreshAvailability = useCallback(async () => {
-    if (!hasLoadedOnceRef.current) return;
+    if (!hasLoadedOnce) return;
     try {
       const [availability, eventDetail] = await Promise.all([
         fetchVenueReservationAvailability(eventSlug),
@@ -458,7 +458,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     } catch {
       // Keep cached UI; availability refresh is best-effort.
     }
-  }, [applyAvailability, eventSlug]);
+  }, [applyAvailability, eventSlug, hasLoadedOnce]);
 
   useEffect(() => {
     void load({ silent: Boolean(cachedEntry) });
@@ -485,7 +485,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     [],
   );
 
-  const showBusyOverlay = (loading && !hasLoadedOnceRef.current) || leaving;
+  const showBusyOverlay = (loading && !hasLoadedOnce) || leaving;
   const busyTitle = loading ? "Loading floor plan…" : "Loading…";
 
   const pageShell = (content: ReactNode) => (

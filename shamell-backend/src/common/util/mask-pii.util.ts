@@ -6,7 +6,9 @@ export function maskEmail(email: string | null | undefined): string | null {
   const local = trimmed.slice(0, at);
   const domain = trimmed.slice(at);
   const maskedLocal =
-    local.length <= 1 ? '*' : `${local[0]}${'*'.repeat(Math.min(3, local.length - 1))}`;
+    local.length <= 1
+      ? '*'
+      : `${local[0]}${'*'.repeat(Math.min(3, local.length - 1))}`;
   return `${maskedLocal}${domain}`;
 }
 

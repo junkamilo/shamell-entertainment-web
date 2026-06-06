@@ -27,7 +27,10 @@ export async function fetchPaymentMethodDetails(
     const intent = (await stripe.paymentIntents.retrieve(intentId, {
       expand: ['payment_method'],
     })) as {
-      payment_method?: string | { type?: string; card?: { brand?: string; last4?: string } } | null;
+      payment_method?:
+        | string
+        | { type?: string; card?: { brand?: string; last4?: string } }
+        | null;
     };
     const pm = intent.payment_method;
     if (!pm || typeof pm === 'string') return empty;
@@ -55,7 +58,11 @@ export function formatPaymentMethodLabel(
 ): string | null {
   const { paymentMethodType, paymentMethodBrand, paymentMethodLast4 } = details;
   if (!paymentMethodType) return null;
-  if (paymentMethodType === 'card' && paymentMethodBrand && paymentMethodLast4) {
+  if (
+    paymentMethodType === 'card' &&
+    paymentMethodBrand &&
+    paymentMethodLast4
+  ) {
     const brand =
       paymentMethodBrand.charAt(0).toUpperCase() + paymentMethodBrand.slice(1);
     return `${brand} •••• ${paymentMethodLast4}`;

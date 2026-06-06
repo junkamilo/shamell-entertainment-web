@@ -1,11 +1,5 @@
 import { VenueTableSize } from '@prisma/client';
-import {
-  IsEnum,
-  IsInt,
-  IsNumber,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsEnum, IsInt, IsNumber, Max, Min } from 'class-validator';
 
 export class BulkCreateVenueTableConfigDto {
   @IsInt()

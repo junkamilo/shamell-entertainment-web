@@ -33,9 +33,8 @@ function buildGuideInvestmentHtmlBlock(
     'This is a non-binding guide based on current catalog selections — travel, production scope, and date can change the final proposal.';
   if (guide.totalUsd != null) {
     const amt = escapeHtml(formatUsdEmailAmount(guide.totalUsd));
-    const partial =
-      guide.isPartial ?
-        `<p style="margin:10px 0 0;font-size:13px;line-height:1.65;color:#b9b09f;">Some selections are priced on request; the figure above includes only items with a published guide price.</p>`
+    const partial = guide.isPartial
+      ? `<p style="margin:10px 0 0;font-size:13px;line-height:1.65;color:#b9b09f;">Some selections are priced on request; the figure above includes only items with a published guide price.</p>`
       : '';
     return `
               <div style="margin:20px 0 0;padding:16px 18px;border:1px solid rgba(212,175,106,0.35);border-radius:12px;background:rgba(0,0,0,0.25);">
@@ -101,9 +100,8 @@ export function buildBookingInquiryAckHtml(
   const name = escapeHtml(input.recipientFirstName.trim() || 'Hello');
   const app = escapeHtml(input.appPublicName.trim() || 'Shamell');
   const siteUrl = input.siteUrl?.trim();
-  const siteLink =
-    siteUrl ?
-      `<p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#b9b09f;">
+  const siteLink = siteUrl
+    ? `<p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#b9b09f;">
           <a href="${escapeHtml(siteUrl)}" style="color:#e8d5a3;text-decoration:underline;">Visit our website</a>
         </p>`
     : '';

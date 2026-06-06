@@ -14,7 +14,9 @@ const MAX_RETRY_ATTEMPTS = 8;
 const RETRY_BATCH_SIZE = 20;
 
 @Injectable()
-export class StripeWebhookRetryService implements OnModuleInit, OnModuleDestroy {
+export class StripeWebhookRetryService
+  implements OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(StripeWebhookRetryService.name);
   private timer: NodeJS.Timeout | null = null;
 
@@ -36,9 +38,7 @@ export class StripeWebhookRetryService implements OnModuleInit, OnModuleDestroy 
     this.timer = setInterval(() => {
       void this.retryStaleFailed();
     }, intervalMs);
-    this.logger.log(
-      `stripe-webhook-retry-scheduled intervalMs=${intervalMs}`,
-    );
+    this.logger.log(`stripe-webhook-retry-scheduled intervalMs=${intervalMs}`);
   }
 
   onModuleDestroy() {

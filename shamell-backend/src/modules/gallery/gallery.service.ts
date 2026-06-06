@@ -377,7 +377,9 @@ export class GalleryService {
   /**
    * Normalizes raster images when possible (JPEG for Cloudinary); videos pass through unchanged.
    */
-  private async prepareMulterFileForCloudinary(file: Express.Multer.File): Promise<{
+  private async prepareMulterFileForCloudinary(
+    file: Express.Multer.File,
+  ): Promise<{
     buffer: Buffer;
     mimetype: string;
     originalname: string;
@@ -491,7 +493,8 @@ export class GalleryService {
         (error, result) => {
           if (error || !result?.secure_url || !result.public_id) {
             const detail =
-              error && typeof (error as { message?: string }).message === 'string'
+              error &&
+              typeof (error as { message?: string }).message === 'string'
                 ? (error as { message: string }).message
                 : 'Unknown error';
             reject(

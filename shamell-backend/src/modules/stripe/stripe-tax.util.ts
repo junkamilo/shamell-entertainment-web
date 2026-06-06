@@ -3,7 +3,9 @@ import { BadRequestException } from '@nestjs/common';
 /** Stripe preset: General - Services (Dashboard tax setup). */
 export const STRIPE_SERVICES_TAX_CODE = 'txcd_20030000';
 
-export function stripeAutomaticTaxParams(): { automatic_tax: { enabled: true } } {
+export function stripeAutomaticTaxParams(): {
+  automatic_tax: { enabled: true };
+} {
   return { automatic_tax: { enabled: true } };
 }
 

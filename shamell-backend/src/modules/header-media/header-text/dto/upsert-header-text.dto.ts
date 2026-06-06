@@ -7,10 +7,7 @@ import {
   Matches,
   MaxLength,
 } from 'class-validator';
-import {
-  HEADER_FONTS,
-  HEADER_HEX_COLOR_REGEX,
-} from '../header-text.constants';
+import { HEADER_FONTS, HEADER_HEX_COLOR_REGEX } from '../header-text.constants';
 
 export class UpsertHeaderTextDto {
   @IsOptional()

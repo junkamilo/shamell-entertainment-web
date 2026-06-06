@@ -60,9 +60,9 @@ describe('StripeWebhookDispatchService', () => {
   });
 
   it('rejects missing stripe-signature header', async () => {
-    await expect(service.handle(Buffer.from('{}'), undefined)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
+    await expect(
+      service.handle(Buffer.from('{}'), undefined),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects test-mode events in production', async () => {
@@ -75,9 +75,9 @@ describe('StripeWebhookDispatchService', () => {
       data: { object: {} },
     });
 
-    await expect(
-      service.handle(Buffer.from('{}'), 'sig_test'),
-    ).rejects.toThrow('Test-mode Stripe events are not accepted in production.');
+    await expect(service.handle(Buffer.from('{}'), 'sig_test')).rejects.toThrow(
+      'Test-mode Stripe events are not accepted in production.',
+    );
 
     process.env.NODE_ENV = previous;
   });

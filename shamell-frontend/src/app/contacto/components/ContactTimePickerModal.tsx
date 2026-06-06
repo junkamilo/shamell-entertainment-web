@@ -54,7 +54,9 @@ export default function ContactTimePickerModal({
   const selectionRef = useRef({ h12: initial.h12, min: initial.min, ap: initial.ap as "AM" | "PM" });
   const openedForValueRef = useRef<string | null>(null);
 
-  selectionRef.current = { h12, min, ap };
+  useEffect(() => {
+    selectionRef.current = { h12, min, ap };
+  }, [h12, min, ap]);
 
   useEffect(() => {
     setMounted(true);

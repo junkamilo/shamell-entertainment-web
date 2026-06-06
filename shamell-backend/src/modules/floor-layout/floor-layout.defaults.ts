@@ -1,4 +1,7 @@
-export const LAYOUT_SHAPE_KINDS = ['catalog_table', 'standalone_chair'] as const;
+export const LAYOUT_SHAPE_KINDS = [
+  'catalog_table',
+  'standalone_chair',
+] as const;
 
 export type LayoutShapeKind = (typeof LAYOUT_SHAPE_KINDS)[number];
 

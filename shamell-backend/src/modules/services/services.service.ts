@@ -565,7 +565,9 @@ export class ServicesService {
     return 'IMAGE';
   }
 
-  private uploadServiceMediaToCloudinary(file: Express.Multer.File): Promise<string> {
+  private uploadServiceMediaToCloudinary(
+    file: Express.Multer.File,
+  ): Promise<string> {
     const isVideo = file.mimetype.startsWith('video/');
     return new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(

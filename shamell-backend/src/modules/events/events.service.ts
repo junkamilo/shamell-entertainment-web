@@ -467,8 +467,7 @@ export class EventsService {
       where: { eventId: id },
       select: { reservationEventTemplateId: true },
     });
-    const linkedTemplateId =
-      venueConfig?.reservationEventTemplateId ?? null;
+    const linkedTemplateId = venueConfig?.reservationEventTemplateId ?? null;
 
     const catalogPhotos = await this.prisma.galleryPhoto.findMany({
       where: { eventId: id },
@@ -946,7 +945,7 @@ export class EventsService {
       heroImageUrl: null as string | null,
       heroMediaType: null as GalleryMediaType | null,
       lineKind: 'event_type' as const,
-      price: null as null,
+      price: null,
       ...groups,
     };
   }
@@ -1032,16 +1031,14 @@ export class EventsService {
     const now = new Date();
     const eventIds = events.map((event) => event.id);
     const classEventIds = events
-      .filter((event) => event.experienceType === UpcomingExperienceType.CLASSES)
+      .filter(
+        (event) => event.experienceType === UpcomingExperienceType.CLASSES,
+      )
       .map((event) => event.id);
 
-    const [configs, activeSessionCounts] = await Promise.all([
-      this.prisma.upcomingVenueConfig.findMany({
-        where: { eventId: { in: eventIds } },
-        include: { reservationEventTemplate: true },
-      }),
+    const activeSessionCounts =
       classEventIds.length > 0
-        ? this.prisma.upcomingClassSession.groupBy({
+        ? await this.prisma.upcomingClassSession.groupBy({
             by: ['eventId'],
             where: {
               eventId: { in: classEventIds },
@@ -1050,8 +1047,12 @@ export class EventsService {
             },
             _count: { _all: true },
           })
-        : Promise.resolve([]),
-    ]);
+        : [];
+
+    const configs = await this.prisma.upcomingVenueConfig.findMany({
+      where: { eventId: { in: eventIds } },
+      include: { reservationEventTemplate: true },
+    });
 
     const configByEventId = new Map(
       configs.map((config) => [config.eventId, config] as const),

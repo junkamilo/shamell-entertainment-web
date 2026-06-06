@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma, StripeWebhookProcessingStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
@@ -38,9 +42,9 @@ function toRow(row: {
     checkoutSessionId: row.checkoutSessionId,
     handler: row.handler,
     payloadSummary:
-      row.payloadSummary && typeof row.payloadSummary === 'object' ?
-        (row.payloadSummary as Record<string, unknown>)
-      : null,
+      row.payloadSummary && typeof row.payloadSummary === 'object'
+        ? (row.payloadSummary as Record<string, unknown>)
+        : null,
     processedAt: iso(row.processedAt),
     attempts: row.attempts,
     lastError: row.lastError,
@@ -76,7 +80,7 @@ export class AdminStripeWebhooksService {
       where.checkoutSessionId = query.checkoutSessionId.trim();
     }
     if (query.status) {
-      where.status = query.status as StripeWebhookProcessingStatus;
+      where.status = query.status;
     }
     if (query.processed === true) {
       where.processedAt = { not: null };
@@ -113,14 +117,18 @@ export class AdminStripeWebhooksService {
     };
   }
 
-  async getEventByStripeId(eventId: string): Promise<AdminStripeWebhookEventDetail> {
+  async getEventByStripeId(
+    eventId: string,
+  ): Promise<AdminStripeWebhookEventDetail> {
     const row = await this.prisma.stripeWebhookEvent.findUnique({
       where: { eventId },
     });
     if (!row) {
       throw new NotFoundException(`Stripe webhook event ${eventId} not found.`);
     }
-    const relatedPayments = await this.resolveRelatedPayments(row.checkoutSessionId);
+    const relatedPayments = await this.resolveRelatedPayments(
+      row.checkoutSessionId,
+    );
     return {
       ...toRow(row),
       relatedPayments,

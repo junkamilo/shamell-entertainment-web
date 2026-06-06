@@ -19,7 +19,9 @@ import { StandaloneChairsService } from './standalone-chairs.service';
 
 @Controller('standalone-chairs')
 export class StandaloneChairsController {
-  constructor(private readonly standaloneChairsService: StandaloneChairsService) {}
+  constructor(
+    private readonly standaloneChairsService: StandaloneChairsService,
+  ) {}
 
   @Get()
   @HttpCode(HttpStatus.OK)
@@ -44,8 +46,12 @@ export class StandaloneChairsController {
   @Patch('admin/bulk-price')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  patchAdminStandaloneChairsBulkPrice(@Body() dto: PatchStandaloneChairsBulkPriceDto) {
-    return this.standaloneChairsService.patchAdminStandaloneChairsBulkPrice(dto);
+  patchAdminStandaloneChairsBulkPrice(
+    @Body() dto: PatchStandaloneChairsBulkPriceDto,
+  ) {
+    return this.standaloneChairsService.patchAdminStandaloneChairsBulkPrice(
+      dto,
+    );
   }
 
   @Delete('admin/all')

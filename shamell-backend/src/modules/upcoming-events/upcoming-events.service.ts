@@ -31,7 +31,6 @@ import {
   parseCheckoutSession,
   paymentIntentIdFromSession,
   type StripeCheckoutSessionLite,
-  type StripePaymentMethodDetails,
   type StripeWebhookEventLite,
 } from '../stripe/stripe-webhook.types';
 import {
@@ -125,9 +124,8 @@ export class UpcomingEventsService {
       },
     });
 
-    const schedule =
-      venueConfigRow?.reservationEventTemplate ?
-        buildPublicScheduleDisplay(venueConfigRow.reservationEventTemplate)
+    const schedule = venueConfigRow?.reservationEventTemplate
+      ? buildPublicScheduleDisplay(venueConfigRow.reservationEventTemplate)
       : null;
 
     let hasActiveSessions = false;
@@ -178,7 +176,9 @@ export class UpcomingEventsService {
       );
       ticketsRemaining = stats.ticketsRemaining;
       ticketsSold = stats.ticketsSold;
-      eventStartsAt = fixedEventStartsAtIso(venueConfigRow.reservationEventDate);
+      eventStartsAt = fixedEventStartsAtIso(
+        venueConfigRow.reservationEventDate,
+      );
     }
 
     if (
@@ -187,7 +187,8 @@ export class UpcomingEventsService {
       venueConfigRow
     ) {
       eventStartsAt = fixedEventStartsAtIso(
-        venueConfigRow.reservationEventDate ?? venueConfigRow.reservationOpensAt,
+        venueConfigRow.reservationEventDate ??
+          venueConfigRow.reservationOpensAt,
       );
       const window = resolveReservationWindow({
         reservationOpensAt: venueConfigRow.reservationOpensAt ?? null,
@@ -224,42 +225,45 @@ export class UpcomingEventsService {
     });
 
     const scheduleTimezone =
-      schedule?.mode === 'RECURRING_WEEKLY' ? schedule.timezone : 'America/New_York';
+      schedule?.mode === 'RECURRING_WEEKLY'
+        ? schedule.timezone
+        : 'America/New_York';
     const currentMonthIso = currentCalendarMonthIso(scheduleTimezone, now);
     const monthPackage =
-      event.experienceType === UpcomingExperienceType.CLASSES && venueConfigRow ?
-        (() => {
-          const enabled = venueConfigRow.classPackageEnabled ?? false;
-          const price =
-            venueConfigRow.classPackagePrice != null ?
-              Number(venueConfigRow.classPackagePrice)
-            : null;
-          const mappedSessions = sessions.map((s) => ({
-            startsAt: new Date(s.startsAt),
-            endsAt: new Date(s.endsAt),
-            timezone: s.timezone || scheduleTimezone,
-          }));
-          const currentMonthSessionCount = mappedSessions.filter(
-            (s) =>
-              s.endsAt > now &&
-              sessionCalendarMonthIso(s.startsAt, s.timezone) === currentMonthIso,
-          ).length;
-          return {
-            enabled,
-            price,
-            label: venueConfigRow.classPackageLabel ?? null,
-            currentMonthIso,
-            currentMonthSessionCount,
-            purchasable:
-              enabled &&
-              price != null &&
-              Number.isFinite(price) &&
-              price >= 0.5 &&
-              currentMonthSessionCount > 0,
-            purchasableMonths: listPurchasableMonths(mappedSessions, now),
-          };
-        })()
-      : undefined;
+      event.experienceType === UpcomingExperienceType.CLASSES && venueConfigRow
+        ? (() => {
+            const enabled = venueConfigRow.classPackageEnabled ?? false;
+            const price =
+              venueConfigRow.classPackagePrice != null
+                ? Number(venueConfigRow.classPackagePrice)
+                : null;
+            const mappedSessions = sessions.map((s) => ({
+              startsAt: new Date(s.startsAt),
+              endsAt: new Date(s.endsAt),
+              timezone: s.timezone || scheduleTimezone,
+            }));
+            const currentMonthSessionCount = mappedSessions.filter(
+              (s) =>
+                s.endsAt > now &&
+                sessionCalendarMonthIso(s.startsAt, s.timezone) ===
+                  currentMonthIso,
+            ).length;
+            return {
+              enabled,
+              price,
+              label: venueConfigRow.classPackageLabel ?? null,
+              currentMonthIso,
+              currentMonthSessionCount,
+              purchasable:
+                enabled &&
+                price != null &&
+                Number.isFinite(price) &&
+                price >= 0.5 &&
+                currentMonthSessionCount > 0,
+              purchasableMonths: listPurchasableMonths(mappedSessions, now),
+            };
+          })()
+        : undefined;
 
     return {
       ...base,
@@ -284,7 +288,9 @@ export class UpcomingEventsService {
   async listPublicSessions(slug: string) {
     const event = await this.findPublicUpcomingBySlug(slug);
     if (event.experienceType !== UpcomingExperienceType.CLASSES) {
-      throw new BadRequestException('This event does not offer class sessions.');
+      throw new BadRequestException(
+        'This event does not offer class sessions.',
+      );
     }
     const now = new Date();
     const sessions = await this.prisma.upcomingClassSession.findMany({
@@ -308,7 +314,9 @@ export class UpcomingEventsService {
   async createClassCheckout(slug: string, dto: CreateClassCheckoutDto) {
     const event = await this.findPublicUpcomingBySlug(slug);
     if (event.experienceType !== UpcomingExperienceType.CLASSES) {
-      throw new BadRequestException('This event does not offer class sessions.');
+      throw new BadRequestException(
+        'This event does not offer class sessions.',
+      );
     }
     const session = await this.prisma.upcomingClassSession.findFirst({
       where: {
@@ -389,7 +397,10 @@ export class UpcomingEventsService {
       metadata: { flow: 'class_session', enrollmentId: enrollment.id },
     });
 
-    return { clientSecret: checkout.client_secret, enrollmentId: enrollment.id };
+    return {
+      clientSecret: checkout.client_secret,
+      enrollmentId: enrollment.id,
+    };
   }
 
   async createClassBundleCheckout(
@@ -398,7 +409,9 @@ export class UpcomingEventsService {
   ) {
     const event = await this.findPublicUpcomingBySlug(slug);
     if (event.experienceType !== UpcomingExperienceType.CLASSES) {
-      throw new BadRequestException('This event does not offer class sessions.');
+      throw new BadRequestException(
+        'This event does not offer class sessions.',
+      );
     }
 
     const uniqueIds = [...new Set(dto.sessionIds)];
@@ -429,7 +442,9 @@ export class UpcomingEventsService {
       const session = rows.find((r) => r.id === sessionId);
       if (!session) continue;
       if (session.endsAt <= now) {
-        throw new BadRequestException('One or more sessions have already ended.');
+        throw new BadRequestException(
+          'One or more sessions have already ended.',
+        );
       }
       const remaining = await this.seatsRemaining(session.id, session.capacity);
       if (remaining <= 0) {
@@ -448,8 +463,8 @@ export class UpcomingEventsService {
     }
 
     const bundleDateIso = this.sessionCalendarDateIso(
-      resolved[0]!.session.startsAt,
-      resolved[0]!.session.timezone,
+      resolved[0].session.startsAt,
+      resolved[0].session.timezone,
     );
     for (const row of resolved) {
       const rowIso = this.sessionCalendarDateIso(
@@ -494,35 +509,36 @@ export class UpcomingEventsService {
       metadata: { flow: 'class_session_bundle' },
       return_url: returnUrl,
       expires_at: Math.floor(expiresAt.getTime() / 1000),
-    } as Parameters<typeof this.stripeService.client.checkout.sessions.create>[0]);
+    });
 
     if (!checkout.client_secret) {
       throw new BadRequestException('Could not start checkout.');
     }
 
-    const packageEnrollment = await this.prisma.upcomingClassPackageEnrollment.create({
-      data: {
-        eventId: event.id,
-        amount: totalAmount,
-        currency: 'usd',
-        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-        stripeCheckoutSessionId: checkout.id,
-        customerName: dto.customerName.trim(),
-        customerEmail: dto.customerEmail.trim().toLowerCase(),
-        customerPhone: dto.customerPhone?.trim() || null,
-        selections: buildClassSessionBundleSelections({
-          dateIso: bundleDateIso,
-          sessionIds: uniqueIds,
-          items: resolved.map((row) => ({
-            sessionId: row.session.id,
-            weekday: row.weekday,
-            sectionId: row.session.sectionId,
-            amount: Number(row.session.price),
-          })),
-        }),
-        expiresAt,
-      },
-    });
+    const packageEnrollment =
+      await this.prisma.upcomingClassPackageEnrollment.create({
+        data: {
+          eventId: event.id,
+          amount: totalAmount,
+          currency: 'usd',
+          status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+          stripeCheckoutSessionId: checkout.id,
+          customerName: dto.customerName.trim(),
+          customerEmail: dto.customerEmail.trim().toLowerCase(),
+          customerPhone: dto.customerPhone?.trim() || null,
+          selections: buildClassSessionBundleSelections({
+            dateIso: bundleDateIso,
+            sessionIds: uniqueIds,
+            items: resolved.map((row) => ({
+              sessionId: row.session.id,
+              weekday: row.weekday,
+              sectionId: row.session.sectionId,
+              amount: Number(row.session.price),
+            })),
+          }),
+          expiresAt,
+        },
+      });
 
     for (const row of resolved) {
       const enrollment = await this.prisma.upcomingClassEnrollment.create({
@@ -562,11 +578,12 @@ export class UpcomingEventsService {
   async getPublicClassOptions(slug: string) {
     const detail = await this.getPublicBySlug(slug);
     if (detail.purchaseMode !== 'classes') {
-      throw new BadRequestException('This event does not offer class sessions.');
+      throw new BadRequestException(
+        'This event does not offer class sessions.',
+      );
     }
     const schedule = detail.schedule;
-    const days =
-      schedule?.mode === 'RECURRING_WEEKLY' ? schedule.days : [];
+    const days = schedule?.mode === 'RECURRING_WEEKLY' ? schedule.days : [];
     const sessionsByDay = new Map<number, typeof detail.sessions>();
     for (const s of detail.sessions) {
       if (s.weekday == null) continue;
@@ -576,11 +593,14 @@ export class UpcomingEventsService {
     }
     return {
       eventSlug: slug,
-      timezone: schedule?.mode === 'RECURRING_WEEKLY' ? schedule.timezone : 'America/New_York',
+      timezone:
+        schedule?.mode === 'RECURRING_WEEKLY'
+          ? schedule.timezone
+          : 'America/New_York',
       days: days.map((d) => ({
         ...d,
-        sessions: (sessionsByDay.get(d.weekday) ?? []).sort(
-          (a, b) => a.startsAt.localeCompare(b.startsAt),
+        sessions: (sessionsByDay.get(d.weekday) ?? []).sort((a, b) =>
+          a.startsAt.localeCompare(b.startsAt),
         ),
       })),
     };
@@ -592,7 +612,9 @@ export class UpcomingEventsService {
   ) {
     const event = await this.findPublicUpcomingBySlug(slug);
     if (event.experienceType !== UpcomingExperienceType.CLASSES) {
-      throw new BadRequestException('This event does not offer class sessions.');
+      throw new BadRequestException(
+        'This event does not offer class sessions.',
+      );
     }
 
     const venueConfig = await this.prisma.upcomingVenueConfig.findUnique({
@@ -604,7 +626,9 @@ export class UpcomingEventsService {
       },
     });
     if (!venueConfig?.classPackageEnabled) {
-      throw new BadRequestException('Full month package is not available for this event.');
+      throw new BadRequestException(
+        'Full month package is not available for this event.',
+      );
     }
     if (
       venueConfig.reservationEventTemplate?.scheduleMode !==
@@ -693,29 +717,30 @@ export class UpcomingEventsService {
       throw new BadRequestException('Could not start checkout.');
     }
 
-    const packageEnrollment = await this.prisma.upcomingClassPackageEnrollment.create({
-      data: {
-        eventId: event.id,
-        amount: packagePrice,
-        currency: 'usd',
-        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-        stripeCheckoutSessionId: checkout.id,
-        customerName: dto.customerName.trim(),
-        customerEmail: dto.customerEmail.trim().toLowerCase(),
-        customerPhone: dto.customerPhone?.trim() || null,
-        selections: buildClassMonthPackageSelections({
-          monthIso: dto.monthIso,
-          sessionIds,
-          items: resolved.map((row) => ({
-            sessionId: row.session.id,
-            weekday: row.weekday,
-            sectionId: row.session.sectionId,
-            amount: Number(row.session.price),
-          })),
-        }),
-        expiresAt,
-      },
-    });
+    const packageEnrollment =
+      await this.prisma.upcomingClassPackageEnrollment.create({
+        data: {
+          eventId: event.id,
+          amount: packagePrice,
+          currency: 'usd',
+          status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+          stripeCheckoutSessionId: checkout.id,
+          customerName: dto.customerName.trim(),
+          customerEmail: dto.customerEmail.trim().toLowerCase(),
+          customerPhone: dto.customerPhone?.trim() || null,
+          selections: buildClassMonthPackageSelections({
+            monthIso: dto.monthIso,
+            sessionIds,
+            items: resolved.map((row) => ({
+              sessionId: row.session.id,
+              weekday: row.weekday,
+              sectionId: row.session.sectionId,
+              amount: Number(row.session.price),
+            })),
+          }),
+          expiresAt,
+        },
+      });
 
     for (const row of resolved) {
       const enrollment = await this.prisma.upcomingClassEnrollment.create({
@@ -757,13 +782,22 @@ export class UpcomingEventsService {
     return regenerateClassSessionsForEvent(this.prisma, eventId);
   }
 
-  async createFixedEventCheckout(slug: string, dto: CreateFixedEventCheckoutDto) {
+  async createFixedEventCheckout(
+    slug: string,
+    dto: CreateFixedEventCheckoutDto,
+  ) {
     const { event, venueConfig } = await this.assertFixedTicketCheckout(slug);
     const capacity = venueConfig.fixedTicketCapacity;
     if (capacity == null || capacity < 1) {
-      throw new BadRequestException('Ticket capacity is not configured for this event.');
+      throw new BadRequestException(
+        'Ticket capacity is not configured for this event.',
+      );
     }
-    const remaining = await fixedTicketsRemaining(this.prisma, event.id, capacity);
+    const remaining = await fixedTicketsRemaining(
+      this.prisma,
+      event.id,
+      capacity,
+    );
     if (remaining <= 0) {
       throw new ConflictException('Tickets sold out.');
     }
@@ -835,14 +869,18 @@ export class UpcomingEventsService {
       },
     });
 
-    return { clientSecret: checkout.client_secret, enrollmentId: enrollment.id };
+    return {
+      clientSecret: checkout.client_secret,
+      enrollmentId: enrollment.id,
+    };
   }
 
   async getFixedEventSessionStatus(sessionId: string) {
-    const enrollment = await this.prisma.upcomingFixedEventEnrollment.findUnique({
-      where: { stripeCheckoutSessionId: sessionId },
-      include: { event: { include: { eventType: true } } },
-    });
+    const enrollment =
+      await this.prisma.upcomingFixedEventEnrollment.findUnique({
+        where: { stripeCheckoutSessionId: sessionId },
+        include: { event: { include: { eventType: true } } },
+      });
     if (!enrollment) {
       throw new NotFoundException('Enrollment not found.');
     }
@@ -855,7 +893,10 @@ export class UpcomingEventsService {
       enrollment.status === UpcomingClassEnrollmentStatus.PENDING_PAYMENT
     ) {
       try {
-        await this.reconcileFixedTicketFromStripeSession(sessionId, stripeSession);
+        await this.reconcileFixedTicketFromStripeSession(
+          sessionId,
+          stripeSession,
+        );
       } catch (err) {
         this.logger.warn(
           `fixed-ticket-reconcile-on-status-failed session=${sessionId} reason=${err instanceof Error ? err.message : String(err)}`,
@@ -863,10 +904,12 @@ export class UpcomingEventsService {
       }
     }
 
-    const refreshed = await this.prisma.upcomingFixedEventEnrollment.findUnique({
-      where: { stripeCheckoutSessionId: sessionId },
-      include: { event: { include: { eventType: true } } },
-    });
+    const refreshed = await this.prisma.upcomingFixedEventEnrollment.findUnique(
+      {
+        where: { stripeCheckoutSessionId: sessionId },
+        include: { event: { include: { eventType: true } } },
+      },
+    );
     const current = refreshed ?? enrollment;
 
     return {
@@ -876,16 +919,23 @@ export class UpcomingEventsService {
         customerEmail: maskEmail(current.customerEmail),
         eventName: current.event.eventType.name,
         eventSlug: current.event.slug,
-        ...(current.ticketNumber != null ?
-          { ticketNumber: current.ticketNumber }
-        : {}),
+        ...(current.ticketNumber != null
+          ? { ticketNumber: current.ticketNumber }
+          : {}),
       },
     };
   }
 
   async reconcileFixedTicketFromStripeSession(
     sessionId: string,
-    stripeSession?: { status: string | null; payment_status: string | null; metadata?: Record<string, string> | null; id?: string; payment_intent?: unknown; amount_total?: number | null },
+    stripeSession?: {
+      status: string | null;
+      payment_status: string | null;
+      metadata?: Record<string, string> | null;
+      id?: string;
+      payment_intent?: unknown;
+      amount_total?: number | null;
+    },
   ) {
     const session =
       stripeSession ??
@@ -995,7 +1045,8 @@ export class UpcomingEventsService {
         if (
           stripeSession.status === 'complete' &&
           stripeSession.payment_status === 'paid' &&
-          packageEnrollment.status === UpcomingClassEnrollmentStatus.PENDING_PAYMENT
+          packageEnrollment.status ===
+            UpcomingClassEnrollmentStatus.PENDING_PAYMENT
         ) {
           try {
             await this.reconcileClassPackageFromStripeSession(
@@ -1033,7 +1084,9 @@ export class UpcomingEventsService {
           sessions: refreshed.items.map((item) => ({
             weekday: item.weekday,
             sessionLabel: this.sessionLabel(item.enrollment.session),
-            confirmationReference: formatEnrollmentReference(item.enrollment.id),
+            confirmationReference: formatEnrollmentReference(
+              item.enrollment.id,
+            ),
           })),
         },
       };
@@ -1288,7 +1341,9 @@ export class UpcomingEventsService {
         reservationEventTemplate: {
           include: {
             weekdays: { orderBy: { weekday: 'asc' } },
-            classSections: { orderBy: [{ weekday: 'asc' }, { sortOrder: 'asc' }] },
+            classSections: {
+              orderBy: [{ weekday: 'asc' }, { sortOrder: 'asc' }],
+            },
           },
         },
       },
@@ -1304,10 +1359,13 @@ export class UpcomingEventsService {
     });
     const linkingTemplate = Boolean(dto.reservationEventTemplateId);
     const unlinking = dto.reservationEventTemplateId === null;
-    const dtoFixedTicketCapacity = normalizeFixedTicketCapacity(dto.fixedTicketCapacity);
+    const dtoFixedTicketCapacity = normalizeFixedTicketCapacity(
+      dto.fixedTicketCapacity,
+    );
 
-    let templateDerived: ReturnType<typeof deriveVenueConfigFromTemplate> | null =
-      null;
+    let templateDerived: ReturnType<
+      typeof deriveVenueConfigFromTemplate
+    > | null = null;
     let linkedScheduleMode: ReservationEventScheduleMode | null = null;
     let reservationEventTemplateId: string | null | undefined =
       dto.reservationEventTemplateId;
@@ -1376,7 +1434,8 @@ export class UpcomingEventsService {
     }
 
     const seatingEnabled =
-      (resolvedClientEnabled ?? existingConfig?.clientEnabled ?? false) === true;
+      (resolvedClientEnabled ?? existingConfig?.clientEnabled ?? false) ===
+      true;
 
     let resolvedFixedTicketCapacity: number | null | undefined;
     if (linkedScheduleMode === ReservationEventScheduleMode.FIXED_EVENT) {
@@ -1384,10 +1443,11 @@ export class UpcomingEventsService {
         resolvedFixedTicketCapacity = null;
       } else {
         const capacity =
-          dtoFixedTicketCapacity !== undefined ?
-            dtoFixedTicketCapacity
-          : normalizeFixedTicketCapacity(existingConfig?.fixedTicketCapacity ?? undefined) ??
-            null;
+          dtoFixedTicketCapacity !== undefined
+            ? dtoFixedTicketCapacity
+            : (normalizeFixedTicketCapacity(
+                existingConfig?.fixedTicketCapacity ?? undefined,
+              ) ?? null);
         if (capacity == null || capacity < 1) {
           throw new BadRequestException(
             'Ticket capacity is required for fixed events without table and seat sales.',
@@ -1404,12 +1464,18 @@ export class UpcomingEventsService {
         }
         resolvedFixedTicketCapacity = capacity;
       }
-    } else if (unlinking || linkingTemplate || dto.reservationEventTemplateId !== undefined) {
+    } else if (
+      unlinking ||
+      linkingTemplate ||
+      dto.reservationEventTemplateId !== undefined
+    ) {
       resolvedFixedTicketCapacity = null;
     }
 
     const effectiveScheduleMode =
-      linkedScheduleMode ?? existingConfig?.reservationEventTemplate?.scheduleMode ?? null;
+      linkedScheduleMode ??
+      existingConfig?.reservationEventTemplate?.scheduleMode ??
+      null;
     const classPackageEnabled = dto.classPackageEnabled;
     const classPackagePrice = dto.classPackagePrice;
     const classPackageLabel = dto.classPackageLabel;
@@ -1426,19 +1492,22 @@ export class UpcomingEventsService {
     }
 
     const data = {
-      clientEnabled:
-        resolvedClientEnabled ?? (unlinking ? false : undefined),
+      clientEnabled: resolvedClientEnabled ?? (unlinking ? false : undefined),
       promoTitle: dto.promoTitle,
       promoDescription: dto.promoDescription,
       reservationEventDate:
         templateDerived?.reservationEventDate ??
-        (dto.reservationEventDate ? new Date(dto.reservationEventDate) : undefined),
+        (dto.reservationEventDate
+          ? new Date(dto.reservationEventDate)
+          : undefined),
       reservationOpensAt:
         templateDerived?.reservationOpensAt ??
         (dto.reservationOpensAt ? new Date(dto.reservationOpensAt) : undefined),
       reservationClosesAt:
         templateDerived?.reservationClosesAt ??
-        (dto.reservationClosesAt ? new Date(dto.reservationClosesAt) : undefined),
+        (dto.reservationClosesAt
+          ? new Date(dto.reservationClosesAt)
+          : undefined),
       reservationEventLabel:
         templateDerived?.reservationEventLabel ?? dto.reservationEventLabel,
       reservationTimezone:
@@ -1465,7 +1534,9 @@ export class UpcomingEventsService {
       floorLayoutId: data.floorLayoutId ?? null,
       reservationEventTemplateId: data.reservationEventTemplateId ?? null,
       fixedTicketCapacity:
-        data.fixedTicketCapacity !== undefined ? data.fixedTicketCapacity : null,
+        data.fixedTicketCapacity !== undefined
+          ? data.fixedTicketCapacity
+          : null,
       classPackageEnabled: data.classPackageEnabled ?? false,
       classPackagePrice: data.classPackagePrice ?? null,
       classPackageLabel: data.classPackageLabel ?? null,
@@ -1475,52 +1546,56 @@ export class UpcomingEventsService {
       where: { eventId },
       create: createData,
       update: {
-        ...(data.clientEnabled !== undefined ?
-          { clientEnabled: data.clientEnabled }
-        : {}),
-        ...(data.promoTitle !== undefined ? { promoTitle: data.promoTitle } : {}),
-        ...(data.promoDescription !== undefined ?
-          { promoDescription: data.promoDescription }
-        : {}),
-        ...(data.reservationEventDate !== undefined ?
-          { reservationEventDate: data.reservationEventDate }
-        : {}),
-        ...(data.reservationOpensAt !== undefined ?
-          { reservationOpensAt: data.reservationOpensAt }
-        : {}),
-        ...(data.reservationClosesAt !== undefined ?
-          { reservationClosesAt: data.reservationClosesAt }
-        : {}),
-        ...(data.reservationEventLabel !== undefined ?
-          { reservationEventLabel: data.reservationEventLabel }
-        : {}),
-        ...(data.reservationTimezone !== undefined ?
-          { reservationTimezone: data.reservationTimezone }
-        : {}),
-        ...(data.floorLayoutId !== undefined ?
-          { floorLayoutId: data.floorLayoutId }
-        : {}),
-        ...(data.reservationEventTemplateId !== undefined ?
-          { reservationEventTemplateId: data.reservationEventTemplateId }
-        : {}),
-        ...(data.fixedTicketCapacity !== undefined ?
-          { fixedTicketCapacity: data.fixedTicketCapacity }
-        : {}),
-        ...(data.classPackageEnabled !== undefined ?
-          { classPackageEnabled: data.classPackageEnabled }
-        : {}),
-        ...(data.classPackagePrice !== undefined ?
-          { classPackagePrice: data.classPackagePrice }
-        : {}),
-        ...(data.classPackageLabel !== undefined ?
-          { classPackageLabel: data.classPackageLabel }
-        : {}),
+        ...(data.clientEnabled !== undefined
+          ? { clientEnabled: data.clientEnabled }
+          : {}),
+        ...(data.promoTitle !== undefined
+          ? { promoTitle: data.promoTitle }
+          : {}),
+        ...(data.promoDescription !== undefined
+          ? { promoDescription: data.promoDescription }
+          : {}),
+        ...(data.reservationEventDate !== undefined
+          ? { reservationEventDate: data.reservationEventDate }
+          : {}),
+        ...(data.reservationOpensAt !== undefined
+          ? { reservationOpensAt: data.reservationOpensAt }
+          : {}),
+        ...(data.reservationClosesAt !== undefined
+          ? { reservationClosesAt: data.reservationClosesAt }
+          : {}),
+        ...(data.reservationEventLabel !== undefined
+          ? { reservationEventLabel: data.reservationEventLabel }
+          : {}),
+        ...(data.reservationTimezone !== undefined
+          ? { reservationTimezone: data.reservationTimezone }
+          : {}),
+        ...(data.floorLayoutId !== undefined
+          ? { floorLayoutId: data.floorLayoutId }
+          : {}),
+        ...(data.reservationEventTemplateId !== undefined
+          ? { reservationEventTemplateId: data.reservationEventTemplateId }
+          : {}),
+        ...(data.fixedTicketCapacity !== undefined
+          ? { fixedTicketCapacity: data.fixedTicketCapacity }
+          : {}),
+        ...(data.classPackageEnabled !== undefined
+          ? { classPackageEnabled: data.classPackageEnabled }
+          : {}),
+        ...(data.classPackagePrice !== undefined
+          ? { classPackagePrice: data.classPackagePrice }
+          : {}),
+        ...(data.classPackageLabel !== undefined
+          ? { classPackageLabel: data.classPackageLabel }
+          : {}),
       },
       include: {
         reservationEventTemplate: {
           include: {
             weekdays: { orderBy: { weekday: 'asc' } },
-            classSections: { orderBy: [{ weekday: 'asc' }, { sortOrder: 'asc' }] },
+            classSections: {
+              orderBy: [{ weekday: 'asc' }, { sortOrder: 'asc' }],
+            },
           },
         },
       },
@@ -1563,11 +1638,15 @@ export class UpcomingEventsService {
   async getPublicVenueBundle(slug: string) {
     const event = await this.findPublicUpcomingBySlug(slug);
     if (event.experienceType !== UpcomingExperienceType.VENUE_SEATING) {
-      throw new BadRequestException('This event does not offer seat reservations.');
+      throw new BadRequestException(
+        'This event does not offer seat reservations.',
+      );
     }
     const config = await this.getVenueConfigForEvent(event.id);
     if (!config?.clientEnabled) {
-      throw new NotFoundException('Seat reservations are not published for this event.');
+      throw new NotFoundException(
+        'Seat reservations are not published for this event.',
+      );
     }
     return {
       event: this.mapPublicSummary(event),
@@ -1603,7 +1682,10 @@ export class UpcomingEventsService {
   }) {
     const first = event.galleryPhotos?.[0];
     if (!first) {
-      return { heroImageUrl: null as string | null, heroMediaType: null as 'IMAGE' | 'VIDEO' | null };
+      return {
+        heroImageUrl: null as string | null,
+        heroMediaType: null as 'IMAGE' | 'VIDEO' | null,
+      };
     }
     const heroMediaType = this.effectiveGalleryMediaType(
       first.imageUrl,
@@ -1611,7 +1693,8 @@ export class UpcomingEventsService {
     );
     return {
       heroImageUrl: first.imageUrl,
-      heroMediaType: heroMediaType === GalleryMediaType.VIDEO ? 'VIDEO' : 'IMAGE',
+      heroMediaType:
+        heroMediaType === GalleryMediaType.VIDEO ? 'VIDEO' : 'IMAGE',
     };
   }
 
@@ -1640,7 +1723,8 @@ export class UpcomingEventsService {
       reservationTimezone: venueConfig.reservationTimezone,
       fixedTicketCapacity: venueConfig.fixedTicketCapacity,
       ticketsRemaining:
-        venueConfig.fixedTicketCapacity != null && venueConfig.fixedTicketCapacity >= 1
+        venueConfig.fixedTicketCapacity != null &&
+        venueConfig.fixedTicketCapacity >= 1
           ? await fixedTicketsRemaining(
               this.prisma,
               event.id,
@@ -1648,8 +1732,13 @@ export class UpcomingEventsService {
             )
           : undefined,
     });
-    if (purchaseCtx.purchaseMode !== 'fixed_ticket' || !purchaseCtx.purchasable) {
-      throw new BadRequestException('Ticket sales are not open for this event.');
+    if (
+      purchaseCtx.purchaseMode !== 'fixed_ticket' ||
+      !purchaseCtx.purchasable
+    ) {
+      throw new BadRequestException(
+        'Ticket sales are not open for this event.',
+      );
     }
     return { event, venueConfig };
   }
@@ -1742,7 +1831,11 @@ export class UpcomingEventsService {
     startsAt: Date;
     endsAt: Date;
     timezone: string;
-    section?: { label: string | null; startTime: string; endTime: string } | null;
+    section?: {
+      label: string | null;
+      startTime: string;
+      endTime: string;
+    } | null;
   }) {
     const when = session.startsAt.toLocaleString('en-US', {
       weekday: 'short',
@@ -1826,7 +1919,11 @@ export class UpcomingEventsService {
     isActive: boolean;
     sortOrder: number;
   }) {
-    return { ...this.mapSessionPublic(session), isActive: session.isActive, sortOrder: session.sortOrder };
+    return {
+      ...this.mapSessionPublic(session),
+      isActive: session.isActive,
+      sortOrder: session.sortOrder,
+    };
   }
 
   private mapVenueConfig(config: {
@@ -1868,23 +1965,27 @@ export class UpcomingEventsService {
       fixedTicketCapacity: config.fixedTicketCapacity ?? null,
       classPackageEnabled: config.classPackageEnabled ?? false,
       classPackagePrice:
-        config.classPackagePrice != null ? Number(config.classPackagePrice) : null,
+        config.classPackagePrice != null
+          ? Number(config.classPackagePrice)
+          : null,
       classPackageLabel: config.classPackageLabel ?? null,
       reservationEventTemplateId: config.reservationEventTemplateId ?? null,
-      reservationEventTemplate:
-        template ?
-          {
+      reservationEventTemplate: template
+        ? {
             id: template.id,
             name: template.name,
             timezone: template.timezone,
             scheduleMode: template.scheduleMode,
-            salesStartDate: template.salesStartDate?.toISOString().slice(0, 10) ?? null,
-            salesEndDate: template.salesEndDate?.toISOString().slice(0, 10) ?? null,
+            salesStartDate:
+              template.salesStartDate?.toISOString().slice(0, 10) ?? null,
+            salesEndDate:
+              template.salesEndDate?.toISOString().slice(0, 10) ?? null,
             eventDate: template.eventDate?.toISOString().slice(0, 10) ?? null,
             eventStartTime: template.eventStartTime,
             eventEndTime: template.eventEndTime,
             recurringEffectiveFrom:
-              template.recurringEffectiveFrom?.toISOString().slice(0, 10) ?? null,
+              template.recurringEffectiveFrom?.toISOString().slice(0, 10) ??
+              null,
             recurringStartTime: template.recurringStartTime,
             recurringEndTime: template.recurringEndTime,
             weekdays: template.weekdays.map((w) => ({
@@ -1899,7 +2000,8 @@ export class UpcomingEventsService {
               endTime: s.endTime,
               sortOrder: s.sortOrder,
               defaultCapacity: s.defaultCapacity,
-              defaultPrice: s.defaultPrice != null ? Number(s.defaultPrice) : null,
+              defaultPrice:
+                s.defaultPrice != null ? Number(s.defaultPrice) : null,
               isActive: s.isActive,
             })),
             summary: buildTemplateSummary(template),
@@ -1927,7 +2029,9 @@ export class UpcomingEventsService {
     });
     if (!enrollment) {
       this.logger.warn(`class-webhook-missing enrollment session=${sessionId}`);
-      throw new NotFoundException('Class enrollment not found for checkout session.');
+      throw new NotFoundException(
+        'Class enrollment not found for checkout session.',
+      );
     }
     if (enrollment.status === UpcomingClassEnrollmentStatus.PAID) return;
     if (session.payment_status !== 'paid') {
@@ -1940,7 +2044,9 @@ export class UpcomingEventsService {
     });
     const paymentIntent = session.payment_intent;
     const paymentIntentId =
-      typeof paymentIntent === 'string' ? paymentIntent : paymentIntent?.id ?? null;
+      typeof paymentIntent === 'string'
+        ? paymentIntent
+        : (paymentIntent?.id ?? null);
 
     await this.prisma.upcomingClassEnrollment.update({
       where: { id: enrollment.id },
@@ -1983,7 +2089,8 @@ export class UpcomingEventsService {
       },
     });
     if (!enrollment) return;
-    if (enrollment.status !== UpcomingClassEnrollmentStatus.PENDING_PAYMENT) return;
+    if (enrollment.status !== UpcomingClassEnrollmentStatus.PENDING_PAYMENT)
+      return;
     await this.prisma.upcomingClassEnrollment.update({
       where: { id: enrollment.id },
       data: { status: UpcomingClassEnrollmentStatus.EXPIRED },
@@ -2006,10 +2113,11 @@ export class UpcomingEventsService {
   ) {
     const sessionId = session.id?.trim();
     if (!sessionId) throw new BadRequestException('Invalid session id.');
-    const enrollment = await this.prisma.upcomingFixedEventEnrollment.findUnique({
-      where: { stripeCheckoutSessionId: sessionId },
-      include: { event: { include: { eventType: true } } },
-    });
+    const enrollment =
+      await this.prisma.upcomingFixedEventEnrollment.findUnique({
+        where: { stripeCheckoutSessionId: sessionId },
+        include: { event: { include: { eventType: true } } },
+      });
     if (!enrollment) {
       throw new NotFoundException(
         `Fixed ticket enrollment not found for session ${sessionId}.`,
@@ -2040,8 +2148,9 @@ export class UpcomingEventsService {
       where: { eventId: enrollment.eventId },
     });
 
-    let paidEnrollment: (typeof enrollment & { ticketNumber: number | null }) | null =
-      null;
+    let paidEnrollment:
+      | (typeof enrollment & { ticketNumber: number | null })
+      | null = null;
     try {
       paidEnrollment = await this.prisma.$transaction(async (tx) => {
         const current = await tx.upcomingFixedEventEnrollment.findUnique({
@@ -2133,18 +2242,25 @@ export class UpcomingEventsService {
       `fixed-event-enrollment-paid id=${enrollment.id} ticket=${paidEnrollment?.ticketNumber ?? 'pending'} stripeEvent=${stripeEventId}`,
     );
 
-    await this.sendFixedTicketPostPaymentNotifications(enrollment.id, stripeEventId);
+    await this.sendFixedTicketPostPaymentNotifications(
+      enrollment.id,
+      stripeEventId,
+    );
   }
 
   private async sendFixedTicketPostPaymentNotifications(
     enrollmentId: string,
     stripeEventId: string,
   ) {
-    const enrollment = await this.prisma.upcomingFixedEventEnrollment.findUnique({
-      where: { id: enrollmentId },
-      include: { event: { include: { eventType: true } } },
-    });
-    if (!enrollment || enrollment.status !== UpcomingClassEnrollmentStatus.PAID) {
+    const enrollment =
+      await this.prisma.upcomingFixedEventEnrollment.findUnique({
+        where: { id: enrollmentId },
+        include: { event: { include: { eventType: true } } },
+      });
+    if (
+      !enrollment ||
+      enrollment.status !== UpcomingClassEnrollmentStatus.PAID
+    ) {
       return;
     }
 
@@ -2152,10 +2268,7 @@ export class UpcomingEventsService {
       where: { eventId: enrollment.eventId },
     });
 
-    if (
-      enrollment.ticketNumber != null &&
-      !enrollment.customerEmailSentAt
-    ) {
+    if (enrollment.ticketNumber != null && !enrollment.customerEmailSentAt) {
       const sent = await this.sendFixedTicketConfirmation(
         { ...enrollment, ticketNumber: enrollment.ticketNumber },
         venueConfig,
@@ -2191,12 +2304,14 @@ export class UpcomingEventsService {
   }
 
   private async markFixedEnrollmentExpired(sessionId: string) {
-    const enrollment = await this.prisma.upcomingFixedEventEnrollment.findUnique({
-      where: { stripeCheckoutSessionId: sessionId },
-      include: { event: { include: { eventType: true } } },
-    });
+    const enrollment =
+      await this.prisma.upcomingFixedEventEnrollment.findUnique({
+        where: { stripeCheckoutSessionId: sessionId },
+        include: { event: { include: { eventType: true } } },
+      });
     if (!enrollment) return;
-    if (enrollment.status !== UpcomingClassEnrollmentStatus.PENDING_PAYMENT) return;
+    if (enrollment.status !== UpcomingClassEnrollmentStatus.PENDING_PAYMENT)
+      return;
     await this.prisma.upcomingFixedEventEnrollment.update({
       where: { id: enrollment.id },
       data: { status: UpcomingClassEnrollmentStatus.EXPIRED },
@@ -2231,9 +2346,9 @@ export class UpcomingEventsService {
     const amount = `${Number(enrollment.amount).toFixed(2)} ${enrollment.currency.toUpperCase()}`;
     const eventDateLabel =
       venueConfig?.reservationEventLabel?.trim() ||
-      (venueConfig?.reservationEventDate ?
-        venueConfig.reservationEventDate.toISOString()
-      : 'See event details');
+      (venueConfig?.reservationEventDate
+        ? venueConfig.reservationEventDate.toISOString()
+        : 'See event details');
     const branding = emailBrandingFromProcessEnv();
     const { ok, errorText } = await this.mail.sendTransactional({
       to: enrollment.customerEmail,
@@ -2266,22 +2381,24 @@ export class UpcomingEventsService {
     return true;
   }
 
-  private async sendClassConfirmation(
-    enrollment: {
-      id: string;
-      customerName: string;
-      customerEmail: string;
-      amount: Prisma.Decimal;
-      currency: string;
-      session: {
-        startsAt: Date;
-        endsAt: Date;
-        timezone: string;
-        section?: { label: string | null; startTime: string; endTime: string } | null;
-        event: { eventType: { name: string } };
-      };
-    },
-  ) {
+  private async sendClassConfirmation(enrollment: {
+    id: string;
+    customerName: string;
+    customerEmail: string;
+    amount: Prisma.Decimal;
+    currency: string;
+    session: {
+      startsAt: Date;
+      endsAt: Date;
+      timezone: string;
+      section?: {
+        label: string | null;
+        startTime: string;
+        endTime: string;
+      } | null;
+      event: { eventType: { name: string } };
+    };
+  }) {
     const eventName = enrollment.session.event.eventType.name;
     const amount = `${Number(enrollment.amount).toFixed(2)} ${enrollment.currency.toUpperCase()}`;
     const sessionLabel = this.sessionLabel(enrollment.session);
@@ -2314,7 +2431,9 @@ export class UpcomingEventsService {
       );
       return false;
     }
-    this.logger.log(`class-confirmation-email-sent to=${enrollment.customerEmail}`);
+    this.logger.log(
+      `class-confirmation-email-sent to=${enrollment.customerEmail}`,
+    );
     return true;
   }
 
@@ -2334,7 +2453,11 @@ export class UpcomingEventsService {
             startsAt: Date;
             endsAt: Date;
             timezone: string;
-            section?: { label: string | null; startTime: string; endTime: string } | null;
+            section?: {
+              label: string | null;
+              startTime: string;
+              endTime: string;
+            } | null;
             event: { eventType: { name: string } };
           };
         };
@@ -2346,7 +2469,10 @@ export class UpcomingEventsService {
     const totalAmount = `${Number(pkg.amount).toFixed(2)} ${pkg.currency.toUpperCase()}`;
     const firstSession = pkg.items[0]?.enrollment.session;
     const dateLabel = firstSession
-      ? this.sessionCalendarDateIso(firstSession.startsAt, firstSession.timezone)
+      ? this.sessionCalendarDateIso(
+          firstSession.startsAt,
+          firstSession.timezone,
+        )
       : 'your scheduled date';
     const lines = pkg.items.map((item) => ({
       sessionLabel: this.sessionLabel(item.enrollment.session),
@@ -2398,7 +2524,9 @@ export class UpcomingEventsService {
       include: this.packageEnrollmentInclude(),
     });
     if (!pkg) {
-      this.logger.warn(`class-package-webhook-missing package session=${sessionId}`);
+      this.logger.warn(
+        `class-package-webhook-missing package session=${sessionId}`,
+      );
       throw new NotFoundException(
         'Class package enrollment not found for checkout session.',
       );
@@ -2436,16 +2564,17 @@ export class UpcomingEventsService {
       });
     }
 
-    const refreshed = await this.prisma.upcomingClassPackageEnrollment.findUnique({
-      where: { id: pkg.id },
-      include: this.packageEnrollmentInclude(),
-    });
+    const refreshed =
+      await this.prisma.upcomingClassPackageEnrollment.findUnique({
+        where: { id: pkg.id },
+        include: this.packageEnrollmentInclude(),
+      });
     const emailPkg = refreshed ?? pkg;
 
     if (!emailPkg.customerEmailSentAt) {
       let sent = false;
       if (emailPkg.items.length === 1) {
-        sent = await this.sendClassConfirmation(emailPkg.items[0]!.enrollment);
+        sent = await this.sendClassConfirmation(emailPkg.items[0].enrollment);
       } else {
         sent = await this.sendClassBundleConfirmation(emailPkg, checkoutFlow);
       }
@@ -2505,5 +2634,4 @@ export class UpcomingEventsService {
       });
     }
   }
-
 }

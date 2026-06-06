@@ -11,6 +11,7 @@ import {
   UpcomingExperienceType,
   VenueSeatKind,
   VenueSeatReservationStatus,
+  VenueTableSize,
 } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -27,10 +28,7 @@ import {
 } from '../stripe/stripe-tax.util';
 import { StripeService } from '../stripe/stripe.service';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
-import {
-  maskCustomerName,
-  maskEmail,
-} from '../../common/util/mask-pii.util';
+import { maskCustomerName, maskEmail } from '../../common/util/mask-pii.util';
 import {
   evaluateSalesWindow,
   eventDateForReservations,
@@ -98,7 +96,10 @@ export class VenueReservationsService {
       };
     }
 
-    const paid = await this.findPaidReservations(eventDate, ctx.upcomingEventId);
+    const paid = await this.findPaidReservations(
+      eventDate,
+      ctx.upcomingEventId,
+    );
     const soldOut = await this.isInventorySoldOut(
       eventDate,
       ctx.upcomingEventId,
@@ -276,44 +277,45 @@ export class VenueReservationsService {
       expires_at: Math.floor(expiresAt.getTime() / 1000),
     };
 
-    const session = await this.stripeService.client.checkout.sessions.create(
+    const session = (await this.stripeService.client.checkout.sessions.create(
       sessionParams as Parameters<
         typeof this.stripeService.client.checkout.sessions.create
       >[0],
-    );
+    )) as { id: string; client_secret: string | null };
 
     if (!session.client_secret) {
       throw new BadRequestException('Could not start checkout.');
     }
 
-    let reservation;
-    try {
-      reservation = await this.prisma.venueSeatReservation.create({
-        data: {
-          upcomingEventId: ctx.upcomingEventId,
-          kind,
-          venueTableConfigId,
-          layoutItemId: dto.layoutItemId,
-          eventDate,
-          amount,
-          currency: 'usd',
-          status: VenueSeatReservationStatus.PENDING_PAYMENT,
-          stripeCheckoutSessionId: session.id,
-          customerName: dto.customerName.trim(),
-          customerEmail: dto.customerEmail.trim().toLowerCase(),
-          customerPhone: dto.customerPhone?.trim() || null,
-          expiresAt,
-        },
-      });
-    } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2002'
-      ) {
-        throw new ConflictException('This seat is already reserved.');
+    const reservation = await (async () => {
+      try {
+        return await this.prisma.venueSeatReservation.create({
+          data: {
+            upcomingEventId: ctx.upcomingEventId,
+            kind,
+            venueTableConfigId,
+            layoutItemId: dto.layoutItemId,
+            eventDate,
+            amount,
+            currency: 'usd',
+            status: VenueSeatReservationStatus.PENDING_PAYMENT,
+            stripeCheckoutSessionId: session.id,
+            customerName: dto.customerName.trim(),
+            customerEmail: dto.customerEmail.trim().toLowerCase(),
+            customerPhone: dto.customerPhone?.trim() || null,
+            expiresAt,
+          },
+        });
+      } catch (err) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === 'P2002'
+        ) {
+          throw new ConflictException('This seat is already reserved.');
+        }
+        throw err;
       }
-      throw err;
-    }
+    })();
 
     await this.stripeService.client.checkout.sessions.update(session.id, {
       metadata: {
@@ -346,7 +348,10 @@ export class VenueReservationsService {
     }
 
     let stripeStatus: 'complete' | 'open' | 'expired' = 'open';
-    let stripeSession;
+    let stripeSession: {
+      status: string | null;
+      payment_status: string | null;
+    };
     try {
       stripeSession =
         await this.stripeService.client.checkout.sessions.retrieve(sessionId);
@@ -462,7 +467,8 @@ export class VenueReservationsService {
     if (query.layoutItemId?.trim()) {
       where.layoutItemId = query.layoutItemId.trim();
     }
-    const upcomingEventId = (query as { upcomingEventId?: string }).upcomingEventId;
+    const upcomingEventId = (query as { upcomingEventId?: string })
+      .upcomingEventId;
     if (upcomingEventId?.trim()) {
       where.upcomingEventId = upcomingEventId.trim();
     }
@@ -629,13 +635,11 @@ export class VenueReservationsService {
     return true;
   }
 
-  private async venueReservationContextLabel(
-    row: {
-      kind: VenueSeatKind;
-      upcomingEventId: string | null;
-      venueTableConfig?: { tableName: string | null } | null;
-    },
-  ): Promise<string> {
+  private async venueReservationContextLabel(row: {
+    kind: VenueSeatKind;
+    upcomingEventId: string | null;
+    venueTableConfig?: { tableName: string | null } | null;
+  }): Promise<string> {
     let eventName = 'Venue event';
     if (row.upcomingEventId) {
       const event = await this.prisma.event.findUnique({
@@ -780,9 +784,8 @@ export class VenueReservationsService {
     upcomingEventId: string,
     floorLayoutId: string | null,
   ): Promise<boolean> {
-    const layout = await this.floorLayout.getPublicFloorLayoutForClient(
-      floorLayoutId,
-    );
+    const layout =
+      await this.floorLayout.getPublicFloorLayoutForClient(floorLayoutId);
     const reservableIds = layout.items
       .filter(
         (item) =>
@@ -888,7 +891,7 @@ export class VenueReservationsService {
       layoutItemId: row.layoutItemId,
       venueTableConfigId: row.venueTableConfigId,
       tableName: row.venueTableConfig
-        ? formatVenueTableSizeLabel(row.venueTableConfig.size)
+        ? formatVenueTableSizeLabel(row.venueTableConfig.size as VenueTableSize)
         : null,
       tableSize: row.venueTableConfig?.size ?? null,
       eventDate: row.eventDate.toISOString(),
@@ -976,9 +979,8 @@ export class VenueReservationsService {
           config?.reservationTimezone ??
           (await this.getLegacyReservationSettings()).reservationTimezone;
       } else {
-        reservationTimezone = (
-          await this.getLegacyReservationSettings()
-        ).reservationTimezone;
+        reservationTimezone = (await this.getLegacyReservationSettings())
+          .reservationTimezone;
       }
       const recipientName = row.customerName.trim() || 'Guest';
 
@@ -1037,7 +1039,9 @@ export class VenueReservationsService {
       const tableName = args.venueTableConfig?.tableName?.trim();
       if (tableName) return tableName;
       const tableSize = args.venueTableConfig?.size?.trim();
-      if (tableSize) return `Table ${formatVenueTableSizeLabel(tableSize)}`;
+      if (tableSize) {
+        return `Table ${formatVenueTableSizeLabel(tableSize as VenueTableSize)}`;
+      }
       return 'Reserved table';
     }
 

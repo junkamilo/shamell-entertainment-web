@@ -372,7 +372,8 @@ export class AuthService {
 
     const response: { message: string; resetLink?: string } = { message };
 
-    const nodeEnv = this.config.get<string>('NODE_ENV')?.trim() ?? 'development';
+    const nodeEnv =
+      this.config.get<string>('NODE_ENV')?.trim() ?? 'development';
     if (nodeEnv !== 'production' && rawToken) {
       const resetLink = `${this.frontendOrigin()}/forgot-password/reset?token=${encodeURIComponent(rawToken)}`;
       response.resetLink = resetLink;

@@ -20,12 +20,8 @@ function strOrEmpty(v: string | undefined): string {
 
 function inquiryRecord(dto: CreateContactDto): Record<string, unknown> {
   const raw = dto.inquiryDetails;
-  if (
-    raw &&
-    typeof raw === 'object' &&
-    !Array.isArray(raw)
-  ) {
-    return raw as Record<string, unknown>;
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    return raw;
   }
   return {};
 }
@@ -50,9 +46,7 @@ export function buildConciergeVisionSnapshot(
       ? details.planningStage.trim()
       : '';
   const occasion =
-    typeof details.occasionHint === 'string'
-      ? details.occasionHint.trim()
-      : '';
+    typeof details.occasionHint === 'string' ? details.occasionHint.trim() : '';
 
   return {
     fullName: dto.fullName.trim(),

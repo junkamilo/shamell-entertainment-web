@@ -109,7 +109,7 @@ export function resolveEmailLogoImageUrl(options: {
 export function emailBrandingFromProcessEnv(): EmailBranding {
   return emailBrandingFromConfig({
     get: (key: string) => process.env[key],
-  } as Pick<ConfigService, 'get'>);
+  });
 }
 
 export function emailBrandingFromConfig(
@@ -126,9 +126,7 @@ export function emailBrandingFromConfig(
   return { siteBaseUrl, logoImageUrl };
 }
 
-function normalizeBrandingInput(
-  input?: string | EmailBranding,
-): EmailBranding {
+function normalizeBrandingInput(input?: string | EmailBranding): EmailBranding {
   const fromEnv = emailBrandingFromProcessEnv();
 
   if (input == null) {
@@ -193,6 +191,9 @@ export function emailBrandingFromFrontendBaseUrl(
   if (config) return emailBrandingFromConfig(config);
   return {
     siteBaseUrl: trimmed?.replace(/\/$/, ''),
-    logoImageUrl: resolveEmailLogoImageUrl({ frontendUrlRaw: trimmed }) ?? loadEmbeddedLogoDataUri() ?? undefined,
+    logoImageUrl:
+      resolveEmailLogoImageUrl({ frontendUrlRaw: trimmed }) ??
+      loadEmbeddedLogoDataUri() ??
+      undefined,
   };
 }

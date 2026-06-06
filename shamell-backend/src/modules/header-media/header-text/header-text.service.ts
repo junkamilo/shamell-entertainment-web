@@ -50,7 +50,9 @@ export class HeaderTextService {
         ? { headlineColor: dto.headlineColor }
         : {}),
       ...(dto.tagline !== undefined ? { tagline: dto.tagline } : {}),
-      ...(dto.taglineFont !== undefined ? { taglineFont: dto.taglineFont } : {}),
+      ...(dto.taglineFont !== undefined
+        ? { taglineFont: dto.taglineFont }
+        : {}),
       ...(dto.taglineColor !== undefined
         ? { taglineColor: dto.taglineColor }
         : {}),

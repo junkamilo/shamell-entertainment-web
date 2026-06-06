@@ -14,7 +14,10 @@ export function assertValidMonthIso(monthIso: string): void {
   }
 }
 
-export function sessionCalendarMonthIso(startsAt: Date, timezone: string): string {
+export function sessionCalendarMonthIso(
+  startsAt: Date,
+  timezone: string,
+): string {
   const dateIso = new Intl.DateTimeFormat('en-CA', {
     timeZone: timezone || 'America/New_York',
     year: 'numeric',
@@ -72,7 +75,8 @@ export async function resolveMonthSessions(
 
   return rows.filter(
     (row) =>
-      sessionCalendarMonthIso(row.startsAt, row.timezone || timezone) === monthIso,
+      sessionCalendarMonthIso(row.startsAt, row.timezone || timezone) ===
+      monthIso,
   );
 }
 

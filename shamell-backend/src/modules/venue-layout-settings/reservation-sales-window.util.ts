@@ -23,7 +23,9 @@ export function resolveReservationWindow(row: {
 export function evaluateSalesWindow(
   window: ReservationWindow,
   now: Date = new Date(),
-): { open: true } | { open: false; reason: Exclude<SalesClosedReason, 'sold_out'> } {
+):
+  | { open: true }
+  | { open: false; reason: Exclude<SalesClosedReason, 'sold_out'> } {
   if (!window.opensAt || !window.closesAt) {
     return { open: false, reason: 'not_configured' };
   }
@@ -36,6 +38,8 @@ export function evaluateSalesWindow(
   return { open: true };
 }
 
-export function eventDateForReservations(window: ReservationWindow): Date | null {
+export function eventDateForReservations(
+  window: ReservationWindow,
+): Date | null {
   return window.opensAt;
 }

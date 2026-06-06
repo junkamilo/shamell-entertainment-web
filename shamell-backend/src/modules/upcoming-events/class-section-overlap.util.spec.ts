@@ -21,7 +21,9 @@ describe('validateSectionsNoOverlapMessage', () => {
 
   it('rejects end before start', () => {
     expect(
-      validateSectionsNoOverlapMessage([{ startTime: '10:00', endTime: '09:00' }]),
+      validateSectionsNoOverlapMessage([
+        { startTime: '10:00', endTime: '09:00' },
+      ]),
     ).toMatch(/after start/i);
   });
 });

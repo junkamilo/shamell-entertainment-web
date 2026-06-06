@@ -1,8 +1,5 @@
 import type { HeroHeaderContent } from '@prisma/client';
-import {
-  DEFAULT_HEADER_TEXT,
-  type HeaderFont,
-} from './header-text.constants';
+import { DEFAULT_HEADER_TEXT, type HeaderFont } from './header-text.constants';
 
 export type HeaderTextResponse = {
   headline: string;
@@ -20,12 +17,12 @@ export type HeaderTextResponse = {
 
 function asHeaderFont(value: string, fallback: HeaderFont): HeaderFont {
   const fonts: HeaderFont[] = ['brand', 'elegant', 'script', 'body'];
-  return fonts.includes(value as HeaderFont)
-    ? (value as HeaderFont)
-    : fallback;
+  return fonts.includes(value as HeaderFont) ? (value as HeaderFont) : fallback;
 }
 
-export function mapHeaderText(row: HeroHeaderContent | null): HeaderTextResponse {
+export function mapHeaderText(
+  row: HeroHeaderContent | null,
+): HeaderTextResponse {
   if (!row) {
     return {
       ...DEFAULT_HEADER_TEXT,
@@ -36,7 +33,10 @@ export function mapHeaderText(row: HeroHeaderContent | null): HeaderTextResponse
 
   return {
     headline: row.headline,
-    headlineFont: asHeaderFont(row.headlineFont, DEFAULT_HEADER_TEXT.headlineFont),
+    headlineFont: asHeaderFont(
+      row.headlineFont,
+      DEFAULT_HEADER_TEXT.headlineFont,
+    ),
     headlineColor: row.headlineColor,
     tagline: row.tagline,
     taglineFont: asHeaderFont(row.taglineFont, DEFAULT_HEADER_TEXT.taglineFont),

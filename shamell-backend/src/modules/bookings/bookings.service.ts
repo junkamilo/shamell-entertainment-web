@@ -17,10 +17,7 @@ import {
 } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  maskCustomerName,
-  maskEmail,
-} from '../../common/util/mask-pii.util';
+import { maskCustomerName, maskEmail } from '../../common/util/mask-pii.util';
 import { AvailabilityService } from '../availability/availability.service';
 import {
   parseHHMM,
@@ -885,9 +882,7 @@ export class BookingsService {
           eventTypeId: eventTypeId ?? null,
           occasionTypeId: occasionTypeId ?? null,
           guestCount:
-            dto.guestCount !== undefined
-              ? dto.guestCount
-              : existing.guestCount,
+            dto.guestCount !== undefined ? dto.guestCount : existing.guestCount,
         },
       );
       this.validateBookingTimeRange(detailsForEnrich);
@@ -1249,7 +1244,7 @@ export class BookingsService {
     };
   }
 
-  async resolveQuotePayUrl(token: string): Promise<string> {
+  resolveQuotePayUrl(token: string): string {
     const frontendBase = this.stripeService.frontendUrl().replace(/\/$/, '');
     return `${frontendBase}/pay/quote?token=${encodeURIComponent(token)}`;
   }
@@ -1281,7 +1276,9 @@ export class BookingsService {
 
     if (session.status === 'expired' || session.status === 'complete') {
       if (session.status === 'complete' && session.payment_status === 'paid') {
-        throw new BadRequestException('This payment has already been completed.');
+        throw new BadRequestException(
+          'This payment has already been completed.',
+        );
       }
       if (session.status === 'expired') {
         await this.prisma.bookingPayment.update({
@@ -1308,9 +1305,10 @@ export class BookingsService {
       }
     }
 
-    const refreshed = await this.stripeService.client.checkout.sessions.retrieve(
-      payment.stripeCheckoutSessionId,
-    );
+    const refreshed =
+      await this.stripeService.client.checkout.sessions.retrieve(
+        payment.stripeCheckoutSessionId,
+      );
     if (!refreshed.client_secret) {
       throw new BadRequestException('Stripe checkout is not available.');
     }
@@ -1387,7 +1385,7 @@ export class BookingsService {
       signature,
       this.stripeService.webhookSecret,
     );
-    return this.processStripeWebhookEvent(event as { id: string; type: string; data: { object: unknown } });
+    return this.processStripeWebhookEvent(event);
   }
 
   async processStripeWebhookEvent(event: {
@@ -1485,9 +1483,7 @@ export class BookingsService {
           payment.booking.guestFullName ??
           'Client',
         customerEmail:
-          payment.booking.user?.email ??
-          payment.booking.guestEmail ??
-          '',
+          payment.booking.user?.email ?? payment.booking.guestEmail ?? '',
         amount: Number(payment.expectedAmount),
         currency: payment.currency,
         contextLabel: this.bookingContextLabel(payment.booking),
@@ -1525,9 +1521,7 @@ export class BookingsService {
           payment.booking.guestFullName ??
           'Client',
         customerEmail:
-          payment.booking.user?.email ??
-          payment.booking.guestEmail ??
-          '',
+          payment.booking.user?.email ?? payment.booking.guestEmail ?? '',
         amount: Number(payment.expectedAmount),
         currency: payment.currency,
         contextLabel: this.bookingContextLabel(payment.booking),
@@ -1563,8 +1557,7 @@ export class BookingsService {
     await this.adminPaymentNotify.notifyPaymentOutcome({
       outcome: 'EXPIRED',
       flow: 'BOOKING_QUOTE',
-      customerName:
-        booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      customerName: booking.user?.fullName ?? booking.guestFullName ?? 'Client',
       customerEmail: booking.user?.email ?? booking.guestEmail ?? '',
       amount: Number(payment.expectedAmount),
       currency: payment.currency,
@@ -1622,11 +1615,8 @@ export class BookingsService {
         adminUserId: args.adminUserId,
       },
     };
-    const session = await this.stripeService.client.checkout.sessions.create(
-      sessionParams as Parameters<
-        typeof this.stripeService.client.checkout.sessions.create
-      >[0],
-    );
+    const session =
+      await this.stripeService.client.checkout.sessions.create(sessionParams);
     if (!session.client_secret) {
       throw new BadRequestException('Could not start checkout.');
     }
@@ -1744,7 +1734,9 @@ export class BookingsService {
     );
   }
 
-  private bookingEventDateLabel(booking: Pick<BookingWithRelations, 'eventDate'>): string | undefined {
+  private bookingEventDateLabel(
+    booking: Pick<BookingWithRelations, 'eventDate'>,
+  ): string | undefined {
     if (!booking.eventDate) return undefined;
     return booking.eventDate.toLocaleDateString('en-US', {
       weekday: 'long',
@@ -1766,8 +1758,7 @@ export class BookingsService {
   ): Promise<void> {
     const customerName =
       booking.user?.fullName ?? booking.guestFullName ?? 'Client';
-    const customerEmail =
-      booking.user?.email ?? booking.guestEmail ?? '';
+    const customerEmail = booking.user?.email ?? booking.guestEmail ?? '';
     const amount = Number(booking.quoteTotalAmount ?? booking.totalAmount ?? 0);
     await this.adminPaymentNotify.notifyPaymentOutcome({
       outcome: 'CANCELLED',
