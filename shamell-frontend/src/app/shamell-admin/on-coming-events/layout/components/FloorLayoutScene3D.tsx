@@ -1,11 +1,9 @@
 "use client";
 
-import { useDroppable } from "@dnd-kit/core";
 import VenueScene3D, { type VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
 import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
 import { isSceneSelectId } from "@/components/venue-3d/floorSceneZonesDefaults";
 import type { FloorSceneZones, PlacedLayoutItem } from "../types/floorLayout.types";
-import { FLOOR_CANVAS_DROPPABLE_ID } from "../hooks/useFloorLayoutEditor";
 import FloorLayoutEditorActions, { sceneSelectionLabel } from "./FloorLayoutEditorActions";
 import PlacedItemsLayer3d from "./PlacedItemsLayer3d";
 import SceneDecorEditorLayer from "./SceneDecorEditorLayer";
@@ -16,9 +14,11 @@ type Props = {
   items: PlacedLayoutItem[];
   sceneZones: FloorSceneZones;
   reservedIds?: Set<string>;
-  newlyReservedIds?: Set<string>;
+  reservedLabels?: ReadonlyMap<string, string>;
   selectedId: string | null;
   sceneHandleRef: React.RefObject<VenueScene3DHandle | null>;
+  canvasContainerRef: React.RefObject<HTMLDivElement | null>;
+  paletteDragOver?: boolean;
   onSelect: (id: string | null) => void;
   onMoveItem: (id: string, x: number, y: number) => void;
   onMoveSceneZone: (kind: "stage" | "carpet", x: number, z: number) => void;
@@ -37,9 +37,11 @@ export default function FloorLayoutScene3D({
   items,
   sceneZones,
   reservedIds,
-  newlyReservedIds,
+  reservedLabels,
   selectedId,
   sceneHandleRef,
+  canvasContainerRef,
+  paletteDragOver = false,
   onSelect,
   onMoveItem,
   onMoveSceneZone,
@@ -52,7 +54,6 @@ export default function FloorLayoutScene3D({
   onDelete,
 }: Props) {
   const sceneLayout = useVenueSceneLayout("admin");
-  const { setNodeRef, isOver } = useDroppable({ id: FLOOR_CANVAS_DROPPABLE_ID });
 
   const sceneDecorAdmin = (
     <SceneDecorEditorLayer
@@ -71,7 +72,7 @@ export default function FloorLayoutScene3D({
       viewBoxHeight={viewBoxHeight}
       selectedId={selectedId}
       reservedIds={reservedIds}
-      newlyReservedIds={newlyReservedIds}
+      reservedLabels={reservedLabels}
       onSelect={onSelect}
       onReservedSelect={onReservedSelect}
       onMoveItem={onMoveItem}
@@ -80,9 +81,9 @@ export default function FloorLayoutScene3D({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={canvasContainerRef}
       className={`relative min-h-0 min-w-0 flex-1 overflow-hidden rounded-lg border transition ${
-        isOver ? "border-shamell-gold ring-2 ring-shamell-gold/30" : "border-shamell-line-soft"
+        paletteDragOver ? "border-shamell-gold ring-2 ring-shamell-gold/30" : "border-shamell-line-soft"
       }`}
       style={{ touchAction: "none" }}
     >

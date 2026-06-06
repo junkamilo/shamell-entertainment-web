@@ -7,9 +7,17 @@ import AdminCatalogEmptyState from "@/components/admin/AdminCatalogEmptyState";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/onComingEventsRoutes";
 import AdminPagination from "@/components/admin/AdminPagination";
+import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import { deleteAdminVenueTable } from "../services/deleteAdminVenueTable";
 import { deleteAdminVenueTablesBulk } from "../services/deleteAdminVenueTablesBulk";
+import { patchAdminVenueTablesBulkPrice } from "../services/patchAdminVenueTablesBulkPrice";
 import { useVenueTablesList } from "../hooks/useVenueTablesList";
+import { parsePriceInput } from "../lib/parseVenueTablePrice";
+import {
+  canBulkEditTablePrices,
+  getBulkEditTablePricesBlockedDescription,
+  suggestBulkBundlePrice,
+} from "../lib/venueTablesUsage";
 import {
   formatVenueTableDisplayLabel,
   TABLE_SIZE_CONFIG,
@@ -24,6 +32,7 @@ import VenueSeatingSectionTabs from "./VenueSeatingSectionTabs";
 import VenueTablesBulkDeleteModal, {
   type VenueTablesBulkDeleteScope,
 } from "./VenueTablesBulkDeleteModal";
+import VenueTablesBulkEditPriceModal from "./VenueTablesBulkEditPriceModal";
 import VenueTablesList from "./VenueTablesList";
 
 export default function VenueTablesPageContent() {
@@ -40,6 +49,9 @@ export default function VenueTablesPageContent() {
     scope: VenueTablesBulkDeleteScope;
     count: number;
   } | null>(null);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkPriceInput, setBulkPriceInput] = useState("");
+  const [savingBulkEdit, setSavingBulkEdit] = useState(false);
 
   const openCreate = () => {
     setEditing(null);
@@ -77,6 +89,71 @@ export default function VenueTablesPageContent() {
         : activeItems.filter((item) => item.size === scope).length;
     if (targetCount === 0) return;
     setPendingBulkDelete({ scope, count: targetCount });
+  };
+
+  const openBulkEditPrices = () => {
+    if (sizeFilter === "ALL") {
+      toast({
+        variant: "destructive",
+        title: "Select a size first",
+        description: getBulkEditTablePricesBlockedDescription(),
+      });
+      return;
+    }
+    if (filteredItems.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "No tables in this size",
+        description: `There are no active ${TABLE_SIZE_CONFIG[sizeFilter].label.toLowerCase()} tables to update.`,
+      });
+      return;
+    }
+    setBulkPriceInput(suggestBulkBundlePrice(filteredItems));
+    setBulkEditOpen(true);
+  };
+
+  const handleConfirmBulkEditPrices = async () => {
+    if (sizeFilter === "ALL") return;
+
+    const parsed = parsePriceInput(bulkPriceInput);
+    if (!parsed.ok || parsed.value == null) {
+      toast({ variant: "destructive", title: "Enter a valid price" });
+      return;
+    }
+
+    const token = getAdminBearerToken();
+    if (!token) return;
+
+    setSavingBulkEdit(true);
+    try {
+      const result = await patchAdminVenueTablesBulkPrice(token, {
+        scope: "SIZE",
+        size: sizeFilter,
+        bundlePrice: parsed.value,
+      });
+      if (!result.ok) {
+        toast({
+          variant: "destructive",
+          title: "Could not update prices",
+          description: nestApiErrorMessage(
+            result.data,
+            "Could not update all table prices.",
+          ),
+        });
+        return;
+      }
+
+      const count = result.updatedCount ?? filteredItems.length;
+      const sizeLabel = TABLE_SIZE_CONFIG[sizeFilter].label.toLowerCase();
+      toast({
+        title: "All prices updated",
+        description: `${count} ${sizeLabel} table${count === 1 ? "" : "s"} now share the same bundle price.`,
+      });
+      setBulkEditOpen(false);
+      void reload();
+    } finally {
+      setSavingBulkEdit(false);
+    }
   };
 
   const handleConfirmDeleteBulk = async () => {
@@ -241,6 +318,8 @@ export default function VenueTablesPageContent() {
                 onDeactivate={handleDeactivate}
                 onDeleteAll={() => requestDeleteBulk("ALL")}
                 onDeleteSize={(size) => requestDeleteBulk(size)}
+                onBulkEditPrices={openBulkEditPrices}
+                bulkEditDisabled={!canBulkEditTablePrices(sizeFilter, filteredItems.length)}
                 deletingScope={deletingScope}
               />
               <AdminPagination
@@ -264,6 +343,22 @@ export default function VenueTablesPageContent() {
             }}
             onConfirm={() => void handleConfirmDeleteBulk()}
           />
+
+          {sizeFilter !== "ALL" ? (
+            <VenueTablesBulkEditPriceModal
+              open={bulkEditOpen}
+              size={sizeFilter}
+              tableCount={filteredItems.length}
+              bundlePriceInput={bulkPriceInput}
+              onBundlePriceChange={setBulkPriceInput}
+              isSaving={savingBulkEdit}
+              onClose={() => {
+                if (savingBulkEdit) return;
+                setBulkEditOpen(false);
+              }}
+              onConfirm={() => void handleConfirmBulkEditPrices()}
+            />
+          ) : null}
 
           <TableConfiguratorModal
             key={editing?.id ?? "new"}

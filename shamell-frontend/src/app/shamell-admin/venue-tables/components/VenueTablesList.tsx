@@ -19,6 +19,8 @@ type Props = {
   onDeactivate: (item: VenueTableConfig) => void;
   onDeleteAll: () => void;
   onDeleteSize: (size: TableSize) => void;
+  onBulkEditPrices: () => void;
+  bulkEditDisabled: boolean;
   deletingScope: "ALL" | TableSize | null;
 };
 
@@ -43,6 +45,8 @@ export default function VenueTablesList({
   onDeactivate,
   onDeleteAll,
   onDeleteSize,
+  onBulkEditPrices,
+  bulkEditDisabled,
   deletingScope,
 }: Props) {
   const summarySource = sizeFilter === "ALL" ? activeItems : viewItems;
@@ -77,15 +81,25 @@ export default function VenueTablesList({
               {badgeLabel}
             </span>
           </div>
-          <button
-            type="button"
-            onClick={deleteHandler}
-            disabled={deleteDisabled}
-            className="inline-flex items-center gap-1 rounded-lg border border-shamell-danger/40 px-3 py-1.5 text-xs text-shamell-danger disabled:opacity-50"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            {deleteLabel}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={onBulkEditPrices}
+              disabled={bulkEditDisabled}
+              className="rounded-lg border border-gold/30 px-3 py-1.5 font-brand text-[11px] uppercase tracking-[0.1em] text-gold transition hover:bg-gold/10 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Edit all prices
+            </button>
+            <button
+              type="button"
+              onClick={deleteHandler}
+              disabled={deleteDisabled}
+              className="inline-flex items-center gap-1 rounded-lg border border-shamell-danger/40 px-3 py-1.5 text-xs text-shamell-danger disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {deleteLabel}
+            </button>
+          </div>
         </div>
 
         <dl className="mt-3 grid gap-2 text-xs text-shamell-text-primary/85 sm:grid-cols-2 lg:grid-cols-4">

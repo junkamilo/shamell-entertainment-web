@@ -8,5 +8,7 @@ type Props = {
 };
 
 export default function StandaloneChairMesh({ selected = false, reserved = false }: Props) {
-  return <VenueBanquetChairMesh selected={selected || reserved} />;
+  return (
+    <VenueBanquetChairMesh selected={selected && !reserved} reserved={reserved} />
+  );
 }

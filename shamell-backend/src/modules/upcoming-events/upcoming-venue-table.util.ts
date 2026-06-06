@@ -52,28 +52,19 @@ export async function venueTablePublicStats(
     return { tableCapacity: 0, tablesRemaining: 0, tablesSold: 0 };
   }
 
-  const now = new Date();
-  const blocking = await prisma.venueSeatReservation.findMany({
+  const paid = await prisma.venueSeatReservation.findMany({
     where: {
       upcomingEventId: args.eventId,
       eventDate: args.eventDate,
       layoutItemId: { in: tableIds },
-      OR: [
-        { status: VenueSeatReservationStatus.PAID },
-        {
-          status: VenueSeatReservationStatus.PENDING_PAYMENT,
-          OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
-      ],
+      status: VenueSeatReservationStatus.PAID,
     },
-    select: { layoutItemId: true, status: true },
+    select: { layoutItemId: true },
   });
 
-  const reservedIds = new Set(blocking.map((row) => row.layoutItemId));
-  const tablesRemaining = tableIds.filter((id) => !reservedIds.has(id)).length;
-  const tablesSold = blocking.filter(
-    (row) => row.status === VenueSeatReservationStatus.PAID,
-  ).length;
+  const paidIds = new Set(paid.map((row) => row.layoutItemId));
+  const tablesRemaining = tableIds.filter((id) => !paidIds.has(id)).length;
+  const tablesSold = paid.length;
 
   return { tableCapacity, tablesRemaining, tablesSold };
 }

@@ -10,7 +10,7 @@ type Props = {
   viewBoxHeight: number;
   selectedId: string | null;
   reservedIds?: Set<string>;
-  newlyReservedIds?: Set<string>;
+  reservedLabels?: ReadonlyMap<string, string>;
   onSelect: (id: string | null) => void;
   onReservedSelect?: (id: string) => void;
   onMoveItem: (id: string, x: number, y: number) => void;
@@ -22,7 +22,7 @@ export default function PlacedItemsLayer3d({
   viewBoxHeight,
   selectedId,
   reservedIds,
-  newlyReservedIds,
+  reservedLabels,
   onSelect,
   onReservedSelect,
   onMoveItem,
@@ -41,7 +41,7 @@ export default function PlacedItemsLayer3d({
       viewBoxHeight={viewBoxHeight}
       selectedId={selectedId}
       reservedIds={reservedIds}
-      newlyReservedIds={newlyReservedIds}
+      reservedLabels={reservedLabels}
       interactive
       onSelect={(id) => onSelect(id)}
       onReservedSelect={onReservedSelect}

@@ -34,7 +34,9 @@ import {
   ADMIN_USER_KEY,
   notifyAdminSessionChanged,
 } from "@/lib/adminSession";
+import { VENUE_RESERVATIONS_ADMIN_PATH } from "@/app/shamell-admin/venue-reservations/lib/venueReservationsRoutes";
 import {
+  markVenueSeatReservationsModuleSeen,
   ON_COMING_EVENTS_BADGE_REFRESH_EVENT,
   readLastSeenPaidReservationAtMs,
 } from "@/lib/onComingEventsReservationsNotice";
@@ -119,6 +121,15 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
       }
     }
   }, [router]);
+
+  useEffect(() => {
+    const onSeatReservationsRoute =
+      pathname === VENUE_RESERVATIONS_ADMIN_PATH ||
+      pathname.startsWith(`${VENUE_RESERVATIONS_ADMIN_PATH}/`);
+    if (!onSeatReservationsRoute) return;
+    markVenueSeatReservationsModuleSeen();
+    setOnComingEventsBadgeCount(0);
+  }, [pathname]);
 
   useEffect(() => {
     const loadBadge = async () => {

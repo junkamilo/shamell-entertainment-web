@@ -1,11 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
-import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
+import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
 import { onComingEventHubHref } from "@/lib/upcomingEventPublicRoutes";
 import {
   createClassCheckoutSession,
@@ -86,14 +85,11 @@ export default function UpcomingClassesPublicPage({ slug }: Props) {
   };
 
   if (mounted && checkoutSecret) {
-    return createPortal(
-      <StripeEmbeddedCheckoutOverlay
+    return (
+      <StripeCheckoutHost
         clientSecret={checkoutSecret}
-        onClose={() => setCheckoutSecret(null)}
         ariaLabel="Class booking payment"
-        closeOnBackdropClick={false}
-      />,
-      document.body,
+      />
     );
   }
 

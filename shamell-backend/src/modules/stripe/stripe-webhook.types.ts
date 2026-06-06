@@ -11,6 +11,7 @@ export type StripeCheckoutSessionLite = {
   payment_intent?: string | { id?: string } | null;
   payment_status?: string | null;
   amount_total?: number | null;
+  amount_subtotal?: number | null;
   currency?: string | null;
 };
 

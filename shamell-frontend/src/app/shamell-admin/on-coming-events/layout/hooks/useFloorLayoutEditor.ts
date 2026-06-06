@@ -1,12 +1,10 @@
 "use client";
 
-import type { DragEndEvent } from "@dnd-kit/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
 import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
-import { pickFloorFromClient } from "../lib/floorLayoutRaycast";
 import type { VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
 import { totalChairs } from "../lib/floorLayoutStats";
 import { fetchAdminFloorLayout } from "../services/fetchAdminFloorLayout";
@@ -38,9 +36,8 @@ import {
   TABLE_SIZE_LABELS,
 } from "../types/floorLayout.types";
 
+/** @deprecated SVG canvas droppable id; 3D editor uses pointer drag instead. */
 export const FLOOR_CANVAS_DROPPABLE_ID = "floor-canvas";
-
-export type DragSource = "palette" | "placed";
 
 export type PaletteDragKind =
   | { type: "table"; size: VenueTableSize }
@@ -78,7 +75,9 @@ export function useFloorLayoutEditor() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reservedLayoutItemIds, setReservedLayoutItemIds] = useState<string[]>([]);
-  const [newlyReservedLayoutItemIds, setNewlyReservedLayoutItemIds] = useState<string[]>([]);
+  const [reservedLabelsByLayoutItemId, setReservedLabelsByLayoutItemId] = useState<
+    Record<string, string>
+  >({});
 
   const palette = useMemo((): FloorLayoutPalette => {
     const placedTableIds = new Set(
@@ -186,30 +185,25 @@ export function useFloorLayoutEditor() {
               .filter((id) => id.trim().length > 0),
           ),
         ];
-        const newIds = [
-          ...new Set(
-            paidReservationsResult.reservations
-              .filter((row) => {
-                const createdAtMs = Date.parse(row.createdAt);
-                return Number.isFinite(createdAtMs) && createdAtMs > previousSeenAt;
-              })
-              .map((row) => row.layoutItemId)
-              .filter((id) => id.trim().length > 0),
-          ),
-        ];
+        const labels: Record<string, string> = {};
+        for (const row of paidReservationsResult.reservations) {
+          const layoutItemId = row.layoutItemId.trim();
+          if (!layoutItemId) continue;
+          labels[layoutItemId] = row.customerName.trim() || "Guest";
+        }
         const latestPaidAt = paidReservationsResult.reservations.reduce((max, row) => {
           const createdAtMs = Date.parse(row.createdAt);
           return Number.isFinite(createdAtMs) ? Math.max(max, createdAtMs) : max;
         }, 0);
         setReservedLayoutItemIds(uniqueReservedIds);
-        setNewlyReservedLayoutItemIds(newIds);
-        if (latestPaidAt > 0) {
+        setReservedLabelsByLayoutItemId(labels);
+        if (latestPaidAt > previousSeenAt) {
           writeLastSeenPaidReservationAtMs(latestPaidAt);
           notifyOnComingEventsBadgeRefresh();
         }
       } else {
         setReservedLayoutItemIds([]);
-        setNewlyReservedLayoutItemIds([]);
+        setReservedLabelsByLayoutItemId({});
       }
       setDirty(false);
     } catch {
@@ -218,14 +212,6 @@ export function useFloorLayoutEditor() {
       setLoading(false);
     }
   }, [applyLayout]);
-
-  useEffect(() => {
-    if (newlyReservedLayoutItemIds.length === 0) return;
-    const timeoutId = window.setTimeout(() => {
-      setNewlyReservedLayoutItemIds([]);
-    }, 9000);
-    return () => window.clearTimeout(timeoutId);
-  }, [newlyReservedLayoutItemIds]);
 
   useEffect(() => {
     void load();
@@ -378,45 +364,22 @@ export function useFloorLayoutEditor() {
     [router],
   );
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || over.id !== FLOOR_CANVAS_DROPPABLE_ID) return;
-
-      const translated = active.rect.current.translated;
-      const canvas = sceneHandleRef.current?.getCanvas() ?? null;
-      const camera = sceneHandleRef.current?.getCamera() ?? null;
-      if (!translated || !canvas || !camera) return;
-
-      const clientX = translated.left + translated.width / 2;
-      const clientY = translated.top + translated.height / 2;
-      const picked = pickFloorFromClient(
-        clientX,
-        clientY,
-        canvas,
-        camera,
-        layoutMeta.viewBoxWidth,
-        layoutMeta.viewBoxHeight,
-      );
-      if (!picked) return;
-      const { x, y } = picked;
-
-      const source = active.data.current?.source as DragSource | undefined;
-      if (source === "palette") {
-        const drag = active.data.current?.paletteDrag as PaletteDragKind | undefined;
-        if (drag?.type === "table") {
-          addCatalogTable(drag.size, x, y);
-        } else if (drag?.type === "chair") {
-          addStandaloneChair(x, y);
-        }
+  const placePaletteItem = useCallback(
+    (drag: PaletteDragKind, x: number, y: number) => {
+      if (drag.type === "table") {
+        addCatalogTable(drag.size, x, y);
+      } else {
+        addStandaloneChair(x, y);
       }
     },
-    [
-      addCatalogTable,
-      addStandaloneChair,
-      layoutMeta.viewBoxWidth,
-      layoutMeta.viewBoxHeight,
-    ],
+    [addCatalogTable, addStandaloneChair],
+  );
+
+  const placePaletteItemAtCenter = useCallback(
+    (drag: PaletteDragKind) => {
+      placePaletteItem(drag, layoutMeta.viewBoxWidth / 2, layoutMeta.viewBoxHeight / 2);
+    },
+    [placePaletteItem, layoutMeta.viewBoxWidth, layoutMeta.viewBoxHeight],
   );
 
   const save = useCallback(async () => {
@@ -490,7 +453,7 @@ export function useFloorLayoutEditor() {
     saving,
     error,
     reservedLayoutItemIds,
-    newlyReservedLayoutItemIds,
+    reservedLabelsByLayoutItemId,
     chairTotal: totalChairs(items),
     load,
     moveItem,
@@ -499,7 +462,8 @@ export function useFloorLayoutEditor() {
     rotateSelected,
     removeSelected,
     clearAllItems,
-    handleDragEnd,
+    placePaletteItem,
+    placePaletteItemAtCenter,
     save,
     onReservedItemSelect,
   };

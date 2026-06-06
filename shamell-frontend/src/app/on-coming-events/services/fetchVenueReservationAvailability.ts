@@ -6,6 +6,11 @@ export type SalesClosedReason =
   | "ended"
   | "sold_out";
 
+export type PaidSeatHolder = {
+  layoutItemId: string;
+  customerName: string;
+};
+
 export type VenueReservationAvailability = {
   eventDate: string | null;
   reservationOpensAt: string | null;
@@ -14,6 +19,7 @@ export type VenueReservationAvailability = {
   salesClosedReason: SalesClosedReason | null;
   reservedLayoutItemIds: string[];
   reservedVenueTableConfigIds: string[];
+  paidSeatHolders: PaidSeatHolder[];
 };
 
 const emptyAvailability: VenueReservationAvailability = {
@@ -24,6 +30,7 @@ const emptyAvailability: VenueReservationAvailability = {
   salesClosedReason: "not_configured",
   reservedLayoutItemIds: [],
   reservedVenueTableConfigIds: [],
+  paidSeatHolders: [],
 };
 
 export async function fetchVenueReservationAvailability(
@@ -64,6 +71,20 @@ export async function fetchVenueReservationAvailability(
       : [],
     reservedVenueTableConfigIds: Array.isArray(o.reservedVenueTableConfigIds)
       ? o.reservedVenueTableConfigIds.filter((id): id is string => typeof id === "string")
+      : [],
+    paidSeatHolders: Array.isArray(o.paidSeatHolders)
+      ? o.paidSeatHolders
+          .filter(
+            (row): row is PaidSeatHolder =>
+              row != null &&
+              typeof row === "object" &&
+              typeof (row as PaidSeatHolder).layoutItemId === "string" &&
+              typeof (row as PaidSeatHolder).customerName === "string",
+          )
+          .map((row) => ({
+            layoutItemId: row.layoutItemId,
+            customerName: row.customerName.trim() || "Guest",
+          }))
       : [],
   };
 }

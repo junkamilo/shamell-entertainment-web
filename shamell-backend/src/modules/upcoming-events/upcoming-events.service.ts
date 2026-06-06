@@ -19,6 +19,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { fetchPaymentMethodDetails } from '../stripe/stripe-payment-details.util';
+import { STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS } from '../stripe/stripe-embedded-checkout.util';
+import {
+  assertCheckoutPaidAmounts,
+  stripeAutomaticTaxParams,
+  stripeTaxProductData,
+} from '../stripe/stripe-tax.util';
 import { StripeService } from '../stripe/stripe.service';
 import {
   parseCheckoutSession,
@@ -331,6 +337,8 @@ export class UpcomingEventsService {
       ui_mode: 'embedded_page',
       mode: 'payment',
       customer_email: dto.customerEmail,
+      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
+      ...stripeAutomaticTaxParams(),
       payment_intent_data: {
         receipt_email: dto.customerEmail.trim().toLowerCase(),
       },
@@ -340,10 +348,10 @@ export class UpcomingEventsService {
           price_data: {
             currency: session.currency,
             unit_amount: amountCents,
-            product_data: {
+            product_data: stripeTaxProductData({
               name: `${event.eventType.name} — class`,
               description: this.sessionLabel(session),
-            },
+            }),
           },
         },
       ],
@@ -463,6 +471,8 @@ export class UpcomingEventsService {
       ui_mode: 'embedded_page',
       mode: 'payment',
       customer_email: dto.customerEmail,
+      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
+      ...stripeAutomaticTaxParams(),
       payment_intent_data: {
         receipt_email: dto.customerEmail.trim().toLowerCase(),
       },
@@ -472,10 +482,10 @@ export class UpcomingEventsService {
           price_data: {
             currency: 'usd',
             unit_amount: amountCents,
-            product_data: {
+            product_data: stripeTaxProductData({
               name: `${event.eventType.name} — ${sectionCount} class${sectionCount === 1 ? '' : 'es'}`,
               description: `${sectionCount} section(s) on ${dateLabel}`,
-            },
+            }),
           },
         },
       ],
@@ -648,6 +658,8 @@ export class UpcomingEventsService {
       ui_mode: 'embedded_page',
       mode: 'payment',
       customer_email: dto.customerEmail,
+      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
+      ...stripeAutomaticTaxParams(),
       payment_intent_data: {
         receipt_email: dto.customerEmail.trim().toLowerCase(),
       },
@@ -657,10 +669,10 @@ export class UpcomingEventsService {
           price_data: {
             currency: 'usd',
             unit_amount: amountCents,
-            product_data: {
+            product_data: stripeTaxProductData({
               name: `${event.eventType.name} — ${packageLabel}`,
               description: `${sessionCount} class${sessionCount === 1 ? '' : 'es'} in ${dto.monthIso}`,
-            },
+            }),
           },
         },
       ],
@@ -768,6 +780,8 @@ export class UpcomingEventsService {
       ui_mode: 'embedded_page',
       mode: 'payment',
       customer_email: dto.customerEmail,
+      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
+      ...stripeAutomaticTaxParams(),
       payment_intent_data: {
         receipt_email: dto.customerEmail.trim().toLowerCase(),
       },
@@ -777,10 +791,10 @@ export class UpcomingEventsService {
           price_data: {
             currency: 'usd',
             unit_amount: amountCents,
-            product_data: {
+            product_data: stripeTaxProductData({
               name: `${event.eventType.name} — ticket`,
               description: venueConfig.reservationEventLabel ?? 'Event ticket',
-            },
+            }),
           },
         },
       ],
@@ -1891,10 +1905,11 @@ export class UpcomingEventsService {
     if (session.payment_status !== 'paid') {
       throw new BadRequestException('Checkout session is not paid.');
     }
-    const expectedCents = Math.round(Number(enrollment.amount) * 100);
-    if (session.amount_total !== expectedCents) {
-      throw new BadRequestException('Amount mismatch.');
-    }
+    assertCheckoutPaidAmounts(session, {
+      expectedSubtotalCents: Math.round(Number(enrollment.amount) * 100),
+      expectedCurrency: enrollment.currency,
+      sessionLabel: sessionId,
+    });
     const paymentIntent = session.payment_intent;
     const paymentIntentId =
       typeof paymentIntent === 'string' ? paymentIntent : paymentIntent?.id ?? null;
@@ -1974,10 +1989,11 @@ export class UpcomingEventsService {
     if (session.payment_status !== 'paid') {
       throw new BadRequestException('Checkout session is not paid.');
     }
-    const expectedCents = Math.round(Number(enrollment.amount) * 100);
-    if (session.amount_total !== expectedCents) {
-      throw new BadRequestException('Amount mismatch.');
-    }
+    assertCheckoutPaidAmounts(session, {
+      expectedSubtotalCents: Math.round(Number(enrollment.amount) * 100),
+      expectedCurrency: enrollment.currency,
+      sessionLabel: sessionId,
+    });
     const paymentIntentId = paymentIntentIdFromSession(session);
     const paymentDetails = await fetchPaymentMethodDetails(
       this.stripeService.client,
@@ -2351,10 +2367,11 @@ export class UpcomingEventsService {
     if (session.payment_status !== 'paid') {
       throw new BadRequestException('Checkout session is not paid.');
     }
-    const expectedCents = Math.round(Number(pkg.amount) * 100);
-    if (session.amount_total !== expectedCents) {
-      throw new BadRequestException('Amount mismatch.');
-    }
+    assertCheckoutPaidAmounts(session, {
+      expectedSubtotalCents: Math.round(Number(pkg.amount) * 100),
+      expectedCurrency: pkg.currency,
+      sessionLabel: sessionId,
+    });
 
     const checkoutFlow = session.metadata?.flow;
     const isDayBundle = checkoutFlow === 'class_session_bundle';

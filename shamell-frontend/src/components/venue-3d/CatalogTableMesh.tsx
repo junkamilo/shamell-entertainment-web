@@ -58,15 +58,17 @@ export default function CatalogTableMesh({
       <mesh position={[0, cfg.tableHeight, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[cfg.tableRadius, cfg.tableRadius * 0.92, 0.08, 24]} />
         <meshStandardMaterial
-          color={reserved ? "#4a3030" : VENUE_COLORS.tableTop}
-          emissive={reserved ? "#661111" : selected ? "#332200" : "#000000"}
-          emissiveIntensity={reserved ? 0.35 : selected ? 0.3 : 0}
+          color={reserved ? VENUE_COLORS.tableTopReserved : VENUE_COLORS.tableTop}
+          emissive={reserved ? "#000000" : selected ? "#332200" : "#000000"}
+          emissiveIntensity={reserved ? 0 : selected ? 0.3 : 0}
         />
       </mesh>
       {/* Pedestal */}
       <mesh position={[0, cfg.tableHeight * 0.45, 0]} castShadow>
         <cylinderGeometry args={[cfg.tableRadius * 0.35, cfg.tableRadius * 0.5, cfg.tableHeight * 0.85, 16]} />
-        <meshStandardMaterial color={VENUE_COLORS.tableBase} />
+        <meshStandardMaterial
+          color={reserved ? VENUE_COLORS.tableBaseReserved : VENUE_COLORS.tableBase}
+        />
       </mesh>
       {/* Center accent */}
       <mesh position={[0, cfg.tableHeight + 0.05, 0]}>
@@ -79,7 +81,11 @@ export default function CatalogTableMesh({
       </mesh>
       {chairPlacements.map(({ position, rotationY }, i) => (
         <group key={i} position={position}>
-          <VenueBanquetChairMesh selected={selected} rotationY={rotationY} />
+          <VenueBanquetChairMesh
+            selected={selected && !reserved}
+            reserved={reserved}
+            rotationY={rotationY}
+          />
         </group>
       ))}
     </group>

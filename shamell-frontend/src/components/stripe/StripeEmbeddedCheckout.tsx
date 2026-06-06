@@ -1,8 +1,10 @@
 "use client";
 
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
-import { useEffect, useState } from "react";
+import type { Stripe } from "@stripe/stripe-js";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getStripePromise } from "@/lib/stripe/client";
+import { useStripeCheckoutMount } from "./useStripeCheckoutMount";
 
 type Props = {
   clientSecret: string;
@@ -10,18 +12,22 @@ type Props = {
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
-export default function VenueLayoutCheckoutStep({ clientSecret }: Props) {
-  const [stripeReady, setStripeReady] = useState<boolean | null>(null);
+export function StripeEmbeddedCheckout({ clientSecret }: Props) {
+  const [stripe, setStripe] = useState<Stripe | null | undefined>(undefined);
+  const mountRef = useRef<HTMLDivElement>(null);
+  const providerOptions = useMemo(() => ({ clientSecret }), [clientSecret]);
+
+  useStripeCheckoutMount(mountRef, stripe != null);
 
   useEffect(() => {
     if (!publishableKey) {
-      setStripeReady(false);
+      setStripe(null);
       return;
     }
-    void getStripePromise().then((stripe) => setStripeReady(Boolean(stripe)));
+    void getStripePromise().then(setStripe);
   }, []);
 
-  if (!publishableKey || stripeReady === false) {
+  if (!publishableKey || stripe === null) {
     return (
       <div className="rounded-lg border border-red-500/30 bg-red-50 px-4 py-3 text-sm text-red-800">
         <p className="font-medium">Payment form could not load</p>
@@ -34,17 +40,17 @@ export default function VenueLayoutCheckoutStep({ clientSecret }: Props) {
     );
   }
 
-  if (stripeReady === null) {
+  if (stripe === undefined) {
     return (
-      <div className="flex min-h-[200px] items-center justify-center px-4 py-8 text-sm text-neutral-500">
+      <div className="flex flex-1 items-center justify-center px-4 py-8 text-sm text-neutral-500">
         Loading payment…
       </div>
     );
   }
 
   return (
-    <EmbeddedCheckoutProvider stripe={getStripePromise()} options={{ clientSecret }}>
-      <div className="stripe-embedded-checkout-mount w-full">
+    <EmbeddedCheckoutProvider stripe={stripe} options={providerOptions}>
+      <div ref={mountRef} className="stripe-embedded-checkout-mount">
         <EmbeddedCheckout />
       </div>
     </EmbeddedCheckoutProvider>

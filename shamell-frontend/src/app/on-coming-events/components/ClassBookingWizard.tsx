@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useId, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
+import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
 import { MonthPackageIncludedSessions } from "./MonthPackageIncludedSessions";
 import { createClassBundleCheckoutSession } from "../services/createClassBundleCheckoutSession";
 import { createClassMonthPackageCheckoutSession } from "../services/createClassMonthPackageCheckoutSession";
@@ -391,11 +390,6 @@ export function ClassBookingWizard({
     setCheckoutSecret(result.clientSecret);
   };
 
-  const closeCheckout = () => {
-    setCheckoutSecret(null);
-    setStep(useWizard ? "details" : "legacySession");
-  };
-
   const stepTitle =
     step === "confirm" ? "Confirm full month package"
     : step === "day" ? "Choose a day"
@@ -409,14 +403,11 @@ export function ClassBookingWizard({
   if (!open || !mounted) return null;
 
   if (checkoutSecret) {
-    return createPortal(
-      <StripeEmbeddedCheckoutOverlay
+    return (
+      <StripeCheckoutHost
         clientSecret={checkoutSecret}
-        onClose={closeCheckout}
         ariaLabel="Class booking payment"
-        closeOnBackdropClick={false}
-      />,
-      document.body,
+      />
     );
   }
 
