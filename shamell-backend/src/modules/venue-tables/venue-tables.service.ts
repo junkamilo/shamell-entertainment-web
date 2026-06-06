@@ -16,6 +16,7 @@ import {
   BulkDeleteVenueTableConfigDto,
   VenueTableBulkDeleteScope,
 } from './dto/bulk-delete-venue-table-config.dto';
+import { PatchVenueTablesBulkPriceDto } from './dto/patch-venue-tables-bulk-price.dto';
 import { CreateVenueTableConfigDto } from './dto/create-venue-table-config.dto';
 import { UpdateVenueTableConfigDto } from './dto/update-venue-table-config.dto';
 import { randomUUID } from 'crypto';
@@ -164,6 +165,25 @@ export class VenueTablesService {
       data: { isActive: false },
     });
     return this.mapRow(updated);
+  }
+
+  async bulkUpdateAdminVenueTablesBundlePrice(dto: PatchVenueTablesBulkPriceDto) {
+    if (dto.scope !== VenueTableBulkDeleteScope.SIZE || !dto.size) {
+      throw new BadRequestException(
+        'scope SIZE with size is required for bulk bundle price updates.',
+      );
+    }
+
+    const updated = await this.prisma.venueTableConfig.updateMany({
+      where: { isActive: true, size: dto.size },
+      data: { bundlePrice: dto.bundlePrice },
+    });
+
+    return {
+      scope: dto.scope,
+      size: dto.size,
+      updatedCount: updated.count,
+    };
   }
 
   async bulkDeleteAdminVenueTables(dto: BulkDeleteVenueTableConfigDto) {

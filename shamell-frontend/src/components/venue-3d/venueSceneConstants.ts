@@ -37,7 +37,11 @@ export const VENUE_COLORS = {
   stageLights: "#ffdd88",
   tableTop: "#1a1a1a",
   tableBase: "#2d2d2d",
+  tableTopReserved: "#8a8a8a",
+  tableBaseReserved: "#6e6e6e",
   chair: "#8b1530",
+  chairReserved: "#7a7a7a",
+  chairFrameReserved: "#5a5a5a",
   chairHighlight: "#a82040",
   gold: "#c9a227",
 };

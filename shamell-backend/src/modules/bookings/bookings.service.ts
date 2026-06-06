@@ -46,6 +46,12 @@ import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminCustomerActivityNotifyService } from '../mail/admin-customer-activity-notify.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
+import { STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS } from '../stripe/stripe-embedded-checkout.util';
+import {
+  assertCheckoutPaidAmounts,
+  stripeAutomaticTaxParams,
+  stripeTaxProductData,
+} from '../stripe/stripe-tax.util';
 import { StripeService } from '../stripe/stripe.service';
 import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
 import { SendBookingBalanceLinkDto } from './dto/send-booking-balance-link.dto';
@@ -83,6 +89,7 @@ type StripeCheckoutSessionLite = {
   metadata?: Record<string, string | undefined>;
   payment_status?: string | null;
   amount_total?: number | null;
+  amount_subtotal?: number | null;
   currency?: string | null;
   payment_intent?: string | { id?: string } | null;
 };
@@ -1361,13 +1368,11 @@ export class BookingsService {
     if (session.payment_status !== 'paid') {
       throw new BadRequestException('Session payment_status is not paid.');
     }
-    const expectedCents = Math.round(Number(payment.expectedAmount) * 100);
-    if (session.amount_total !== expectedCents) {
-      throw new BadRequestException('Amount mismatch.');
-    }
-    if (session.currency?.toLowerCase() !== payment.currency.toLowerCase()) {
-      throw new BadRequestException('Currency mismatch.');
-    }
+    assertCheckoutPaidAmounts(session, {
+      expectedSubtotalCents: Math.round(Number(payment.expectedAmount) * 100),
+      expectedCurrency: payment.currency,
+      sessionLabel: sessionId,
+    });
     const paymentIntentId =
       typeof session.payment_intent === 'string'
         ? session.payment_intent
@@ -1502,13 +1507,15 @@ export class BookingsService {
       ui_mode: 'embedded_page' as const,
       mode: 'payment' as const,
       customer_email: args.customerEmail,
+      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
+      ...stripeAutomaticTaxParams(),
       line_items: [
         {
           quantity: 1,
           price_data: {
             currency: args.currency,
             unit_amount: amountCents,
-            product_data: {
+            product_data: stripeTaxProductData({
               name:
                 args.stage === BookingPaymentStage.FULL
                   ? 'Booking full payment'
@@ -1516,7 +1523,7 @@ export class BookingsService {
                     ? 'Booking deposit payment'
                     : 'Booking balance payment',
               description: `Booking ${args.bookingId.slice(0, 8).toUpperCase()}`,
-            },
+            }),
           },
         },
       ],

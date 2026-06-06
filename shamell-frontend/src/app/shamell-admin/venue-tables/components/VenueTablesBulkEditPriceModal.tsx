@@ -1,39 +1,52 @@
 "use client";
 
 import AdminModal from "@/components/admin/AdminModal";
-import StandaloneChairPricingFields from "./StandaloneChairPricingFields";
+import { TABLE_SIZE_CONFIG } from "../lib/tableSizeConfig";
+import type { TableSize } from "../types/venueTables.types";
+import TablePricingFields from "./TablePricingFields";
 
 type Props = {
   open: boolean;
-  chairCount: number;
-  unitPriceInput: string;
-  onUnitPriceChange: (value: string) => void;
+  size: TableSize;
+  tableCount: number;
+  bundlePriceInput: string;
+  onBundlePriceChange: (value: string) => void;
   isSaving: boolean;
   onClose: () => void;
   onConfirm: () => void;
 };
 
-export default function StandaloneChairsBulkEditPriceModal({
+export default function VenueTablesBulkEditPriceModal({
   open,
-  chairCount,
-  unitPriceInput,
-  onUnitPriceChange,
+  size,
+  tableCount,
+  bundlePriceInput,
+  onBundlePriceChange,
   isSaving,
   onClose,
   onConfirm,
 }: Props) {
+  const sizeLabel = TABLE_SIZE_CONFIG[size].label;
+
   return (
-    <AdminModal title="Edit all chair prices" isOpen={open} onClose={onClose} size="narrow">
+    <AdminModal
+      title={`Edit all ${sizeLabel} table prices`}
+      isOpen={open}
+      onClose={onClose}
+      size="narrow"
+    >
       <div className="space-y-6 font-body text-base leading-relaxed text-foreground/90 sm:text-lg">
         <p>
-          Set one unit price for all{" "}
-          <span className="font-brand text-gold">{chairCount} active chairs</span>. Individual
-          prices will be replaced.
+          Set one bundle price for all{" "}
+          <span className="font-brand text-gold">
+            {tableCount} active {sizeLabel.toLowerCase()} tables
+          </span>
+          . Individual combo prices will be replaced.
         </p>
 
-        <StandaloneChairPricingFields
-          unitPriceInput={unitPriceInput}
-          onUnitPriceChange={onUnitPriceChange}
+        <TablePricingFields
+          bundlePriceInput={bundlePriceInput}
+          onBundleChange={onBundlePriceChange}
         />
 
         <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">

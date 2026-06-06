@@ -11,7 +11,7 @@ import {
   buildReservedLayoutItemMap,
   enrichChairWithReservationState,
   enrichChairsWithReservationState,
-  findBlockingStandaloneChairReservations,
+  findPaidStandaloneChairReservations,
 } from './standalone-chairs-reservation.util';
 import {
   generateTechnicalChairNameEntries,
@@ -261,7 +261,7 @@ export class StandaloneChairsService {
     });
     const layoutItems = layout ? this.parseLayoutItems(layout.items) : [];
     const placementMap = buildChairPlacementMap(layoutItems);
-    const reservations = await findBlockingStandaloneChairReservations(this.prisma);
+    const reservations = await findPaidStandaloneChairReservations(this.prisma);
     return { placementMap, reservations, layoutItems };
   }
 

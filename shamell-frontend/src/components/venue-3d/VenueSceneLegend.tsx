@@ -101,7 +101,7 @@ export default function VenueSceneLegend({
             <span className="inline-block h-2 w-2 rounded-full bg-shamell-gold/80" /> Available
           </p>
           <p className="text-shamell-text-primary/90">
-            <span className="inline-block h-2 w-2 rounded-full bg-red-500/80" /> Reserved
+            <span className="inline-block h-2 w-2 rounded-full bg-[#8a8a8a]" /> Sold (paid)
           </p>
           <p className="text-shamell-text-primary/90">
             <span className="inline-block h-2 w-2 rounded-full bg-amber-300" /> Selected

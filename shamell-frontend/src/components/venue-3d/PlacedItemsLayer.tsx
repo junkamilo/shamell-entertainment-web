@@ -1,9 +1,9 @@
 "use client";
 
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
-import { Html } from "@react-three/drei";
 import { layoutToWorld } from "./layoutCoords3d";
 import CatalogTableMesh from "./CatalogTableMesh";
+import ReservationSpeechBubble from "./ReservationSpeechBubble";
 import StandaloneChairMesh from "./StandaloneChairMesh";
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
   viewBoxHeight: number;
   selectedId?: string | null;
   reservedIds?: Set<string>;
-  newlyReservedIds?: Set<string>;
+  reservedLabels?: ReadonlyMap<string, string>;
   interactive?: boolean;
   onSelect?: (id: string) => void;
   onReservedSelect?: (id: string) => void;
@@ -26,7 +26,7 @@ export default function PlacedItemsLayer({
   viewBoxHeight,
   selectedId = null,
   reservedIds,
-  newlyReservedIds,
+  reservedLabels,
   interactive = false,
   onSelect,
   onReservedSelect,
@@ -40,7 +40,8 @@ export default function PlacedItemsLayer({
         const rotY = (item.rotation * Math.PI) / 180;
         const selected = selectedId === item.id;
         const reserved = reservedIds?.has(item.id) ?? false;
-        const newlyReserved = newlyReservedIds?.has(item.id) ?? false;
+        const holderName = reserved ? reservedLabels?.get(item.id) : undefined;
+        const bubbleHeight = item.kind === "catalog_table" ? 1.35 : 1.05;
 
         return (
           <group
@@ -89,18 +90,14 @@ export default function PlacedItemsLayer({
                 size={item.size}
                 includedChairs={item.includedChairs}
                 tableName={item.tableName}
-                selected={selected}
+                selected={selected && !reserved}
                 reserved={reserved}
               />
             ) : (
-              <StandaloneChairMesh selected={selected} reserved={reserved} />
+              <StandaloneChairMesh selected={selected && !reserved} reserved={reserved} />
             )}
-            {newlyReserved ? (
-              <Html position={[0, 1.1, 0]} center transform occlude={false}>
-                <div className="animate-pulse rounded-md border border-amber-300/70 bg-black/80 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200 shadow-lg">
-                  Apartada
-                </div>
-              </Html>
+            {reserved && holderName ? (
+              <ReservationSpeechBubble name={holderName} height={bubbleHeight} />
             ) : null}
           </group>
         );

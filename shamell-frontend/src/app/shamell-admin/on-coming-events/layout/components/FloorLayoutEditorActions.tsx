@@ -38,7 +38,7 @@ export default function FloorLayoutEditorActions({
 
   return (
     <div
-      className={`pointer-events-auto isolate flex flex-col items-start gap-1.5 ${className ?? ""}`}
+      className={`pointer-events-none isolate flex flex-col items-start gap-1.5 ${className ?? ""}`}
     >
       {selectionLabel ? (
         <p className="rounded-md border border-shamell-gold/40 bg-black/75 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-shamell-gold">
@@ -46,7 +46,7 @@ export default function FloorLayoutEditorActions({
         </p>
       ) : null}
       <div
-        className="flex flex-wrap items-center justify-start gap-2 sm:justify-end"
+        className="pointer-events-auto flex flex-wrap items-center justify-start gap-2 sm:justify-end"
         role="toolbar"
         aria-label="Layout editor actions"
       >

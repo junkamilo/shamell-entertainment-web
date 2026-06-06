@@ -19,6 +19,12 @@ import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { fetchPaymentMethodDetails } from '../stripe/stripe-payment-details.util';
+import { STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS } from '../stripe/stripe-embedded-checkout.util';
+import {
+  assertCheckoutPaidAmounts,
+  stripeAutomaticTaxParams,
+  stripeTaxProductData,
+} from '../stripe/stripe-tax.util';
 import { StripeService } from '../stripe/stripe.service';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
 import {
@@ -47,6 +53,7 @@ type StripeCheckoutSessionLite = {
   payment_intent?: string | { id?: string } | null;
   payment_status?: string | null;
   amount_total?: number | null;
+  amount_subtotal?: number | null;
   currency?: string | null;
 };
 
@@ -83,13 +90,11 @@ export class VenueReservationsService {
         salesClosedReason: 'not_configured' as const,
         reservedLayoutItemIds: [] as string[],
         reservedVenueTableConfigIds: [] as string[],
+        paidSeatHolders: [] as { layoutItemId: string; customerName: string }[],
       };
     }
 
-    const blocking = await this.findBlockingReservations(
-      eventDate,
-      ctx.upcomingEventId,
-    );
+    const paid = await this.findPaidReservations(eventDate, ctx.upcomingEventId);
     const soldOut = await this.isInventorySoldOut(
       eventDate,
       ctx.upcomingEventId,
@@ -111,14 +116,18 @@ export class VenueReservationsService {
       reservationClosesAt: window.closesAt?.toISOString() ?? null,
       reservationsOpen,
       salesClosedReason,
-      reservedLayoutItemIds: [...new Set(blocking.map((r) => r.layoutItemId))],
+      reservedLayoutItemIds: [...new Set(paid.map((r) => r.layoutItemId))],
       reservedVenueTableConfigIds: [
         ...new Set(
-          blocking
+          paid
             .map((r) => r.venueTableConfigId)
             .filter((id): id is string => Boolean(id)),
         ),
       ],
+      paidSeatHolders: paid.map((r) => ({
+        layoutItemId: r.layoutItemId,
+        customerName: r.customerName.trim() || 'Guest',
+      })),
     };
   }
 
@@ -233,16 +242,18 @@ export class VenueReservationsService {
       ui_mode: 'embedded_page',
       mode: 'payment',
       customer_email: dto.customerEmail,
+      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
+      ...stripeAutomaticTaxParams(),
       line_items: [
         {
           quantity: 1,
           price_data: {
             currency: 'usd',
             unit_amount: amountCents,
-            product_data: {
+            product_data: stripeTaxProductData({
               name: productName,
               description: `Event: ${eventLabel}`,
-            },
+            }),
           },
         },
       ],
@@ -305,23 +316,49 @@ export class VenueReservationsService {
       },
     });
 
-    let stripeStatus: 'complete' | 'open' | 'expired' = 'open';
-    try {
-      const session =
-        await this.stripeService.client.checkout.sessions.retrieve(sessionId);
-      if (session.status === 'complete') stripeStatus = 'complete';
-      else if (session.status === 'expired') stripeStatus = 'expired';
-    } catch {
-      throw new NotFoundException('Checkout session not found.');
-    }
-
     if (!reservation) {
       throw new NotFoundException('Reservation not found.');
     }
 
+    let stripeStatus: 'complete' | 'open' | 'expired' = 'open';
+    let stripeSession;
+    try {
+      stripeSession =
+        await this.stripeService.client.checkout.sessions.retrieve(sessionId);
+      if (stripeSession.status === 'complete') stripeStatus = 'complete';
+      else if (stripeSession.status === 'expired') stripeStatus = 'expired';
+    } catch {
+      throw new NotFoundException('Checkout session not found.');
+    }
+
+    if (
+      stripeSession.status === 'complete' &&
+      stripeSession.payment_status === 'paid' &&
+      reservation.status === VenueSeatReservationStatus.PENDING_PAYMENT
+    ) {
+      try {
+        await this.markPaidFromSession(
+          this.parseCheckoutSession(stripeSession),
+          'return-page-reconcile',
+        );
+      } catch (err) {
+        this.logger.warn(
+          `venue-reconcile-on-status-failed session=${sessionId} reason=${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const refreshed = await this.prisma.venueSeatReservation.findUnique({
+      where: { stripeCheckoutSessionId: sessionId },
+      include: {
+        venueTableConfig: { select: { tableName: true, size: true } },
+      },
+    });
+    const current = refreshed ?? reservation;
+
     return {
       stripeStatus,
-      reservation: this.mapReservationPublic(reservation),
+      reservation: this.mapReservationPublic(current),
     };
   }
 
@@ -508,26 +545,11 @@ export class VenueReservationsService {
       );
     }
 
-    const sessionAmountTotal = session.amount_total;
-    const expectedAmountCents = Math.round(Number(reservation.amount) * 100);
-    if (typeof sessionAmountTotal !== 'number') {
-      throw new BadRequestException(
-        `Missing amount_total in checkout.session.completed for session=${sessionId}.`,
-      );
-    }
-    if (sessionAmountTotal !== expectedAmountCents) {
-      throw new BadRequestException(
-        `Amount mismatch for session=${sessionId}. expected=${expectedAmountCents} got=${sessionAmountTotal}.`,
-      );
-    }
-
-    const sessionCurrency = session.currency?.toLowerCase();
-    const expectedCurrency = reservation.currency.toLowerCase();
-    if (!sessionCurrency || sessionCurrency !== expectedCurrency) {
-      throw new BadRequestException(
-        `Currency mismatch for session=${sessionId}. expected=${expectedCurrency} got=${sessionCurrency ?? 'null'}.`,
-      );
-    }
+    assertCheckoutPaidAmounts(session, {
+      expectedSubtotalCents: Math.round(Number(reservation.amount) * 100),
+      expectedCurrency: reservation.currency,
+      sessionLabel: sessionId,
+    });
 
     const paymentIntent = session.payment_intent;
     const paymentIntentId =
@@ -738,11 +760,8 @@ export class VenueReservationsService {
       return true;
     }
 
-    const blocking = await this.findBlockingReservations(
-      eventDate,
-      upcomingEventId,
-    );
-    const reserved = new Set(blocking.map((r) => r.layoutItemId));
+    const paid = await this.findPaidReservations(eventDate, upcomingEventId);
+    const reserved = new Set(paid.map((r) => r.layoutItemId));
     return reservableIds.every((id) => reserved.has(id));
   }
 
@@ -750,6 +769,21 @@ export class VenueReservationsService {
     return kind === 'catalog_table'
       ? VenueSeatKind.CATALOG_TABLE
       : VenueSeatKind.STANDALONE_CHAIR;
+  }
+
+  private async findPaidReservations(eventDate: Date, upcomingEventId: string) {
+    return this.prisma.venueSeatReservation.findMany({
+      where: {
+        upcomingEventId,
+        eventDate,
+        status: VenueSeatReservationStatus.PAID,
+      },
+      select: {
+        layoutItemId: true,
+        venueTableConfigId: true,
+        customerName: true,
+      },
+    });
   }
 
   private async findBlockingReservations(

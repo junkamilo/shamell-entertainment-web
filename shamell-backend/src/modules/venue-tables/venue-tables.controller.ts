@@ -14,6 +14,7 @@ import {
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { BulkCreateVenueTableConfigDto } from './dto/bulk-create-venue-table-config.dto';
 import { BulkDeleteVenueTableConfigDto } from './dto/bulk-delete-venue-table-config.dto';
+import { PatchVenueTablesBulkPriceDto } from './dto/patch-venue-tables-bulk-price.dto';
 import { CreateVenueTableConfigDto } from './dto/create-venue-table-config.dto';
 import { UpdateVenueTableConfigDto } from './dto/update-venue-table-config.dto';
 import { VenueTablesService } from './venue-tables.service';
@@ -54,6 +55,13 @@ export class VenueTablesController {
   @UseGuards(AdminJwtGuard)
   bulkCreateAdminVenueTables(@Body() dto: BulkCreateVenueTableConfigDto) {
     return this.venueTablesService.bulkCreateAdminVenueTables(dto);
+  }
+
+  @Patch('admin/bulk-price')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  bulkUpdateAdminVenueTablesBundlePrice(@Body() dto: PatchVenueTablesBulkPriceDto) {
+    return this.venueTablesService.bulkUpdateAdminVenueTablesBundlePrice(dto);
   }
 
   @Patch('admin/:id')

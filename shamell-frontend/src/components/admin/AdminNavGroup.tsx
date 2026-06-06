@@ -79,7 +79,7 @@ export default function AdminNavGroup({
   const rootRef = useRef<HTMLDivElement>(null);
   const groupActive = isAdminNavGroupActive(pathname, group);
   const [flyoutOpen, setFlyoutOpen] = useState(false);
-  const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
+  const [expanded, setExpanded] = useState(groupActive);
 
   const readStoredExpanded = useCallback((): boolean | null => {
     if (typeof sessionStorage === "undefined") return null;
@@ -89,8 +89,16 @@ export default function AdminNavGroup({
     return null;
   }, []);
 
-  const expanded =
-    manualExpanded ?? readStoredExpanded() ?? groupActive;
+  useEffect(() => {
+    const stored = readStoredExpanded();
+    if (stored !== null) {
+      setExpanded(stored);
+      return;
+    }
+    if (groupActive) {
+      setExpanded(true);
+    }
+  }, [groupActive, readStoredExpanded]);
 
   useEffect(() => {
     if (!flyoutOpen) return;
@@ -111,9 +119,11 @@ export default function AdminNavGroup({
   }, [flyoutOpen]);
 
   const toggleExpanded = () => {
-    const next = !expanded;
-    setManualExpanded(next);
-    sessionStorage.setItem(UPCOMING_EVENTS_NAV_EXPANDED_KEY, String(next));
+    setExpanded((prev) => {
+      const next = !prev;
+      sessionStorage.setItem(UPCOMING_EVENTS_NAV_EXPANDED_KEY, String(next));
+      return next;
+    });
   };
 
   const GroupIcon = group.icon;

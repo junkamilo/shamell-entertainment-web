@@ -5,13 +5,23 @@ import { CHAIR_BACK, CHAIR_COLORS, CHAIR_LEG, CHAIR_MATERIAL, CHAIR_SEAT } from 
 
 type Props = {
   selected?: boolean;
+  reserved?: boolean;
   /** Rotate chair so back faces outward when placed in a ring (radians). */
   rotationY?: number;
 };
 
-export default function VenueBanquetChairMesh({ selected = false, rotationY = 0 }: Props) {
-  const velvet = selected ? CHAIR_COLORS.velvetHighlight : CHAIR_COLORS.velvet;
-  const emissiveIntensity = selected ? 0.15 : 0;
+export default function VenueBanquetChairMesh({
+  selected = false,
+  reserved = false,
+  rotationY = 0,
+}: Props) {
+  const velvet = reserved
+    ? CHAIR_COLORS.velvetReserved
+    : selected
+      ? CHAIR_COLORS.velvetHighlight
+      : CHAIR_COLORS.velvet;
+  const frame = reserved ? CHAIR_COLORS.frameReserved : CHAIR_COLORS.frame;
+  const emissiveIntensity = reserved ? 0 : selected ? 0.15 : 0;
 
   const legInsetX = CHAIR_SEAT.width * 0.38;
   const legInsetZ = CHAIR_SEAT.depth * 0.38;
@@ -28,7 +38,7 @@ export default function VenueBanquetChairMesh({ selected = false, rotationY = 0 
         <mesh key={i} position={pos} castShadow>
           <cylinderGeometry args={[CHAIR_LEG.radius, CHAIR_LEG.radius * 0.85, CHAIR_LEG.height, 8]} />
           <meshStandardMaterial
-            color={CHAIR_COLORS.frame}
+            color={frame}
             roughness={CHAIR_MATERIAL.frame.roughness}
             metalness={CHAIR_MATERIAL.frame.metalness}
           />

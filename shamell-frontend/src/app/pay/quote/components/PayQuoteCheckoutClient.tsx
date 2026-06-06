@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { StripeEmbeddedCheckoutOverlay } from "@/app/on-coming-events/components/StripeEmbeddedCheckoutOverlay";
+import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
 import { fetchQuoteCheckoutClientSecret } from "../services/fetchQuoteCheckout";
 
 type Props = {
@@ -28,15 +28,6 @@ export function PayQuoteCheckoutClient({ token }: Props) {
     };
   }, [token]);
 
-  useEffect(() => {
-    if (!clientSecret) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [clientSecret]);
-
   if (error) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0a0908] px-4 py-16 text-center">
@@ -56,19 +47,17 @@ export function PayQuoteCheckoutClient({ token }: Props) {
 
   if (!clientSecret) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0a0908] px-4 py-16">
-        <p className="font-brand text-xs tracking-[0.2em] text-foreground/60 uppercase">
-          Loading secure payment…
-        </p>
+      <main className="flex min-h-screen items-center justify-center px-4 py-16">
+        <p className="text-sm text-neutral-500">Loading secure payment…</p>
       </main>
     );
   }
 
   return (
-    <StripeEmbeddedCheckoutOverlay
+    <StripeCheckoutHost
       clientSecret={clientSecret}
+      usePortal={false}
       ariaLabel="Complete your booking payment"
-      showCloseButton={false}
     />
   );
 }

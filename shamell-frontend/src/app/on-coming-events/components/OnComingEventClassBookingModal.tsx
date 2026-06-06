@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
+import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
 import {
   createClassCheckoutSession,
   type CreateClassCheckoutBody,
@@ -70,14 +69,11 @@ export function OnComingEventClassBookingModal({ slug, sessions, open, onClose }
   };
 
   if (checkoutSecret) {
-    return createPortal(
-      <StripeEmbeddedCheckoutOverlay
+    return (
+      <StripeCheckoutHost
         clientSecret={checkoutSecret}
-        onClose={() => setCheckoutSecret(null)}
         ariaLabel="Class booking payment"
-        closeOnBackdropClick={false}
-      />,
-      document.body,
+      />
     );
   }
 

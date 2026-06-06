@@ -7,7 +7,6 @@ import {
   CreditCard,
   Inbox,
   LayoutDashboard,
-  Webhook,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
@@ -17,7 +16,6 @@ import {
   AGENDA_MI_AGENDA_PATH,
   AGENDA_PAYMENT_HISTORY_PATH,
   AGENDA_PETICIONES_PATH,
-  AGENDA_STRIPE_WEBHOOKS_PATH,
 } from "../agendar/lib/agendarRoutes";
 import type { AgendaHubBadges } from "../hooks/useAgendaHubBadge";
 
@@ -64,14 +62,6 @@ const cards: AgendaHubCard[] = [
     icon: CreditCard,
     fire: false,
     badgeKey: "paymentHistoryBadge",
-  },
-  {
-    href: AGENDA_STRIPE_WEBHOOKS_PATH,
-    title: "Stripe webhooks",
-    subtitle:
-      "Webhook delivery audit: status, handler, retries, and processing errors.",
-    icon: Webhook,
-    fire: false,
   },
   {
     href: AGENDA_MI_AGENDA_PATH,

@@ -1,5 +1,6 @@
 "use client";
 
+import "@/lib/threeR3fCompat";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Environment, OrbitControls } from "@react-three/drei";
@@ -40,6 +41,7 @@ type Props = {
   sceneZones?: FloorSceneZones;
   selectedId?: string | null;
   reservedIds?: Set<string>;
+  reservedLabels?: ReadonlyMap<string, string>;
   onSelect?: (id: string | null) => void;
   onItemSelect?: (id: string) => void;
   /** Must be used inside Canvas (uses useThree). */
@@ -73,6 +75,7 @@ function SceneContent({
   sceneZones,
   selectedId,
   reservedIds,
+  reservedLabels,
   placedItemsAdmin,
   sceneDecorAdmin,
   onBackgroundClick,
@@ -129,6 +132,7 @@ function SceneContent({
           viewBoxHeight={viewBoxHeight}
           selectedId={selectedId}
           reservedIds={reservedIds}
+          reservedLabels={reservedLabels}
           interactive={selectable}
           onSelect={selectable ? (id) => onItemSelect?.(id) : undefined}
           pointerCursor={selectable}
@@ -179,6 +183,7 @@ export default function VenueScene3D({
   sceneZones,
   selectedId,
   reservedIds,
+  reservedLabels,
   onSelect,
   placedItemsAdmin,
   sceneDecorAdmin,
@@ -270,6 +275,7 @@ export default function VenueScene3D({
           gl={{ antialias: true, alpha: false }}
           style={{ width: "100%", height: "100%", display: "block" }}
           onCreated={({ gl, camera }) => {
+            gl.debug.checkShaderErrors = false;
             gl.toneMappingExposure = SCENE_LIGHTING.toneMappingExposure;
             handleRef.current.getCanvas = () => gl.domElement;
             handleRef.current.getCamera = () => camera;
@@ -288,6 +294,7 @@ export default function VenueScene3D({
                 sceneZones={resolvedSceneZones}
                 selectedId={selectedId}
                 reservedIds={reservedIds}
+                reservedLabels={reservedLabels}
                 onSelect={onSelect}
                 placedItemsAdmin={placedItemsAdmin}
                 sceneDecorAdmin={sceneDecorAdmin}

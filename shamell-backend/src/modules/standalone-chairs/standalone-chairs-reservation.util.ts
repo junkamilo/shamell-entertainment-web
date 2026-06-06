@@ -31,6 +31,10 @@ export function blockingReservationStatusWhere(now = new Date()): Prisma.VenueSe
   };
 }
 
+export function paidReservationStatusWhere(): Prisma.VenueSeatReservationWhereInput {
+  return { status: VenueSeatReservationStatus.PAID };
+}
+
 export async function findBlockingStandaloneChairReservations(
   prisma: PrismaClient | Prisma.TransactionClient,
 ): Promise<BlockingStandaloneChairReservation[]> {
@@ -39,6 +43,22 @@ export async function findBlockingStandaloneChairReservations(
     where: {
       kind: VenueSeatKind.STANDALONE_CHAIR,
       ...blockingReservationStatusWhere(now),
+    },
+    select: {
+      layoutItemId: true,
+      status: true,
+    },
+  });
+  return rows;
+}
+
+export async function findPaidStandaloneChairReservations(
+  prisma: PrismaClient | Prisma.TransactionClient,
+): Promise<BlockingStandaloneChairReservation[]> {
+  const rows = await prisma.venueSeatReservation.findMany({
+    where: {
+      kind: VenueSeatKind.STANDALONE_CHAIR,
+      ...paidReservationStatusWhere(),
     },
     select: {
       layoutItemId: true,
@@ -82,16 +102,12 @@ export function enrichChairWithReservationState(
   const isOnFloorPlan = layoutItemId != null;
   const reservationStatus =
     layoutItemId != null ? reservedLayoutItems.get(layoutItemId) : undefined;
-  const isReserved = reservationStatus != null;
+  const isReserved = reservationStatus === VenueSeatReservationStatus.PAID;
 
   return {
     isReserved,
     reservationStatus:
-      reservationStatus === VenueSeatReservationStatus.PAID
-        ? 'PAID'
-        : reservationStatus === VenueSeatReservationStatus.PENDING_PAYMENT
-          ? 'PENDING_PAYMENT'
-          : undefined,
+      reservationStatus === VenueSeatReservationStatus.PAID ? 'PAID' : undefined,
     isOnFloorPlan,
     canDelete: !isReserved,
     canEditPrice: !isReserved,

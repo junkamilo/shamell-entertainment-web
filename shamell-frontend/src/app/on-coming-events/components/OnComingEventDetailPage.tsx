@@ -11,12 +11,12 @@ import {
   ShamellCountdown,
 } from "@/components/shared/ShamellCountdown";
 import { formatCatalogPriceAmount } from "@/lib/formatCatalogPrice";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import { onComingEventHubHref } from "@/lib/upcomingEventPublicRoutes";
 import {
   fetchOnComingEventDetail,
   type OnComingEventDetail,
 } from "../services/fetchOnComingEventDetail";
+import { OnComingEventHeroSection } from "./OnComingEventHeroSection";
 import { OnComingEventItemsSection } from "./OnComingEventItemsSection";
 import { OnComingEventScheduleSection } from "./OnComingEventScheduleSection";
 import { OnComingEventStickyPurchaseBar } from "./OnComingEventStickyPurchaseBar";
@@ -99,9 +99,6 @@ export default function OnComingEventDetailPage({ slug }: Props) {
     void load();
   }, [load]);
 
-  const heroUrl = event?.heroImageUrl ?? null;
-  const heroIsVideo =
-    event?.heroMediaType === "VIDEO" || serviceCatalogMediaTypeFromUrl(heroUrl) === "VIDEO";
   const isClasses = event?.purchaseMode === "classes";
   const classPriceRange =
     event && isClasses
@@ -163,108 +160,84 @@ export default function OnComingEventDetailPage({ slug }: Props) {
 
             {!error && event ? (
               <>
-                <section className="relative min-h-[42vh] w-full overflow-hidden md:min-h-[50vh]">
-            {heroUrl ? (
-              heroIsVideo ? (
-                <video
-                  src={heroUrl}
-                  className="absolute inset-0 h-full w-full object-cover object-center"
-                  muted
-                  playsInline
-                  loop
-                  autoPlay
-                  aria-label={`${event.eventTypeName} hero`}
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={heroUrl}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover object-center"
-                />
-              )
-            ) : (
-              <div className="absolute inset-0 bg-[#0a0908]" />
-            )}
-            <div className="absolute inset-0 bg-black/55" aria-hidden />
-            <div className="absolute left-4 top-4 z-10 md:left-8 md:top-6">
-              <ShamellBackButton
-                fallbackHref={hubHref}
-                label="Back"
-                hideLabelOnMobile
-                onNavigateStart={handleBackNavigate}
-              />
-            </div>
-            <div className="relative flex min-h-[42vh] flex-col items-center justify-center px-4 py-24 md:min-h-[50vh]">
-              {showHeroPrice && event ? (
-                <div
-                  className="absolute right-4 top-4 rounded-lg border border-gold/50 bg-black/60 px-4 py-2 text-center shadow-lg md:right-8 md:top-6"
-                  aria-label={
+                <OnComingEventHeroSection
+                  title={event.eventTypeName}
+                  heroImageUrl={event.heroImageUrl}
+                  heroMediaType={event.heroMediaType}
+                  backFallbackHref={hubHref}
+                  onBackNavigate={handleBackNavigate}
+                  price={event.price}
+                  showPrice={showHeroPrice}
+                  priceAriaLabel={
                     isClasses && classPriceRange
                       ? classPriceHeroAriaLabel(classPriceRange)
-                      : `Price ${formatCatalogPriceAmount(event.price!)} USD`
+                      : event.price != null
+                        ? `Price ${formatCatalogPriceAmount(event.price)} USD`
+                        : undefined
                   }
-                >
-                  {isClasses && classPriceRange ? (
-                    <>
-                      {formatClassPriceHeroPrefix(classPriceRange) ? (
-                        <span className="block font-brand text-[10px] tracking-[0.2em] text-gold/80">
-                          {formatClassPriceHeroPrefix(classPriceRange).trim()}
+                  priceBadge={
+                    showHeroPrice && isClasses && classPriceRange ? (
+                      <>
+                        {formatClassPriceHeroPrefix(classPriceRange) ? (
+                          <span className="block font-brand text-[10px] tracking-[0.2em] text-gold/80">
+                            {formatClassPriceHeroPrefix(classPriceRange).trim()}
+                          </span>
+                        ) : null}
+                        <span className="font-display text-2xl text-gold md:text-3xl">
+                          {formatClassPriceHeroLabel(classPriceRange)}
                         </span>
-                      ) : null}
-                      <span className="font-display text-2xl text-gold md:text-3xl">
-                        {formatClassPriceHeroLabel(classPriceRange)}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="font-display text-2xl text-gold md:text-3xl">
-                      {formatCatalogPriceAmount(event.price!)}
-                    </span>
-                  )}
-                  <span className="mt-0.5 block font-brand text-[10px] tracking-[0.2em] text-gold/80">
-                    USD
-                  </span>
-                </div>
-              ) : null}
-              <h1 className="max-w-3xl text-center font-display text-3xl text-gold md:text-5xl">
-                {event.eventTypeName}
-              </h1>
-            </div>
-                </section>
+                        <span className="mt-0.5 block font-brand text-[10px] tracking-[0.2em] text-gold/80">
+                          USD
+                        </span>
+                      </>
+                    ) : undefined
+                  }
+                />
 
-                <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col items-center overflow-x-hidden px-4 pt-10 md:max-w-4xl">
+                <div className="mx-auto flex w-full min-w-0 max-w-3xl flex-col items-center overflow-x-hidden px-4 pt-10 md:max-w-5xl">
             {event.description ? (
               <p className="min-w-0 w-full max-w-2xl text-center font-body text-base leading-relaxed break-all text-pretty text-foreground/88 sm:break-normal sm:wrap-anywhere md:text-lg">
                 {event.description}
               </p>
             ) : null}
 
-            {showCountdown && event.eventStartsAt ? (
-              <div className="mt-10">
-                <ShamellCountdown targetAt={event.eventStartsAt} label="Event begins in" />
+            {(showCountdown && event.eventStartsAt) || showTableInventory ? (
+              <div
+                className={
+                  showCountdown && event.eventStartsAt && showTableInventory
+                    ? "mt-10 grid w-full grid-cols-1 gap-4 md:grid-cols-2 md:gap-5"
+                    : "mt-10 w-full max-w-2xl"
+                }
+              >
+                {showCountdown && event.eventStartsAt ? (
+                  <ShamellCountdown
+                    targetAt={event.eventStartsAt}
+                    label="Event begins in"
+                    className="h-full"
+                  />
+                ) : null}
+                {showTableInventory && event ? (
+                  <FixedTicketInventoryDisplay
+                    className="h-full"
+                    fixedTicketCapacity={event.tableCapacity!}
+                    ticketsRemaining={event.tablesRemaining ?? event.tableCapacity!}
+                    ticketsSold={event.tablesSold}
+                    soldOut={soldOut}
+                    size="md"
+                    inventoryType="table"
+                  />
+                ) : null}
               </div>
             ) : null}
 
             {showTicketInventory && event ? (
               <FixedTicketInventoryDisplay
-                className={showCountdown && event.eventStartsAt ? "mt-6" : "mt-10"}
+                className="mt-10 w-full max-w-2xl"
                 fixedTicketCapacity={event.fixedTicketCapacity!}
                 ticketsRemaining={event.ticketsRemaining ?? event.fixedTicketCapacity!}
                 ticketsSold={event.ticketsSold}
                 soldOut={soldOut}
                 size="md"
-              />
-            ) : null}
-
-            {showTableInventory && event ? (
-              <FixedTicketInventoryDisplay
-                className={showCountdown && event.eventStartsAt ? "mt-6" : "mt-10"}
-                fixedTicketCapacity={event.tableCapacity!}
-                ticketsRemaining={event.tablesRemaining ?? event.tableCapacity!}
-                ticketsSold={event.tablesSold}
-                soldOut={soldOut}
-                size="md"
-                inventoryType="table"
               />
             ) : null}
 

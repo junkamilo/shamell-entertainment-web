@@ -22,3 +22,12 @@ export function notifyOnComingEventsBadgeRefresh(): void {
   window.dispatchEvent(new Event(ON_COMING_EVENTS_BADGE_REFRESH_EVENT));
 }
 
+/** Clears the seat-reservations sidebar badge after the admin opens that module. */
+export function markVenueSeatReservationsModuleSeen(): void {
+  const previousSeenAt = readLastSeenPaidReservationAtMs();
+  const now = Date.now();
+  if (now <= previousSeenAt) return;
+  writeLastSeenPaidReservationAtMs(now);
+  notifyOnComingEventsBadgeRefresh();
+}
+

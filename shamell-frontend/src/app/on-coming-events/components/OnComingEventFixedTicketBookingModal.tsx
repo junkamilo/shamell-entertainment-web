@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
+import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
 import {
   createFixedEventCheckoutSession,
   type CreateFixedEventCheckoutBody,
@@ -74,14 +74,11 @@ export function OnComingEventFixedTicketBookingModal({
   };
 
   if (checkoutSecret) {
-    return createPortal(
-      <StripeEmbeddedCheckoutOverlay
+    return (
+      <StripeCheckoutHost
         clientSecret={checkoutSecret}
-        onClose={resetAndClose}
         ariaLabel="Buy ticket payment"
-        closeOnBackdropClick={false}
-      />,
-      document.body,
+      />
     );
   }
 

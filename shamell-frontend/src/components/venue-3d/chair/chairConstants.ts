@@ -26,6 +26,8 @@ export const CHAIR_COLORS = {
   frame: "#1a1210",
   velvet: VENUE_COLORS.chair,
   velvetHighlight: VENUE_COLORS.chairHighlight,
+  frameReserved: VENUE_COLORS.chairFrameReserved,
+  velvetReserved: VENUE_COLORS.chairReserved,
 };
 
 export const CHAIR_MATERIAL = {

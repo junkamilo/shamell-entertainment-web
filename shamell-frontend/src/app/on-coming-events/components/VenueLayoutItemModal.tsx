@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { X } from "lucide-react";
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
 import type { VenueTableConfig } from "@/app/shamell-admin/venue-tables/types/venueTables.types";
@@ -9,7 +8,7 @@ import type { StandaloneChairConfig } from "@/app/shamell-admin/venue-tables/typ
 import { resolveStandaloneChairUnitPrice } from "../lib/resolveStandaloneChairUnitPrice";
 import { formatPriceEn } from "@/lib/pricing";
 import { createVenueCheckoutSession } from "../services/createVenueCheckoutSession";
-import { StripeEmbeddedCheckoutOverlay } from "./StripeEmbeddedCheckoutOverlay";
+import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
 
 type Props = {
   item: PlacedLayoutItem;
@@ -139,7 +138,10 @@ export default function VenueLayoutItemModal({
 
   if (!isReserved && step === "payment" && clientSecret) {
     return (
-      <StripeEmbeddedCheckoutOverlay clientSecret={clientSecret} onClose={onClose} />
+      <StripeCheckoutHost
+        clientSecret={clientSecret}
+        ariaLabel="Venue seat payment"
+      />
     );
   }
 
@@ -190,9 +192,12 @@ export default function VenueLayoutItemModal({
             </div>
           )}
           <div className="flex justify-between gap-4 border-b border-white/8 pb-2">
-            <dt className="text-foreground/60">Total</dt>
+            <dt className="text-foreground/60">Subtotal</dt>
             <dd className="font-semibold text-gold">{formatPriceEn(price)}</dd>
           </div>
+          <p className="text-[11px] leading-relaxed text-foreground/50">
+            Tax is calculated at checkout based on your billing address.
+          </p>
         </dl>
 
         {!isReserved && step === "details" ? (

@@ -1,35 +1,81 @@
 "use client";
 
-import {
-  DndContext,
-  DragOverlay,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
+import { toast } from "@/hooks/use-toast";
 import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/onComingEventsRoutes";
 import { useFloorLayoutEditor } from "../hooks/useFloorLayoutEditor";
-import { TABLE_SIZE_LABELS } from "../types/floorLayout.types";
-import type { VenueTableSize } from "../types/floorLayout.types";
+import type { PaletteDragKind } from "../hooks/useFloorLayoutEditor";
+import {
+  usePaletteToFloorPointerDrag,
+  type PaletteDragGhost,
+} from "../lib/usePaletteToFloorPointerDrag";
 import FloorLayoutScene3D from "./FloorLayoutScene3D";
-import FloorLayoutPalette from "./FloorLayoutPalette";
+import FloorLayoutPalette, { PaletteItemIcon } from "./FloorLayoutPalette";
 import FloorLayoutToolbar from "./FloorLayoutToolbar";
+
+function PaletteDragGhostOverlay({ ghost }: { ghost: PaletteDragGhost }) {
+  return (
+    <div
+      className="pointer-events-none fixed z-[200] flex flex-col items-center gap-1 rounded-lg border border-shamell-gold bg-shamell-twilight/95 px-3 py-2 shadow-xl"
+      style={{
+        left: ghost.x,
+        top: ghost.y,
+        transform: "translate(-50%, -50%)",
+      }}
+      aria-hidden
+    >
+      <PaletteItemIcon drag={ghost.drag} />
+      <span className="text-xs font-medium text-white">{ghost.label}</span>
+    </div>
+  );
+}
 
 export default function FloorLayoutPageContent() {
   const editor = useFloorLayoutEditor();
-  const [dragLabel, setDragLabel] = useState<string | null>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [paletteGhost, setPaletteGhost] = useState<PaletteDragGhost | null>(null);
+  const [paletteOverCanvas, setPaletteOverCanvas] = useState(false);
+
   const reservedIds = useMemo(() => new Set(editor.reservedLayoutItemIds), [editor.reservedLayoutItemIds]);
-  const newlyReservedIds = useMemo(
-    () => new Set(editor.newlyReservedLayoutItemIds),
-    [editor.newlyReservedLayoutItemIds],
+  const reservedLabels = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [layoutItemId, name] of Object.entries(editor.reservedLabelsByLayoutItemId)) {
+      map.set(layoutItemId, name);
+    }
+    return map;
+  }, [editor.reservedLabelsByLayoutItemId]);
+
+  const handlePaletteTap = useCallback(
+    (drag: PaletteDragKind) => {
+      editor.placePaletteItemAtCenter(drag);
+      if (typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+        toast({
+          title: "Placed at center",
+          description: "Drag the item to reposition it on the floor.",
+        });
+      }
+    },
+    [editor],
   );
 
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+  const { beginPalettePointer } = usePaletteToFloorPointerDrag({
+    sceneHandleRef: editor.sceneHandleRef,
+    canvasContainerRef,
+    viewBoxWidth: editor.layoutMeta.viewBoxWidth,
+    viewBoxHeight: editor.layoutMeta.viewBoxHeight,
+    onDrop: editor.placePaletteItem,
+    onTap: handlePaletteTap,
+    onGhostChange: setPaletteGhost,
+    onDragOverCanvas: setPaletteOverCanvas,
+  });
+
+  const onTilePointerDown = useCallback(
+    (e: React.PointerEvent, drag: PaletteDragKind, label: string) => {
+      if (e.button !== 0) return;
+      beginPalettePointer(e.nativeEvent, drag, label);
+    },
+    [beginPalettePointer],
   );
 
   if (editor.loading) {
@@ -68,26 +114,7 @@ export default function FloorLayoutPageContent() {
         <p className="font-brand text-[10px] tracking-[0.2em] text-gold/85">SHAMELL ADMIN</p>
         <h1 className="font-brand text-lg tracking-[0.06em] text-gold">{SEATING_LAYOUT_ADMIN_LABEL}</h1>
       </header>
-      <DndContext
-        sensors={sensors}
-        onDragStart={(e) => {
-          const drag = e.active.data.current?.paletteDrag as
-            | { type: "table"; size: VenueTableSize }
-            | { type: "chair" }
-            | undefined;
-          if (drag?.type === "table") {
-            setDragLabel(`${TABLE_SIZE_LABELS[drag.size]} table`);
-          } else if (drag?.type === "chair") {
-            setDragLabel("Chair");
-          }
-        }}
-        onDragEnd={(e) => {
-          setDragLabel(null);
-          editor.handleDragEnd(e);
-        }}
-        onDragCancel={() => setDragLabel(null)}
-      >
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {editor.hasLegacyItems ? (
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-shamell-text-primary">
             <p>
@@ -105,16 +132,22 @@ export default function FloorLayoutPageContent() {
         ) : null}
         <FloorLayoutToolbar chairTotal={editor.chairTotal} dirty={editor.dirty} />
         <div className="flex min-h-0 flex-1 flex-col">
-          <FloorLayoutPalette palette={editor.palette} />
+          <FloorLayoutPalette
+            palette={editor.palette}
+            activePaletteDrag={paletteGhost?.drag ?? null}
+            onTilePointerDown={onTilePointerDown}
+          />
           <div className="flex min-h-[min(380px,52dvh)] flex-1 flex-col md:min-h-[min(440px,58dvh)] lg:min-h-[clamp(480px,65dvh,860px)]">
             <FloorLayoutScene3D
+              canvasContainerRef={canvasContainerRef}
+              paletteDragOver={paletteOverCanvas}
               sceneHandleRef={editor.sceneHandleRef}
               viewBoxWidth={editor.layoutMeta.viewBoxWidth}
               viewBoxHeight={editor.layoutMeta.viewBoxHeight}
               items={editor.items}
               sceneZones={editor.sceneZones}
               reservedIds={reservedIds}
-              newlyReservedIds={newlyReservedIds}
+              reservedLabels={reservedLabels}
               selectedId={editor.selectedId}
               onSelect={editor.setSelectedId}
               onReservedSelect={editor.onReservedItemSelect}
@@ -128,20 +161,13 @@ export default function FloorLayoutPageContent() {
               onDelete={editor.removeSelected}
             />
             <p className="shrink-0 border-t border-shamell-line-soft/60 px-3 py-2 text-center text-[10px] leading-snug text-shamell-text-primary/55 sm:text-left">
-              Drag palette items onto the floor · one finger to orbit · two fingers to pan and pinch to
-              zoom · toolbar to rotate selection, delete, or save
+              Tap palette to add at center · drag palette items onto the floor · one finger to orbit ·
+              two fingers to pan and pinch to zoom · toolbar to rotate selection, delete, or save
             </p>
           </div>
         </div>
-        </div>
-        <DragOverlay>
-          {dragLabel ? (
-            <div className="rounded-lg border border-shamell-gold bg-shamell-twilight px-3 py-2 text-xs text-white shadow-lg">
-              {dragLabel}
-            </div>
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+      </div>
+      {paletteGhost ? <PaletteDragGhostOverlay ghost={paletteGhost} /> : null}
     </div>
   );
 }

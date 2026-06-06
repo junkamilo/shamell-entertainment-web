@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import type { FloorSceneZones } from "@/components/floor-layout/layoutTypes";
 import { useVenueSceneCanvas } from "@/components/venue-3d/VenueSceneCanvasContext";
@@ -18,6 +18,7 @@ import {
   STAIR_DEPTH,
 } from "@/components/venue-3d/stage/stageConstants";
 import { pickWorldFromClient } from "../lib/floorLayoutRaycast";
+import { useFloorLayoutWindowPointerDrag } from "../lib/useFloorLayoutWindowPointerDrag";
 
 const STAGE_HIT_DEPTH = STAGE_DEPTH + STAIR_COUNT * STAIR_DEPTH;
 
@@ -51,50 +52,26 @@ function SceneZoneHandle({
   onMove: (x: number, z: number) => void;
 }) {
   const { camera } = useThree();
-  const { getCanvas, setOrbitEnabled } = useVenueSceneCanvas();
-  const dragging = useRef(false);
+  const { getCanvas } = useVenueSceneCanvas();
+  const { beginWindowPointerDrag } = useFloorLayoutWindowPointerDrag();
 
   const startDrag = useCallback(
     (e: ThreeEvent<PointerEvent>) => {
       if (e.button !== 0) return;
       e.stopPropagation();
       onSelect(id);
-      dragging.current = true;
-      setOrbitEnabled(false);
-      document.body.style.cursor = "grabbing";
 
-      const onMouseMove = (ev: MouseEvent) => {
-        if (!dragging.current) return;
-        const canvas = getCanvas();
-        if (!canvas) return;
-        const world = pickWorldFromClient(ev.clientX, ev.clientY, canvas, camera);
-        if (world) onMove(world.x, world.z);
-      };
-
-      const endDrag = () => {
-        dragging.current = false;
-        setOrbitEnabled(true);
-        document.body.style.cursor = "";
-        window.removeEventListener("mousemove", onMouseMove);
-        window.removeEventListener("mouseup", endDrag);
-        window.removeEventListener("pointercancel", endDrag);
-      };
-
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseup", endDrag);
-      window.addEventListener("pointercancel", endDrag);
+      beginWindowPointerDrag(e.nativeEvent, {
+        onMove: (clientX, clientY) => {
+          const canvas = getCanvas();
+          if (!canvas) return;
+          const world = pickWorldFromClient(clientX, clientY, canvas, camera);
+          if (world) onMove(world.x, world.z);
+        },
+      });
     },
-    [camera, getCanvas, id, onMove, onSelect, setOrbitEnabled],
+    [beginWindowPointerDrag, camera, getCanvas, id, onMove, onSelect],
   );
-
-  useEffect(() => {
-    return () => {
-      if (dragging.current) {
-        setOrbitEnabled(true);
-        document.body.style.cursor = "";
-      }
-    };
-  }, [setOrbitEnabled]);
 
   return (
     <group position={position} rotation={[0, rotationY, 0]}>
