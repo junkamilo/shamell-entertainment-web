@@ -16,6 +16,7 @@ import {
 } from '@prisma/client';
 import { buildPublicScheduleDisplay } from './upcoming-event-public-schedule.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { maskEmail } from '../../common/util/mask-pii.util';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { fetchPaymentMethodDetails } from '../stripe/stripe-payment-details.util';
@@ -294,12 +295,13 @@ export class UpcomingEventsService {
       },
       orderBy: [{ startsAt: 'asc' }, { sortOrder: 'asc' }],
     });
-    const withCounts = await Promise.all(
-      sessions.map(async (s) => ({
-        ...this.mapSessionPublic(s),
-        seatsRemaining: await this.seatsRemaining(s.id, s.capacity),
-      })),
+    const seatCounts = await this.batchSeatsRemaining(
+      sessions.map((s) => ({ id: s.id, capacity: s.capacity })),
     );
+    const withCounts = sessions.map((s) => ({
+      ...this.mapSessionPublic(s),
+      seatsRemaining: Math.max(0, s.capacity - (seatCounts.get(s.id) ?? 0)),
+    }));
     return { event: this.mapPublicSummary(event), sessions: withCounts };
   }
 
@@ -871,7 +873,7 @@ export class UpcomingEventsService {
       stripeStatus: stripeSession.status,
       enrollment: {
         status: current.status,
-        customerEmail: current.customerEmail,
+        customerEmail: maskEmail(current.customerEmail),
         eventName: current.event.eventType.name,
         eventSlug: current.event.slug,
         ...(current.ticketNumber != null ?
@@ -1025,7 +1027,7 @@ export class UpcomingEventsService {
         purchaseKind,
         enrollment: {
           status: refreshed.status,
-          customerEmail: refreshed.customerEmail,
+          customerEmail: maskEmail(refreshed.customerEmail),
           eventName: refreshed.event.eventType.name,
           eventSlug: refreshed.event.slug,
           sessions: refreshed.items.map((item) => ({
@@ -1094,7 +1096,7 @@ export class UpcomingEventsService {
       enrollment: {
         id: refreshed.id,
         status: refreshed.status,
-        customerEmail: refreshed.customerEmail,
+        customerEmail: maskEmail(refreshed.customerEmail),
         sessionLabel: this.sessionLabel(refreshed.session),
         confirmationReference: formatEnrollmentReference(refreshed.id),
         eventName: refreshed.session.event.eventType.name,
@@ -1684,6 +1686,32 @@ export class UpcomingEventsService {
     return event;
   }
 
+  private async batchSeatsRemaining(
+    sessions: Array<{ id: string; capacity: number }>,
+  ): Promise<Map<string, number>> {
+    const counts = new Map<string, number>();
+    if (sessions.length === 0) return counts;
+
+    const now = new Date();
+    const enrollments = await this.prisma.upcomingClassEnrollment.findMany({
+      where: {
+        sessionId: { in: sessions.map((s) => s.id) },
+        OR: [
+          { status: UpcomingClassEnrollmentStatus.PAID },
+          {
+            status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+          },
+        ],
+      },
+      select: { sessionId: true },
+    });
+    for (const row of enrollments) {
+      counts.set(row.sessionId, (counts.get(row.sessionId) ?? 0) + 1);
+    }
+    return counts;
+  }
+
   private async seatsRemaining(sessionId: string, capacity: number) {
     const now = new Date();
     const blocking = await this.prisma.upcomingClassEnrollment.count({
@@ -1899,7 +1927,7 @@ export class UpcomingEventsService {
     });
     if (!enrollment) {
       this.logger.warn(`class-webhook-missing enrollment session=${sessionId}`);
-      return;
+      throw new NotFoundException('Class enrollment not found for checkout session.');
     }
     if (enrollment.status === UpcomingClassEnrollmentStatus.PAID) return;
     if (session.payment_status !== 'paid') {
@@ -1926,7 +1954,15 @@ export class UpcomingEventsService {
     this.logger.log(
       `class-enrollment-paid id=${enrollment.id} stripeEvent=${stripeEventId}`,
     );
-    await this.sendClassConfirmation(enrollment);
+    if (!enrollment.customerEmailSentAt) {
+      const sent = await this.sendClassConfirmation(enrollment);
+      if (sent) {
+        await this.prisma.upcomingClassEnrollment.update({
+          where: { id: enrollment.id },
+          data: { customerEmailSentAt: new Date() },
+        });
+      }
+    }
     await this.adminPaymentNotify.notifyPaymentOutcome({
       outcome: 'PAID',
       flow: 'CLASS_SESSION',
@@ -2276,9 +2312,10 @@ export class UpcomingEventsService {
       this.logger.warn(
         `class-confirmation-email-failed to=${enrollment.customerEmail} reason=${errorText ?? 'unknown'}`,
       );
-      return;
+      return false;
     }
     this.logger.log(`class-confirmation-email-sent to=${enrollment.customerEmail}`);
+    return true;
   }
 
   private async sendClassBundleConfirmation(
@@ -2342,11 +2379,12 @@ export class UpcomingEventsService {
       this.logger.warn(
         `class-bundle-email-failed flow=${checkoutFlow ?? 'package'} to=${pkg.customerEmail} reason=${errorText ?? 'unknown'}`,
       );
-      return;
+      return false;
     }
     this.logger.log(
       `class-bundle-email-sent flow=${checkoutFlow ?? 'package'} to=${pkg.customerEmail} sections=${pkg.items.length}`,
     );
+    return true;
   }
 
   private async markPackageEnrollmentPaid(
@@ -2361,7 +2399,9 @@ export class UpcomingEventsService {
     });
     if (!pkg) {
       this.logger.warn(`class-package-webhook-missing package session=${sessionId}`);
-      return;
+      throw new NotFoundException(
+        'Class package enrollment not found for checkout session.',
+      );
     }
     if (pkg.status === UpcomingClassEnrollmentStatus.PAID) return;
     if (session.payment_status !== 'paid') {
@@ -2402,10 +2442,19 @@ export class UpcomingEventsService {
     });
     const emailPkg = refreshed ?? pkg;
 
-    if (emailPkg.items.length === 1) {
-      await this.sendClassConfirmation(emailPkg.items[0]!.enrollment);
-    } else {
-      await this.sendClassBundleConfirmation(emailPkg, checkoutFlow);
+    if (!emailPkg.customerEmailSentAt) {
+      let sent = false;
+      if (emailPkg.items.length === 1) {
+        sent = await this.sendClassConfirmation(emailPkg.items[0]!.enrollment);
+      } else {
+        sent = await this.sendClassBundleConfirmation(emailPkg, checkoutFlow);
+      }
+      if (sent) {
+        await this.prisma.upcomingClassPackageEnrollment.update({
+          where: { id: emailPkg.id },
+          data: { customerEmailSentAt: new Date() },
+        });
+      }
     }
 
     const firstSession = emailPkg.items[0]?.enrollment.session;

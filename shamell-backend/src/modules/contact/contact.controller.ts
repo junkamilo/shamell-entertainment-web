@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { ContactService } from './contact.service';
 import { AdminContactQueryDto } from './dto/admin-contact-query.dto';
@@ -26,6 +27,8 @@ export class ContactController {
 
   @Post()
   @ApiOperation({ summary: 'Submit a contact request' })
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   create(@Body() dto: CreateContactDto) {
     return this.contactService.create(dto);
   }

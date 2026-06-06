@@ -17,6 +17,10 @@ import {
 } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  maskCustomerName,
+  maskEmail,
+} from '../../common/util/mask-pii.util';
 import { AvailabilityService } from '../availability/availability.service';
 import {
   parseHHMM,
@@ -1252,7 +1256,15 @@ export class BookingsService {
 
   async resolveQuoteCheckoutClientSecret(token: string): Promise<string> {
     const quote = await this.findActiveQuoteByToken(token);
-    const payment = await this.prisma.bookingPayment.findFirst({
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: quote.bookingId },
+      include: { user: true },
+    });
+    if (!booking) {
+      throw new NotFoundException('Booking not found.');
+    }
+
+    let payment = await this.prisma.bookingPayment.findFirst({
       where: {
         quoteId: quote.id,
         status: BookingPaymentStatus.PENDING,
@@ -1262,13 +1274,47 @@ export class BookingsService {
     if (!payment) {
       throw new NotFoundException('No pending payment for this quote.');
     }
+
     const session = await this.stripeService.client.checkout.sessions.retrieve(
       payment.stripeCheckoutSessionId,
     );
-    if (!session.client_secret) {
+
+    if (session.status === 'expired' || session.status === 'complete') {
+      if (session.status === 'complete' && session.payment_status === 'paid') {
+        throw new BadRequestException('This payment has already been completed.');
+      }
+      if (session.status === 'expired') {
+        await this.prisma.bookingPayment.update({
+          where: { id: payment.id },
+          data: { status: BookingPaymentStatus.EXPIRED },
+        });
+        const customerEmail =
+          booking.user?.email?.trim().toLowerCase() ??
+          booking.guestEmail?.trim().toLowerCase();
+        if (!customerEmail) {
+          throw new BadRequestException('Missing customer email.');
+        }
+        payment = await this.createBookingStripePayment({
+          bookingId: booking.id,
+          quoteId: quote.id,
+          stage: payment.stage,
+          amount: Number(payment.expectedAmount),
+          currency: payment.currency,
+          customerEmail,
+          customerName:
+            booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+          adminUserId: 'quote-reissue',
+        });
+      }
+    }
+
+    const refreshed = await this.stripeService.client.checkout.sessions.retrieve(
+      payment.stripeCheckoutSessionId,
+    );
+    if (!refreshed.client_secret) {
       throw new BadRequestException('Stripe checkout is not available.');
     }
-    return session.client_secret;
+    return refreshed.client_secret;
   }
 
   async getQuotePaymentSessionStatus(sessionId: string) {
@@ -1280,25 +1326,52 @@ export class BookingsService {
       throw new NotFoundException('Payment session not found.');
     }
     let stripeStatus: 'complete' | 'open' | 'expired' = 'open';
+    let stripeSession: Awaited<
+      ReturnType<typeof this.stripeService.client.checkout.sessions.retrieve>
+    > | null = null;
     try {
-      const session =
+      stripeSession =
         await this.stripeService.client.checkout.sessions.retrieve(sessionId);
-      if (session.status === 'complete') stripeStatus = 'complete';
-      else if (session.status === 'expired') stripeStatus = 'expired';
+      if (stripeSession.status === 'complete') stripeStatus = 'complete';
+      else if (stripeSession.status === 'expired') stripeStatus = 'expired';
     } catch {
       stripeStatus = 'expired';
     }
-    const booking = payment.booking;
+
+    if (
+      stripeSession?.status === 'complete' &&
+      stripeSession.payment_status === 'paid' &&
+      payment.status === BookingPaymentStatus.PENDING
+    ) {
+      try {
+        await this.markBookingPaymentPaid(
+          'return-page-reconcile',
+          this.parseStripeCheckoutSession(stripeSession),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `booking-reconcile-on-status-failed session=${sessionId} reason=${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    const refreshed = await this.prisma.bookingPayment.findUnique({
+      where: { stripeCheckoutSessionId: sessionId },
+      include: { booking: { include: { user: true } } },
+    });
+    const current = refreshed ?? payment;
+    const booking = current.booking;
     return {
       stripeStatus,
-      paymentStatus: payment.status,
-      stage: payment.stage,
-      amount: Number(payment.expectedAmount),
-      currency: payment.currency,
-      customerName:
+      paymentStatus: current.status,
+      stage: current.stage,
+      amount: Number(current.expectedAmount),
+      currency: current.currency,
+      customerName: maskCustomerName(
         booking.user?.fullName ?? booking.guestFullName ?? 'Client',
+      ),
       customerEmail:
-        booking.user?.email ?? booking.guestEmail ?? '',
+        maskEmail(booking.user?.email ?? booking.guestEmail ?? '') ?? '',
     };
   }
 
@@ -1394,10 +1467,16 @@ export class BookingsService {
           status: BookingStatus.PENDING,
         },
       });
-      await this.sendDepositPaidEmail(
-        payment.bookingId,
-        Number(payment.expectedAmount),
-      );
+      if (!payment.customerEmailSentAt) {
+        await this.sendDepositPaidEmail(
+          payment.bookingId,
+          Number(payment.expectedAmount),
+        );
+        await this.prisma.bookingPayment.update({
+          where: { id: payment.id },
+          data: { customerEmailSentAt: new Date() },
+        });
+      }
       await this.adminPaymentNotify.notifyPaymentOutcome({
         outcome: 'DEPOSIT_PAID',
         flow: 'BOOKING_QUOTE',
@@ -1428,10 +1507,16 @@ export class BookingsService {
               }),
         },
       });
-      await this.sendFullyPaidEmail(
-        payment.bookingId,
-        Number(payment.expectedAmount),
-      );
+      if (!payment.customerEmailSentAt) {
+        await this.sendFullyPaidEmail(
+          payment.bookingId,
+          Number(payment.expectedAmount),
+        );
+        await this.prisma.bookingPayment.update({
+          where: { id: payment.id },
+          data: { customerEmailSentAt: new Date() },
+        });
+      }
       await this.adminPaymentNotify.notifyPaymentOutcome({
         outcome: 'PAID',
         flow: 'BOOKING_QUOTE',

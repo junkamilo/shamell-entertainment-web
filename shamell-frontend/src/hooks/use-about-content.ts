@@ -18,29 +18,6 @@ export function useAboutContent(initialAbout?: AboutContentItem | null) {
   const [isLoading, setIsLoading] = useState(!initialAbout);
 
   useEffect(() => {
-    if (!initialAbout) return;
-
-    let isCancelled = false;
-    const apiBaseUrl = getPublicApiBaseUrl();
-
-    fetch(`${apiBaseUrl}/api/v1/about`)
-      .then((response) => {
-        if (!response.ok) throw new Error("Cannot load about content.");
-        return response.json();
-      })
-      .then((data: unknown) => {
-        if (isCancelled) return;
-        const normalized = normalizeAboutPayload(data);
-        if (normalized) setAbout(normalized);
-      })
-      .catch(() => undefined);
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [initialAbout]);
-
-  useEffect(() => {
     if (initialAbout) return;
 
     let isCancelled = false;

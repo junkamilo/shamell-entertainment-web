@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
@@ -10,40 +10,58 @@ import {
   ClassPaymentConfirmationPanel,
   type ConfirmationStatus,
 } from "@/app/on-coming-events/components/ClassPaymentConfirmationPanel";
+import { pollCheckoutStatus } from "@/lib/checkoutReturnPolling";
+
+type ClassSessionStatus = {
+  stripeStatus?: string;
+  enrollment?: { status?: string };
+};
+
+async function fetchClassSessionStatus(
+  sessionId: string,
+): Promise<ClassSessionStatus | null> {
+  const base = getPublicApiBaseUrl();
+  const response = await fetch(
+    `${base}/api/v1/class-enrollments/session-status?session_id=${encodeURIComponent(sessionId)}`,
+    { cache: "no-store" },
+  );
+  if (!response.ok) return null;
+  return (await response.json()) as ClassSessionStatus;
+}
 
 function ClassCheckoutReturnInner() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [status, setStatus] = useState<ConfirmationStatus>("loading");
+  const [pollKey, setPollKey] = useState(0);
 
-  useEffect(() => {
+  const loadStatus = useCallback(async () => {
     if (!sessionId) {
       setStatus("error");
       return;
     }
-    const base = getPublicApiBaseUrl();
-    fetch(
-      `${base}/api/v1/class-enrollments/session-status?session_id=${encodeURIComponent(sessionId)}`,
-    )
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data: unknown) => {
-        if (!data || typeof data !== "object") {
-          setStatus("error");
-          return;
-        }
-        const o = data as Record<string, unknown>;
-        const enrollment =
-          o.enrollment && typeof o.enrollment === "object"
-            ? (o.enrollment as Record<string, unknown>)
-            : null;
-        const stripeStatus = o.stripeStatus;
-        const enStatus = enrollment?.status;
-        if (stripeStatus === "complete" || enStatus === "PAID") setStatus("paid");
-        else if (stripeStatus === "expired") setStatus("error");
-        else setStatus("pending");
-      })
-      .catch(() => setStatus("error"));
+
+    setStatus("loading");
+    const result = await pollCheckoutStatus({
+      fetchStatus: () => fetchClassSessionStatus(sessionId),
+      isPaid: (data) =>
+        data.stripeStatus === "complete" || data.enrollment?.status === "PAID",
+      isExpired: (data) => data.stripeStatus === "expired",
+    });
+
+    if (result.outcome === "paid") setStatus("paid");
+    else if (result.outcome === "expired") setStatus("error");
+    else if (result.outcome === "pending") setStatus("pending");
+    else setStatus("error");
   }, [sessionId]);
+
+  useEffect(() => {
+    void loadStatus();
+  }, [loadStatus, pollKey]);
+
+  const handleRefresh = useCallback(() => {
+    setPollKey((k) => k + 1);
+  }, []);
 
   return (
     <main className="min-h-screen text-foreground">
@@ -54,6 +72,7 @@ function ClassCheckoutReturnInner() {
         paidSubtitle="We sent a confirmation email with your class details. Present it at check-in."
         loadingMessage="Confirming your booking…"
         pendingMessage="Payment is still processing. Refresh in a moment."
+        onRefresh={status === "pending" ? handleRefresh : undefined}
       />
       <Footer />
     </main>

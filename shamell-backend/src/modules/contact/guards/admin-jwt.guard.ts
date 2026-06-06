@@ -6,10 +6,14 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { PrismaService } from '../../../prisma/prisma.service';
 
 @Injectable()
 export class AdminJwtGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context
@@ -39,14 +43,22 @@ export class AdminJwtGuard implements CanActivate {
       throw new ForbiddenException('Admin role is required.');
     }
 
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, email: true, role: true },
+    });
+    if (!user || user.role !== 'ADMIN') {
+      throw new UnauthorizedException('Admin account is not valid.');
+    }
+
     (
       request as {
         adminUser?: { id: string; email?: string; role?: string };
       }
     ).adminUser = {
-      id: payload.sub,
-      email: payload.email,
-      role: payload.role,
+      id: user.id,
+      email: user.email ?? payload.email,
+      role: user.role,
     };
 
     return true;

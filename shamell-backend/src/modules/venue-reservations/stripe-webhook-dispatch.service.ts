@@ -33,6 +33,8 @@ export class StripeWebhookDispatchService {
     }
 
     let event: StripeWebhookEventLite;
+    const nodeEnv = process.env.NODE_ENV ?? 'development';
+
     try {
       event = this.stripeService.client.webhooks.constructEvent(
         rawBody,
@@ -46,6 +48,15 @@ export class StripeWebhookDispatchService {
       throw new BadRequestException('Invalid stripe-signature header.');
     }
 
+    if (nodeEnv === 'production' && event.livemode === false) {
+      this.logger.warn(
+        `stripe-webhook-test-mode-rejected eventId=${event.id} type=${event.type}`,
+      );
+      throw new BadRequestException(
+        'Test-mode Stripe events are not accepted in production.',
+      );
+    }
+
     if (await this.audit.isProcessed(event.id)) {
       this.logger.log(
         `stripe-webhook-duplicate eventId=${event.id} type=${event.type}`,
@@ -53,6 +64,21 @@ export class StripeWebhookDispatchService {
       return { received: true, deduplicated: true };
     }
 
+    return this.processVerifiedEvent(event);
+  }
+
+  async reprocessFromStripeEventId(eventId: string): Promise<boolean> {
+    if (await this.audit.isProcessed(eventId)) {
+      return false;
+    }
+    const event = (await this.stripeService.client.events.retrieve(
+      eventId,
+    )) as StripeWebhookEventLite;
+    await this.processVerifiedEvent(event);
+    return true;
+  }
+
+  private async processVerifiedEvent(event: StripeWebhookEventLite) {
     const sessionObj =
       event.type === 'checkout.session.completed' ||
       event.type === 'checkout.session.expired'

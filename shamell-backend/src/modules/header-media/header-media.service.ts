@@ -7,6 +7,7 @@ import { GalleryMediaType } from '@prisma/client';
 import { imageSize } from 'image-size';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GalleryService } from '../gallery/gallery.service';
+import { cloudinaryDeliveryUrl } from '../../common/util/cloudinary-delivery.util';
 
 type HeaderPhoto = {
   id: string;
@@ -216,9 +217,13 @@ export class HeaderMediaService {
   }
 
   private mapHeaderPhoto(photo: HeaderPhoto) {
+    const imageUrl =
+      photo.mediaType === GalleryMediaType.IMAGE
+        ? cloudinaryDeliveryUrl(photo.imageUrl, { width: 1920 }) ?? photo.imageUrl
+        : photo.imageUrl;
     return {
       id: photo.id,
-      imageUrl: photo.imageUrl,
+      imageUrl,
       imagePublicId: photo.imagePublicId,
       mediaType: photo.mediaType,
       focalX: photo.focalX,

@@ -29,13 +29,68 @@ export class AboutService {
 
   async getPublicAboutContent() {
     // Same singleton row as admin (latest save); isActive is set true on every upsert.
+    let latest = await this.prisma.aboutContent.findFirst({
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (!latest) {
+      throw new NotFoundException('About content not found.');
+    }
+    const withDelivery = await this.ensureVideoDeliveryUrlsPersisted(latest);
+    return this.mapPublicAboutContent(withDelivery);
+  }
+
+  /** Admin: persist derived delivery URLs and optionally warm Cloudinary CDN. */
+  async backfillVideoDeliveryUrls(options?: { warmCdn?: boolean }) {
     const latest = await this.prisma.aboutContent.findFirst({
       orderBy: { updatedAt: 'desc' },
     });
     if (!latest) {
       throw new NotFoundException('About content not found.');
     }
-    return this.mapPublicAboutContent(latest);
+    if (this.normalizeHeroMediaType(latest.heroMediaType) !== 'VIDEO') {
+      return {
+        updated: false,
+        reason: 'Hero media is not a video.',
+        about: this.mapAboutContent(latest),
+      };
+    }
+    const imageUrl = latest.imageUrl?.trim() ?? '';
+    if (!imageUrl) {
+      throw new BadRequestException('Video hero is missing imageUrl.');
+    }
+
+    const videoDeliveryUrl = buildAboutHeroVideoDeliveryUrl(imageUrl);
+    const videoPosterUrl = buildAboutHeroVideoPosterUrl(imageUrl);
+    if (!videoDeliveryUrl || !videoPosterUrl) {
+      throw new BadRequestException(
+        'Could not derive Cloudinary delivery URLs from imageUrl.',
+      );
+    }
+
+    const hadDelivery = Boolean(latest.videoDeliveryUrl?.trim());
+    const hadPoster = Boolean(latest.videoPosterUrl?.trim());
+    const needsUpdate = !hadDelivery || !hadPoster;
+
+    const saved = needsUpdate
+      ? await this.prisma.aboutContent.update({
+          where: { id: latest.id },
+          data: { videoDeliveryUrl, videoPosterUrl },
+        })
+      : latest;
+
+    if (options?.warmCdn) {
+      await this.warmAboutVideoCdn(videoDeliveryUrl, videoPosterUrl);
+    }
+
+    return {
+      updated: needsUpdate,
+      warmedCdn: Boolean(options?.warmCdn),
+      hadDeliveryInDb: hadDelivery,
+      hadPosterInDb: hadPoster,
+      videoDeliveryUrl,
+      videoPosterUrl,
+      about: this.mapAboutContent(saved),
+    };
   }
 
   async getAdminAboutContent() {
@@ -432,6 +487,42 @@ export class AboutService {
     }
   }
 
+  private async ensureVideoDeliveryUrlsPersisted(
+    row: AboutContentRow,
+  ): Promise<AboutContentRow> {
+    if (this.normalizeHeroMediaType(row.heroMediaType) !== 'VIDEO') {
+      return row;
+    }
+    const imageUrl = row.imageUrl?.trim() ?? '';
+    if (!imageUrl) return row;
+
+    const videoDeliveryUrl = buildAboutHeroVideoDeliveryUrl(imageUrl);
+    const videoPosterUrl = buildAboutHeroVideoPosterUrl(imageUrl);
+    if (!videoDeliveryUrl || !videoPosterUrl) return row;
+
+    if (row.videoDeliveryUrl?.trim() && row.videoPosterUrl?.trim()) {
+      return row;
+    }
+
+    return this.prisma.aboutContent.update({
+      where: { id: row.id },
+      data: {
+        videoDeliveryUrl: row.videoDeliveryUrl?.trim() || videoDeliveryUrl,
+        videoPosterUrl: row.videoPosterUrl?.trim() || videoPosterUrl,
+      },
+    });
+  }
+
+  private async warmAboutVideoCdn(
+    videoDeliveryUrl: string,
+    videoPosterUrl: string,
+  ): Promise<void> {
+    await Promise.allSettled([
+      fetch(videoPosterUrl, { method: 'GET' }),
+      fetch(videoDeliveryUrl, { method: 'GET', headers: { Range: 'bytes=0-1' } }),
+    ]);
+  }
+
   private mapPublicAboutContent(content: AboutContentRow) {
     const base = this.mapAboutContent(content);
     const heroMediaType = this.normalizeHeroMediaType(content.heroMediaType);
@@ -474,6 +565,7 @@ type AboutContentRow = {
   paragraph1: string;
   coreValues: string[];
   imageUrl: string | null;
+  imagePublicId?: string | null;
   videoDeliveryUrl?: string | null;
   videoPosterUrl?: string | null;
   heroMediaType?: string | null;

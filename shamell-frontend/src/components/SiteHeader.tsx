@@ -96,7 +96,6 @@ function HeaderBrandImage({ compact }: { compact?: boolean }) {
       alt="Shamell Entertainment SVCS LLC"
       width={180}
       height={164}
-      priority
       className={cn(
         "w-auto object-contain object-left drop-shadow-[0_2px_14px_rgba(0,0,0,0.45)] transition-[opacity,filter] duration-300 group-hover:opacity-95",
         compact

@@ -10,6 +10,7 @@ import { FloorLayoutModule } from '../floor-layout/floor-layout.module';
 import { StripeModule } from '../stripe/stripe.module';
 import { StripeWebhookController } from './stripe-webhook.controller';
 import { StripeWebhookDispatchService } from './stripe-webhook-dispatch.service';
+import { StripeWebhookRetryService } from './stripe-webhook-retry.service';
 import { VenueReservationsController } from './venue-reservations.controller';
 import { VenueReservationsService } from './venue-reservations.service';
 
@@ -32,6 +33,7 @@ import { VenueReservationsService } from './venue-reservations.service';
   providers: [
     VenueReservationsService,
     StripeWebhookDispatchService,
+    StripeWebhookRetryService,
     AdminJwtGuard,
     ThrottlerGuard,
   ],

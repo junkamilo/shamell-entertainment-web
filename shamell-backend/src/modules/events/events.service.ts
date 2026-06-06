@@ -1027,27 +1027,49 @@ export class EventsService {
   private async enrichUpcomingPublicEvents(
     events: ReturnType<typeof this.mapEvent>[],
   ) {
+    if (events.length === 0) return [];
+
     const now = new Date();
-    return Promise.all(
-      events.map(async (event) => {
-        let hasActiveSessions = false;
-        if (event.experienceType === UpcomingExperienceType.CLASSES) {
-          const count = await this.prisma.upcomingClassSession.count({
+    const eventIds = events.map((event) => event.id);
+    const classEventIds = events
+      .filter((event) => event.experienceType === UpcomingExperienceType.CLASSES)
+      .map((event) => event.id);
+
+    const [configs, activeSessionCounts] = await Promise.all([
+      this.prisma.upcomingVenueConfig.findMany({
+        where: { eventId: { in: eventIds } },
+        include: { reservationEventTemplate: true },
+      }),
+      classEventIds.length > 0
+        ? this.prisma.upcomingClassSession.groupBy({
+            by: ['eventId'],
             where: {
-              eventId: event.id,
+              eventId: { in: classEventIds },
               isActive: true,
               endsAt: { gt: now },
             },
-          });
-          hasActiveSessions = count > 0;
-        }
+            _count: { _all: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
-        const config = await this.prisma.upcomingVenueConfig.findUnique({
-          where: { eventId: event.id },
-          include: { reservationEventTemplate: true },
-        });
+    const configByEventId = new Map(
+      configs.map((config) => [config.eventId, config] as const),
+    );
+    const activeSessionsByEventId = new Map<string, number>(
+      activeSessionCounts.map(
+        (row) => [row.eventId, row._count._all] as [string, number],
+      ),
+    );
 
-        const templateScheduleMode = config?.reservationEventTemplate?.scheduleMode ?? null;
+    return Promise.all(
+      events.map(async (event) => {
+        const hasActiveSessions =
+          (activeSessionsByEventId.get(event.id) ?? 0) > 0;
+        const config = configByEventId.get(event.id);
+
+        const templateScheduleMode =
+          config?.reservationEventTemplate?.scheduleMode ?? null;
         const clientEnabled = config?.clientEnabled ?? false;
         let ticketsRemaining: number | undefined;
         let fixedTicketCapacity: number | null | undefined;

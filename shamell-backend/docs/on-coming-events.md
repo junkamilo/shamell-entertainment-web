@@ -25,8 +25,14 @@ Sessions are generated automatically (12-week window, upsert) when an admin save
 | `/on-coming-events/[slug]/classes` | Class schedule + Stripe embedded checkout |
 | `/on-coming-events/[slug]/classes/return` | Single-session checkout return |
 | `/on-coming-events/[slug]/classes/package-return` | Same-day bundle or month package return |
+| `/on-coming-events/[slug]/return` | Fixed-event ticket checkout return |
+| `/on-coming-events/return` | Venue seat checkout return (canonical; `event_slug` query param) |
 | `/on-coming-events/[slug]/seats` | Floor plan seat reservations for that event |
+| `/pay/quote` | Booking quote payment entry (`?token=`) |
+| `/pay/quote/return` | Booking quote checkout return |
 | `/upcoming-events` | Redirects to `/on-coming-events` |
+
+Legacy venue return `/on-coming-events/[slug]/seats/return` redirects to `/on-coming-events/return?event_slug={slug}` (Next.js `redirects` in frontend `next.config.ts`).
 
 ## API
 
@@ -40,7 +46,11 @@ Sessions are generated automatically (12-week window, upsert) when an admin save
 - `GET /api/v1/class-enrollments/session-status?session_id=` — return pages (reconciles paid Stripe if webhook delayed)
 - `POST /api/v1/class-enrollments/reconcile?session_id=` — manual reconcile (throttled)
 - `GET /api/v1/venue-reservations/availability?upcomingEventSlug=` — seat availability per event
-- `POST /api/v1/venue-reservations/checkout-session` — body may include `upcomingEventSlug`
+- `POST /api/v1/venue-reservations/checkout-session` — body may include `upcomingEventSlug`; Stripe `return_url` → `/on-coming-events/return?session_id=…&event_slug=…`
+- `GET /api/v1/venue-reservations/session-status?session_id=` — venue return page (reconciles paid Stripe if webhook delayed)
+- `GET /api/v1/fixed-event-enrollments/session-status?session_id=` — fixed ticket return page
+- `POST /api/v1/fixed-event-enrollments/reconcile?session_id=` — manual reconcile (throttled)
+- `GET /api/v1/bookings/public/quote/session-status?session_id=` — booking quote return page (reconciles paid Stripe if webhook delayed)
 
 ## Pricing (admin)
 

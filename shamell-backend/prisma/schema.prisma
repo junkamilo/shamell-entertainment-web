@@ -400,6 +400,7 @@ model BookingPayment {
   stripePaymentIntentId   String?
   expiresAt               DateTime?
   paidAt                  DateTime?
+  customerEmailSentAt     DateTime?
   createdAt               DateTime             @default(now())
   updatedAt               DateTime             @updatedAt
 
@@ -633,6 +634,7 @@ model UpcomingClassEnrollment {
   customerPhone           String?
   paidAt                  DateTime?
   expiresAt               DateTime?
+  customerEmailSentAt     DateTime?
   packageItem             UpcomingClassPackageEnrollmentItem?
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
@@ -660,6 +662,7 @@ model UpcomingClassPackageEnrollment {
   selections              Json
   paidAt                  DateTime?
   expiresAt               DateTime?
+  customerEmailSentAt     DateTime?
   items                   UpcomingClassPackageEnrollmentItem[]
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
@@ -803,12 +806,13 @@ model VenueSeatReservation {
   customerPhone           String?
   paidAt                  DateTime?
   expiresAt               DateTime?
+  customerEmailSentAt     DateTime?
   createdAt               DateTime                   @default(now())
   updatedAt               DateTime                   @updatedAt
 
   venueTableConfig VenueTableConfig? @relation(fields: [venueTableConfigId], references: [id], onDelete: SetNull)
 
-  @@unique([layoutItemId, upcomingEventId])
+  // Partial unique index (PAID/PENDING only): see migration 20260610120000_venue_seat_partial_unique
   @@index([layoutItemId, upcomingEventId, status])
   @@index([upcomingEventId, status])
   @@index([status])

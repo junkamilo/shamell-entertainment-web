@@ -2,6 +2,9 @@
   "name": "shamell-frontend",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "dev:turbopack": "next dev --turbopack",
@@ -9,12 +12,17 @@
     "prebuild": "npm run clean",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "smoke:returns": "node scripts/smoke-return-routes.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/utilities": "^3.2.2",
+    "@fontsource/cinzel": "^5.2.8",
+    "@fontsource/cormorant-garamond": "^5.2.11",
+    "@fontsource/great-vibes": "^5.2.8",
+    "@fontsource/inter": "^5.2.8",
     "@radix-ui/react-toast": "^1.2.15",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
@@ -22,7 +30,7 @@
     "@stripe/stripe-js": "^9.6.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "gsap": "^3.15.0",
+    "geist": "^1.7.2",
     "lucide-react": "^1.11.0",
     "motion": "^12.38.0",
     "next": "16.2.4",
@@ -42,6 +50,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wait-on": "^8.0.3"
   }
 }

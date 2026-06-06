@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
+import { cloudinaryDeliveryUrl } from '../../common/util/cloudinary-delivery.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { CreateServiceTypeDto } from './dto/create-service-type.dto';
@@ -88,7 +89,7 @@ export class ServicesService {
       },
     });
 
-    return services.map((service) => this.mapService(service));
+    return services.map((service) => this.mapPublicService(service));
   }
 
   /** Public snippet for contact deep-link (active service + active type only). */
@@ -111,7 +112,7 @@ export class ServicesService {
       description: service.description,
       descriptionPreview: preview || undefined,
       items: service.items,
-      imageUrl: service.imageUrl,
+      imageUrl: this.publicServiceImageUrl(service.imageUrl),
       heroMediaType: this.catalogHeroMediaType(service.imageUrl),
       contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
     };
@@ -149,7 +150,7 @@ export class ServicesService {
       description: service.description,
       descriptionPreview: preview || undefined,
       items: service.items,
-      imageUrl: service.imageUrl,
+      imageUrl: this.publicServiceImageUrl(service.imageUrl),
       heroMediaType: this.catalogHeroMediaType(service.imageUrl),
       contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
     };
@@ -435,6 +436,36 @@ export class ServicesService {
         'Cannot delete this service because gallery photos are still linked to it.',
       );
     }
+  }
+
+  private publicServiceImageUrl(imageUrl: string | null): string | null {
+    if (!imageUrl) return null;
+    return cloudinaryDeliveryUrl(imageUrl, { width: 1200 }) ?? imageUrl;
+  }
+
+  private mapPublicService(service: {
+    id: string;
+    serviceType: {
+      id: string;
+      name: string;
+      contactInquiryCode: string | null;
+      isActive: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+    };
+    description: string;
+    items: string[];
+    price: unknown;
+    imageUrl: string | null;
+    isActive: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }) {
+    const mapped = this.mapService(service);
+    return {
+      ...mapped,
+      imageUrl: this.publicServiceImageUrl(mapped.imageUrl),
+    };
   }
 
   private mapService(service: {

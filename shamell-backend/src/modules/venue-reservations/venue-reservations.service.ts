@@ -28,6 +28,10 @@ import {
 import { StripeService } from '../stripe/stripe.service';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
 import {
+  maskCustomerName,
+  maskEmail,
+} from '../../common/util/mask-pii.util';
+import {
   evaluateSalesWindow,
   eventDateForReservations,
   resolveReservationWindow,
@@ -235,8 +239,18 @@ export class VenueReservationsService {
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
-    const slugSegment = ctx.slug ? `/${ctx.slug}` : '';
-    const returnUrl = `${frontendUrl}/on-coming-events${slugSegment}/seats/return?session_id={CHECKOUT_SESSION_ID}`;
+    let eventSlug = ctx.slug;
+    if (!eventSlug && ctx.upcomingEventId) {
+      const eventRow = await this.prisma.event.findUnique({
+        where: { id: ctx.upcomingEventId },
+        select: { slug: true },
+      });
+      eventSlug = eventRow?.slug ?? null;
+    }
+    const eventSlugQuery = eventSlug
+      ? `&event_slug=${encodeURIComponent(eventSlug)}`
+      : '';
+    const returnUrl = `${frontendUrl}/on-coming-events/return?session_id={CHECKOUT_SESSION_ID}${eventSlugQuery}`;
 
     const sessionParams = {
       ui_mode: 'embedded_page',
@@ -272,23 +286,34 @@ export class VenueReservationsService {
       throw new BadRequestException('Could not start checkout.');
     }
 
-    const reservation = await this.prisma.venueSeatReservation.create({
-      data: {
-        upcomingEventId: ctx.upcomingEventId,
-        kind,
-        venueTableConfigId,
-        layoutItemId: dto.layoutItemId,
-        eventDate,
-        amount,
-        currency: 'usd',
-        status: VenueSeatReservationStatus.PENDING_PAYMENT,
-        stripeCheckoutSessionId: session.id,
-        customerName: dto.customerName.trim(),
-        customerEmail: dto.customerEmail.trim().toLowerCase(),
-        customerPhone: dto.customerPhone?.trim() || null,
-        expiresAt,
-      },
-    });
+    let reservation;
+    try {
+      reservation = await this.prisma.venueSeatReservation.create({
+        data: {
+          upcomingEventId: ctx.upcomingEventId,
+          kind,
+          venueTableConfigId,
+          layoutItemId: dto.layoutItemId,
+          eventDate,
+          amount,
+          currency: 'usd',
+          status: VenueSeatReservationStatus.PENDING_PAYMENT,
+          stripeCheckoutSessionId: session.id,
+          customerName: dto.customerName.trim(),
+          customerEmail: dto.customerEmail.trim().toLowerCase(),
+          customerPhone: dto.customerPhone?.trim() || null,
+          expiresAt,
+        },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('This seat is already reserved.');
+      }
+      throw err;
+    }
 
     await this.stripeService.client.checkout.sessions.update(session.id, {
       metadata: {
@@ -581,7 +606,15 @@ export class VenueReservationsService {
       `reservation-paid reservationId=${reservation.id} session=${sessionId} eventId=${stripeEventId} paymentIntent=${paymentIntentId ?? 'null'}`,
     );
 
-    await this.sendReservationPaidConfirmationEmail(saved);
+    if (!reservation.customerEmailSentAt) {
+      const sent = await this.sendReservationPaidConfirmationEmail(saved);
+      if (sent) {
+        await this.prisma.venueSeatReservation.update({
+          where: { id: saved.id },
+          data: { customerEmailSentAt: new Date() },
+        });
+      }
+    }
 
     await this.adminPaymentNotify.notifyPaymentOutcome({
       outcome: 'PAID',
@@ -862,9 +895,8 @@ export class VenueReservationsService {
       amount: Number(row.amount),
       currency: row.currency,
       status: row.status,
-      customerName: row.customerName,
-      customerEmail: row.customerEmail,
-      customerPhone: row.customerPhone,
+      customerName: maskCustomerName(row.customerName),
+      customerEmail: maskEmail(row.customerEmail),
       paidAt: row.paidAt?.toISOString() ?? null,
     };
   }
@@ -911,14 +943,14 @@ export class VenueReservationsService {
     customerName: string;
     customerEmail: string;
     venueTableConfig: { tableName: string; size: string } | null;
-  }): Promise<void> {
+  }): Promise<boolean> {
     try {
       const toEmail = row.customerEmail.trim().toLowerCase();
       if (!toEmail) {
         this.logger.warn(
           `reservation-paid-email-skipped id=${row.id} reason=empty-recipient`,
         );
-        return;
+        return false;
       }
 
       const reservationKindLabel =
@@ -982,15 +1014,17 @@ export class VenueReservationsService {
         this.logger.log(
           `reservation-paid-email-sent id=${row.id} to=${toEmail}`,
         );
-        return;
+        return true;
       }
       this.logger.warn(
         `reservation-paid-email-failed id=${row.id} reason=${errorText ?? 'provider_error'}`,
       );
+      return false;
     } catch (err) {
       this.logger.error(
         `reservation-paid-email-failed id=${row.id} reason=${err instanceof Error ? err.message : String(err)}`,
       );
+      return false;
     }
   }
 

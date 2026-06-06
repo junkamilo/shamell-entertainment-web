@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import { getPublicApiBaseUrl } from "@/app/on-coming-events/lib/apiBaseUrl";
+import { onComingEventDetailHref } from "@/lib/upcomingEventPublicRoutes";
 import {
   ClassPaymentConfirmationFallback,
   ClassPaymentConfirmationPanel,
@@ -37,7 +39,7 @@ async function fetchSessionStatus(
   return (await response.json()) as SessionStatusResponse;
 }
 
-function FixedTicketReturnInner() {
+function FixedTicketReturnInner({ slug }: { slug: string }) {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [status, setStatus] = useState<ConfirmationStatus>("loading");
@@ -88,10 +90,22 @@ function FixedTicketReturnInner() {
   }, [sessionId]);
 
   const ticketExtra =
-    ticketNumber != null ? (
-      <p className="font-brand text-sm tracking-[0.12em] text-gold">
-        Your ticket number is #{ticketNumber}
-      </p>
+    status === "paid" ? (
+      <div className="space-y-3">
+        {ticketNumber != null ? (
+          <p className="font-brand text-sm tracking-[0.12em] text-gold">
+            Your ticket number is #{ticketNumber}
+          </p>
+        ) : null}
+        {slug ? (
+          <Link
+            href={onComingEventDetailHref(slug)}
+            className="inline-block rounded-xl border border-gold/30 px-4 py-2 font-brand text-xs tracking-[0.12em] text-gold uppercase transition hover:border-gold/50 hover:bg-gold/10"
+          >
+            Event details
+          </Link>
+        ) : null}
+      </div>
     ) : null;
 
   return (
@@ -121,7 +135,7 @@ export default function FixedTicketReturnClient({ slug }: { slug: string }) {
         </>
       }
     >
-      <FixedTicketReturnInner />
+      <FixedTicketReturnInner slug={slug} />
     </Suspense>
   );
 }

@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -29,12 +30,14 @@ export class ServicesController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=180, stale-while-revalidate=600')
   getPublicServices() {
     return this.servicesService.getPublicServices();
   }
 
   @Get('types')
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=180, stale-while-revalidate=600')
   getPublicServiceTypes() {
     return this.servicesService.getPublicServiceTypes();
   }

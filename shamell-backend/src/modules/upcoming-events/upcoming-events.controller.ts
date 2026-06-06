@@ -29,6 +29,8 @@ export class UpcomingEventsController {
 
   @Get('class-enrollments/session-status')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   getClassSessionStatus(@Query('session_id') sessionId: string) {
     if (!sessionId?.trim()) {
       throw new BadRequestException('session_id is required.');
@@ -64,6 +66,8 @@ export class UpcomingEventsController {
 
   @Get('fixed-event-enrollments/session-status')
   @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   getFixedEventSessionStatus(@Query('session_id') sessionId: string) {
     if (!sessionId?.trim()) {
       throw new BadRequestException('session_id is required.');

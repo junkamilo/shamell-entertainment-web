@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-shamell-admin-sans",
-});
+import { shamellAdminSans } from "@/lib/shamellFonts";
 
 export const metadata: Metadata = {
   title: "Forgot password — Shamell Entertainment",
@@ -12,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function ForgotPasswordLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`admin-theme ${inter.variable}`}>{children}</div>;
+  return <div className={`admin-theme ${shamellAdminSans.variable}`}>{children}</div>;
 }
