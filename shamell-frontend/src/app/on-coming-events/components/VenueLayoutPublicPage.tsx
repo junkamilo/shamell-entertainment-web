@@ -254,7 +254,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
         return;
       }
 
-      const silent = options?.silent ?? hasLoadedOnceRef.current;
+      const silent = options?.silent ?? hasLoadedOnce;
       if (!silent) {
         setLoading(true);
       }

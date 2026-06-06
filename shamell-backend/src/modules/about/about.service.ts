@@ -315,7 +315,7 @@ export class AboutService {
     }
   }
 
-  private uploadFileFromPath(
+  private async uploadFileFromPath(
     filePath: string,
     resourceType: 'image' | 'video',
   ): Promise<{
@@ -325,76 +325,82 @@ export class AboutService {
     videoPosterUrl: string | null;
   }> {
     const isVideo = resourceType === 'video';
-    return new Promise((resolve, reject) => {
-      cloudinary.uploader.upload(
-        filePath,
-        {
-          folder: 'shamell/about',
-          resource_type: resourceType,
-          ...(isVideo
-            ? {
-                eager: ABOUT_VIDEO_UPLOAD_EAGER,
-                eager_async: false,
-              }
-            : {}),
-        },
-        (error, result) => {
-          if (error || !result?.secure_url || !result.public_id) {
-            reject(
-              new InternalServerErrorException(
-                this.cloudinaryUploadErrorMessage(resourceType, error),
-              ),
-            );
-            return;
-          }
-          const delivery = isVideo
-            ? videoDeliveryUrlsFromUpload(result)
-            : { videoDeliveryUrl: null, videoPosterUrl: null };
-          resolve({
-            secureUrl: result.secure_url,
-            publicId: result.public_id,
-            ...delivery,
-          });
-        },
+    try {
+      const result = await cloudinary.uploader.upload(filePath, {
+        folder: 'shamell/about',
+        resource_type: resourceType,
+        ...(isVideo
+          ? {
+              eager: ABOUT_VIDEO_UPLOAD_EAGER,
+              eager_async: false,
+            }
+          : {}),
+      });
+      const secureUrl =
+        typeof result?.secure_url === 'string' ? result.secure_url : '';
+      const publicId =
+        typeof result?.public_id === 'string' ? result.public_id : '';
+      if (!secureUrl || !publicId) {
+        throw new InternalServerErrorException(
+          this.cloudinaryUploadErrorMessage(resourceType, null),
+        );
+      }
+      const delivery = isVideo
+        ? videoDeliveryUrlsFromUpload(result)
+        : { videoDeliveryUrl: null, videoPosterUrl: null };
+      return {
+        secureUrl,
+        publicId,
+        ...delivery,
+      };
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) throw error;
+      throw new InternalServerErrorException(
+        this.cloudinaryUploadErrorMessage(resourceType, error),
       );
-    });
+    }
   }
 
   /** Chunked upload for large hero videos (no in-app size cap). */
-  private uploadVideoLargeFromPath(filePath: string): Promise<{
+  private async uploadVideoLargeFromPath(filePath: string): Promise<{
     secureUrl: string;
     publicId: string;
     videoDeliveryUrl: string | null;
     videoPosterUrl: string | null;
   }> {
-    return new Promise((resolve, reject) => {
-      cloudinary.uploader.upload_large(
-        filePath,
-        {
-          folder: 'shamell/about',
-          resource_type: 'video',
-          chunk_size: 6_000_000,
-          eager: ABOUT_VIDEO_UPLOAD_EAGER,
-          eager_async: false,
-        },
-        (error, result) => {
-          if (error || !result?.secure_url || !result.public_id) {
-            reject(
-              new InternalServerErrorException(
-                this.cloudinaryUploadErrorMessage('video', error),
-              ),
-            );
-            return;
-          }
-          const delivery = videoDeliveryUrlsFromUpload(result);
-          resolve({
-            secureUrl: result.secure_url,
-            publicId: result.public_id,
-            ...delivery,
-          });
-        },
+    try {
+      const result = (await cloudinary.uploader.upload_large(filePath, {
+        folder: 'shamell/about',
+        resource_type: 'video',
+        chunk_size: 6_000_000,
+        eager: ABOUT_VIDEO_UPLOAD_EAGER,
+        eager_async: false,
+      })) as {
+        secure_url?: string;
+        public_id?: string;
+        eager?: { secure_url?: string }[];
+      };
+      const secureUrl =
+        typeof result?.secure_url === 'string' ? result.secure_url : '';
+      const publicId =
+        typeof result?.public_id === 'string' ? result.public_id : '';
+      if (!secureUrl || !publicId) {
+        throw new InternalServerErrorException(
+          this.cloudinaryUploadErrorMessage('video', null),
+        );
+      }
+      const delivery = videoDeliveryUrlsFromUpload(result);
+      return {
+        secureUrl,
+        publicId,
+        ...delivery,
+      };
+    } catch (error) {
+      if (error instanceof InternalServerErrorException) throw error;
+      throw new InternalServerErrorException(
+        this.cloudinaryUploadErrorMessage('video', error),
       );
-    });
+    }
   }
 
   private uploadBufferToCloudinary(
