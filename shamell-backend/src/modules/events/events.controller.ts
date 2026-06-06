@@ -105,8 +105,8 @@ export class EventsController {
   @Get('types/admin')
   @HttpCode(HttpStatus.OK)
   @UseGuards(AdminJwtGuard)
-  getAdminEventTypes() {
-    return this.eventsService.getAdminEventTypes();
+  getAdminEventTypes(@Query() query: ListEventsQueryDto) {
+    return this.eventsService.getAdminEventTypes(query);
   }
 
   @Get('admin/:id')

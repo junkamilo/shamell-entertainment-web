@@ -124,8 +124,6 @@ export default function EventsPageContent({ state }: Props) {
         onItemsTextChange={form.setItemsText}
         priceInput={form.priceInput}
         onPriceInputChange={form.setPriceInput}
-        publicSection={form.publicSection}
-        onPublicSectionChange={form.setPublicSection}
         lockPublicSection={state.upcomingOnly}
         existingImages={form.existingImages}
         pendingFiles={form.pendingFiles}

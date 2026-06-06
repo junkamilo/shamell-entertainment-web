@@ -37,6 +37,7 @@ import {
 } from "../lib/peticionesContactUtils";
 import type { UnifiedPeticionRow } from "../types/peticiones.types";
 import {
+  canSendInitialPaymentLink,
   paymentCardBadge,
   paymentCardBorderClass,
   resolveBookingPaymentCardState,
@@ -165,6 +166,8 @@ export default function PeticionesRequestCard({
     bookingPaymentVisual != null
       ? paymentCardBadge(bookingPaymentVisual)
       : null;
+  const sendPaymentLinkAllowed =
+    booking != null && canSendInitialPaymentLink(booking);
 
   const cardBorderClass =
     bookingPaymentVisual != null
@@ -373,12 +376,17 @@ export default function PeticionesRequestCard({
             {booking ? (
               <button
                 type="button"
-                disabled={busy || reserving}
+                disabled={busy || reserving || !sendPaymentLinkAllowed}
+                title={
+                  sendPaymentLinkAllowed
+                    ? undefined
+                    : "This booking is already paid or canceled."
+                }
                 onClick={(e) => {
                   e.stopPropagation();
                   setPaymentLinkOpen(true);
                 }}
-                className="inline-flex w-full items-center justify-center rounded-md border border-sky-300/40 px-3 py-3 font-brand text-xs tracking-widest text-sky-200 transition hover:bg-sky-500/10 disabled:opacity-50 sm:w-auto sm:py-2.5 sm:text-sm"
+                className="inline-flex w-full items-center justify-center rounded-md border border-sky-300/40 px-3 py-3 font-brand text-xs tracking-widest text-sky-200 transition hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:py-2.5 sm:text-sm"
               >
                 Send payment link
               </button>

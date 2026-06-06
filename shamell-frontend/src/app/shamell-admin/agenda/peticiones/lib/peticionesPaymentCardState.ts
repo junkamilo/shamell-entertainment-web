@@ -54,6 +54,20 @@ export function paymentCardBorderClass(visual: PaymentCardVisual): string {
   }
 }
 
+export function canSendInitialPaymentLink(
+  booking: Pick<
+    AdminBookingRow,
+    | "status"
+    | "depositPaidAt"
+    | "balancePaidAt"
+    | "quoteSentAt"
+    | "quoteModel"
+  >,
+): boolean {
+  const visual = resolveBookingPaymentCardState(booking);
+  return visual !== "paid_full" && visual !== "cancelled";
+}
+
 export function paymentCardBadge(visual: PaymentCardVisual): {
   label: string;
   className: string;
