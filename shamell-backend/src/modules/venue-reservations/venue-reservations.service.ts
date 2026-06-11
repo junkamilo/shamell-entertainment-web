@@ -50,6 +50,16 @@ import {
 import { resolveVenueSeatDisplayLabel } from './venue-seat-display-label.util';
 
 const CHECKOUT_TTL_MINUTES = 30;
+
+const venueSeatReservationTableInclude = {
+  venueTableConfig: { select: { tableName: true, size: true } },
+} as const;
+
+type VenueSeatReservationWithTableConfig =
+  Prisma.VenueSeatReservationGetPayload<{
+    include: typeof venueSeatReservationTableInclude;
+  }>;
+
 type StripeWebhookEventLite = {
   id: string;
   type: string;
@@ -374,40 +384,24 @@ export class VenueReservationsService {
     });
 
     const now = new Date();
-    let saved;
-    try {
-      saved = await this.prisma.venueSeatReservation.create({
-        data: {
-          upcomingEventId,
-          kind: seat.kind,
-          venueTableConfigId: seat.venueTableConfigId,
-          layoutItemId: seat.layoutItemId,
-          eventDate,
-          amount: seat.amount,
-          currency: 'usd',
-          status: VenueSeatReservationStatus.PAID,
-          paymentChannel: 'CASH',
-          stripeCheckoutSessionId: null,
-          paymentMethodType: 'cash',
-          customerName: dto.customerName.trim(),
-          customerEmail: dto.customerEmail.trim().toLowerCase(),
-          customerPhone: dto.customerPhone?.trim() || null,
-          paidAt: now,
-          createdByAdminId: adminUserId,
-        } as unknown as Prisma.VenueSeatReservationUncheckedCreateInput,
-        include: {
-          venueTableConfig: { select: { tableName: true, size: true } },
-        },
-      });
-    } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2002'
-      ) {
-        throw new ConflictException('This seat is already reserved.');
-      }
-      throw err;
-    }
+    const saved = await this.createPaidCashReservation({
+      upcomingEventId,
+      kind: seat.kind,
+      venueTableConfigId: seat.venueTableConfigId,
+      layoutItemId: seat.layoutItemId,
+      eventDate,
+      amount: seat.amount,
+      currency: 'usd',
+      status: VenueSeatReservationStatus.PAID,
+      paymentChannel: 'CASH',
+      stripeCheckoutSessionId: null,
+      paymentMethodType: 'cash',
+      customerName: dto.customerName.trim(),
+      customerEmail: dto.customerEmail.trim().toLowerCase(),
+      customerPhone: dto.customerPhone?.trim() || null,
+      paidAt: now,
+      createdByAdminId: adminUserId,
+    });
 
     this.logger.log(
       `admin-cash-reservation id=${saved.id} admin=${adminUserId}`,
@@ -441,7 +435,9 @@ export class VenueReservationsService {
   async resolvePayCheckoutClientSecret(token: string): Promise<string> {
     const reservation = await this.findActiveReservationByPayToken(token);
     if (!reservation.stripeCheckoutSessionId) {
-      throw new BadRequestException('Checkout is not available for this reservation.');
+      throw new BadRequestException(
+        'Checkout is not available for this reservation.',
+      );
     }
 
     const session = await this.stripeService.client.checkout.sessions.retrieve(
@@ -595,9 +591,11 @@ export class VenueReservationsService {
       where.layoutItemId = query.layoutItemId.trim();
     }
     if (query.paymentChannel) {
-      (where as Prisma.VenueSeatReservationWhereInput & {
-        paymentChannel?: VenueReservationPaymentChannel;
-      }).paymentChannel = query.paymentChannel;
+      (
+        where as Prisma.VenueSeatReservationWhereInput & {
+          paymentChannel?: VenueReservationPaymentChannel;
+        }
+      ).paymentChannel = query.paymentChannel;
     }
     const upcomingEventId = (query as { upcomingEventId?: string })
       .upcomingEventId;
@@ -949,7 +947,9 @@ export class VenueReservationsService {
     return reservableIds.every((id) => reserved.has(id));
   }
 
-  private assertAdminEventDate(ctx: Awaited<ReturnType<typeof this.resolveVenueContext>>) {
+  private assertAdminEventDate(
+    ctx: Awaited<ReturnType<typeof this.resolveVenueContext>>,
+  ) {
     if (!ctx.upcomingEventId) {
       throw new BadRequestException('No upcoming venue event configured.');
     }
@@ -971,9 +971,8 @@ export class VenueReservationsService {
     dto: CreateCheckoutSessionDto,
     floorLayoutId: string | null,
   ) {
-    const layout = await this.floorLayout.getPublicFloorLayoutForClient(
-      floorLayoutId,
-    );
+    const layout =
+      await this.floorLayout.getPublicFloorLayoutForClient(floorLayoutId);
     const layoutItem = layout.items.find((i) => i.id === dto.layoutItemId);
     if (!layoutItem) {
       throw new BadRequestException('Seat is not on the published floor plan.');
@@ -1105,6 +1104,25 @@ export class VenueReservationsService {
     return { session, expiresAt };
   }
 
+  private async createPaidCashReservation(
+    data: Prisma.VenueSeatReservationUncheckedCreateInput,
+  ): Promise<VenueSeatReservationWithTableConfig> {
+    try {
+      return await this.prisma.venueSeatReservation.create({
+        data,
+        include: venueSeatReservationTableInclude,
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('This seat is already reserved.');
+      }
+      throw err;
+    }
+  }
+
   private async createPendingStripeReservation(args: {
     upcomingEventId: string;
     seat: {
@@ -1140,7 +1158,7 @@ export class VenueReservationsService {
           customerEmail: args.dto.customerEmail.trim().toLowerCase(),
           customerPhone: args.dto.customerPhone?.trim() || null,
           expiresAt: args.expiresAt,
-        } as Prisma.VenueSeatReservationUncheckedCreateInput,
+        },
       });
     } catch (err) {
       if (
@@ -1176,7 +1194,7 @@ export class VenueReservationsService {
       where: {
         payTokenHash,
         status: VenueSeatReservationStatus.PENDING_PAYMENT,
-      } as Prisma.VenueSeatReservationWhereInput,
+      },
       orderBy: { createdAt: 'desc' },
     });
     if (!reservation) {
