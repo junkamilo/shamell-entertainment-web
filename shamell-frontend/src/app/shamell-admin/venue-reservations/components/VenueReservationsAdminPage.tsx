@@ -20,6 +20,16 @@ const STATUS_FILTER_OPTIONS: AdminAccordionSingleOption[] = [
   { id: "CANCELLED", label: "Cancelled" },
 ];
 
+const PAYMENT_CHANNEL_FILTER_OPTIONS: AdminAccordionSingleOption[] = [
+  { id: "", label: "All payments" },
+  { id: "STRIPE", label: "Stripe" },
+  { id: "CASH", label: "Cash" },
+];
+
+function paymentChannelLabel(channel: string): string {
+  return channel === "CASH" ? "Cash" : "Stripe";
+}
+
 function formatReservationSeatLabel(r: {
   kind: string;
   tableName: string | null;
@@ -48,6 +58,19 @@ export function VenueReservationsAdminPage() {
             options={STATUS_FILTER_OPTIONS}
             value={page.statusFilter}
             onChange={page.setStatusFilter}
+            showNoneOption={false}
+            className="[&_button]:min-h-11 [&_button]:py-2.5 [&_button]:text-sm"
+          />
+        </div>
+        <div className="w-full min-w-[12rem] max-w-xs">
+          <span className="mb-1.5 block font-brand text-xs tracking-[0.14em] text-gold">
+            Payment
+          </span>
+          <AdminAccordionSingleSelect
+            ariaLabel="Filter by payment channel"
+            options={PAYMENT_CHANNEL_FILTER_OPTIONS}
+            value={page.paymentChannelFilter}
+            onChange={page.setPaymentChannelFilter}
             showNoneOption={false}
             className="[&_button]:min-h-11 [&_button]:py-2.5 [&_button]:text-sm"
           />
@@ -86,6 +109,7 @@ export function VenueReservationsAdminPage() {
                   <th className="px-4 py-3">Guest</th>
                   <th className="px-4 py-3">Seat</th>
                   <th className="px-4 py-3">Amount</th>
+                  <th className="px-4 py-3">Payment</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Paid</th>
                   <th className="px-4 py-3" />
@@ -100,6 +124,7 @@ export function VenueReservationsAdminPage() {
                     </td>
                     <td className="px-4 py-3">{formatReservationSeatLabel(r)}</td>
                     <td className="px-4 py-3">{formatPriceEn(r.amount)}</td>
+                    <td className="px-4 py-3">{paymentChannelLabel(r.paymentChannel)}</td>
                     <td className="px-4 py-3">{r.status}</td>
                     <td className="px-4 py-3 text-xs text-foreground/60">
                       {r.paidAt ? new Date(r.paidAt).toLocaleString() : "—"}

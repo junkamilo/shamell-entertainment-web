@@ -7,6 +7,7 @@ export type VenueSessionStatus = {
     kind: string;
     layoutItemId: string;
     tableName: string | null;
+    seatDisplayLabel: string | null;
     status: string;
     amount: number;
     currency: string;
@@ -40,6 +41,8 @@ export async function fetchVenueSessionStatus(
       kind: String(r.kind ?? ""),
       layoutItemId: String(r.layoutItemId ?? ""),
       tableName: typeof r.tableName === "string" ? r.tableName : null,
+      seatDisplayLabel:
+        typeof r.seatDisplayLabel === "string" ? r.seatDisplayLabel : null,
       status: String(r.status ?? ""),
       amount: Number(r.amount ?? 0),
       currency: String(r.currency ?? "usd"),

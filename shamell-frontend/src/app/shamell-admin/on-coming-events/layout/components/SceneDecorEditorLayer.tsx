@@ -4,14 +4,8 @@ import { useCallback } from "react";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import type { FloorSceneZones } from "@/components/floor-layout/layoutTypes";
 import { useVenueSceneCanvas } from "@/components/venue-3d/VenueSceneCanvasContext";
+import { SCENE_STAGE_SELECT_ID } from "@/components/venue-3d/floorSceneZonesDefaults";
 import {
-  SCENE_CARPET_SELECT_ID,
-  SCENE_STAGE_SELECT_ID,
-} from "@/components/venue-3d/floorSceneZonesDefaults";
-import {
-  CARPET_LENGTH,
-  CARPET_WIDTH,
-  CARPET_Y,
   STAGE_DEPTH,
   STAGE_WIDTH,
   STAIR_COUNT,
@@ -27,7 +21,6 @@ type Props = {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onMoveStage: (x: number, z: number) => void;
-  onMoveCarpet: (x: number, z: number) => void;
 };
 
 function SceneZoneHandle({
@@ -101,10 +94,8 @@ export default function SceneDecorEditorLayer({
   selectedId,
   onSelect,
   onMoveStage,
-  onMoveCarpet,
 }: Props) {
   const stage = sceneZones.stage;
-  const carpet = sceneZones.carpet;
 
   return (
     <group>
@@ -118,17 +109,6 @@ export default function SceneDecorEditorLayer({
         selected={selectedId === SCENE_STAGE_SELECT_ID}
         onSelect={onSelect}
         onMove={onMoveStage}
-      />
-      <SceneZoneHandle
-        id={SCENE_CARPET_SELECT_ID}
-        position={[carpet.x, CARPET_Y, carpet.z]}
-        rotationY={carpet.rotationY}
-        width={CARPET_WIDTH}
-        depth={CARPET_LENGTH}
-        y={0.05}
-        selected={selectedId === SCENE_CARPET_SELECT_ID}
-        onSelect={onSelect}
-        onMove={onMoveCarpet}
       />
     </group>
   );

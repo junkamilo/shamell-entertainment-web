@@ -1,13 +1,12 @@
 "use client";
 
-import { Suspense, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import EventsPage from "@/app/shamell-admin/events/components/EventsPage";
 import {
   ON_COMING_EVENTS_SITE_TAB_RESERVATION,
   ON_COMING_EVENTS_SITE_TAB_UPCOMING,
-  onComingEventsSiteAdminHref,
   parseOnComingEventsSiteTab,
   type OnComingEventsSiteTab,
 } from "@/lib/onComingEventsRoutes";
@@ -16,18 +15,16 @@ import { OnComingEventsSiteSectionTabs } from "./OnComingEventsSiteSectionTabs";
 import { VenueLayoutReservationTabPanel } from "./VenueLayoutReservationTabPanel";
 
 function OnComingEventsSiteHubPageInner() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const activeTab = parseOnComingEventsSiteTab(searchParams.get("tab"));
+  const tabQuery = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<OnComingEventsSiteTab>(() =>
+    parseOnComingEventsSiteTab(tabQuery),
+  );
   const reservationPage = useAdminVenueLayoutPromoPage();
 
-  const onTabChange = useCallback(
-    (tab: OnComingEventsSiteTab) => {
-      router.replace(onComingEventsSiteAdminHref(tab));
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    [router],
-  );
+  useEffect(() => {
+    setActiveTab(parseOnComingEventsSiteTab(tabQuery));
+  }, [tabQuery]);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-6xl overflow-x-hidden">
@@ -47,13 +44,16 @@ function OnComingEventsSiteHubPageInner() {
       />
 
       <div className="mb-6">
-        <OnComingEventsSiteSectionTabs activeTab={activeTab} onTabChange={onTabChange} />
+        <OnComingEventsSiteSectionTabs activeTab={activeTab} />
       </div>
 
       {activeTab === ON_COMING_EVENTS_SITE_TAB_UPCOMING ? (
-        <EventsPage embedded upcomingOnly />
+        <EventsPage key="upcoming-events" embedded upcomingOnly />
       ) : (
-        <VenueLayoutReservationTabPanel page={reservationPage} />
+        <VenueLayoutReservationTabPanel
+          key="reservation-events"
+          page={reservationPage}
+        />
       )}
     </div>
   );

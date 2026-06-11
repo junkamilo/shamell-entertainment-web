@@ -1,4 +1,11 @@
 import {
+  buildEmailCtaButton,
+  buildEmailHeading,
+  buildEmailParagraph,
+  buildEmailSimpleCardBody,
+} from '../mail/email-html-layout';
+import { escapeHtml } from '../mail/email-html.util';
+import {
   buildEmailLogoWordmarkHtml,
   plainTextBrandLead,
   type EmailBranding,
@@ -16,12 +23,20 @@ type QuoteMailInput = {
   payUrl: string;
 };
 
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+function buildPaymentCardBody(
+  logoBlock: string,
+  heading: string,
+  paragraphs: string[],
+  extraHtml = '',
+  cta?: { label: string; href: string },
+): string {
+  const inner = `
+${logoBlock}
+${buildEmailHeading(heading, 1)}
+${paragraphs.map((p) => buildEmailParagraph(p)).join('')}
+${extraHtml}
+${cta ? buildEmailCtaButton(cta.label, cta.href) : ''}`;
+  return buildEmailSimpleCardBody(inner);
 }
 
 export function buildBookingQuoteSubject(appPublicName: string): string {
@@ -32,31 +47,26 @@ export function buildBookingQuoteHtml(input: QuoteMailInput): string {
   const logoBlock = buildEmailLogoWordmarkHtml(
     input.branding ?? input.frontendBaseUrl,
   );
-  return `
-  <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
-    <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">
-      ${logoBlock}
-      <h1 style="font-size:22px;margin:10px 0;">Complete your payment</h1>
-      <p>Hi ${escapeHtml(input.recipientName)},</p>
-      <p>Thank you for your inquiry. Please use the secure link below to complete your payment.</p>
-      <p><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>
-      <p><strong>Total:</strong> ${escapeHtml(input.totalAmountUsd)}</p>
-      ${
-        input.depositAmountUsd
-          ? `<p><strong>Deposit:</strong> ${escapeHtml(input.depositAmountUsd)}</p>`
-          : ''
-      }
-      ${
-        input.balanceAmountUsd
-          ? `<p><strong>Remaining balance:</strong> ${escapeHtml(input.balanceAmountUsd)}</p>`
-          : ''
-      }
-      <div style="margin-top:18px;">
-        <a href="${escapeHtml(input.payUrl)}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#d4af37;color:#1a1026;text-decoration:none;font-weight:700;">Pay now</a>
-      </div>
-    </div>
-  </body></html>
-  `.trim();
+  const extra = [
+    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>`,
+    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Total:</strong> ${escapeHtml(input.totalAmountUsd)}</p>`,
+    input.depositAmountUsd
+      ? `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Deposit:</strong> ${escapeHtml(input.depositAmountUsd)}</p>`
+      : '',
+    input.balanceAmountUsd
+      ? `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Remaining balance:</strong> ${escapeHtml(input.balanceAmountUsd)}</p>`
+      : '',
+  ].join('');
+  return buildPaymentCardBody(
+    logoBlock,
+    'Complete your payment',
+    [
+      `Hi ${escapeHtml(input.recipientName)},`,
+      'Thank you for your inquiry. Please use the secure link below to complete your payment.',
+    ],
+    extra,
+    { label: 'Pay now', href: input.payUrl },
+  );
 }
 
 export function buildBookingQuoteText(input: QuoteMailInput): string {
@@ -93,19 +103,22 @@ export function buildBookingDepositPaidHtml(input: {
   const logoBlock = buildEmailLogoWordmarkHtml(
     input.branding ?? input.frontendBaseUrl,
   );
-  return `
-  <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
-    <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">
-      ${logoBlock}
-      <h1 style="font-size:22px;margin:10px 0;">Deposit received</h1>
-      <p>Hi ${escapeHtml(input.recipientName)},</p>
-      <p>We received your deposit. Your reservation with Shamell is in progress — the remaining balance will be collected separately.</p>
-      <p><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>
-      ${input.eventDateLabel ? `<p><strong>Event date:</strong> ${escapeHtml(input.eventDateLabel)}</p>` : ''}
-      <p><strong>Amount paid:</strong> ${escapeHtml(input.amountUsd)}</p>
-    </div>
-  </body></html>
-  `.trim();
+  const extra = [
+    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>`,
+    input.eventDateLabel
+      ? `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Event date:</strong> ${escapeHtml(input.eventDateLabel)}</p>`
+      : '',
+    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Amount paid:</strong> ${escapeHtml(input.amountUsd)}</p>`,
+  ].join('');
+  return buildPaymentCardBody(
+    logoBlock,
+    'Deposit received',
+    [
+      `Hi ${escapeHtml(input.recipientName)},`,
+      'We received your deposit. Your reservation with Shamell is in progress — the remaining balance will be collected separately.',
+    ],
+    extra,
+  );
 }
 
 export function buildBookingDepositPaidText(input: {
@@ -142,19 +155,20 @@ export function buildBookingFullyPaidHtml(input: {
   const logoBlock = buildEmailLogoWordmarkHtml(
     input.branding ?? input.frontendBaseUrl,
   );
-  return `
-  <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
-    <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">
-      ${logoBlock}
-      <h1 style="font-size:22px;margin:10px 0;color:#34d399;">Payment complete — reservation confirmed</h1>
-      <p>Hi ${escapeHtml(input.recipientName)},</p>
-      <p>Your payment was successful and your reservation with Shamell is now confirmed. We look forward to seeing you!</p>
-      <p><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>
-      ${input.eventDateLabel ? `<p><strong>Event date:</strong> ${escapeHtml(input.eventDateLabel)}</p>` : ''}
-      <p><strong>Amount paid:</strong> ${escapeHtml(input.amountUsd)}</p>
-    </div>
-  </body></html>
-  `.trim();
+  const extra = [
+    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>`,
+    input.eventDateLabel
+      ? `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Event date:</strong> ${escapeHtml(input.eventDateLabel)}</p>`
+      : '',
+    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Amount paid:</strong> ${escapeHtml(input.amountUsd)}</p>`,
+  ].join('');
+  const inner = `
+${logoBlock}
+${buildEmailHeading('Payment complete — reservation confirmed', 1, { colorClass: 'success' })}
+${buildEmailParagraph(`Hi ${escapeHtml(input.recipientName)},`)}
+${buildEmailParagraph('Your payment was successful and your reservation with Shamell is now confirmed. We look forward to seeing you!')}
+${extra}`;
+  return buildEmailSimpleCardBody(inner);
 }
 
 export function buildBookingFullyPaidText(input: {
@@ -183,21 +197,20 @@ export function buildBookingBalanceLinkHtml(input: QuoteMailInput): string {
   const logoBlock = buildEmailLogoWordmarkHtml(
     input.branding ?? input.frontendBaseUrl,
   );
-  return `
-  <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
-    <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">
-      ${logoBlock}
-      <h1 style="font-size:22px;margin:10px 0;">Complete your balance payment</h1>
-      <p>Hi ${escapeHtml(input.recipientName)},</p>
-      <p>Your deposit has been received. Please use the secure link below to pay the remaining balance and confirm your reservation.</p>
-      <p><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>
-      <p><strong>Balance due:</strong> ${escapeHtml(input.totalAmountUsd)}</p>
-      <div style="margin-top:18px;">
-        <a href="${escapeHtml(input.payUrl)}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#d4af37;color:#1a1026;text-decoration:none;font-weight:700;">Pay balance now</a>
-      </div>
-    </div>
-  </body></html>
-  `.trim();
+  const extra = [
+    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>`,
+    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Balance due:</strong> ${escapeHtml(input.totalAmountUsd)}</p>`,
+  ].join('');
+  return buildPaymentCardBody(
+    logoBlock,
+    'Complete your balance payment',
+    [
+      `Hi ${escapeHtml(input.recipientName)},`,
+      'Your deposit has been received. Please use the secure link below to pay the remaining balance and confirm your reservation.',
+    ],
+    extra,
+    { label: 'Pay balance now', href: input.payUrl },
+  );
 }
 
 export function buildBookingBalanceLinkText(input: QuoteMailInput): string {

@@ -195,7 +195,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
   const navInner = (
     <>
       <div
-        className={`border-b border-gold/20 px-3 py-4 max-lg:pt-[max(1rem,env(safe-area-inset-top,0px))] lg:px-4 ${
+        className={`shrink-0 border-b border-gold/20 px-3 py-4 max-lg:pt-[max(1rem,env(safe-area-inset-top,0px))] lg:px-4 ${
           sidebarCollapsed ? "flex flex-col items-center gap-3 py-5" : "flex items-center justify-between gap-3"
         }`}
       >
@@ -244,7 +244,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
         </div>
       </div>
 
-      <nav className="shamell-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden px-3 py-4">
+      <nav className="shamell-scrollbar flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-4">
         {adminNavEntries.map((entry) => {
           if (entry.type === "group") {
             return (
@@ -272,22 +272,24 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
         })}
       </nav>
 
-      <div className="shrink-0 border-t border-gold/20 p-4 max-lg:pb-[max(1rem,env(safe-area-inset-bottom,0px))]">
+      <div className="shrink-0 border-t border-gold/20 p-4 max-lg:pb-[max(1rem,env(safe-area-inset-bottom,0px))] [@media(max-height:900px)]:p-3">
         {!sidebarCollapsed ? (
-          <div className="admin-panel mb-3 flex items-center gap-3 rounded-md px-3 py-2">
+          <div className="admin-panel mb-3 flex items-center gap-3 rounded-md px-3 py-2 [@media(max-height:900px)]:mb-2 [@media(max-height:900px)]:py-1.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/20 font-brand text-xs text-gold">
               {adminName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="truncate font-body text-xs text-foreground/90">{adminName}</p>
               {adminEmail ? (
-                <p className="truncate text-[10px] text-foreground/50">{adminEmail}</p>
+                <p className="truncate text-[10px] text-foreground/50 [@media(max-height:900px)]:hidden">
+                  {adminEmail}
+                </p>
               ) : null}
-              <p className="text-[10px] text-gold/70">Administrator</p>
+              <p className="text-[10px] text-gold/70 [@media(max-height:900px)]:hidden">Administrator</p>
             </div>
           </div>
         ) : (
-          <div className="mb-3 flex justify-center">
+          <div className="mb-3 flex justify-center [@media(max-height:900px)]:mb-2">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold/20 font-brand text-xs text-gold">
               {adminName.charAt(0).toUpperCase()}
             </div>
@@ -295,7 +297,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
         )}
         <Link
           href="/"
-          className={`mb-2 flex w-full items-center justify-center rounded-md border border-gold/30 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition-colors hover:bg-gold/10 ${
+          className={`mb-2 flex w-full items-center justify-center rounded-md border border-gold/30 py-2 font-brand text-[10px] tracking-[0.14em] text-gold transition-colors hover:bg-gold/10 [@media(max-height:900px)]:mb-1.5 [@media(max-height:900px)]:py-1.5 ${
             sidebarCollapsed ? "" : "gap-2"
           }`}
           title="Go to public site"
@@ -307,7 +309,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
           type="button"
           onClick={onLogout}
           title="Sign out"
-          className="w-full rounded-md border border-gold/20 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/70 hover:border-gold/40 hover:text-gold"
+          className="w-full rounded-md border border-gold/20 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/70 hover:border-gold/40 hover:text-gold [@media(max-height:900px)]:py-1.5"
         >
           {sidebarCollapsed ? "X" : "SIGN OUT"}
         </button>
@@ -327,7 +329,7 @@ export default function ShamellAdminShell({ children }: { children: React.ReactN
       ) : null}
 
       <aside
-        className={`shamell-admin-sidebar fixed left-0 top-0 z-50 flex max-h-dvh flex-col border-r border-shamell-line-soft transition-all duration-200 max-lg:h-dvh lg:sticky lg:top-0 lg:h-screen lg:max-h-none lg:translate-x-0 ${
+        className={`shamell-admin-sidebar fixed left-0 top-0 z-50 flex h-dvh max-h-dvh min-h-0 flex-col border-r border-shamell-line-soft transition-all duration-200 lg:sticky lg:top-0 lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         } ${sidebarCollapsed ? "w-20" : "w-[min(100%,18rem)] max-sm:w-[min(100%,17rem)] sm:w-64"}`}
       >

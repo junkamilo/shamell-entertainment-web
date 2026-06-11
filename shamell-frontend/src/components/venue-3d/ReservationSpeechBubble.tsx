@@ -20,7 +20,14 @@ export default function ReservationSpeechBubble({ name, height = 1.25 }: Props) 
   const displayName = truncateName(name);
 
   return (
-    <Html position={[0, height, 0]} center transform distanceFactor={6} occlude={false}>
+    <Html
+      position={[0, height, 0]}
+      center
+      transform
+      distanceFactor={6}
+      occlude={false}
+      zIndexRange={[80, 0]}
+    >
       <div
         className="pointer-events-none relative max-w-[9rem] select-none"
         aria-label={`Reserved by ${displayName}`}

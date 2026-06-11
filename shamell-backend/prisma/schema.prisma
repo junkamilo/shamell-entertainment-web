@@ -723,6 +723,11 @@ enum VenueSeatKind {
   STANDALONE_CHAIR
 }
 
+enum VenueReservationPaymentChannel {
+  STRIPE
+  CASH
+}
+
 model VenueTableConfig {
   id             String         @id @default(uuid())
   tableName      String
@@ -795,9 +800,12 @@ model VenueSeatReservation {
   eventDate               DateTime
   amount                  Decimal                    @db.Decimal(12, 2)
   currency                String                     @default("usd")
-  status                  VenueSeatReservationStatus @default(PENDING_PAYMENT)
-  stripeCheckoutSessionId String                     @unique
+  status                  VenueSeatReservationStatus       @default(PENDING_PAYMENT)
+  paymentChannel          VenueReservationPaymentChannel     @default(STRIPE)
+  stripeCheckoutSessionId String?                            @unique
   stripePaymentIntentId   String?
+  payTokenHash            String?
+  createdByAdminId        String?
   paymentMethodType       String?
   paymentMethodBrand      String?
   paymentMethodLast4      String?
@@ -807,8 +815,8 @@ model VenueSeatReservation {
   paidAt                  DateTime?
   expiresAt               DateTime?
   customerEmailSentAt     DateTime?
-  createdAt               DateTime                   @default(now())
-  updatedAt               DateTime                   @updatedAt
+  createdAt               DateTime                           @default(now())
+  updatedAt               DateTime                           @updatedAt
 
   venueTableConfig VenueTableConfig? @relation(fields: [venueTableConfigId], references: [id], onDelete: SetNull)
 

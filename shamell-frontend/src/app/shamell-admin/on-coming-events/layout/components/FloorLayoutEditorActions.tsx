@@ -1,10 +1,7 @@
 "use client";
 
 import { RotateCcw, RotateCw, Save, Trash2 } from "lucide-react";
-import {
-  SCENE_CARPET_SELECT_ID,
-  SCENE_STAGE_SELECT_ID,
-} from "@/components/venue-3d/floorSceneZonesDefaults";
+import { SCENE_STAGE_SELECT_ID } from "@/components/venue-3d/floorSceneZonesDefaults";
 
 type Props = {
   dirty: boolean;
@@ -76,7 +73,7 @@ export default function FloorLayoutEditorActions({
         onClick={onDelete}
         title={
           !canDeleteSelected && selectedId
-            ? "Stage and carpet cannot be deleted"
+            ? "Tarima cannot be deleted"
             : undefined
         }
         className={`${btnBase} border-shamell-danger/50 bg-black/80 text-shamell-danger hover:border-shamell-danger hover:bg-red-950/60`}
@@ -100,6 +97,5 @@ export default function FloorLayoutEditorActions({
 
 export function sceneSelectionLabel(selectedId: string | null): string | null {
   if (selectedId === SCENE_STAGE_SELECT_ID) return "Tarima";
-  if (selectedId === SCENE_CARPET_SELECT_ID) return "Tapete";
   return null;
 }

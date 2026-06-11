@@ -35,9 +35,12 @@ function formatEventDate(iso: string): string {
 }
 
 function sessionLabelFor(reservation: VenueSessionStatus["reservation"]): string {
+  if (reservation.seatDisplayLabel) {
+    return reservation.seatDisplayLabel;
+  }
   return reservation.kind === "catalog_table"
     ? `Table — ${reservation.tableName ?? "Reserved"}`
-    : "Standalone chair";
+    : "Chair";
 }
 
 function VenueSeatReturnInner({ slug }: { slug: string }) {

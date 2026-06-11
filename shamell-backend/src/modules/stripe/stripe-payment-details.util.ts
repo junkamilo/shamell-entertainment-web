@@ -58,6 +58,7 @@ export function formatPaymentMethodLabel(
 ): string | null {
   const { paymentMethodType, paymentMethodBrand, paymentMethodLast4 } = details;
   if (!paymentMethodType) return null;
+  if (paymentMethodType === 'cash') return 'Cash';
   if (
     paymentMethodType === 'card' &&
     paymentMethodBrand &&

@@ -1,4 +1,19 @@
 import {
+  buildEmailCard,
+  buildEmailCardHeader,
+  buildEmailCardSection,
+  buildEmailDetailRow,
+  buildEmailDetailTable,
+  buildEmailDocumentClose,
+  buildEmailDocumentOpen,
+  buildEmailHeading,
+  buildEmailParagraph,
+  buildEmailOuterTable,
+  buildEmailStatusBadge,
+} from './email-html-layout';
+import { emailLightInlineStyle } from './email-html-tokens';
+import { escapeHtml } from './email-html.util';
+import {
   buildEmailLogoWordmarkHtml,
   plainTextBrandLead,
   type EmailBranding,
@@ -23,14 +38,6 @@ type AdminCustomerActivityMailInput = {
   amountUsd?: string;
   detailsLines?: string[];
 };
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function kindHeadline(kind: AdminCustomerActivityKind): string {
   switch (kind) {
@@ -93,31 +100,42 @@ export function buildAdminCustomerActivityHtml(
   );
   const color = kindAccentColor(input.kind);
   const headline = kindHeadline(input.kind);
+
+  const detailRows = [
+    buildEmailDetailRow('Customer', escapeHtml(input.customerName)),
+    buildEmailDetailRow('Email', escapeHtml(input.customerEmail)),
+    ...(input.reference
+      ? [buildEmailDetailRow('Reference', escapeHtml(input.reference))]
+      : []),
+    ...(input.contextLabel
+      ? [buildEmailDetailRow('Context', escapeHtml(input.contextLabel))]
+      : []),
+    ...(input.amountUsd
+      ? [buildEmailDetailRow('Amount', escapeHtml(input.amountUsd))]
+      : []),
+  ].join('');
+
   const detailsHtml =
     input.detailsLines && input.detailsLines.length > 0
-      ? input.detailsLines
-          .map(
-            (line) =>
-              `<p style="margin:4px 0;color:#e8dcc8;">${escapeHtml(line)}</p>`,
-          )
-          .join('')
+      ? `<div class="email-divider" style="margin-top:12px;padding-top:12px;border-top:1px solid ${emailLightInlineStyle('divider')};">
+${input.detailsLines.map((line) => buildEmailParagraph(escapeHtml(line), 'body')).join('')}
+</div>`
       : '';
 
-  return `
-  <html><body style="font-family:Arial,sans-serif;background:#0f0818;color:#f7f2e8;padding:24px;">
-    <div style="max-width:580px;margin:0 auto;border:1px solid rgba(212,175,55,.3);border-radius:14px;padding:22px;background:#1a1026;">
-      ${logoBlock}
-      <p style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:${color};margin:0 0 8px;">${escapeHtml(headline)}</p>
-      <h1 style="font-size:20px;margin:0 0 16px;">Customer activity</h1>
-      <p><strong>Customer:</strong> ${escapeHtml(input.customerName)}</p>
-      <p><strong>Email:</strong> ${escapeHtml(input.customerEmail)}</p>
-      ${input.reference ? `<p><strong>Reference:</strong> ${escapeHtml(input.reference)}</p>` : ''}
-      ${input.contextLabel ? `<p><strong>Context:</strong> ${escapeHtml(input.contextLabel)}</p>` : ''}
-      ${input.amountUsd ? `<p><strong>Amount:</strong> ${escapeHtml(input.amountUsd)}</p>` : ''}
-      ${detailsHtml ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(212,175,55,.2);">${detailsHtml}</div>` : ''}
-    </div>
-  </body></html>
-  `.trim();
+  const header = buildEmailCardHeader(`
+${logoBlock}
+<div style="margin:0 0 8px;">${buildEmailStatusBadge(headline, color)}</div>
+${buildEmailHeading('Customer activity', 1)}
+`);
+
+  const body = buildEmailCardSection(`
+${buildEmailDetailTable(detailRows)}
+${detailsHtml}
+`);
+
+  return `${buildEmailDocumentOpen('Customer activity')}
+${buildEmailOuterTable(buildEmailCard(`${header}${body}`))}
+${buildEmailDocumentClose()}`.trim();
 }
 
 export function buildAdminCustomerActivityText(
