@@ -208,6 +208,13 @@ export class FloorLayoutService {
           });
 
       await this.syncTableVisualCoordinates(tx, items);
+
+      // Link the saved plan to venue events that never got an explicit floorLayoutId.
+      await tx.upcomingVenueConfig.updateMany({
+        where: { floorLayoutId: null },
+        data: { floorLayoutId: saved.id },
+      });
+
       return saved;
     });
 
@@ -257,6 +264,12 @@ export class FloorLayoutService {
         });
       }
     }
+  }
+
+  /** Active layout saved from the admin 3D editor (shared default floor plan). */
+  async getActiveFloorLayoutId(): Promise<string | null> {
+    const row = await this.findActiveRow();
+    return row?.id ?? null;
   }
 
   private async findActiveRow() {

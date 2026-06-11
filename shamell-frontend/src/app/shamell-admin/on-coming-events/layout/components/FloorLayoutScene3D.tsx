@@ -21,8 +21,10 @@ type Props = {
   paletteDragOver?: boolean;
   onSelect: (id: string | null) => void;
   onMoveItem: (id: string, x: number, y: number) => void;
-  onMoveSceneZone: (kind: "stage" | "carpet", x: number, z: number) => void;
+  onMoveStage: (x: number, z: number) => void;
   onReservedSelect?: (id: string) => void;
+  allowItemDrag?: boolean;
+  showEditorActions?: boolean;
   dirty: boolean;
   saving: boolean;
   onSave: () => void;
@@ -44,8 +46,10 @@ export default function FloorLayoutScene3D({
   paletteDragOver = false,
   onSelect,
   onMoveItem,
-  onMoveSceneZone,
+  onMoveStage,
   onReservedSelect,
+  allowItemDrag = true,
+  showEditorActions = true,
   dirty,
   saving,
   onSave,
@@ -60,8 +64,7 @@ export default function FloorLayoutScene3D({
       sceneZones={sceneZones}
       selectedId={selectedId}
       onSelect={onSelect}
-      onMoveStage={(x, z) => onMoveSceneZone("stage", x, z)}
-      onMoveCarpet={(x, z) => onMoveSceneZone("carpet", x, z)}
+      onMoveStage={onMoveStage}
     />
   );
 
@@ -76,6 +79,7 @@ export default function FloorLayoutScene3D({
       onSelect={onSelect}
       onReservedSelect={onReservedSelect}
       onMoveItem={onMoveItem}
+      allowDrag={allowItemDrag}
     />
   );
 
@@ -106,18 +110,20 @@ export default function FloorLayoutScene3D({
           sceneDecorAdmin={sceneDecorAdmin}
         />
       </div>
-      <FloorLayoutEditorActions
-        className="absolute top-auto right-4 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] left-4 z-[120] max-w-none sm:left-auto sm:max-w-[min(100%,20rem)] lg:max-w-none"
-        dirty={dirty}
-        saving={saving}
-        selectedId={selectedId}
-        canDeleteSelected={!isSceneSelectId(selectedId)}
-        selectionLabel={sceneSelectionLabel(selectedId)}
-        onSave={onSave}
-        onRotateLeft={onRotateLeft}
-        onRotateRight={onRotateRight}
-        onDelete={onDelete}
-      />
+      {showEditorActions ? (
+        <FloorLayoutEditorActions
+          className="absolute top-auto right-4 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] left-4 z-[120] max-w-none sm:left-auto sm:max-w-[min(100%,20rem)] lg:max-w-none"
+          dirty={dirty}
+          saving={saving}
+          selectedId={selectedId}
+          canDeleteSelected={!isSceneSelectId(selectedId)}
+          selectionLabel={sceneSelectionLabel(selectedId)}
+          onSave={onSave}
+          onRotateLeft={onRotateLeft}
+          onRotateRight={onRotateRight}
+          onDelete={onDelete}
+        />
+      ) : null}
     </div>
   );
 }

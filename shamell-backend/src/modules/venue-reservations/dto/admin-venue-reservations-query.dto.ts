@@ -1,5 +1,9 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { VenueSeatReservationStatus } from '@prisma/client';
+import {
+  VENUE_RESERVATION_PAYMENT_CHANNELS,
+  type VenueReservationPaymentChannel,
+} from '../venue-reservation-payment-channel.const';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
@@ -44,4 +48,9 @@ export class AdminVenueReservationsQueryDto {
   @IsOptional()
   @IsUUID()
   layoutItemId?: string;
+
+  @ApiPropertyOptional({ enum: VENUE_RESERVATION_PAYMENT_CHANNELS })
+  @IsOptional()
+  @IsIn([...VENUE_RESERVATION_PAYMENT_CHANNELS])
+  paymentChannel?: VenueReservationPaymentChannel;
 }

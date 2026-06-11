@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import type { ConfigService } from '@nestjs/config';
+import { emailLightInlineStyle } from './email-html-tokens';
+import { escapeHtml } from './email-html.util';
 
 /** Public path on the Next.js site (`public/01_bailarina.png`). */
 export const EMAIL_LOGO_PUBLIC_PATH = '/01_bailarina.png';
@@ -9,14 +11,6 @@ export type EmailBranding = {
   siteBaseUrl?: string;
   logoImageUrl?: string;
 };
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function parseFrontendOrigins(raw?: string): string[] {
   if (!raw?.trim()) return [];
@@ -156,12 +150,14 @@ export function buildEmailLogoWordmarkHtml(
   branding?: string | EmailBranding,
 ): string {
   const { logoImageUrl } = normalizeBrandingInput(branding);
-  const wordmark = `<p style="margin:14px 0 0;font-family:Georgia,serif;font-size:18px;letter-spacing:0.26em;color:#d4af37;font-weight:600;">SHAMELL</p>`;
+  const dividerColor = emailLightInlineStyle('divider');
+  const wordmarkColor = emailLightInlineStyle('wordmarkGold');
+  const wordmark = `<p class="email-wordmark" style="margin:14px 0 0;font-family:Georgia,serif;font-size:18px;letter-spacing:0.26em;color:${wordmarkColor};font-weight:600;">SHAMELL</p>`;
   if (!logoImageUrl) {
-    return `<div style="text-align:center;padding:0 0 20px;border-bottom:1px solid rgba(212,175,106,0.2);">${wordmark}</div>`;
+    return `<div class="email-header-divider" style="text-align:center;padding:0 0 20px;border-bottom:1px solid ${dividerColor};">${wordmark}</div>`;
   }
   const src = escapeHtml(logoImageUrl);
-  return `<div style="text-align:center;padding:0 0 20px;border-bottom:1px solid rgba(212,175,106,0.2);">
+  return `<div class="email-header-divider" style="text-align:center;padding:0 0 20px;border-bottom:1px solid ${dividerColor};">
 <img src="${src}" alt="Shamell" width="140" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;" />
 ${wordmark}
 </div>`;

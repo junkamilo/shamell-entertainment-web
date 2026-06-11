@@ -9,10 +9,11 @@ export type VenueSeatReservationRow = {
   amount: number;
   currency: string;
   status: string;
+  paymentChannel: "STRIPE" | "CASH";
   customerName: string;
   customerEmail: string;
   customerPhone: string | null;
-  stripeCheckoutSessionId: string;
+  stripeCheckoutSessionId: string | null;
   paidAt: string | null;
   createdAt: string;
 };

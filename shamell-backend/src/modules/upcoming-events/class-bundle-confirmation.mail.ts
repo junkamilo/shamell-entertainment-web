@@ -1,4 +1,11 @@
 import {
+  buildEmailHeading,
+  buildEmailParagraph,
+  buildPremiumEmail,
+} from '../mail/email-html-layout';
+import { emailLightInlineStyle } from '../mail/email-html-tokens';
+import { escapeHtml } from '../mail/email-html.util';
+import {
   buildEmailLogoWordmarkHtml,
   plainTextBrandLead,
   type EmailBranding,
@@ -69,43 +76,28 @@ export function buildClassBundleConfirmationHtml(input: {
       const amount = escapeHtml(line.amount);
       const ref = escapeHtml(line.confirmationReference);
       return `<tr>
-        <td style="padding:12px 0;border-bottom:1px solid rgba(212,175,106,0.15);">
-          <p style="margin:0;font-size:14px;line-height:1.6;color:#d6cfbd;"><strong style="color:#fff8e6;">${session}</strong><br/>
-          <span style="color:#b9b09f;">Amount:</span> ${amount}<br/>
-          <span style="color:#b9b09f;">Confirmation:</span> <span style="color:#e8d5a3;font-weight:600;">#${ref}</span></p>
-        </td>
-      </tr>`;
+<td class="email-divider" style="padding:12px 0;border-bottom:1px solid ${emailLightInlineStyle('divider')};">
+<p class="email-text-body" style="margin:0;font-size:14px;line-height:1.6;color:${emailLightInlineStyle('textBody')};"><strong class="email-text-primary" style="color:${emailLightInlineStyle('textPrimary')};">${session}</strong><br/>
+<span class="email-text-muted" style="color:${emailLightInlineStyle('textMuted')};">Amount:</span> ${amount}<br/>
+<span class="email-text-muted" style="color:${emailLightInlineStyle('textMuted')};">Confirmation:</span> <span class="email-text-accent" style="color:${emailLightInlineStyle('textAccent')};font-weight:600;">#${ref}</span></p>
+</td>
+</tr>`;
     })
     .join('');
-  return `<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /></head>
-<body style="margin:0;padding:0;background:#0c0610;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0c0610;padding:28px 12px;">
-    <tr><td align="center">
-      <table role="presentation" width="100%" style="max-width:560px;border:1px solid rgba(212,175,106,0.35);border-radius:16px;background:linear-gradient(165deg,#1a0d24 0%,#120818 100%);">
-        <tr><td style="padding:28px 26px 22px;border-bottom:1px solid rgba(212,175,106,0.2);">
-          ${logoBlock}
-          <h1 style="margin:12px 0 0;font-size:22px;line-height:1.35;color:#fff8e6;font-weight:600;">Classes confirmed</h1>
-        </td></tr>
-        <tr><td style="padding:24px 26px 28px;font-family:Georgia,serif;">
-          <p style="margin:0;font-size:15px;line-height:1.75;color:#d6cfbd;">Hello <strong style="color:#fff8e6;">${name}</strong>,</p>
-          <p style="margin:16px 0 0;font-size:15px;line-height:1.75;color:#d6cfbd;">Your purchase for <strong style="color:#fff8e6;">${event}</strong> on <strong style="color:#fff8e6;">${dateLabel}</strong> is confirmed.</p>
-          <p style="margin:16px 0 0;font-size:15px;line-height:1.75;color:#d6cfbd;"><strong>Total paid:</strong> ${total}</p>
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:18px;">${rows}</table>
-          <p style="margin:20px 0 0;font-size:14px;line-height:1.65;color:#b9b09f;">Please present this email at check-in for each class.</p>
-          <p style="margin:22px 0 0;font-size:14px;color:#b9b09f;">Thank you,<br/><span style="color:#e8d5a3;">Shamell Entertainment</span></p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body></html>`;
-}
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  const header = `${logoBlock}
+${buildEmailHeading('Classes confirmed', 1)}`;
+
+  const body = `${buildEmailParagraph(`Hello <strong class="email-text-primary" style="color:${emailLightInlineStyle('textPrimary')};">${name}</strong>,`)}
+${buildEmailParagraph(`Your purchase for <strong class="email-text-primary" style="color:${emailLightInlineStyle('textPrimary')};">${event}</strong> on <strong class="email-text-primary" style="color:${emailLightInlineStyle('textPrimary')};">${dateLabel}</strong> is confirmed.`)}
+${buildEmailParagraph(`<strong>Total paid:</strong> ${total}`)}
+<table role="presentation" class="email-divider" width="100%" cellspacing="0" cellpadding="0" style="margin-top:18px;">${rows}</table>
+${buildEmailParagraph('Please present this email at check-in for each class.', 'muted')}
+<p class="email-text-muted" style="margin:22px 0 0;font-size:14px;color:${emailLightInlineStyle('textMuted')};">Thank you,<br/><span class="email-text-accent" style="color:${emailLightInlineStyle('textAccent')};">Shamell Entertainment</span></p>`;
+
+  return buildPremiumEmail({
+    title: `Classes confirmed — ${input.eventName}`,
+    headerHtml: header,
+    bodyHtml: body,
+  });
 }

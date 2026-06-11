@@ -17,7 +17,7 @@ export type AdminStripePaymentRow = {
   eventSlug: string | null;
   eventId: string | null;
   reservationId: string | null;
-  stripeCheckoutSessionId: string;
+  stripeCheckoutSessionId: string | null;
   paymentMethodLabel: string | null;
   createdAt: string;
   paidAt: string | null;

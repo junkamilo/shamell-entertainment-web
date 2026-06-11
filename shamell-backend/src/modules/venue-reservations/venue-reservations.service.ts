@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from 'crypto';
 import {
   BadRequestException,
   ConflictException,
@@ -35,13 +36,30 @@ import {
   resolveReservationWindow,
 } from '../venue-layout-settings/reservation-sales-window.util';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
+import type { VenueReservationPaymentChannel } from './venue-reservation-payment-channel.const';
 import {
   buildVenueReservationConfirmationHtml,
   buildVenueReservationConfirmationSubject,
   buildVenueReservationConfirmationText,
 } from './venue-reservation-confirmation.mail';
+import {
+  buildVenueReservationPaymentRequestHtml,
+  buildVenueReservationPaymentRequestSubject,
+  buildVenueReservationPaymentRequestText,
+} from './venue-reservation-payment-request.mail';
+import { resolveVenueSeatDisplayLabel } from './venue-seat-display-label.util';
 
 const CHECKOUT_TTL_MINUTES = 30;
+
+const venueSeatReservationTableInclude = {
+  venueTableConfig: { select: { tableName: true, size: true } },
+} as const;
+
+type VenueSeatReservationWithTableConfig =
+  Prisma.VenueSeatReservationGetPayload<{
+    include: typeof venueSeatReservationTableInclude;
+  }>;
+
 type StripeWebhookEventLite = {
   id: string;
   type: string;
@@ -172,60 +190,12 @@ export class VenueReservationsService {
     ) {
       throw new BadRequestException('All seats are sold.');
     }
-    const layout = await this.floorLayout.getPublicFloorLayoutForClient(
-      ctx.floorLayoutId,
-    );
-    const layoutItem = layout.items.find((i) => i.id === dto.layoutItemId);
-    if (!layoutItem) {
-      throw new BadRequestException('Seat is not on the published floor plan.');
-    }
 
-    const kind = this.mapKind(dto.kind);
-    let venueTableConfigId: string | null = null;
-    let amount: Prisma.Decimal;
-    let productName: string;
-
-    if (kind === VenueSeatKind.CATALOG_TABLE) {
-      if (layoutItem.kind !== 'catalog_table') {
-        throw new BadRequestException('Invalid table selection.');
-      }
-      if (!dto.venueTableConfigId) {
-        throw new BadRequestException(
-          'venueTableConfigId is required for tables.',
-        );
-      }
-      if (layoutItem.venueTableConfigId !== dto.venueTableConfigId) {
-        throw new BadRequestException('Table does not match floor plan item.');
-      }
-
-      const table = await this.prisma.venueTableConfig.findFirst({
-        where: { id: dto.venueTableConfigId, isActive: true },
-      });
-      if (!table) {
-        throw new NotFoundException('Table not found.');
-      }
-      venueTableConfigId = table.id;
-      amount = table.bundlePrice;
-      productName = `Table ${formatVenueTableSizeLabel(table.size)}`;
-    } else {
-      if (layoutItem.kind !== 'standalone_chair') {
-        throw new BadRequestException('Invalid chair selection.');
-      }
-      const chairId = layoutItem.venueStandaloneChairId;
-      const chair = await this.prisma.venueStandaloneChair.findFirst({
-        where: { id: chairId, isActive: true },
-      });
-      if (!chair) {
-        throw new NotFoundException('Standalone chair not found.');
-      }
-      amount = chair.unitPrice;
-      productName = 'Standalone chair';
-    }
-
+    const seat = await this.resolveSeatSelection(dto, ctx.floorLayoutId);
     await this.assertSeatAvailable({
-      kind,
-      layoutItemId: dto.layoutItemId,
-      venueTableConfigId,
+      kind: seat.kind,
+      layoutItemId: seat.layoutItemId,
+      venueTableConfigId: seat.venueTableConfigId,
       eventDate,
       upcomingEventId: ctx.upcomingEventId,
     });
@@ -233,13 +203,6 @@ export class VenueReservationsService {
     const eventLabel =
       settings.reservationEventLabel?.trim() ||
       eventDate.toISOString().slice(0, 10);
-    const amountCents = Math.round(Number(amount) * 100);
-    if (amountCents < 50) {
-      throw new BadRequestException('Invalid seat price.');
-    }
-
-    const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
-    const frontendUrl = this.stripeService.frontendUrl();
     let eventSlug = ctx.slug;
     if (!eventSlug && ctx.upcomingEventId) {
       const eventRow = await this.prisma.event.findUnique({
@@ -248,74 +211,27 @@ export class VenueReservationsService {
       });
       eventSlug = eventRow?.slug ?? null;
     }
-    const eventSlugQuery = eventSlug
-      ? `&event_slug=${encodeURIComponent(eventSlug)}`
-      : '';
-    const returnUrl = `${frontendUrl}/on-coming-events/return?session_id={CHECKOUT_SESSION_ID}${eventSlugQuery}`;
-
-    const sessionParams = {
-      ui_mode: 'embedded_page',
-      mode: 'payment',
-      customer_email: dto.customerEmail,
-      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
-      ...stripeAutomaticTaxParams(),
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'usd',
-            unit_amount: amountCents,
-            product_data: stripeTaxProductData({
-              name: productName,
-              description: `Event: ${eventLabel}`,
-            }),
-          },
-        },
-      ],
+    const returnUrl = this.buildPublicVenueReturnUrl(eventSlug);
+    const { session, expiresAt } = await this.createStripeCheckoutSession({
+      amount: seat.amount,
+      productName: seat.productName,
+      eventLabel,
+      customerEmail: dto.customerEmail,
+      returnUrl,
       metadata: { flow: 'venue_seat' },
-      return_url: returnUrl,
-      expires_at: Math.floor(expiresAt.getTime() / 1000),
-    };
+    });
 
-    const session = (await this.stripeService.client.checkout.sessions.create(
-      sessionParams as Parameters<
-        typeof this.stripeService.client.checkout.sessions.create
-      >[0],
-    )) as { id: string; client_secret: string | null };
-
-    if (!session.client_secret) {
-      throw new BadRequestException('Could not start checkout.');
-    }
-
-    const reservation = await (async () => {
-      try {
-        return await this.prisma.venueSeatReservation.create({
-          data: {
-            upcomingEventId: ctx.upcomingEventId,
-            kind,
-            venueTableConfigId,
-            layoutItemId: dto.layoutItemId,
-            eventDate,
-            amount,
-            currency: 'usd',
-            status: VenueSeatReservationStatus.PENDING_PAYMENT,
-            stripeCheckoutSessionId: session.id,
-            customerName: dto.customerName.trim(),
-            customerEmail: dto.customerEmail.trim().toLowerCase(),
-            customerPhone: dto.customerPhone?.trim() || null,
-            expiresAt,
-          },
-        });
-      } catch (err) {
-        if (
-          err instanceof Prisma.PrismaClientKnownRequestError &&
-          err.code === 'P2002'
-        ) {
-          throw new ConflictException('This seat is already reserved.');
-        }
-        throw err;
-      }
-    })();
+    const reservation = await this.createPendingStripeReservation({
+      upcomingEventId: ctx.upcomingEventId,
+      seat,
+      eventDate,
+      dto,
+      sessionId: session.id,
+      expiresAt,
+      paymentChannel: 'STRIPE',
+      createdByAdminId: null,
+      payTokenHash: null,
+    });
 
     await this.stripeService.client.checkout.sessions.update(session.id, {
       metadata: {
@@ -333,6 +249,212 @@ export class VenueReservationsService {
       clientSecret: session.client_secret,
       reservationId: reservation.id,
     };
+  }
+
+  async getAdminAvailability(query?: {
+    upcomingEventId?: string;
+    upcomingEventSlug?: string;
+  }) {
+    const ctx = await this.resolveVenueContext(query);
+    const eventDate = this.assertAdminEventDate(ctx);
+    const upcomingEventId = ctx.upcomingEventId!;
+
+    const paid = await this.findPaidReservations(eventDate, upcomingEventId);
+    const blocking = await this.findBlockingReservations(
+      eventDate,
+      upcomingEventId,
+    );
+    const pending = blocking.filter(
+      (r) => !paid.some((p) => p.layoutItemId === r.layoutItemId),
+    );
+
+    return {
+      upcomingEventId,
+      upcomingEventSlug: ctx.slug,
+      eventDate: eventDate.toISOString(),
+      reservedLayoutItemIds: [...new Set(paid.map((r) => r.layoutItemId))],
+      pendingLayoutItemIds: [...new Set(pending.map((r) => r.layoutItemId))],
+      paidSeatHolders: paid.map((r) => ({
+        layoutItemId: r.layoutItemId,
+        customerName: r.customerName.trim() || 'Guest',
+      })),
+    };
+  }
+
+  async createAdminCheckoutSession(
+    adminUserId: string,
+    dto: CreateCheckoutSessionDto,
+  ) {
+    const ctx = await this.resolveVenueContext({
+      upcomingEventId: dto.upcomingEventId,
+      upcomingEventSlug: dto.upcomingEventSlug,
+    });
+    const eventDate = this.assertAdminEventDate(ctx);
+    const upcomingEventId = ctx.upcomingEventId!;
+
+    const seat = await this.resolveSeatSelection(dto, ctx.floorLayoutId);
+    await this.assertSeatAvailable({
+      kind: seat.kind,
+      layoutItemId: seat.layoutItemId,
+      venueTableConfigId: seat.venueTableConfigId,
+      eventDate,
+      upcomingEventId,
+    });
+
+    const settings = ctx.settings;
+    const eventLabel =
+      settings.reservationEventLabel?.trim() ||
+      eventDate.toISOString().slice(0, 10);
+    const returnUrl = `${this.stripeService.frontendUrl().replace(/\/$/, '')}/pay/venue-seat/return?session_id={CHECKOUT_SESSION_ID}`;
+    const rawToken = randomBytes(32).toString('hex');
+    const payTokenHash = this.hashPayToken(rawToken);
+
+    const { session, expiresAt } = await this.createStripeCheckoutSession({
+      amount: seat.amount,
+      productName: seat.productName,
+      eventLabel,
+      customerEmail: dto.customerEmail,
+      returnUrl,
+      metadata: {
+        flow: 'venue_seat',
+        adminUserId,
+        paymentChannel: 'STRIPE',
+      },
+    });
+
+    const reservation = await this.createPendingStripeReservation({
+      upcomingEventId,
+      seat,
+      eventDate,
+      dto,
+      sessionId: session.id,
+      expiresAt,
+      paymentChannel: 'STRIPE',
+      createdByAdminId: adminUserId,
+      payTokenHash,
+    });
+
+    await this.stripeService.client.checkout.sessions.update(session.id, {
+      metadata: {
+        flow: 'venue_seat',
+        reservationId: reservation.id,
+        upcomingEventId,
+        adminUserId,
+        paymentChannel: 'STRIPE',
+      },
+    });
+
+    const payUrl = this.buildVenueSeatPayUrl(rawToken);
+    await this.sendReservationPaymentRequestEmail({
+      reservation,
+      seatLabel: seat.productName,
+      eventLabel,
+      payUrl,
+    });
+
+    this.logger.log(
+      `admin-checkout-session reservationId=${reservation.id} session=${session.id} admin=${adminUserId}`,
+    );
+
+    return {
+      reservationId: reservation.id,
+      message: 'Payment link sent to customer.',
+      payUrl,
+    };
+  }
+
+  async createAdminCashReservation(
+    adminUserId: string,
+    dto: CreateCheckoutSessionDto,
+  ) {
+    const ctx = await this.resolveVenueContext({
+      upcomingEventId: dto.upcomingEventId,
+      upcomingEventSlug: dto.upcomingEventSlug,
+    });
+    const eventDate = this.assertAdminEventDate(ctx);
+    const upcomingEventId = ctx.upcomingEventId!;
+
+    const seat = await this.resolveSeatSelection(dto, ctx.floorLayoutId);
+    await this.assertSeatAvailable({
+      kind: seat.kind,
+      layoutItemId: seat.layoutItemId,
+      venueTableConfigId: seat.venueTableConfigId,
+      eventDate,
+      upcomingEventId,
+    });
+
+    const now = new Date();
+    const saved = await this.createPaidCashReservation({
+      upcomingEventId,
+      kind: seat.kind,
+      venueTableConfigId: seat.venueTableConfigId,
+      layoutItemId: seat.layoutItemId,
+      eventDate,
+      amount: seat.amount,
+      currency: 'usd',
+      status: VenueSeatReservationStatus.PAID,
+      paymentChannel: 'CASH',
+      stripeCheckoutSessionId: null,
+      paymentMethodType: 'cash',
+      customerName: dto.customerName.trim(),
+      customerEmail: dto.customerEmail.trim().toLowerCase(),
+      customerPhone: dto.customerPhone?.trim() || null,
+      paidAt: now,
+      createdByAdminId: adminUserId,
+    });
+
+    this.logger.log(
+      `admin-cash-reservation id=${saved.id} admin=${adminUserId}`,
+    );
+
+    const sent = await this.sendReservationPaidConfirmationEmail(saved);
+    if (sent) {
+      await this.prisma.venueSeatReservation.update({
+        where: { id: saved.id },
+        data: { customerEmailSentAt: now },
+      });
+    }
+
+    await this.adminPaymentNotify.notifyPaymentOutcome({
+      outcome: 'PAID',
+      flow: 'VENUE_SEAT',
+      customerName: saved.customerName,
+      customerEmail: saved.customerEmail,
+      amount: Number(saved.amount),
+      currency: saved.currency,
+      contextLabel: await this.venueReservationContextLabel(saved),
+      reference: saved.id.slice(0, 8).toUpperCase(),
+    });
+
+    return {
+      message: 'Cash reservation confirmed.',
+      reservation: this.mapReservationAdmin(saved),
+    };
+  }
+
+  async resolvePayCheckoutClientSecret(token: string): Promise<string> {
+    const reservation = await this.findActiveReservationByPayToken(token);
+    if (!reservation.stripeCheckoutSessionId) {
+      throw new BadRequestException(
+        'Checkout is not available for this reservation.',
+      );
+    }
+
+    const session = await this.stripeService.client.checkout.sessions.retrieve(
+      reservation.stripeCheckoutSessionId,
+    );
+
+    if (session.status === 'complete' && session.payment_status === 'paid') {
+      throw new BadRequestException('This payment has already been completed.');
+    }
+    if (session.status === 'expired') {
+      await this.markExpiredFromSession(reservation.stripeCheckoutSessionId);
+      throw new BadRequestException('Payment link has expired.');
+    }
+    if (!session.client_secret) {
+      throw new BadRequestException('Could not start checkout.');
+    }
+    return session.client_secret;
   }
 
   async getSessionStatus(sessionId: string) {
@@ -388,7 +510,7 @@ export class VenueReservationsService {
 
     return {
       stripeStatus,
-      reservation: this.mapReservationPublic(current),
+      reservation: await this.mapReservationPublicEnriched(current),
     };
   }
 
@@ -452,6 +574,7 @@ export class VenueReservationsService {
     status?: VenueSeatReservationStatus;
     eventDate?: string;
     layoutItemId?: string;
+    paymentChannel?: VenueReservationPaymentChannel;
   }) {
     const page = Math.max(1, Number(query.page ?? 1));
     const perPage = Number(query.perPage ?? 10);
@@ -466,6 +589,13 @@ export class VenueReservationsService {
     }
     if (query.layoutItemId?.trim()) {
       where.layoutItemId = query.layoutItemId.trim();
+    }
+    if (query.paymentChannel) {
+      (
+        where as Prisma.VenueSeatReservationWhereInput & {
+          paymentChannel?: VenueReservationPaymentChannel;
+        }
+      ).paymentChannel = query.paymentChannel;
     }
     const upcomingEventId = (query as { upcomingEventId?: string })
       .upcomingEventId;
@@ -711,7 +841,7 @@ export class VenueReservationsService {
         reservationClosesAt: config?.reservationClosesAt ?? null,
         reservationEventDate: config?.reservationEventDate ?? null,
       });
-      return {
+      return this.finalizeVenueContext({
         upcomingEventId: event.id,
         slug: event.slug,
         floorLayoutId: config?.floorLayoutId ?? null,
@@ -722,7 +852,7 @@ export class VenueReservationsService {
           reservationTimezone:
             config?.reservationTimezone ?? 'America/New_York',
         },
-      };
+      });
     }
 
     const legacyEvent = await this.prisma.event.findFirst({
@@ -740,7 +870,7 @@ export class VenueReservationsService {
         reservationClosesAt: config.reservationClosesAt,
         reservationEventDate: config.reservationEventDate,
       });
-      return {
+      return this.finalizeVenueContext({
         upcomingEventId: legacyEvent.id,
         slug: legacyEvent.slug,
         floorLayoutId: config.floorLayoutId,
@@ -750,16 +880,32 @@ export class VenueReservationsService {
           reservationEventLabel: config.reservationEventLabel,
           reservationTimezone: config.reservationTimezone,
         },
-      };
+      });
     }
 
     const settings = await this.getLegacyReservationSettings();
-    return {
+    return this.finalizeVenueContext({
       upcomingEventId: legacyEvent?.id ?? null,
       slug: legacyEvent?.slug ?? null,
-      floorLayoutId: null as string | null,
+      floorLayoutId: null,
       settings,
+    });
+  }
+
+  private async finalizeVenueContext(ctx: {
+    upcomingEventId: string | null;
+    slug: string | null;
+    floorLayoutId: string | null;
+    settings: {
+      clientEnabled: boolean;
+      window: ReturnType<typeof resolveReservationWindow>;
+      reservationEventLabel: string | null;
+      reservationTimezone: string;
     };
+  }) {
+    const floorLayoutId =
+      ctx.floorLayoutId ?? (await this.floorLayout.getActiveFloorLayoutId());
+    return { ...ctx, floorLayoutId };
   }
 
   private async getLegacyReservationSettings() {
@@ -799,6 +945,330 @@ export class VenueReservationsService {
     const paid = await this.findPaidReservations(eventDate, upcomingEventId);
     const reserved = new Set(paid.map((r) => r.layoutItemId));
     return reservableIds.every((id) => reserved.has(id));
+  }
+
+  private assertAdminEventDate(
+    ctx: Awaited<ReturnType<typeof this.resolveVenueContext>>,
+  ) {
+    if (!ctx.upcomingEventId) {
+      throw new BadRequestException('No upcoming venue event configured.');
+    }
+    if (!ctx.floorLayoutId) {
+      throw new BadRequestException(
+        'Floor layout is not configured. Save the seating layout in the 3D editor first.',
+      );
+    }
+    const eventDate = eventDateForReservations(ctx.settings.window);
+    if (!eventDate) {
+      throw new BadRequestException(
+        'Set the reservation event date in On Coming Events before reserving seats.',
+      );
+    }
+    return eventDate;
+  }
+
+  private async resolveSeatSelection(
+    dto: CreateCheckoutSessionDto,
+    floorLayoutId: string | null,
+  ) {
+    const layout =
+      await this.floorLayout.getPublicFloorLayoutForClient(floorLayoutId);
+    const layoutItem = layout.items.find((i) => i.id === dto.layoutItemId);
+    if (!layoutItem) {
+      throw new BadRequestException('Seat is not on the published floor plan.');
+    }
+
+    const kind = this.mapKind(dto.kind);
+    let venueTableConfigId: string | null = null;
+    let amount: Prisma.Decimal;
+    let venueStandaloneChairId: string | null = null;
+    let tableForLabel: {
+      id: string;
+      tableName: string;
+      size: VenueTableSize;
+      sortOrder: number;
+    } | null = null;
+
+    if (kind === VenueSeatKind.CATALOG_TABLE) {
+      if (layoutItem.kind !== 'catalog_table') {
+        throw new BadRequestException('Invalid table selection.');
+      }
+      if (!dto.venueTableConfigId) {
+        throw new BadRequestException(
+          'venueTableConfigId is required for tables.',
+        );
+      }
+      if (layoutItem.venueTableConfigId !== dto.venueTableConfigId) {
+        throw new BadRequestException('Table does not match floor plan item.');
+      }
+
+      const table = await this.prisma.venueTableConfig.findFirst({
+        where: { id: dto.venueTableConfigId, isActive: true },
+      });
+      if (!table) {
+        throw new NotFoundException('Table not found.');
+      }
+      venueTableConfigId = table.id;
+      amount = table.bundlePrice;
+      tableForLabel = {
+        id: table.id,
+        tableName: table.tableName,
+        size: table.size,
+        sortOrder: table.sortOrder,
+      };
+    } else {
+      if (layoutItem.kind !== 'standalone_chair') {
+        throw new BadRequestException('Invalid chair selection.');
+      }
+      const chairId = layoutItem.venueStandaloneChairId;
+      const chair = await this.prisma.venueStandaloneChair.findFirst({
+        where: { id: chairId, isActive: true },
+      });
+      if (!chair) {
+        throw new NotFoundException('Standalone chair not found.');
+      }
+      venueStandaloneChairId = chair.id;
+      amount = chair.unitPrice;
+    }
+
+    const productName = await resolveVenueSeatDisplayLabel(
+      this.prisma,
+      this.floorLayout,
+      {
+        kind,
+        layoutItemId: dto.layoutItemId,
+        venueTableConfigId,
+        floorLayoutId,
+        venueTableConfig: tableForLabel,
+        venueStandaloneChairId,
+      },
+    );
+
+    return {
+      kind,
+      venueTableConfigId,
+      amount,
+      productName,
+      layoutItemId: dto.layoutItemId,
+    };
+  }
+
+  private async createStripeCheckoutSession(args: {
+    amount: Prisma.Decimal;
+    productName: string;
+    eventLabel: string;
+    customerEmail: string;
+    returnUrl: string;
+    metadata: Record<string, string>;
+  }) {
+    const amountCents = Math.round(Number(args.amount) * 100);
+    if (amountCents < 50) {
+      throw new BadRequestException('Invalid seat price.');
+    }
+
+    const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
+    const sessionParams = {
+      ui_mode: 'embedded_page',
+      mode: 'payment',
+      customer_email: args.customerEmail,
+      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
+      ...stripeAutomaticTaxParams(),
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: 'usd',
+            unit_amount: amountCents,
+            product_data: stripeTaxProductData({
+              name: args.productName,
+              description: `Event: ${args.eventLabel}`,
+            }),
+          },
+        },
+      ],
+      metadata: args.metadata,
+      return_url: args.returnUrl,
+      expires_at: Math.floor(expiresAt.getTime() / 1000),
+    };
+
+    const session = (await this.stripeService.client.checkout.sessions.create(
+      sessionParams as Parameters<
+        typeof this.stripeService.client.checkout.sessions.create
+      >[0],
+    )) as { id: string; client_secret: string | null };
+
+    if (!session.client_secret) {
+      throw new BadRequestException('Could not start checkout.');
+    }
+
+    return { session, expiresAt };
+  }
+
+  private async createPaidCashReservation(
+    data: Prisma.VenueSeatReservationUncheckedCreateInput,
+  ): Promise<VenueSeatReservationWithTableConfig> {
+    try {
+      return await this.prisma.venueSeatReservation.create({
+        data,
+        include: venueSeatReservationTableInclude,
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('This seat is already reserved.');
+      }
+      throw err;
+    }
+  }
+
+  private async createPendingStripeReservation(args: {
+    upcomingEventId: string;
+    seat: {
+      kind: VenueSeatKind;
+      venueTableConfigId: string | null;
+      amount: Prisma.Decimal;
+      layoutItemId: string;
+    };
+    eventDate: Date;
+    dto: CreateCheckoutSessionDto;
+    sessionId: string;
+    expiresAt: Date;
+    paymentChannel: VenueReservationPaymentChannel;
+    createdByAdminId: string | null;
+    payTokenHash: string | null;
+  }) {
+    try {
+      return await this.prisma.venueSeatReservation.create({
+        data: {
+          upcomingEventId: args.upcomingEventId,
+          kind: args.seat.kind,
+          venueTableConfigId: args.seat.venueTableConfigId,
+          layoutItemId: args.seat.layoutItemId,
+          eventDate: args.eventDate,
+          amount: args.seat.amount,
+          currency: 'usd',
+          status: VenueSeatReservationStatus.PENDING_PAYMENT,
+          paymentChannel: args.paymentChannel,
+          stripeCheckoutSessionId: args.sessionId,
+          payTokenHash: args.payTokenHash,
+          createdByAdminId: args.createdByAdminId,
+          customerName: args.dto.customerName.trim(),
+          customerEmail: args.dto.customerEmail.trim().toLowerCase(),
+          customerPhone: args.dto.customerPhone?.trim() || null,
+          expiresAt: args.expiresAt,
+        },
+      });
+    } catch (err) {
+      if (
+        err instanceof Prisma.PrismaClientKnownRequestError &&
+        err.code === 'P2002'
+      ) {
+        throw new ConflictException('This seat is already reserved.');
+      }
+      throw err;
+    }
+  }
+
+  private buildPublicVenueReturnUrl(eventSlug: string | null): string {
+    const frontendUrl = this.stripeService.frontendUrl();
+    const eventSlugQuery = eventSlug
+      ? `&event_slug=${encodeURIComponent(eventSlug)}`
+      : '';
+    return `${frontendUrl}/on-coming-events/return?session_id={CHECKOUT_SESSION_ID}${eventSlugQuery}`;
+  }
+
+  private hashPayToken(rawToken: string): string {
+    return createHash('sha256').update(rawToken).digest('hex');
+  }
+
+  private buildVenueSeatPayUrl(token: string): string {
+    const frontendBase = this.stripeService.frontendUrl().replace(/\/$/, '');
+    return `${frontendBase}/pay/venue-seat?token=${encodeURIComponent(token)}`;
+  }
+
+  private async findActiveReservationByPayToken(rawToken: string) {
+    const payTokenHash = this.hashPayToken(rawToken);
+    const reservation = await this.prisma.venueSeatReservation.findFirst({
+      where: {
+        payTokenHash,
+        status: VenueSeatReservationStatus.PENDING_PAYMENT,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!reservation) {
+      throw new NotFoundException('Payment link not found.');
+    }
+    if (reservation.expiresAt && reservation.expiresAt.getTime() < Date.now()) {
+      if (reservation.stripeCheckoutSessionId) {
+        await this.markExpiredFromSession(reservation.stripeCheckoutSessionId);
+      }
+      throw new BadRequestException('Payment link has expired.');
+    }
+    return reservation;
+  }
+
+  private async sendReservationPaymentRequestEmail(args: {
+    reservation: {
+      id: string;
+      customerName: string;
+      customerEmail: string;
+      amount: Prisma.Decimal;
+    };
+    seatLabel: string;
+    eventLabel: string;
+    payUrl: string;
+  }): Promise<void> {
+    const toEmail = args.reservation.customerEmail.trim().toLowerCase();
+    if (!toEmail) return;
+
+    const appPublicName =
+      this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+      'Shamell Entertainment';
+    const branding = emailBrandingFromConfig(this.config);
+    const frontendBaseUrl = branding.siteBaseUrl;
+    const recipientName = args.reservation.customerName.trim() || 'Guest';
+    const amountUsd = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(Number(args.reservation.amount));
+
+    const subject = buildVenueReservationPaymentRequestSubject(appPublicName);
+    const html = buildVenueReservationPaymentRequestHtml({
+      recipientName,
+      appPublicName,
+      frontendBaseUrl,
+      branding,
+      reservationReference: args.reservation.id.slice(0, 8).toUpperCase(),
+      eventLabel: args.eventLabel,
+      seatLabel: args.seatLabel,
+      amountUsd,
+      payUrl: args.payUrl,
+    });
+    const text = buildVenueReservationPaymentRequestText({
+      recipientName,
+      appPublicName,
+      frontendBaseUrl,
+      reservationReference: args.reservation.id.slice(0, 8).toUpperCase(),
+      eventLabel: args.eventLabel,
+      seatLabel: args.seatLabel,
+      amountUsd,
+      payUrl: args.payUrl,
+    });
+
+    const { ok: sent, errorText } = await this.mail.sendTransactional({
+      to: toEmail,
+      toName: recipientName,
+      subject,
+      html,
+      text,
+    });
+    if (!sent) {
+      this.logger.warn(
+        `reservation-payment-request-email-failed id=${args.reservation.id} reason=${errorText ?? 'provider_error'}`,
+      );
+    }
   }
 
   private mapKind(kind: CreateCheckoutSessionDto['kind']): VenueSeatKind {
@@ -881,6 +1351,7 @@ export class VenueReservationsService {
     customerPhone: string | null;
     paidAt: Date | null;
     venueTableConfig: { tableName: string; size: string } | null;
+    seatDisplayLabel?: string;
   }) {
     return {
       id: row.id,
@@ -894,6 +1365,7 @@ export class VenueReservationsService {
         ? formatVenueTableSizeLabel(row.venueTableConfig.size as VenueTableSize)
         : null,
       tableSize: row.venueTableConfig?.size ?? null,
+      seatDisplayLabel: row.seatDisplayLabel ?? null,
       eventDate: row.eventDate.toISOString(),
       amount: Number(row.amount),
       currency: row.currency,
@@ -902,6 +1374,63 @@ export class VenueReservationsService {
       customerEmail: maskEmail(row.customerEmail),
       paidAt: row.paidAt?.toISOString() ?? null,
     };
+  }
+
+  private async mapReservationPublicEnriched(row: {
+    id: string;
+    kind: VenueSeatKind;
+    layoutItemId: string;
+    venueTableConfigId: string | null;
+    upcomingEventId: string | null;
+    eventDate: Date;
+    amount: Prisma.Decimal;
+    currency: string;
+    status: VenueSeatReservationStatus;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string | null;
+    paidAt: Date | null;
+    venueTableConfig: { tableName: string; size: string } | null;
+  }) {
+    const seatDisplayLabel =
+      await this.resolveSeatDisplayLabelForReservation(row);
+    return this.mapReservationPublic({ ...row, seatDisplayLabel });
+  }
+
+  private async resolveSeatDisplayLabelForReservation(row: {
+    kind: VenueSeatKind;
+    layoutItemId: string;
+    venueTableConfigId: string | null;
+    upcomingEventId: string | null;
+    venueTableConfig: { tableName: string; size: string } | null;
+  }): Promise<string> {
+    let floorLayoutId: string | null = null;
+    if (row.upcomingEventId) {
+      const config = await this.prisma.upcomingVenueConfig.findUnique({
+        where: { eventId: row.upcomingEventId },
+        select: { floorLayoutId: true },
+      });
+      floorLayoutId =
+        config?.floorLayoutId ??
+        (await this.floorLayout.getActiveFloorLayoutId());
+    } else {
+      floorLayoutId = await this.floorLayout.getActiveFloorLayoutId();
+    }
+
+    return resolveVenueSeatDisplayLabel(this.prisma, this.floorLayout, {
+      kind: row.kind,
+      layoutItemId: row.layoutItemId,
+      venueTableConfigId: row.venueTableConfigId,
+      floorLayoutId,
+      venueTableConfig:
+        row.venueTableConfig && row.venueTableConfigId
+          ? {
+              id: row.venueTableConfigId,
+              tableName: row.venueTableConfig.tableName,
+              size: row.venueTableConfig.size as VenueTableSize,
+            }
+          : null,
+    });
   }
 
   private mapReservationAdmin(row: {
@@ -913,7 +1442,8 @@ export class VenueReservationsService {
     amount: Prisma.Decimal;
     currency: string;
     status: VenueSeatReservationStatus;
-    stripeCheckoutSessionId: string;
+    paymentChannel?: VenueReservationPaymentChannel;
+    stripeCheckoutSessionId: string | null;
     stripePaymentIntentId: string | null;
     customerName: string;
     customerEmail: string;
@@ -929,6 +1459,7 @@ export class VenueReservationsService {
         ...row,
         venueTableConfig: row.venueTableConfig ?? null,
       }),
+      paymentChannel: row.paymentChannel ?? 'STRIPE',
       stripeCheckoutSessionId: row.stripeCheckoutSessionId,
       stripePaymentIntentId: row.stripePaymentIntentId,
       expiresAt: row.expiresAt?.toISOString() ?? null,
@@ -942,6 +1473,7 @@ export class VenueReservationsService {
     upcomingEventId: string | null;
     kind: VenueSeatKind;
     layoutItemId: string;
+    venueTableConfigId: string | null;
     eventDate: Date;
     customerName: string;
     customerEmail: string;
@@ -958,11 +1490,8 @@ export class VenueReservationsService {
 
       const reservationKindLabel =
         row.kind === VenueSeatKind.CATALOG_TABLE ? 'Table' : 'Chair';
-      const layoutItemLabel = await this.resolveLayoutItemLabel({
-        kind: row.kind,
-        layoutItemId: row.layoutItemId,
-        venueTableConfig: row.venueTableConfig,
-      });
+      const layoutItemLabel =
+        await this.resolveSeatDisplayLabelForReservation(row);
 
       const appPublicName =
         this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
@@ -1028,36 +1557,6 @@ export class VenueReservationsService {
       );
       return false;
     }
-  }
-
-  private async resolveLayoutItemLabel(args: {
-    kind: VenueSeatKind;
-    layoutItemId: string;
-    venueTableConfig: { tableName: string; size: string } | null;
-  }): Promise<string> {
-    if (args.kind === VenueSeatKind.CATALOG_TABLE) {
-      const tableName = args.venueTableConfig?.tableName?.trim();
-      if (tableName) return tableName;
-      const tableSize = args.venueTableConfig?.size?.trim();
-      if (tableSize) {
-        return `Table ${formatVenueTableSizeLabel(tableSize as VenueTableSize)}`;
-      }
-      return 'Reserved table';
-    }
-
-    try {
-      const layout = await this.floorLayout.getPublicFloorLayoutForClient();
-      const layoutItem = layout.items.find(
-        (item) => item.id === args.layoutItemId,
-      );
-      if (layoutItem?.kind === 'standalone_chair') {
-        const chairName = layoutItem.chairName?.trim();
-        if (chairName) return chairName;
-      }
-    } catch {
-      // Falls back gracefully when floor layout is unavailable.
-    }
-    return 'Reserved chair';
   }
 
   private parseCheckoutSession(raw: unknown): StripeCheckoutSessionLite {

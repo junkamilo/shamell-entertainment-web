@@ -14,6 +14,7 @@ export function useAdminVenueReservationsPage() {
   const [reservations, setReservations] = useState<VenueSeatReservationRow[]>([]);
   const [paginationMeta, setPaginationMeta] = useState<PaginationMeta>(DEFAULT_PAGINATION_META);
   const [statusFilter, setStatusFilter] = useState("");
+  const [paymentChannelFilter, setPaymentChannelFilter] = useState("");
   const [layoutItemIdFilter, setLayoutItemIdFilter] = useState("");
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -22,7 +23,7 @@ export function useAdminVenueReservationsPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, layoutItemIdFilter]);
+  }, [statusFilter, paymentChannelFilter, layoutItemIdFilter]);
 
   useEffect(() => {
     const status = searchParams.get("status") ?? "";
@@ -40,6 +41,7 @@ export function useAdminVenueReservationsPage() {
     setIsLoading(true);
     const result = await fetchAdminVenueReservations(token, {
       status: statusFilter || undefined,
+      paymentChannel: paymentChannelFilter || undefined,
       layoutItemId: layoutItemIdFilter || undefined,
       page,
       perPage,
@@ -55,7 +57,7 @@ export function useAdminVenueReservationsPage() {
     }
     setReservations(result.reservations);
     setPaginationMeta(result.meta);
-  }, [statusFilter, layoutItemIdFilter, page, perPage]);
+  }, [statusFilter, paymentChannelFilter, layoutItemIdFilter, page, perPage]);
 
   useEffect(() => {
     void reload();
@@ -96,6 +98,8 @@ export function useAdminVenueReservationsPage() {
     paginationMeta,
     statusFilter,
     setStatusFilter,
+    paymentChannelFilter,
+    setPaymentChannelFilter,
     layoutItemIdFilter,
     setLayoutItemIdFilter,
     isLoading,

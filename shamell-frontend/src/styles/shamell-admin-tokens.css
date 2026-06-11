@@ -137,6 +137,7 @@
 .admin-theme .shamell-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: var(--shamell-gold-deep) var(--shamell-surface-deep);
+  scrollbar-gutter: stable;
 }
 
 .admin-theme .shamell-scrollbar::-webkit-scrollbar-track {

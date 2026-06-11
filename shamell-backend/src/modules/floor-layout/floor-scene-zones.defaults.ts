@@ -25,20 +25,26 @@ function centeredStageZoneX(): number {
 const DEFAULT_STAGE_X = centeredStageZoneX();
 const DEFAULT_STAGE_Z = 2.1;
 
-function stageLocalToWorld(x: number, z: number): [number, number] {
-  const wx =
-    DEFAULT_STAGE_X + x * STAGE_ZONE_ROTATION_COS + z * STAGE_ZONE_ROTATION_SIN;
-  const wz =
-    DEFAULT_STAGE_Z - x * STAGE_ZONE_ROTATION_SIN + z * STAGE_ZONE_ROTATION_COS;
-  return [wx, wz];
+function stageLocalToWorldAt(
+  stage: FloorSceneZoneTransform,
+  localX: number,
+  localZ: number,
+): [number, number] {
+  const cos = Math.cos(stage.rotationY);
+  const sin = Math.sin(stage.rotationY);
+  return [
+    stage.x + localX * cos + localZ * sin,
+    stage.z - localX * sin + localZ * cos,
+  ];
 }
 
-function defaultCarpetPosition(): { x: number; z: number } {
-  const [x, z] = stageLocalToWorld(
+function carpetZoneFromStage(stage: FloorSceneZoneTransform): FloorSceneZoneTransform {
+  const [x, z] = stageLocalToWorldAt(
+    stage,
     STAGE_WIDTH / 2,
     STAGE_DEPTH + STAIR_COUNT * STAIR_DEPTH,
   );
-  return { x, z };
+  return { x, z, rotationY: stage.rotationY };
 }
 
 export type FloorSceneZoneTransform = {
@@ -52,16 +58,15 @@ export type FloorSceneZones = {
   carpet: FloorSceneZoneTransform;
 };
 
+const DEFAULT_STAGE: FloorSceneZoneTransform = {
+  x: DEFAULT_STAGE_X,
+  z: DEFAULT_STAGE_Z,
+  rotationY: STAGE_ZONE_ROTATION_Y,
+};
+
 export const DEFAULT_FLOOR_SCENE_ZONES: FloorSceneZones = {
-  stage: {
-    x: DEFAULT_STAGE_X,
-    z: DEFAULT_STAGE_Z,
-    rotationY: STAGE_ZONE_ROTATION_Y,
-  },
-  carpet: {
-    ...defaultCarpetPosition(),
-    rotationY: STAGE_ZONE_ROTATION_Y,
-  },
+  stage: { ...DEFAULT_STAGE },
+  carpet: carpetZoneFromStage(DEFAULT_STAGE),
 };
 
 function clampWorld(value: number, max: number): number {
@@ -89,9 +94,10 @@ export function mergeFloorSceneZones(raw: unknown): FloorSceneZones {
     return { ...DEFAULT_FLOOR_SCENE_ZONES };
   }
   const o = raw as Record<string, unknown>;
+  const stage = parseZonePartial(o.stage, DEFAULT_FLOOR_SCENE_ZONES.stage);
   return {
-    stage: parseZonePartial(o.stage, DEFAULT_FLOOR_SCENE_ZONES.stage),
-    carpet: parseZonePartial(o.carpet, DEFAULT_FLOOR_SCENE_ZONES.carpet),
+    stage,
+    carpet: carpetZoneFromStage(stage),
   };
 }
 

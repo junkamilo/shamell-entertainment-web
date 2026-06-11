@@ -14,6 +14,7 @@ type Props = {
   onSelect: (id: string | null) => void;
   onReservedSelect?: (id: string) => void;
   onMoveItem: (id: string, x: number, y: number) => void;
+  allowDrag?: boolean;
 };
 
 export default function PlacedItemsLayer3d({
@@ -26,6 +27,7 @@ export default function PlacedItemsLayer3d({
   onSelect,
   onReservedSelect,
   onMoveItem,
+  allowDrag = true,
 }: Props) {
   const { onItemPointerDown } = useItemPointerDrag3d({
     viewBoxWidth,
@@ -45,7 +47,7 @@ export default function PlacedItemsLayer3d({
       interactive
       onSelect={(id) => onSelect(id)}
       onReservedSelect={onReservedSelect}
-      onItemPointerDown={onItemPointerDown}
+      onItemPointerDown={allowDrag ? onItemPointerDown : undefined}
     />
   );
 }

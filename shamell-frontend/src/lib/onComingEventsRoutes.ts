@@ -13,6 +13,9 @@ export type OnComingEventsSiteTab =
 export function onComingEventsSiteAdminHref(
   tab: OnComingEventsSiteTab = ON_COMING_EVENTS_SITE_TAB_UPCOMING,
 ): string {
+  if (tab === ON_COMING_EVENTS_SITE_TAB_UPCOMING) {
+    return ON_COMING_EVENTS_ADMIN_PATH;
+  }
   return `${ON_COMING_EVENTS_ADMIN_PATH}?tab=${tab}`;
 }
 

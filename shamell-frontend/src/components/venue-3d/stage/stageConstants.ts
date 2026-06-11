@@ -59,12 +59,45 @@ export const ZONE_STAIR_POINT_Y_OFFSET = 0.4 * STAGE_SCALE;
 export const ZONE_STAIR_POINT_Z_OFFSET = 0.9 * STAGE_SCALE;
 export const ZONE_SPOT_DISTANCE = 16 * STAGE_SCALE;
 
+export type StageZoneTransform = {
+  x: number;
+  z: number;
+  rotationY: number;
+};
+
+export function stageLocalToWorldAt(
+  stage: StageZoneTransform,
+  localX: number,
+  localZ: number,
+): [number, number] {
+  const cos = Math.cos(stage.rotationY);
+  const sin = Math.sin(stage.rotationY);
+  return [
+    stage.x + localX * cos + localZ * sin,
+    stage.z - localX * sin + localZ * cos,
+  ];
+}
+
 export function stageLocalToWorld(x: number, z: number): [number, number] {
-  const wx =
-    STAGE_ZONE_POSITION[0] + x * STAGE_ZONE_ROTATION_COS + z * STAGE_ZONE_ROTATION_SIN;
-  const wz =
-    STAGE_ZONE_POSITION[2] - x * STAGE_ZONE_ROTATION_SIN + z * STAGE_ZONE_ROTATION_COS;
-  return [wx, wz];
+  return stageLocalToWorldAt(
+    {
+      x: STAGE_ZONE_POSITION[0],
+      z: STAGE_ZONE_POSITION[2],
+      rotationY: STAGE_ZONE_ROTATION_Y,
+    },
+    x,
+    z,
+  );
+}
+
+/** Carpet anchor at the front of the stage stairs, locked to stage pose. */
+export function carpetZoneFromStage(stage: StageZoneTransform): StageZoneTransform {
+  const [x, z] = stageLocalToWorldAt(
+    stage,
+    STAGE_WIDTH / 2,
+    STAGE_DEPTH + STAIR_COUNT * STAIR_DEPTH,
+  );
+  return { x, z, rotationY: stage.rotationY };
 }
 
 /** World X center of stage platform (carpet alignment). */
@@ -83,7 +116,12 @@ export const CARPET_WIDTH = STAGE_RUNNER_WIDTH;
 export const CARPET_Y = 0.012;
 export const CARPET_LENGTH = 12.5;
 
-/** Front center of stairs in world space, used to anchor carpet. */
+/** Front center of stairs in world space for the default stage pose. */
 export function getStageStairsFrontWorld(): [number, number] {
-  return stageLocalToWorld(STAGE_WIDTH / 2, STAGE_DEPTH + STAIR_COUNT * STAIR_DEPTH);
+  const zone = carpetZoneFromStage({
+    x: STAGE_ZONE_POSITION[0],
+    z: STAGE_ZONE_POSITION[2],
+    rotationY: STAGE_ZONE_ROTATION_Y,
+  });
+  return [zone.x, zone.z];
 }

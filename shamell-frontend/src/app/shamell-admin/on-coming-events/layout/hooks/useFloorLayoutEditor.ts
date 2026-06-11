@@ -10,19 +10,22 @@ import { totalChairs } from "../lib/floorLayoutStats";
 import { fetchAdminFloorLayout } from "../services/fetchAdminFloorLayout";
 import { fetchAdminFloorLayoutPalette } from "../services/fetchAdminFloorLayoutPalette";
 import { putAdminFloorLayout } from "../services/putAdminFloorLayout";
+import { fetchAdminVenueTables } from "@/app/shamell-admin/venue-tables/services/fetchAdminVenueTables";
 import { fetchAdminVenueReservations } from "@/app/shamell-admin/venue-reservations/services/fetchAdminVenueReservations";
+import { fetchAdminVenueAvailability } from "../services/fetchAdminVenueAvailability";
 import { VENUE_RESERVATIONS_ADMIN_PATH } from "@/app/shamell-admin/venue-reservations/lib/venueReservationsRoutes";
 import {
   notifyOnComingEventsBadgeRefresh,
   readLastSeenPaidReservationAtMs,
   writeLastSeenPaidReservationAtMs,
 } from "@/lib/onComingEventsReservationsNotice";
+import { carpetZoneFromStage } from "@/components/venue-3d/stage/stageConstants";
 import {
+  DEFAULT_FLOOR_SCENE_ZONES,
   isSceneSelectId,
-  SCENE_CARPET_SELECT_ID,
   SCENE_STAGE_SELECT_ID,
-} from "@/components/venue-3d/floorSceneZonesDefaults";
-import { DEFAULT_FLOOR_SCENE_ZONES } from "../lib/floorSceneZones.defaults";
+} from "../lib/floorSceneZones.defaults";
+import { facingStageRotationDegrees } from "../lib/facingStageRotation";
 import type {
   FloorLayoutPalette,
   FloorSceneZones,
@@ -42,6 +45,8 @@ export const FLOOR_CANVAS_DROPPABLE_ID = "floor-canvas";
 export type PaletteDragKind =
   | { type: "table"; size: VenueTableSize }
   | { type: "chair" };
+
+export type FloorLayoutEditorMode = "edit" | "reserve";
 
 const EMPTY_PALETTE: FloorLayoutPalette = {
   tablesBySize: { LARGE: 0, MEDIUM: 0, SMALL: 0 },
@@ -74,9 +79,18 @@ export function useFloorLayoutEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editorMode, setEditorMode] = useState<FloorLayoutEditorMode>("edit");
   const [reservedLayoutItemIds, setReservedLayoutItemIds] = useState<string[]>([]);
+  const [pendingLayoutItemIds, setPendingLayoutItemIds] = useState<string[]>([]);
   const [reservedLabelsByLayoutItemId, setReservedLabelsByLayoutItemId] = useState<
     Record<string, string>
+  >({});
+  const [venueReservationContext, setVenueReservationContext] = useState<{
+    eventDateIso: string | null;
+    upcomingEventSlug: string | null;
+  }>({ eventDateIso: null, upcomingEventSlug: null });
+  const [tableBundlePriceByConfigId, setTableBundlePriceByConfigId] = useState<
+    Record<string, number>
   >({});
 
   const palette = useMemo((): FloorLayoutPalette => {
@@ -130,9 +144,10 @@ export function useFloorLayoutEditor() {
       backgroundVersion: layout.backgroundVersion,
     });
     setItems(layout.items);
+    const stage = { ...layout.sceneZones.stage };
     setSceneZones({
-      stage: { ...layout.sceneZones.stage },
-      carpet: { ...layout.sceneZones.carpet },
+      stage,
+      carpet: carpetZoneFromStage(stage),
     });
     setHasLegacyItems(layout.hasLegacyItems === true);
     setSelectedId(null);
@@ -171,39 +186,57 @@ export function useFloorLayoutEditor() {
       if (paletteResult.ok && paletteResult.palette) {
         setServerPalette(paletteResult.palette);
       }
+      const [availabilityResult, tablesResult] = await Promise.all([
+        fetchAdminVenueAvailability(token),
+        fetchAdminVenueTables(token),
+      ]);
+
       const previousSeenAt = readLastSeenPaidReservationAtMs();
-      const paidReservationsResult = await fetchAdminVenueReservations(token, {
-        status: "PAID",
-        page: 1,
-        perPage: 50,
-      });
-      if (paidReservationsResult.ok) {
-        const uniqueReservedIds = [
-          ...new Set(
-            paidReservationsResult.reservations
-              .map((row) => row.layoutItemId)
-              .filter((id) => id.trim().length > 0),
-          ),
-        ];
+      if (availabilityResult.ok) {
+        const { data } = availabilityResult;
+        setVenueReservationContext({
+          eventDateIso: data.eventDate || null,
+          upcomingEventSlug: data.upcomingEventSlug,
+        });
+        setReservedLayoutItemIds(data.reservedLayoutItemIds);
+        setPendingLayoutItemIds(data.pendingLayoutItemIds);
         const labels: Record<string, string> = {};
-        for (const row of paidReservationsResult.reservations) {
-          const layoutItemId = row.layoutItemId.trim();
-          if (!layoutItemId) continue;
-          labels[layoutItemId] = row.customerName.trim() || "Guest";
+        for (const row of data.paidSeatHolders) {
+          if (!row.layoutItemId.trim()) continue;
+          labels[row.layoutItemId] = row.customerName.trim() || "Guest";
         }
-        const latestPaidAt = paidReservationsResult.reservations.reduce((max, row) => {
-          const createdAtMs = Date.parse(row.createdAt);
-          return Number.isFinite(createdAtMs) ? Math.max(max, createdAtMs) : max;
-        }, 0);
-        setReservedLayoutItemIds(uniqueReservedIds);
         setReservedLabelsByLayoutItemId(labels);
-        if (latestPaidAt > previousSeenAt) {
-          writeLastSeenPaidReservationAtMs(latestPaidAt);
-          notifyOnComingEventsBadgeRefresh();
+
+        const paidReservationsResult = await fetchAdminVenueReservations(token, {
+          status: "PAID",
+          page: 1,
+          perPage: 50,
+        });
+        if (paidReservationsResult.ok) {
+          const latestPaidAt = paidReservationsResult.reservations.reduce((max, row) => {
+            const createdAtMs = Date.parse(row.createdAt);
+            return Number.isFinite(createdAtMs) ? Math.max(max, createdAtMs) : max;
+          }, 0);
+          if (latestPaidAt > previousSeenAt) {
+            writeLastSeenPaidReservationAtMs(latestPaidAt);
+            notifyOnComingEventsBadgeRefresh();
+          }
         }
       } else {
         setReservedLayoutItemIds([]);
+        setPendingLayoutItemIds([]);
         setReservedLabelsByLayoutItemId({});
+        setVenueReservationContext({ eventDateIso: null, upcomingEventSlug: null });
+      }
+
+      if (tablesResult.ok) {
+        const prices: Record<string, number> = {};
+        for (const table of tablesResult.items) {
+          prices[table.id] = table.bundlePrice;
+        }
+        setTableBundlePriceByConfigId(prices);
+      } else {
+        setTableBundlePriceByConfigId({});
       }
       setDirty(false);
     } catch {
@@ -279,13 +312,27 @@ export function useFloorLayoutEditor() {
         chairName: chair.displayLabel,
         x,
         y,
-        rotation: 0,
+        rotation: facingStageRotationDegrees(
+          x,
+          y,
+          layoutMeta.viewBoxWidth,
+          layoutMeta.viewBoxHeight,
+          sceneZones.stage.x,
+          sceneZones.stage.z,
+        ),
       };
       setItems((prev) => [...prev, item]);
       setSelectedId(item.id);
       setDirty(true);
     },
-    [items, serverPalette.unplacedChairs],
+    [
+      items,
+      layoutMeta.viewBoxHeight,
+      layoutMeta.viewBoxWidth,
+      sceneZones.stage.x,
+      sceneZones.stage.z,
+      serverPalette.unplacedChairs,
+    ],
   );
 
   const moveItem = useCallback((id: string, x: number, y: number) => {
@@ -309,24 +356,28 @@ export function useFloorLayoutEditor() {
   }, []);
 
   const updateSceneRotation = useCallback((delta: number) => {
-    if (!selectedId || !isSceneSelectId(selectedId)) return;
-    const kind = selectedId === SCENE_STAGE_SELECT_ID ? "stage" : "carpet";
+    if (selectedId !== SCENE_STAGE_SELECT_ID) return;
     setSceneZones((prev) => {
-      const zone = prev[kind];
+      const zone = prev.stage;
       let rotationY = zone.rotationY + delta;
       const twoPi = Math.PI * 2;
       if (rotationY > Math.PI) rotationY -= twoPi;
       if (rotationY < -Math.PI) rotationY += twoPi;
-      return { ...prev, [kind]: { ...zone, rotationY } };
+      const stage = { ...zone, rotationY };
+      return {
+        ...prev,
+        stage,
+        carpet: carpetZoneFromStage(stage),
+      };
     });
     setDirty(true);
   }, [selectedId]);
 
-  const moveSceneZone = useCallback((kind: "stage" | "carpet", x: number, z: number) => {
-    setSceneZones((prev) => ({
-      ...prev,
-      [kind]: { ...prev[kind], x, z },
-    }));
+  const moveStage = useCallback((x: number, z: number) => {
+    setSceneZones((prev) => {
+      const stage = { ...prev.stage, x, z };
+      return { stage, carpet: carpetZoneFromStage(stage) };
+    });
     setDirty(true);
   }, []);
 
@@ -364,6 +415,45 @@ export function useFloorLayoutEditor() {
     [router],
   );
 
+  const applyCashReservation = useCallback((layoutItemId: string, customerName: string) => {
+    setReservedLayoutItemIds((prev) =>
+      prev.includes(layoutItemId) ? prev : [...prev, layoutItemId],
+    );
+    setReservedLabelsByLayoutItemId((prev) => ({
+      ...prev,
+      [layoutItemId]: customerName.trim() || "Guest",
+    }));
+    setPendingLayoutItemIds((prev) => prev.filter((id) => id !== layoutItemId));
+    notifyOnComingEventsBadgeRefresh();
+  }, []);
+
+  const handlePlacedItemSelect = useCallback(
+    (layoutItemId: string | null) => {
+      if (editorMode !== "reserve" || !layoutItemId) {
+        setSelectedId(layoutItemId);
+        return;
+      }
+      if (reservedLayoutItemIds.includes(layoutItemId)) {
+        onReservedItemSelect(layoutItemId);
+        return;
+      }
+      if (pendingLayoutItemIds.includes(layoutItemId)) {
+        toast({
+          title: "Seat pending payment",
+          description: "This seat has a pending Stripe payment link.",
+        });
+        return;
+      }
+      setSelectedId(layoutItemId);
+    },
+    [
+      editorMode,
+      onReservedItemSelect,
+      pendingLayoutItemIds,
+      reservedLayoutItemIds,
+    ],
+  );
+
   const placePaletteItem = useCallback(
     (drag: PaletteDragKind, x: number, y: number) => {
       if (drag.type === "table") {
@@ -395,7 +485,10 @@ export function useFloorLayoutEditor() {
         viewBoxHeight: layoutMeta.viewBoxHeight,
         backgroundVersion: layoutMeta.backgroundVersion,
         items,
-        sceneZones,
+        sceneZones: {
+          stage: sceneZones.stage,
+          carpet: carpetZoneFromStage(sceneZones.stage),
+        },
       });
       if (!result.ok) {
         toast({
@@ -446,6 +539,8 @@ export function useFloorLayoutEditor() {
     sceneZones,
     palette,
     hasLegacyItems,
+    editorMode,
+    setEditorMode,
     selectedId,
     setSelectedId,
     dirty,
@@ -453,11 +548,15 @@ export function useFloorLayoutEditor() {
     saving,
     error,
     reservedLayoutItemIds,
+    pendingLayoutItemIds,
     reservedLabelsByLayoutItemId,
+    eventDateIso: venueReservationContext.eventDateIso,
+    upcomingEventSlug: venueReservationContext.upcomingEventSlug,
+    tableBundlePriceByConfigId,
     chairTotal: totalChairs(items),
     load,
     moveItem,
-    moveSceneZone,
+    moveStage,
     updateRotation,
     rotateSelected,
     removeSelected,
@@ -466,5 +565,7 @@ export function useFloorLayoutEditor() {
     placePaletteItemAtCenter,
     save,
     onReservedItemSelect,
+    handlePlacedItemSelect,
+    applyCashReservation,
   };
 }

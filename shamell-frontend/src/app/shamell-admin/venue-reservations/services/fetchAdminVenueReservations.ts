@@ -35,10 +35,15 @@ function mapReservationRow(r: Record<string, unknown>): VenueSeatReservationRow 
     amount: Number(r.amount ?? 0),
     currency: String(r.currency ?? "usd"),
     status: String(r.status ?? ""),
+    paymentChannel:
+      r.paymentChannel === "CASH" || r.paymentChannel === "STRIPE"
+        ? r.paymentChannel
+        : "STRIPE",
     customerName: String(r.customerName ?? ""),
     customerEmail: String(r.customerEmail ?? ""),
     customerPhone: typeof r.customerPhone === "string" ? r.customerPhone : null,
-    stripeCheckoutSessionId: String(r.stripeCheckoutSessionId ?? ""),
+    stripeCheckoutSessionId:
+      typeof r.stripeCheckoutSessionId === "string" ? r.stripeCheckoutSessionId : null,
     paidAt: typeof r.paidAt === "string" ? r.paidAt : null,
     createdAt: String(r.createdAt ?? ""),
   };
@@ -46,7 +51,13 @@ function mapReservationRow(r: Record<string, unknown>): VenueSeatReservationRow 
 
 export async function fetchAdminVenueReservations(
   token: string,
-  params?: { status?: string; page?: number; perPage?: number; layoutItemId?: string },
+  params?: {
+    status?: string;
+    paymentChannel?: string;
+    page?: number;
+    perPage?: number;
+    layoutItemId?: string;
+  },
 ): Promise<{
   ok: boolean;
   reservations: VenueSeatReservationRow[];
@@ -58,6 +69,7 @@ export async function fetchAdminVenueReservations(
   search.set("page", String(params?.page ?? 1));
   search.set("perPage", String(params?.perPage ?? 10));
   if (params?.status) search.set("status", params.status);
+  if (params?.paymentChannel) search.set("paymentChannel", params.paymentChannel);
   if (params?.layoutItemId) search.set("layoutItemId", params.layoutItemId);
 
   const qs = search.toString();

@@ -1,30 +1,27 @@
 import {
-  getStageStairsFrontWorld,
+  carpetZoneFromStage,
   STAGE_ZONE_POSITION,
   STAGE_ZONE_ROTATION_Y,
 } from "./stage/stageConstants";
 import type { FloorSceneZones } from "@/components/floor-layout/layoutTypes";
 
-const [carpetDefaultX, carpetDefaultZ] = getStageStairsFrontWorld();
+const DEFAULT_STAGE = {
+  x: STAGE_ZONE_POSITION[0],
+  z: STAGE_ZONE_POSITION[2],
+  rotationY: STAGE_ZONE_ROTATION_Y,
+};
 
 export const DEFAULT_FLOOR_SCENE_ZONES: FloorSceneZones = {
-  stage: {
-    x: STAGE_ZONE_POSITION[0],
-    z: STAGE_ZONE_POSITION[2],
-    rotationY: STAGE_ZONE_ROTATION_Y,
-  },
-  carpet: {
-    x: carpetDefaultX,
-    z: carpetDefaultZ,
-    rotationY: STAGE_ZONE_ROTATION_Y,
-  },
+  stage: { ...DEFAULT_STAGE },
+  carpet: carpetZoneFromStage(DEFAULT_STAGE),
 };
 
 export const SCENE_STAGE_SELECT_ID = "scene:stage";
 export const SCENE_CARPET_SELECT_ID = "scene:carpet";
 
+/** Only the stage is editable in admin; carpet stays fixed at the default anchor. */
 export function isSceneSelectId(id: string | null): boolean {
-  return id === SCENE_STAGE_SELECT_ID || id === SCENE_CARPET_SELECT_ID;
+  return id === SCENE_STAGE_SELECT_ID;
 }
 
 export function mergeFloorSceneZones(raw: unknown): FloorSceneZones {
@@ -50,8 +47,9 @@ export function mergeFloorSceneZones(raw: unknown): FloorSceneZones {
       rotationY: Number.isFinite(rotationY) ? rotationY : fallback.rotationY,
     };
   };
+  const stage = parse(o.stage, DEFAULT_FLOOR_SCENE_ZONES.stage);
   return {
-    stage: parse(o.stage, DEFAULT_FLOOR_SCENE_ZONES.stage),
-    carpet: parse(o.carpet, DEFAULT_FLOOR_SCENE_ZONES.carpet),
+    stage,
+    carpet: carpetZoneFromStage(stage),
   };
 }

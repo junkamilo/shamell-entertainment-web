@@ -6,17 +6,20 @@ import {
   CARPET_LENGTH,
   CARPET_WIDTH,
   CARPET_Y,
+  carpetZoneFromStage,
+  STAGE_ZONE_POSITION,
   STAGE_ZONE_ROTATION_Y,
-  getStageStairsFrontWorld,
 } from "../stage/stageConstants";
 
 export default function RedCarpetRunner() {
   const zones = useFloorSceneZones();
-  const carpet = zones.carpet;
-  const [defaultX, defaultZ] = getStageStairsFrontWorld();
-  const x = carpet?.x ?? defaultX;
-  const z = carpet?.z ?? defaultZ;
-  const rotationY = carpet?.rotationY ?? STAGE_ZONE_ROTATION_Y;
+  const stage = zones.stage ?? {
+    x: STAGE_ZONE_POSITION[0],
+    z: STAGE_ZONE_POSITION[2],
+    rotationY: STAGE_ZONE_ROTATION_Y,
+  };
+  const carpet = carpetZoneFromStage(stage);
+  const { x, z, rotationY } = carpet;
 
   return (
     <group position={[x, CARPET_Y, z]} rotation={[0, rotationY, 0]}>
