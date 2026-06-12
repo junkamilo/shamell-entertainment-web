@@ -17,7 +17,9 @@ describe('venue-seat-display-label.util', () => {
   });
 
   it('formats friendly English labels', () => {
-    expect(formatTableDisplayLabel(VenueTableSize.LARGE, 1)).toBe('Large table 1');
+    expect(formatTableDisplayLabel(VenueTableSize.LARGE, 1)).toBe(
+      'Large table 1',
+    );
     expect(formatChairDisplayLabel(3)).toBe('Chair 3');
     expect(toShortSeatDisplayLabel('Large table 4')).toBe('Large 4');
   });
@@ -47,11 +49,13 @@ describe('venue-seat-display-label.util', () => {
   });
 
   it('numbers tables of the same size by sort order', async () => {
-    const findMany = jest.fn().mockResolvedValue([
-      { id: 'table-a' },
-      { id: 'table-b' },
-      { id: 'table-c' },
-    ]);
+    const findMany = jest
+      .fn()
+      .mockResolvedValue([
+        { id: 'table-a' },
+        { id: 'table-b' },
+        { id: 'table-c' },
+      ]);
     const label = await resolveVenueSeatDisplayLabel(
       {
         venueTableConfig: { findFirst: jest.fn(), findMany },
@@ -74,10 +78,9 @@ describe('venue-seat-display-label.util', () => {
   });
 
   it('numbers standalone chairs by sort order', async () => {
-    const findMany = jest.fn().mockResolvedValue([
-      { id: 'chair-1' },
-      { id: 'chair-2' },
-    ]);
+    const findMany = jest
+      .fn()
+      .mockResolvedValue([{ id: 'chair-1' }, { id: 'chair-2' }]);
     const findFirst = jest.fn().mockResolvedValue({
       id: 'chair-2',
       chairName: 'CHAIR-abc12345',

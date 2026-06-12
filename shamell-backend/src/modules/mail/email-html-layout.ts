@@ -218,7 +218,10 @@ ${innerHtml}
 </div>`;
 }
 
-export function buildEmailSiteLink(siteUrl: string, label = 'Visit our website'): string {
+export function buildEmailSiteLink(
+  siteUrl: string,
+  label = 'Visit our website',
+): string {
   const safeUrl = escapeHtml(siteUrl);
   return `<p class="email-text-muted" style="margin:20px 0 0;font-size:13px;line-height:1.6;color:${emailLightInlineStyle('textMuted')};">
 <a href="${safeUrl}" class="email-link" style="color:${emailLightInlineStyle('link')};text-decoration:underline;">${escapeHtml(label)}</a>

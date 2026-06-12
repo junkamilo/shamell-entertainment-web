@@ -10,6 +10,7 @@ import {
   Patch,
   Post,
   Query,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -20,6 +21,7 @@ import {
 import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { AdminVenueReservationsQueryDto } from './dto/admin-venue-reservations-query.dto';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
+import { ResendVenueConfirmationDto } from './dto/resend-confirmation.dto';
 import { VenueReservationsService } from './venue-reservations.service';
 
 @Controller('venue-reservations')
@@ -131,6 +133,26 @@ export class VenueReservationsController {
       .then((clientSecret) => ({ clientSecret }));
   }
 
+  @Get('public/confirmation.pdf')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  async downloadConfirmationPdf(
+    @Query('token') token: string,
+  ): Promise<StreamableFile> {
+    if (!token?.trim()) {
+      throw new BadRequestException('token is required.');
+    }
+    const { buffer, filename } =
+      await this.venueReservationsService.getConfirmationPdfDownload(
+        token.trim(),
+      );
+    return new StreamableFile(buffer, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="${filename}"`,
+    });
+  }
+
   @Post('public/pay/reconcile')
   @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
@@ -147,5 +169,24 @@ export class VenueReservationsController {
   @UseGuards(AdminJwtGuard)
   cancelAdmin(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.venueReservationsService.cancelAdminReservation(id);
+  }
+
+  @Post('admin/resend-confirmation')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  resendConfirmation(@Body() dto: ResendVenueConfirmationDto) {
+    if (dto.customerNames?.length) {
+      return this.venueReservationsService.resendAdminPaidConfirmationForCustomers(
+        dto.customerNames,
+      );
+    }
+    if (dto.reservationIds?.length === 1) {
+      return this.venueReservationsService.resendAdminPaidConfirmationEmail(
+        dto.reservationIds[0],
+      );
+    }
+    throw new BadRequestException(
+      'Provide customerNames or a single reservationId.',
+    );
   }
 }

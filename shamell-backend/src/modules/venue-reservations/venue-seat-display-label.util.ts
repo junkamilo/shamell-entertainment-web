@@ -46,9 +46,7 @@ type PrismaLike = Pick<
 >;
 
 type FloorLayoutReader = {
-  getPublicFloorLayoutForClient: (
-    floorLayoutId?: string | null,
-  ) => Promise<{
+  getPublicFloorLayoutForClient: (floorLayoutId?: string | null) => Promise<{
     items: Array<{
       id: string;
       kind: string;
@@ -136,7 +134,9 @@ async function resolveChairDisplayLabel(
       const layout = await floorLayout.getPublicFloorLayoutForClient(
         args.floorLayoutId,
       );
-      const layoutItem = layout.items.find((item) => item.id === args.layoutItemId);
+      const layoutItem = layout.items.find(
+        (item) => item.id === args.layoutItemId,
+      );
       if (layoutItem?.kind === 'standalone_chair') {
         chairId = layoutItem.venueStandaloneChairId ?? null;
       }

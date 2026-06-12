@@ -38,7 +38,9 @@ function stageLocalToWorldAt(
   ];
 }
 
-function carpetZoneFromStage(stage: FloorSceneZoneTransform): FloorSceneZoneTransform {
+function carpetZoneFromStage(
+  stage: FloorSceneZoneTransform,
+): FloorSceneZoneTransform {
   const [x, z] = stageLocalToWorldAt(
     stage,
     STAGE_WIDTH / 2,

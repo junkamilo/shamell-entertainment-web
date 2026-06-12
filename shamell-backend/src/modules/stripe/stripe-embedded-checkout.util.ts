@@ -4,7 +4,7 @@ export const STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS = {
 };
 
 /** Card only — avoids Amazon Pay / Cash App popups and mis-taps on mobile. */
-const STRIPE_EMBEDDED_CHECKOUT_PAYMENT_METHOD_TYPES: ('card')[] = ['card'];
+const STRIPE_EMBEDDED_CHECKOUT_PAYMENT_METHOD_TYPES: 'card'[] = ['card'];
 
 /**
  * Embedded Checkout light theme (Elements `appearance` API is not available client-side).
@@ -24,7 +24,8 @@ export const STRIPE_EMBEDDED_CHECKOUT_APPEARANCE = {
 };
 
 export const STRIPE_EMBEDDED_CHECKOUT_BRANDING = {
-  background_color: STRIPE_EMBEDDED_CHECKOUT_APPEARANCE.variables.colorBackground,
+  background_color:
+    STRIPE_EMBEDDED_CHECKOUT_APPEARANCE.variables.colorBackground,
   button_color: STRIPE_EMBEDDED_CHECKOUT_APPEARANCE.variables.colorPrimary,
   border_style: 'rounded' as const,
   font_family: 'open_sans' as const,

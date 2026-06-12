@@ -17,9 +17,9 @@ describe('venue-reservation-payment-request.mail', () => {
   };
 
   it('builds subject and body with pay link', () => {
-    expect(buildVenueReservationPaymentRequestSubject(input.appPublicName)).toContain(
-      'seat reservation',
-    );
+    expect(
+      buildVenueReservationPaymentRequestSubject(input.appPublicName),
+    ).toContain('seat reservation');
     const html = buildVenueReservationPaymentRequestHtml(input);
     expect(html).toContain(input.payUrl);
     expect(html).toContain(input.amountUsd);
@@ -37,6 +37,20 @@ describe('venue-reservation-payment-request.mail', () => {
       html.indexOf('Booking reference'),
     );
     expect(html).not.toMatch(/class="email-card"[^>]*overflow:\s*hidden/);
+  });
+
+  it('renders formatted event night in detail rows', () => {
+    const formattedNight = 'Saturday, August 15, 2026';
+    const html = buildVenueReservationPaymentRequestHtml({
+      ...input,
+      eventLabel: formattedNight,
+    });
+    const text = buildVenueReservationPaymentRequestText({
+      ...input,
+      eventLabel: formattedNight,
+    });
+    expect(html).toContain(formattedNight);
+    expect(text).toContain(`Event: ${formattedNight}`);
   });
 
   it('plain text leads with payment URL', () => {

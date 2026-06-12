@@ -6,8 +6,20 @@ import ContactTimePickerModal from "@/app/contacto/components/ContactTimePickerM
 /** Legacy singleton sales window (deprecated). */
 const ADMIN_SALES_DATE_MIN_ISO = "2000-01-01";
 
-export type VenueLayoutDatePickerTarget = "open" | "close" | "start" | "end" | null;
-export type VenueLayoutTimePickerTarget = "open" | "close" | "start" | "end" | null;
+export type VenueLayoutDatePickerTarget =
+  | "open"
+  | "close"
+  | "start"
+  | "end"
+  | "eventNight"
+  | null;
+export type VenueLayoutTimePickerTarget =
+  | "open"
+  | "close"
+  | "start"
+  | "end"
+  | "eventNight"
+  | null;
 
 type Props = {
   datePickerTarget: VenueLayoutDatePickerTarget;
@@ -22,6 +34,8 @@ type Props = {
   endDate?: string;
   startTime?: string;
   endTime?: string;
+  eventNightDate?: string;
+  eventNightTime?: string;
   onCloseDatePicker: () => void;
   onCloseTimePicker: () => void;
   onConfirmOpenDate?: (iso: string) => void;
@@ -32,6 +46,8 @@ type Props = {
   onConfirmEndDate?: (iso: string) => void;
   onConfirmStartTime?: (hhmm: string) => void;
   onConfirmEndTime?: (hhmm: string) => void;
+  onConfirmEventNightDate?: (iso: string) => void;
+  onConfirmEventNightTime?: (hhmm: string) => void;
   /** Use ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS when pickers open inside AdminModal (z-200). */
   overlayZClass?: string;
 };
@@ -48,6 +64,8 @@ export function VenueLayoutReservationPickers({
   endDate = "",
   startTime = "",
   endTime = "",
+  eventNightDate = "",
+  eventNightTime = "",
   onCloseDatePicker,
   onCloseTimePicker,
   onConfirmOpenDate,
@@ -58,6 +76,8 @@ export function VenueLayoutReservationPickers({
   onConfirmEndDate,
   onConfirmStartTime,
   onConfirmEndTime,
+  onConfirmEventNightDate,
+  onConfirmEventNightTime,
   overlayZClass = "z-[100]",
 }: Props) {
   return (
@@ -98,6 +118,15 @@ export function VenueLayoutReservationPickers({
         minSelectableIso={minSelectableIso}
         overlayZClass={overlayZClass}
       />
+      <ContactDatePickerModal
+        isOpen={datePickerTarget === "eventNight"}
+        title="Event night date"
+        value={eventNightDate}
+        onClose={onCloseDatePicker}
+        onConfirm={onConfirmEventNightDate ?? (() => {})}
+        minSelectableIso={minSelectableIso}
+        overlayZClass={overlayZClass}
+      />
       <ContactTimePickerModal
         isOpen={timePickerTarget === "open"}
         title="Sales open time"
@@ -128,6 +157,14 @@ export function VenueLayoutReservationPickers({
         value={endTime}
         onClose={onCloseTimePicker}
         onConfirm={onConfirmEndTime ?? (() => {})}
+        overlayZClass={overlayZClass}
+      />
+      <ContactTimePickerModal
+        isOpen={timePickerTarget === "eventNight"}
+        title="Event night time"
+        value={eventNightTime}
+        onClose={onCloseTimePicker}
+        onConfirm={onConfirmEventNightTime ?? (() => {})}
         overlayZClass={overlayZClass}
       />
     </>

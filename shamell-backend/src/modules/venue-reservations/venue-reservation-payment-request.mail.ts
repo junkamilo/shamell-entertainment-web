@@ -46,8 +46,7 @@ export function buildVenueReservationPaymentRequestHtml(
       { label: 'Event', value: input.eventLabel },
       { label: 'Seat', value: input.seatLabel },
     ],
-    disclaimer:
-      'Tax is calculated at checkout based on your billing address.',
+    disclaimer: 'Tax is calculated at checkout based on your billing address.',
   });
 }
 

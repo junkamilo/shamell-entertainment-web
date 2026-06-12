@@ -1606,11 +1606,11 @@ export class UpcomingEventsService {
     // successful link when section rows are still settling.
 
     const nextEventDateMs = saved.reservationEventDate?.getTime() ?? null;
-    if (
+    const eventDateChanged =
       saved.reservationEventDate &&
       nextEventDateMs !== null &&
-      nextEventDateMs !== previousEventDateMs
-    ) {
+      nextEventDateMs !== previousEventDateMs;
+    if (saved.reservationEventDate && (linkingTemplate || eventDateChanged)) {
       await syncVenueSeatReservationEventDates(
         this.prisma,
         eventId,

@@ -3,8 +3,10 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
+import { EventPublicSection, UpcomingExperienceType } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
 import { PrismaService } from '../../prisma/prisma.service';
+import { syncVenueSeatReservationEventDates } from '../venue-reservations/sync-venue-seat-reservation-event-date.util';
 import { UpsertVenueLayoutSettingsDto } from './dto/upsert-venue-layout-settings.dto';
 import { resolveReservationWindow } from './reservation-sales-window.util';
 
@@ -35,6 +37,8 @@ export class VenueLayoutSettingsService {
 
   async upsertAdminSettings(dto: UpsertVenueLayoutSettingsDto) {
     const existing = await this.findLatestRow();
+    const previousEventDateMs =
+      existing?.reservationEventDate?.getTime() ?? null;
 
     if (
       dto.reservationOpensAt !== undefined &&
@@ -98,11 +102,9 @@ export class VenueLayoutSettingsService {
             clientEnabled: dto.clientEnabled ?? false,
             promoTitle: dto.promoTitle ?? null,
             promoDescription: dto.promoDescription ?? null,
-            reservationEventDate: dto.reservationOpensAt
-              ? new Date(dto.reservationOpensAt)
-              : dto.reservationEventDate
-                ? new Date(dto.reservationEventDate)
-                : null,
+            reservationEventDate: dto.reservationEventDate
+              ? new Date(dto.reservationEventDate)
+              : null,
             reservationOpensAt: dto.reservationOpensAt
               ? new Date(dto.reservationOpensAt)
               : null,
@@ -113,6 +115,30 @@ export class VenueLayoutSettingsService {
             reservationTimezone: dto.reservationTimezone ?? 'America/New_York',
           },
         });
+
+    const nextEventDateMs = saved.reservationEventDate?.getTime() ?? null;
+    if (
+      saved.reservationEventDate &&
+      nextEventDateMs !== null &&
+      nextEventDateMs !== previousEventDateMs
+    ) {
+      const venueEvent = await this.prisma.event.findFirst({
+        where: {
+          publicSection: EventPublicSection.UPCOMING_EVENTS,
+          experienceType: UpcomingExperienceType.VENUE_SEATING,
+          isActive: true,
+        },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (venueEvent) {
+        await syncVenueSeatReservationEventDates(
+          this.prisma,
+          venueEvent.id,
+          saved.reservationEventDate,
+        );
+      }
+    }
 
     return {
       message: 'On Coming Events settings saved.',

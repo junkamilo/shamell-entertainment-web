@@ -172,6 +172,7 @@ previews.push(
       reservationTimezone: 'America/New_York',
       reservationKindLabel: 'Table',
       layoutItemLabel: 'Large table 1',
+      pdfDownloadUrl: `${SITE}/api/v1/venue-reservations/public/confirmation.pdf?token=example`,
     }),
   },
   {
