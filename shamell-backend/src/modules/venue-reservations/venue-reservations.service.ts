@@ -30,11 +30,16 @@ import {
 import { StripeService } from '../stripe/stripe.service';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
 import { maskCustomerName, maskEmail } from '../../common/util/mask-pii.util';
+import { formatEventDateInZone } from '../../common/util/event-date-in-zone.util';
 import {
   evaluateSalesWindow,
-  eventDateForReservations,
   resolveReservationWindow,
 } from '../venue-layout-settings/reservation-sales-window.util';
+import {
+  assertCanonicalEventNightForCheckout,
+  canonicalEventNightFromVenueConfig,
+  resolveCanonicalReservationEventDate,
+} from './resolve-canonical-reservation-event-date.util';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
 import type { VenueReservationPaymentChannel } from './venue-reservation-payment-channel.const';
 import {
@@ -42,6 +47,11 @@ import {
   buildVenueReservationConfirmationSubject,
   buildVenueReservationConfirmationText,
 } from './venue-reservation-confirmation.mail';
+import { buildVenueReservationConfirmationPdf } from './venue-reservation-confirmation-pdf.util';
+import {
+  signConfirmationShareToken,
+  verifyConfirmationShareToken,
+} from './venue-reservation-confirmation-share.util';
 import {
   buildVenueReservationPaymentRequestHtml,
   buildVenueReservationPaymentRequestSubject,
@@ -100,7 +110,7 @@ export class VenueReservationsService {
     const ctx = await this.resolveVenueContext(query);
     const settings = ctx.settings;
     const window = settings.window;
-    const eventDate = eventDateForReservations(window);
+    const eventDate = await this.resolveCanonicalEventDateOptional(ctx);
 
     if (!settings.clientEnabled || !eventDate || !ctx.upcomingEventId) {
       return {
@@ -170,10 +180,7 @@ export class VenueReservationsService {
     }
 
     const window = settings.window;
-    const eventDate = eventDateForReservations(window);
-    if (!eventDate) {
-      throw new BadRequestException('Reservations are not configured.');
-    }
+    const eventDate = await this.resolveCanonicalEventDateFromContext(ctx);
 
     const windowStatus = evaluateSalesWindow(window);
     if (!windowStatus.open) {
@@ -201,9 +208,11 @@ export class VenueReservationsService {
       upcomingEventId: ctx.upcomingEventId,
     });
 
-    const eventLabel =
-      settings.reservationEventLabel?.trim() ||
-      eventDate.toISOString().slice(0, 10);
+    const eventLabel = this.buildReservationEventLabel(
+      eventDate,
+      settings.reservationTimezone,
+      settings.reservationEventLabel,
+    );
     let eventSlug = ctx.slug;
     if (!eventSlug && ctx.upcomingEventId) {
       const eventRow = await this.prisma.event.findUnique({
@@ -257,7 +266,7 @@ export class VenueReservationsService {
     upcomingEventSlug?: string;
   }) {
     const ctx = await this.resolveVenueContext(query);
-    const eventDate = this.assertAdminEventDate(ctx);
+    const eventDate = await this.assertAdminEventDate(ctx);
     const upcomingEventId = ctx.upcomingEventId!;
 
     const paid = await this.findPaidReservations(upcomingEventId);
@@ -299,7 +308,7 @@ export class VenueReservationsService {
       upcomingEventId: dto.upcomingEventId,
       upcomingEventSlug: dto.upcomingEventSlug,
     });
-    const eventDate = this.assertAdminEventDate(ctx);
+    const eventDate = await this.assertAdminEventDate(ctx);
     const upcomingEventId = ctx.upcomingEventId!;
 
     const seat = await this.resolveSeatSelection(dto, ctx.floorLayoutId);
@@ -312,9 +321,11 @@ export class VenueReservationsService {
     });
 
     const settings = ctx.settings;
-    const eventLabel =
-      settings.reservationEventLabel?.trim() ||
-      eventDate.toISOString().slice(0, 10);
+    const eventLabel = this.buildReservationEventLabel(
+      eventDate,
+      settings.reservationTimezone,
+      settings.reservationEventLabel,
+    );
     const returnUrl = `${this.stripeService.frontendUrl().replace(/\/$/, '')}/pay/venue-seat/return?session_id={CHECKOUT_SESSION_ID}`;
     const rawToken = randomBytes(32).toString('hex');
     const payTokenHash = this.hashPayToken(rawToken);
@@ -381,7 +392,7 @@ export class VenueReservationsService {
       upcomingEventId: dto.upcomingEventId,
       upcomingEventSlug: dto.upcomingEventSlug,
     });
-    const eventDate = this.assertAdminEventDate(ctx);
+    const eventDate = await this.assertAdminEventDate(ctx);
     const upcomingEventId = ctx.upcomingEventId!;
 
     const seat = await this.resolveSeatSelection(dto, ctx.floorLayoutId);
@@ -686,6 +697,231 @@ export class VenueReservationsService {
     };
   }
 
+  async resendAdminPaidConfirmationEmail(reservationId: string) {
+    const row = await this.prisma.venueSeatReservation.findUnique({
+      where: { id: reservationId },
+      include: venueSeatReservationTableInclude,
+    });
+    if (!row) {
+      throw new NotFoundException('Reservation not found.');
+    }
+    if (row.status !== VenueSeatReservationStatus.PAID) {
+      throw new BadRequestException(
+        'Only paid reservations can receive a confirmation resend.',
+      );
+    }
+
+    const sent = await this.sendReservationPaidConfirmationEmail(row);
+    if (!sent) {
+      throw new BadRequestException('Could not send confirmation email.');
+    }
+
+    await this.prisma.venueSeatReservation.update({
+      where: { id: row.id },
+      data: { customerEmailSentAt: new Date() },
+    });
+
+    this.logger.log(
+      `reservation-confirmation-resent id=${row.id} to=${row.customerEmail}`,
+    );
+
+    return {
+      message: 'Confirmation email sent.',
+      reservationId: row.id,
+      customerName: row.customerName,
+      customerEmail: maskEmail(row.customerEmail) ?? undefined,
+    };
+  }
+
+  async resendAdminPaidConfirmationForCustomers(customerNames: string[]) {
+    const names = [
+      ...new Set(customerNames.map((name) => name.trim()).filter(Boolean)),
+    ];
+    if (names.length === 0) {
+      throw new BadRequestException('At least one customer name is required.');
+    }
+
+    const results: Array<{
+      customerName: string;
+      sent: boolean;
+      reservationId?: string;
+      customerEmail?: string;
+      error?: string;
+    }> = [];
+
+    for (const name of names) {
+      const row = await this.findPaidReservationForCustomerName(name);
+
+      if (!row) {
+        results.push({
+          customerName: name,
+          sent: false,
+          error: 'Paid reservation not found.',
+        });
+        continue;
+      }
+
+      const sent = await this.sendReservationPaidConfirmationEmail(row);
+      if (!sent) {
+        results.push({
+          customerName: name,
+          sent: false,
+          reservationId: row.id,
+          customerEmail: maskEmail(row.customerEmail) ?? undefined,
+          error: 'Mail provider failed.',
+        });
+        continue;
+      }
+
+      await this.prisma.venueSeatReservation.update({
+        where: { id: row.id },
+        data: { customerEmailSentAt: new Date() },
+      });
+
+      this.logger.log(
+        `reservation-confirmation-resent id=${row.id} to=${row.customerEmail}`,
+      );
+
+      results.push({
+        customerName: row.customerName,
+        sent: true,
+        reservationId: row.id,
+        customerEmail: maskEmail(row.customerEmail) ?? undefined,
+      });
+    }
+
+    return {
+      message: 'Confirmation resend finished.',
+      results,
+    };
+  }
+
+  async getConfirmationPdfDownload(token: string): Promise<{
+    buffer: Buffer;
+    filename: string;
+  }> {
+    const parsed = verifyConfirmationShareToken(
+      token.trim(),
+      this.confirmationShareSecret(),
+    );
+    if (!parsed) {
+      throw new BadRequestException('Invalid confirmation download link.');
+    }
+
+    const row = await this.prisma.venueSeatReservation.findUnique({
+      where: { id: parsed.reservationId },
+      include: venueSeatReservationTableInclude,
+    });
+    if (!row || row.status !== VenueSeatReservationStatus.PAID) {
+      throw new NotFoundException('Reservation confirmation not found.');
+    }
+    if (!row.paidAt || row.paidAt.toISOString() !== parsed.paidAtIso) {
+      throw new BadRequestException('Invalid confirmation download link.');
+    }
+
+    const reservationKindLabel =
+      row.kind === VenueSeatKind.CATALOG_TABLE ? 'Table' : 'Chair';
+    const layoutItemLabel =
+      await this.resolveSeatDisplayLabelForReservation(row);
+    const appPublicName =
+      this.config.get<string>('APP_PUBLIC_NAME')?.trim() ??
+      'Shamell Entertainment';
+
+    let reservationTimezone = 'America/New_York';
+    if (row.upcomingEventId) {
+      const config = await this.prisma.upcomingVenueConfig.findUnique({
+        where: { eventId: row.upcomingEventId },
+        select: { reservationTimezone: true },
+      });
+      reservationTimezone =
+        config?.reservationTimezone ??
+        (await this.getLegacyReservationSettings()).reservationTimezone;
+    } else {
+      reservationTimezone = (await this.getLegacyReservationSettings())
+        .reservationTimezone;
+    }
+
+    const canonicalEventDate = await resolveCanonicalReservationEventDate(
+      this.prisma,
+      {
+        upcomingEventId: row.upcomingEventId,
+        storedEventDate: row.eventDate,
+      },
+    );
+
+    const buffer = await buildVenueReservationConfirmationPdf({
+      appPublicName,
+      recipientName: row.customerName.trim() || 'Guest',
+      reservationKindLabel,
+      layoutItemLabel,
+      eventDate: canonicalEventDate ?? row.eventDate,
+      reservationTimezone,
+    });
+
+    return {
+      buffer,
+      filename: 'shamell-reservation-confirmation.pdf',
+    };
+  }
+
+  private confirmationShareSecret(): string {
+    return this.config.get<string>('JWT_SECRET') ?? 'change-me-in-production';
+  }
+
+  private backendPublicUrl(): string {
+    const configured =
+      this.config.get<string>('BACKEND_PUBLIC_URL')?.trim() ||
+      this.config.get<string>('NEXT_PUBLIC_BACKEND_URL')?.trim();
+    if (configured) {
+      return configured.replace(/\/$/, '');
+    }
+    const port = this.config.get<string>('PORT') ?? '3001';
+    return `http://localhost:${port}`;
+  }
+
+  private buildConfirmationPdfDownloadUrl(row: {
+    id: string;
+    paidAt: Date | null;
+    kind: VenueSeatKind;
+  }): string | undefined {
+    if (row.kind !== VenueSeatKind.CATALOG_TABLE || !row.paidAt) {
+      return undefined;
+    }
+    const token = signConfirmationShareToken(
+      row.id,
+      row.paidAt.toISOString(),
+      this.confirmationShareSecret(),
+    );
+    return `${this.backendPublicUrl()}/api/v1/venue-reservations/public/confirmation.pdf?token=${encodeURIComponent(token)}`;
+  }
+
+  private async findPaidReservationForCustomerName(name: string) {
+    const baseWhere = {
+      status: VenueSeatReservationStatus.PAID,
+    } as const;
+
+    const exact = await this.prisma.venueSeatReservation.findFirst({
+      where: {
+        ...baseWhere,
+        customerName: { equals: name, mode: 'insensitive' },
+      },
+      orderBy: { paidAt: 'desc' },
+      include: venueSeatReservationTableInclude,
+    });
+    if (exact) {
+      return exact;
+    }
+
+    return this.prisma.venueSeatReservation.findFirst({
+      where: {
+        ...baseWhere,
+        customerName: { startsWith: name, mode: 'insensitive' },
+      },
+      orderBy: { paidAt: 'desc' },
+      include: venueSeatReservationTableInclude,
+    });
+  }
+
   private async markPaidFromSession(
     session: StripeCheckoutSessionLite,
     stripeEventId: string,
@@ -777,8 +1013,10 @@ export class VenueReservationsService {
 
   private async venueReservationContextLabel(row: {
     kind: VenueSeatKind;
+    layoutItemId: string;
+    venueTableConfigId: string | null;
     upcomingEventId: string | null;
-    venueTableConfig?: { tableName: string | null } | null;
+    venueTableConfig?: { tableName: string; size: string } | null;
   }): Promise<string> {
     let eventName = 'Venue event';
     if (row.upcomingEventId) {
@@ -790,10 +1028,17 @@ export class VenueReservationsService {
     }
     const kindLabel =
       row.kind === VenueSeatKind.STANDALONE_CHAIR ? 'Chair' : 'Table';
-    const tableLabel = row.venueTableConfig?.tableName
-      ? ` — ${row.venueTableConfig.tableName}`
+    const seatLabel = await this.resolveSeatDisplayLabelForReservation({
+      kind: row.kind,
+      layoutItemId: row.layoutItemId,
+      venueTableConfigId: row.venueTableConfigId,
+      upcomingEventId: row.upcomingEventId,
+      venueTableConfig: row.venueTableConfig ?? null,
+    });
+    const seatSuffix = seatLabel
+      ? ` — ${toShortSeatDisplayLabel(seatLabel)}`
       : '';
-    return `${eventName} (${kindLabel}${tableLabel})`;
+    return `${eventName} (${kindLabel}${seatSuffix})`;
   }
 
   private async markExpiredFromSession(sessionId: string) {
@@ -956,7 +1201,7 @@ export class VenueReservationsService {
     return reservableIds.every((id) => reserved.has(id));
   }
 
-  private assertAdminEventDate(
+  private async assertAdminEventDate(
     ctx: Awaited<ReturnType<typeof this.resolveVenueContext>>,
   ) {
     if (!ctx.upcomingEventId) {
@@ -967,13 +1212,85 @@ export class VenueReservationsService {
         'Floor layout is not configured. Save the seating layout in the 3D editor first.',
       );
     }
-    const eventDate = eventDateForReservations(ctx.settings.window);
-    if (!eventDate) {
-      throw new BadRequestException(
-        'Set the reservation event date in On Coming Events before reserving seats.',
-      );
+    try {
+      return await this.resolveCanonicalEventDateFromContext(ctx);
+    } catch (err) {
+      if (err instanceof BadRequestException) {
+        throw new BadRequestException(
+          'Set the reservation event date in On Coming Events before reserving seats.',
+        );
+      }
+      throw err;
     }
-    return eventDate;
+  }
+
+  private async resolveCanonicalEventDateOptional(
+    ctx: Awaited<ReturnType<typeof this.resolveVenueContext>>,
+  ): Promise<Date | null> {
+    try {
+      return await this.resolveCanonicalEventDateFromContext(ctx);
+    } catch {
+      return null;
+    }
+  }
+
+  private async resolveCanonicalEventDateFromContext(
+    ctx: Awaited<ReturnType<typeof this.resolveVenueContext>>,
+  ): Promise<Date> {
+    if (ctx.upcomingEventId) {
+      const config = await this.prisma.upcomingVenueConfig.findUnique({
+        where: { eventId: ctx.upcomingEventId },
+        include: {
+          reservationEventTemplate: {
+            select: {
+              name: true,
+              timezone: true,
+              scheduleMode: true,
+              salesStartDate: true,
+              salesEndDate: true,
+              eventDate: true,
+              eventStartTime: true,
+              eventEndTime: true,
+              recurringEffectiveFrom: true,
+              recurringStartTime: true,
+              recurringEndTime: true,
+            },
+          },
+        },
+      });
+      if (config) {
+        return assertCanonicalEventNightForCheckout(config);
+      }
+    }
+
+    const legacyRow = await this.prisma.venueLayoutClientSettings.findFirst({
+      orderBy: { updatedAt: 'desc' },
+      select: {
+        reservationOpensAt: true,
+        reservationClosesAt: true,
+        reservationEventDate: true,
+      },
+    });
+    if (legacyRow) {
+      const eventDate = canonicalEventNightFromVenueConfig(legacyRow);
+      if (eventDate) {
+        return eventDate;
+      }
+    }
+
+    throw new BadRequestException('Reservations are not configured.');
+  }
+
+  private buildReservationEventLabel(
+    eventDate: Date,
+    timezone: string,
+    reservationEventLabel: string | null,
+  ): string {
+    return (
+      formatEventDateInZone(eventDate, timezone) ||
+      reservationEventLabel?.trim() ||
+      eventDate.toISOString().slice(0, 10)
+    );
   }
 
   private async resolveSeatSelection(
@@ -1501,6 +1818,7 @@ export class VenueReservationsService {
     layoutItemId: string;
     venueTableConfigId: string | null;
     eventDate: Date;
+    paidAt: Date | null;
     customerName: string;
     customerEmail: string;
     venueTableConfig: { tableName: string; size: string } | null;
@@ -1539,25 +1857,47 @@ export class VenueReservationsService {
       }
       const recipientName = row.customerName.trim() || 'Guest';
 
+      const canonicalEventDate = await resolveCanonicalReservationEventDate(
+        this.prisma,
+        {
+          upcomingEventId: row.upcomingEventId,
+          storedEventDate: row.eventDate,
+        },
+      );
+      const eventDateForEmail = canonicalEventDate ?? row.eventDate;
+      if (
+        canonicalEventDate &&
+        canonicalEventDate.getTime() !== row.eventDate.getTime()
+      ) {
+        await this.prisma.venueSeatReservation.update({
+          where: { id: row.id },
+          data: { eventDate: canonicalEventDate },
+        });
+      }
+
+      const pdfDownloadUrl = this.buildConfirmationPdfDownloadUrl(row);
+
       const subject = buildVenueReservationConfirmationSubject(appPublicName);
       const html = buildVenueReservationConfirmationHtml({
         recipientName,
         appPublicName,
         frontendBaseUrl,
         branding,
-        eventDate: row.eventDate,
+        eventDate: eventDateForEmail,
         reservationTimezone,
         reservationKindLabel,
         layoutItemLabel,
+        pdfDownloadUrl,
       });
       const text = buildVenueReservationConfirmationText({
         recipientName,
         appPublicName,
         frontendBaseUrl,
-        eventDate: row.eventDate,
+        eventDate: eventDateForEmail,
         reservationTimezone,
         reservationKindLabel,
         layoutItemLabel,
+        pdfDownloadUrl,
       });
 
       const { ok: sent, errorText } = await this.mail.sendTransactional({

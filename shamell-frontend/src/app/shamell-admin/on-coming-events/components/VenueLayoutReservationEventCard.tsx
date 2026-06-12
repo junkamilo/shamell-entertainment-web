@@ -67,20 +67,23 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
   const [openTime, setOpenTime] = useState("");
   const [closeDate, setCloseDate] = useState("");
   const [closeTime, setCloseTime] = useState("");
+  const [eventNightDate, setEventNightDate] = useState("");
+  const [eventNightTime, setEventNightTime] = useState("");
   const [datePickerTarget, setDatePickerTarget] = useState<VenueLayoutDatePickerTarget>(null);
   const [timePickerTarget, setTimePickerTarget] = useState<VenueLayoutTimePickerTarget>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setEventLabel(settings?.reservationEventLabel ?? "");
-    const open = splitIsoToDateAndTime(
-      settings?.reservationEventDate ?? settings?.reservationOpensAt,
-    );
+    const open = splitIsoToDateAndTime(settings?.reservationOpensAt);
     const close = splitIsoToDateAndTime(settings?.reservationClosesAt);
+    const eventNight = splitIsoToDateAndTime(settings?.reservationEventDate);
     setOpenDate(open.date);
     setOpenTime(open.time);
     setCloseDate(close.date);
     setCloseTime(close.time);
+    setEventNightDate(eventNight.date);
+    setEventNightTime(eventNight.time);
   }, [
     settings?.reservationEventDate,
     settings?.reservationEventLabel,
@@ -94,6 +97,7 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
 
     const opensAt = combineDateAndTime(openDate, openTime);
     const closesAt = combineDateAndTime(closeDate, closeTime);
+    const reservationEventDate = combineDateAndTime(eventNightDate, eventNightTime);
 
     if (openDate && !opensAt) {
       toast({
@@ -111,6 +115,14 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
       });
       return;
     }
+    if (eventNightDate && !reservationEventDate) {
+      toast({
+        variant: "destructive",
+        title: "Invalid event night",
+        description: "Check the event night date and time.",
+      });
+      return;
+    }
     if (opensAt && closesAt && new Date(closesAt).getTime() <= new Date(opensAt).getTime()) {
       toast({
         variant: "destructive",
@@ -125,6 +137,7 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
       reservationEventLabel: eventLabel.trim() || undefined,
       reservationOpensAt: opensAt,
       reservationClosesAt: closesAt,
+      reservationEventDate: reservationEventDate ?? undefined,
     });
     setIsSaving(false);
 
@@ -139,12 +152,23 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
 
     onSaved(result.settings);
     toast({ title: "Reservation event saved" });
-  }, [closeDate, closeTime, eventLabel, onSaved, openDate, openTime]);
+  }, [
+    closeDate,
+    closeTime,
+    eventLabel,
+    eventNightDate,
+    eventNightTime,
+    onSaved,
+    openDate,
+    openTime,
+  ]);
 
   const openDateDisplay = openDate ? formatDateDisplayUs(openDate) : "";
   const closeDateDisplay = closeDate ? formatDateDisplayUs(closeDate) : "";
   const openTimeDisplay = openTime ? formatTimeDisplayUs(openTime) : "";
   const closeTimeDisplay = closeTime ? formatTimeDisplayUs(closeTime) : "";
+  const eventNightDateDisplay = eventNightDate ? formatDateDisplayUs(eventNightDate) : "";
+  const eventNightTimeDisplay = eventNightTime ? formatTimeDisplayUs(eventNightTime) : "";
 
   return (
     <>
@@ -203,6 +227,31 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
           </fieldset>
         </div>
 
+        <fieldset className="space-y-3 rounded-xl border border-gold/12 p-4">
+          <legend className="px-1 text-xs font-medium uppercase tracking-wider text-gold/90">
+            Event night
+          </legend>
+          <p className="text-xs text-foreground/55">
+            Date shown on confirmations and stored on reservations (not the sales window).
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <PickerButton
+              label="Event date"
+              display={eventNightDateDisplay}
+              placeholder="Choose date"
+              badge="CALENDAR"
+              onClick={() => setDatePickerTarget("eventNight")}
+            />
+            <PickerButton
+              label="Event time"
+              display={eventNightTimeDisplay}
+              placeholder="Choose time"
+              badge="TIME"
+              onClick={() => setTimePickerTarget("eventNight")}
+            />
+          </div>
+        </fieldset>
+
         <button
           type="button"
           disabled={isSaving}
@@ -220,6 +269,8 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
         closeDate={closeDate}
         openTime={openTime}
         closeTime={closeTime}
+        eventNightDate={eventNightDate}
+        eventNightTime={eventNightTime}
         onCloseDatePicker={() => setDatePickerTarget(null)}
         onCloseTimePicker={() => setTimePickerTarget(null)}
         onConfirmOpenDate={(iso) => {
@@ -236,6 +287,14 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
         }}
         onConfirmCloseTime={(hhmm) => {
           setCloseTime(hhmm);
+          setTimePickerTarget(null);
+        }}
+        onConfirmEventNightDate={(iso) => {
+          setEventNightDate(iso);
+          setDatePickerTarget(null);
+        }}
+        onConfirmEventNightTime={(hhmm) => {
+          setEventNightTime(hhmm);
           setTimePickerTarget(null);
         }}
       />
