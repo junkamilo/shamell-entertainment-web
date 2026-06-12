@@ -2,9 +2,8 @@
 
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import type { Stripe } from "@stripe/stripe-js";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getStripePromise } from "@/lib/stripe/client";
-import { useStripeCheckoutMount } from "./useStripeCheckoutMount";
 
 type Props = {
   clientSecret: string;
@@ -12,12 +11,15 @@ type Props = {
 
 const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
 
+/**
+ * Embedded Checkout iframe styling is controlled by Checkout Session
+ * `branding_settings` on the server (see STRIPE_EMBEDDED_CHECKOUT_APPEARANCE).
+ * The Elements `appearance` API is not supported on EmbeddedCheckoutProvider.
+ */
 export function StripeEmbeddedCheckout({ clientSecret }: Props) {
   const [stripe, setStripe] = useState<Stripe | null | undefined>(undefined);
-  const mountRef = useRef<HTMLDivElement>(null);
-  const providerOptions = useMemo(() => ({ clientSecret }), [clientSecret]);
 
-  useStripeCheckoutMount(mountRef, stripe != null);
+  const providerOptions = useMemo(() => ({ clientSecret }), [clientSecret]);
 
   useEffect(() => {
     if (!publishableKey) {
@@ -41,16 +43,12 @@ export function StripeEmbeddedCheckout({ clientSecret }: Props) {
   }
 
   if (stripe === undefined) {
-    return (
-      <div className="flex flex-1 items-center justify-center px-4 py-8 text-sm text-neutral-500">
-        Loading payment…
-      </div>
-    );
+    return <div className="stripe-checkout-host__loading">Loading payment…</div>;
   }
 
   return (
     <EmbeddedCheckoutProvider stripe={stripe} options={providerOptions}>
-      <div ref={mountRef} className="stripe-embedded-checkout-mount">
+      <div className="stripe-embedded-checkout-mount">
         <EmbeddedCheckout />
       </div>
     </EmbeddedCheckoutProvider>

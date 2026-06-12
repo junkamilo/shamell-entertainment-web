@@ -46,9 +46,6 @@ export function AgendarEventFields({ catalog, form }: AgendarEventFieldsProps) {
 
       <div className="block">
         <span className={fieldLabelClass}>SERVICES</span>
-        <p className="mt-1 font-body text-xs text-foreground/55">
-          Choose one or more. Order is saved; the first is the primary catalog line.
-        </p>
         <div className="mt-2">
           <AdminServicesMultiSelect
             options={catalog.services.map((s) => ({

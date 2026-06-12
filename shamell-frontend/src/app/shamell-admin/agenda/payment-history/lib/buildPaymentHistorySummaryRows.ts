@@ -78,7 +78,6 @@ function purchaseDetailRows(
       }
       pushRow(rows, "SEAT TYPE", detail.seatKind === "CHAIR" ? "Chair" : "Table");
       pushRow(rows, "TABLE", detail.tableName);
-      pushRow(rows, "LAYOUT ITEM", detail.layoutItemId);
       break;
     case "CLASS_SESSION":
       pushRow(rows, "CLASS", detail.eventName);

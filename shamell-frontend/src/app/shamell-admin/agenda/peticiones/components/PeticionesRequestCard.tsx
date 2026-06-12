@@ -418,15 +418,17 @@ export default function PeticionesRequestCard({
               Delete
             </button>
           </div>
-          {!(contact && contactIsConciergeInquiry(contact)) ? (
-            <p className="wrap-break-word font-body text-xs leading-relaxed text-foreground/50 sm:text-sm">
-              {contact && contactIsBookingInquiry(contact)
-                ? "Booking inquiry from the public form: use Reserve only if a calendar booking was not created automatically (missing phone or catalog match)."
-                : booking
-                  ? "Green = fully paid, orange = deposit paid, cyan = payment link sent, gold = awaiting payment, red = canceled."
-                  : "Bookings from the public form or Book appear here as reserved (green)."}
-            </p>
-          ) : null}
+          {!(contact && contactIsConciergeInquiry(contact)) &&
+            (contact && contactIsBookingInquiry(contact) ? (
+              <p className="wrap-break-word font-body text-xs leading-relaxed text-foreground/50 sm:text-sm">
+                Booking inquiry from the public form: use Reserve only if a calendar booking was not
+                created automatically (missing phone or catalog match).
+              </p>
+            ) : !booking ? (
+              <p className="wrap-break-word font-body text-xs leading-relaxed text-foreground/50 sm:text-sm">
+                Bookings from the public form or Book appear here as reserved (green).
+              </p>
+            ) : null)}
         </div>
       ) : null}
 

@@ -71,6 +71,7 @@ export function OnComingEventClassBookingModal({ slug, sessions, open, onClose }
   if (checkoutSecret) {
     return (
       <StripeCheckoutHost
+        layout="overlay"
         clientSecret={checkoutSecret}
         ariaLabel="Class booking payment"
       />

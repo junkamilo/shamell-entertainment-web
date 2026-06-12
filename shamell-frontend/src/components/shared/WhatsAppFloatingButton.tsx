@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import { isPaymentFlowRoute } from "@/lib/paymentFlowRoutes";
 import { cn } from "@/lib/utils";
 
 /** E.164 digits for wa.me (US +1 239 452-1062). Override with NEXT_PUBLIC_WHATSAPP_PHONE. */
@@ -41,6 +42,7 @@ const WA_CHAT_BG = "#ECE5DD";
 export default function WhatsAppFloatingButton() {
   const pathname = usePathname() ?? "/";
   const isAdminRoute = pathname.startsWith("/admin") || pathname.startsWith("/shamell-admin");
+  const isPaymentRoute = isPaymentFlowRoute(pathname);
   const phoneDigits = normalizePhoneDigits(process.env.NEXT_PUBLIC_WHATSAPP_PHONE);
   const phoneDisplay =
     process.env.NEXT_PUBLIC_WHATSAPP_PHONE_DISPLAY?.trim() || FALLBACK_PHONE_DISPLAY;
@@ -49,7 +51,7 @@ export default function WhatsAppFloatingButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState(defaultMessage);
 
-  if (isAdminRoute) return null;
+  if (isAdminRoute || isPaymentRoute) return null;
 
   const finalMessage = message.trim() || defaultMessage;
   const canSend = finalMessage.trim().length > 0;

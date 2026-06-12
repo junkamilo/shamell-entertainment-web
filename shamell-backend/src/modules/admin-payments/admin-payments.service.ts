@@ -13,9 +13,12 @@ import {
   VenueSeatKind,
   VenueSeatReservation,
   VenueSeatReservationStatus,
+  VenueTableSize,
 } from '@prisma/client';
 import { formatPaymentMethodLabel } from '../stripe/stripe-payment-details.util';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FloorLayoutService } from '../floor-layout/floor-layout.service';
+import { resolveVenueSeatDisplayLabel } from '../venue-reservations/venue-seat-display-label.util';
 import { fixedEventStartsAtIso } from '../upcoming-events/upcoming-fixed-ticket.util';
 import type {
   AdminPaymentDetailFlow,
@@ -52,7 +55,7 @@ const bookingPaymentInclude = {
 
 const venueInclude = {
   upcomingEvent: { include: { eventType: { select: { name: true } } } },
-  venueTableConfig: { select: { tableName: true } },
+  venueTableConfig: { select: { tableName: true, size: true } },
 } satisfies Prisma.VenueSeatReservationInclude;
 
 const classInclude = {
@@ -132,7 +135,10 @@ function paymentLabelFromRow(row: {
 
 @Injectable()
 export class AdminPaymentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly floorLayout: FloorLayoutService,
+  ) {}
 
   async listPayments(query: AdminPaymentsQueryDto) {
     const page = Math.max(1, Number(query.page ?? 1));
@@ -171,7 +177,7 @@ export class AdminPaymentsService {
         orderBy: { updatedAt: 'desc' },
       });
       for (const r of venueRows) {
-        rows.push(this.mapVenueReservation(r));
+        rows.push(await this.mapVenueReservation(r));
       }
     }
 
@@ -245,7 +251,7 @@ export class AdminPaymentsService {
         if (!reservation) {
           throw new NotFoundException('Payment not found.');
         }
-        return this.mapVenueReservationDetail(reservation);
+        return await this.mapVenueReservationDetail(reservation);
       }
       case 'CLASS_SESSION': {
         const enrollment = await this.prisma.upcomingClassEnrollment.findUnique(
@@ -478,12 +484,43 @@ export class AdminPaymentsService {
     };
   }
 
-  private mapVenueReservation(r: VenueRow): AdminStripePaymentRow {
+  private async resolveVenueSeatLabelForRow(r: VenueRow): Promise<string> {
+    let floorLayoutId: string | null = null;
+    if (r.upcomingEventId) {
+      const config = await this.prisma.upcomingVenueConfig.findUnique({
+        where: { eventId: r.upcomingEventId },
+        select: { floorLayoutId: true },
+      });
+      floorLayoutId =
+        config?.floorLayoutId ??
+        (await this.floorLayout.getActiveFloorLayoutId());
+    } else {
+      floorLayoutId = await this.floorLayout.getActiveFloorLayoutId();
+    }
+
+    return resolveVenueSeatDisplayLabel(this.prisma, this.floorLayout, {
+      kind: r.kind,
+      layoutItemId: r.layoutItemId,
+      venueTableConfigId: r.venueTableConfigId,
+      floorLayoutId,
+      venueTableConfig:
+        r.venueTableConfig && r.venueTableConfigId
+          ? {
+              id: r.venueTableConfigId,
+              tableName: r.venueTableConfig.tableName,
+              size: r.venueTableConfig.size as VenueTableSize,
+            }
+          : null,
+    });
+  }
+
+  private buildVenuePaymentRow(
+    r: VenueRow,
+    seatLabel: string,
+  ): AdminStripePaymentRow {
     const kindLabel =
       r.kind === VenueSeatKind.STANDALONE_CHAIR ? 'Chair' : 'Table';
-    const tableLabel = r.venueTableConfig?.tableName
-      ? ` — ${r.venueTableConfig.tableName}`
-      : '';
+    const seatSuffix = seatLabel ? ` — ${seatLabel}` : '';
     const eventName = r.upcomingEvent?.eventType?.name ?? 'Venue event';
 
     return {
@@ -495,7 +532,7 @@ export class AdminPaymentsService {
       currency: r.currency,
       customerName: r.customerName,
       customerEmail: r.customerEmail,
-      contextLabel: `${eventName} (${kindLabel}${tableLabel})`,
+      contextLabel: `${eventName} (${kindLabel}${seatSuffix})`,
       bookingId: null,
       eventSlug: r.upcomingEvent?.slug ?? null,
       eventId: r.upcomingEventId,
@@ -507,6 +544,11 @@ export class AdminPaymentsService {
       expiresAt: iso(r.expiresAt),
       updatedAt: r.updatedAt.toISOString(),
     };
+  }
+
+  private async mapVenueReservation(r: VenueRow): Promise<AdminStripePaymentRow> {
+    const seatLabel = await this.resolveVenueSeatLabelForRow(r);
+    return this.buildVenuePaymentRow(r, seatLabel);
   }
 
   private mapClassEnrollment(e: ClassRow): AdminStripePaymentRow {
@@ -577,15 +619,19 @@ export class AdminPaymentsService {
     };
   }
 
-  private mapVenueReservationDetail(r: VenueRow): AdminStripePaymentDetail {
-    const base = this.mapVenueReservation(r);
+  private async mapVenueReservationDetail(
+    r: VenueRow,
+  ): Promise<AdminStripePaymentDetail> {
+    const seatLabel = await this.resolveVenueSeatLabelForRow(r);
+    const base = this.buildVenuePaymentRow(r, seatLabel);
     const eventName = r.upcomingEvent?.eventType?.name ?? 'Venue event';
     const purchaseDetails: VenuePurchaseDetails = {
       flow: 'VENUE_SEAT',
       eventName,
       eventDate: r.eventDate.toISOString(),
       seatKind: r.kind === VenueSeatKind.STANDALONE_CHAIR ? 'CHAIR' : 'TABLE',
-      tableName: r.venueTableConfig?.tableName ?? null,
+      tableName:
+        r.kind === VenueSeatKind.CATALOG_TABLE ? seatLabel : null,
       layoutItemId: r.layoutItemId,
     };
     return {

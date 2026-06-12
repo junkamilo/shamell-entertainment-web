@@ -101,7 +101,7 @@ const ServicesSection = () => {
   }, [apiBaseUrl]);
 
   return (
-    <section id="experiences" className="bg-transparent px-4 pb-20 pt-0">
+    <section id="experiences" className="overflow-x-hidden bg-transparent px-4 pb-20 pt-0">
       <div className="relative mx-auto mb-12 max-w-6xl text-center">
         <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2">
           <div className="h-24 w-[min(20rem,88vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(120,90,160,0.12),transparent_70%)] blur-3xl opacity-80" />

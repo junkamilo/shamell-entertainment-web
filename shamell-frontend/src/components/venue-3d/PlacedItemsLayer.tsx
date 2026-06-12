@@ -40,7 +40,6 @@ export default function PlacedItemsLayer({
         const rotY = (item.rotation * Math.PI) / 180;
         const selected = selectedId === item.id;
         const reserved = reservedIds?.has(item.id) ?? false;
-        const holderName = reserved ? reservedLabels?.get(item.id) : undefined;
         const bubbleHeight = item.kind === "catalog_table" ? 1.35 : 1.05;
 
         return (
@@ -96,9 +95,7 @@ export default function PlacedItemsLayer({
             ) : (
               <StandaloneChairMesh selected={selected && !reserved} reserved={reserved} />
             )}
-            {reserved && holderName ? (
-              <ReservationSpeechBubble name={holderName} height={bubbleHeight} />
-            ) : null}
+            {reserved ? <ReservationSpeechBubble height={bubbleHeight} /> : null}
           </group>
         );
       })}

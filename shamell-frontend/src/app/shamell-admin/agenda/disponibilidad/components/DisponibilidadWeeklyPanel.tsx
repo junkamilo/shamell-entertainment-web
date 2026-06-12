@@ -3,6 +3,11 @@ import { Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
 import type { AdminAvailabilitySnapshot, TimePickerTarget } from "../types/disponibilidad.types";
+import {
+  disponibilidadActionButtonClass,
+  disponibilidadSecondaryButtonClass,
+  disponibilidadSectionTitleClass,
+} from "../lib/disponibilidadStyles";
 import DisponibilidadWeeklyRow from "./DisponibilidadWeeklyRow";
 
 type Props = {
@@ -41,8 +46,8 @@ export default function DisponibilidadWeeklyPanel({
       className="shamell-glass-surface mb-10 overflow-visible rounded-2xl p-4 sm:p-5 md:p-7"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gold/10 pb-4">
-        <h2 className="font-brand text-[11px] tracking-[0.18em] text-gold">WEEKLY HOURS</h2>
-        {error ? <span className="text-xs text-red-300">{error}</span> : null}
+        <h2 className={disponibilidadSectionTitleClass}>WEEKLY HOURS</h2>
+        {error ? <span className="text-sm text-red-300 sm:text-base">{error}</span> : null}
       </div>
 
       {isLoading && !snapshot ? (
@@ -63,7 +68,7 @@ export default function DisponibilidadWeeklyPanel({
             <button
               type="submit"
               disabled={savingWeekly}
-              className="w-full rounded-full border border-gold/35 px-5 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50 sm:w-auto sm:py-2"
+              className={disponibilidadActionButtonClass}
             >
               {savingWeekly ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
               SAVE HOURS
@@ -71,7 +76,7 @@ export default function DisponibilidadWeeklyPanel({
             <button
               type="button"
               onClick={onReload}
-              className="w-full rounded-full border border-gold/15 px-4 py-2.5 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/30 hover:text-gold sm:w-auto sm:py-2"
+              className={disponibilidadSecondaryButtonClass}
             >
               RELOAD
             </button>

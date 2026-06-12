@@ -22,7 +22,7 @@ export type EventCatalogItem = {
 };
 
 const inquireLinkClass = cn(
-  "relative inline-flex min-h-12 flex-1 items-center justify-center gap-2 overflow-hidden border border-gold/35 bg-black/40 px-5 py-3 font-brand text-xs font-semibold tracking-[0.16em] text-gold uppercase md:min-h-12 md:tracking-[0.18em]",
+  "relative inline-flex min-h-12 w-full min-w-0 flex-1 items-center justify-center gap-2 overflow-hidden border border-gold/35 bg-black/40 px-3 py-3 font-brand text-xs font-semibold tracking-[0.14em] text-gold uppercase lg:px-5 lg:tracking-[0.16em] xl:tracking-[0.18em]",
   "transition-all duration-300",
   "before:pointer-events-none before:absolute before:inset-0 before:translate-x-[-110%] before:bg-[linear-gradient(105deg,transparent,rgba(255,255,255,0.08),transparent)] before:transition-transform before:duration-500",
   "hover:border-gold/55 hover:bg-gold/[0.07] hover:text-gold-light group-hover/card:before:translate-x-[110%]",
@@ -55,7 +55,7 @@ export function EventCatalogCard({
   return (
     <article
       className={cn(
-        "group/card relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl",
+        "@container group/card relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl",
         "border border-gold/30",
         "bg-[linear-gradient(168deg,rgba(18,15,12,0.98)_0%,rgba(8,7,5,1)_48%,rgba(3,2,2,1)_100%)]",
         "shadow-[0_18px_56px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.035)]",
@@ -86,9 +86,9 @@ export function EventCatalogCard({
       />
 
       {/* Body */}
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-6 pb-6 pt-5 md:px-7 md:pb-7 md:pt-6">
-        <header className="shrink-0 border-b border-white/[0.07] pb-4 transition-colors duration-500 group-hover/card:border-gold/15">
-          <h3 className="font-brand text-xl font-semibold tracking-[0.16em] text-gold md:text-2xl md:tracking-[0.18em]">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col px-4 pb-5 pt-4 lg:px-6 lg:pb-6 lg:pt-5">
+        <header className="shrink-0 border-b border-white/[0.07] pb-3 transition-colors duration-500 group-hover/card:border-gold/15 lg:pb-4">
+          <h3 className="text-balance font-brand text-base font-semibold leading-snug tracking-[0.12em] text-gold lg:text-xl lg:tracking-[0.16em] xl:text-2xl xl:tracking-[0.18em]">
             {service.eventTypeName.toUpperCase()}
           </h3>
           <div className="mt-2.5 flex items-center justify-center gap-2.5" aria-hidden>
@@ -118,7 +118,7 @@ export function EventCatalogCard({
           cardId={service.id}
         />
 
-        <div className="mt-6 shrink-0 border-t border-gold/14 pt-5">
+        <div className="mt-auto shrink-0 border-t border-gold/14 pt-4 lg:mt-6 lg:pt-5">
           <Link href={actionHref} prefetch={false} className={cn(inquireLinkClass, "w-full")}>
             <span className="relative z-10">{actionLabel}</span>
             <ArrowRight className="relative z-10 h-3.5 w-3.5 shrink-0 opacity-90" strokeWidth={2} aria-hidden />

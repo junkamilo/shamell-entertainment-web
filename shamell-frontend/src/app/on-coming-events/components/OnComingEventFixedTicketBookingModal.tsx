@@ -76,6 +76,7 @@ export function OnComingEventFixedTicketBookingModal({
   if (checkoutSecret) {
     return (
       <StripeCheckoutHost
+        layout="overlay"
         clientSecret={checkoutSecret}
         ariaLabel="Buy ticket payment"
       />

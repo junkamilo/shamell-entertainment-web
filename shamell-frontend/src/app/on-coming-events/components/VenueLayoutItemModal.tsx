@@ -78,15 +78,6 @@ export default function VenueLayoutItemModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose, step, exitPayment]);
 
-  useEffect(() => {
-    if (step !== "payment") return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [step]);
-
   const isTable = item.kind === "catalog_table";
   const title = isTable ? TABLE_SIZE_LABELS[item.size] : "Standalone chair";
   const price = isTable
@@ -139,6 +130,7 @@ export default function VenueLayoutItemModal({
   if (!isReserved && step === "payment" && clientSecret) {
     return (
       <StripeCheckoutHost
+        layout="overlay"
         clientSecret={clientSecret}
         ariaLabel="Venue seat payment"
       />

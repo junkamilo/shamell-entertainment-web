@@ -2,66 +2,50 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { cn } from "@/lib/utils";
 import { StripeEmbeddedCheckout } from "./StripeEmbeddedCheckout";
+import { useStripeOverlayBodyLock } from "./useStripeOverlayBodyLock";
+
+type Layout = "page" | "overlay";
 
 type Props = {
   clientSecret: string;
-  /** Mount in document.body above Shamell modals. Default true. */
-  usePortal?: boolean;
+  layout: Layout;
   ariaLabel?: string;
+  className?: string;
 };
-
-function useStripeCheckoutBodyLock() {
-  useEffect(() => {
-    const scrollY = window.scrollY;
-    const html = document.documentElement;
-    const { body } = document;
-
-    const prevHtmlOverflow = html.style.overflow;
-    const prevBodyOverflow = body.style.overflow;
-
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    html.setAttribute("data-stripe-checkout-open", "true");
-    body.setAttribute("data-stripe-checkout-open", "true");
-
-    return () => {
-      html.style.overflow = prevHtmlOverflow;
-      body.style.overflow = prevBodyOverflow;
-      html.removeAttribute("data-stripe-checkout-open");
-      body.removeAttribute("data-stripe-checkout-open");
-      window.scrollTo(0, scrollY);
-    };
-  }, []);
-}
 
 export function StripeCheckoutHost({
   clientSecret,
-  usePortal = true,
+  layout,
   ariaLabel = "Secure payment",
+  className,
 }: Props) {
   const [mounted, setMounted] = useState(false);
+  const isOverlay = layout === "overlay";
 
-  useStripeCheckoutBodyLock();
+  useStripeOverlayBodyLock(isOverlay && mounted);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const hostClass = isOverlay ? "stripe-checkout-overlay" : "stripe-checkout-host";
+
   const host = (
     <div
-      className="stripe-checkout-host"
-      role="dialog"
-      aria-modal="true"
+      className={cn(hostClass, className)}
+      data-stripe-checkout-overlay={isOverlay ? "" : undefined}
+      role={isOverlay ? "dialog" : undefined}
+      aria-modal={isOverlay ? true : undefined}
       aria-label={ariaLabel}
     >
       <StripeEmbeddedCheckout clientSecret={clientSecret} />
     </div>
   );
 
-  if (!mounted) return null;
-
-  if (usePortal) {
+  if (isOverlay) {
+    if (!mounted) return null;
     return createPortal(host, document.body);
   }
 

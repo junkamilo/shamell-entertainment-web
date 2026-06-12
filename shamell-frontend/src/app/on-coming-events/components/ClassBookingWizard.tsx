@@ -405,6 +405,7 @@ export function ClassBookingWizard({
   if (checkoutSecret) {
     return (
       <StripeCheckoutHost
+        layout="overlay"
         clientSecret={checkoutSecret}
         ariaLabel="Class booking payment"
       />
