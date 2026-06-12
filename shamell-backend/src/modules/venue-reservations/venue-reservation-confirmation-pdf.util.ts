@@ -35,7 +35,8 @@ export function buildVenueReservationConfirmationPdf(
     doc.on('error', reject);
 
     const pageWidth = doc.page.width;
-    const contentWidth = pageWidth - doc.page.margins.left - doc.page.margins.right;
+    const contentWidth =
+      pageWidth - doc.page.margins.left - doc.page.margins.right;
 
     doc.rect(0, 0, pageWidth, doc.page.height).fill(PAGE_BG);
 
@@ -55,11 +56,16 @@ export function buildVenueReservationConfirmationPdf(
       .fillColor(GOLD)
       .font('Helvetica')
       .fontSize(10)
-      .text(input.appPublicName.trim().toUpperCase(), doc.page.margins.left, y, {
-        width: contentWidth,
-        align: 'center',
-        characterSpacing: 1.5,
-      });
+      .text(
+        input.appPublicName.trim().toUpperCase(),
+        doc.page.margins.left,
+        y,
+        {
+          width: contentWidth,
+          align: 'center',
+          characterSpacing: 1.5,
+        },
+      );
     y = doc.y + 28;
 
     doc

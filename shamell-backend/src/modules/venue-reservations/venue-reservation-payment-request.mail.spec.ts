@@ -17,9 +17,9 @@ describe('venue-reservation-payment-request.mail', () => {
   };
 
   it('builds subject and body with pay link', () => {
-    expect(buildVenueReservationPaymentRequestSubject(input.appPublicName)).toContain(
-      'seat reservation',
-    );
+    expect(
+      buildVenueReservationPaymentRequestSubject(input.appPublicName),
+    ).toContain('seat reservation');
     const html = buildVenueReservationPaymentRequestHtml(input);
     expect(html).toContain(input.payUrl);
     expect(html).toContain(input.amountUsd);

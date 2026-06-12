@@ -3,10 +3,7 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import {
-  EventPublicSection,
-  UpcomingExperienceType,
-} from '@prisma/client';
+import { EventPublicSection, UpcomingExperienceType } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
 import { PrismaService } from '../../prisma/prisma.service';
 import { syncVenueSeatReservationEventDates } from '../venue-reservations/sync-venue-seat-reservation-event-date.util';

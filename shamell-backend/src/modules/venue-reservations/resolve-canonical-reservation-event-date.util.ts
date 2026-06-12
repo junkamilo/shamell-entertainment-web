@@ -14,9 +14,11 @@ export type VenueConfigDateSource = {
   reservationOpensAt?: Date | null;
   reservationClosesAt?: Date | null;
   reservationEventDate?: Date | null;
-  reservationEventTemplate?: (TemplateForDerive & {
-    scheduleMode: ReservationEventScheduleMode;
-  }) | null;
+  reservationEventTemplate?:
+    | (TemplateForDerive & {
+        scheduleMode: ReservationEventScheduleMode;
+      })
+    | null;
 };
 
 const templateSelect = {

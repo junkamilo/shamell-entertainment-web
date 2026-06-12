@@ -93,14 +93,15 @@ describe('resolve-canonical-reservation-event-date.util', () => {
     const stored = new Date('2026-08-15T22:00:00.000Z');
     const prisma = {
       upcomingVenueConfig: {
-        findUnique: async () => null,
+        findUnique: () => Promise.resolve(null),
       },
       venueLayoutClientSettings: {
-        findFirst: async () => ({
-          reservationOpensAt: salesOpen,
-          reservationClosesAt: salesClose,
-          reservationEventDate: null,
-        }),
+        findFirst: () =>
+          Promise.resolve({
+            reservationOpensAt: salesOpen,
+            reservationClosesAt: salesClose,
+            reservationEventDate: null,
+          }),
       },
     };
     const result = await resolveCanonicalReservationEventDate(prisma, {

@@ -193,9 +193,7 @@ export class VenueReservationsService {
       throw new BadRequestException(message);
     }
 
-    if (
-      await this.isInventorySoldOut(ctx.upcomingEventId, ctx.floorLayoutId)
-    ) {
+    if (await this.isInventorySoldOut(ctx.upcomingEventId, ctx.floorLayoutId)) {
       throw new BadRequestException('All seats are sold.');
     }
 

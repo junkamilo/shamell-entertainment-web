@@ -112,7 +112,9 @@ export function buildAdminPaymentOutcomeHtml(
   const emailLink = `<a href="mailto:${customerEmail}" class="email-link" style="color:${emailLightInlineStyle('link')};text-decoration:underline;">${customerEmail}</a>`;
   const context = escapeHtml(input.contextLabel);
   const siteUrl = input.branding?.siteBaseUrl ?? input.frontendBaseUrl?.trim();
-  const siteLink = siteUrl ? buildEmailSiteLink(siteUrl, 'Open Shamell website') : '';
+  const siteLink = siteUrl
+    ? buildEmailSiteLink(siteUrl, 'Open Shamell website')
+    : '';
 
   const detailRows = [
     buildEmailDetailRow(

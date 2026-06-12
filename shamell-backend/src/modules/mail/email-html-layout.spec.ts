@@ -24,7 +24,9 @@ describe('email-html-layout', () => {
   it('card layout does not clip content with overflow hidden', () => {
     const html = buildEmailSimpleCardBody('<p>Body</p>');
     expect(html).not.toMatch(/class="email-card"[^>]*overflow:\s*hidden/);
-    expect(html).not.toMatch(/class="email-card-section"[^>]*overflow:\s*hidden/);
+    expect(html).not.toMatch(
+      /class="email-card-section"[^>]*overflow:\s*hidden/,
+    );
   });
 
   it('admin payment html uses light fallback background', () => {
@@ -80,7 +82,8 @@ describe('email-html-layout', () => {
   it('payment action email stays under Gmail clip threshold with hosted logo', () => {
     const html = buildPaymentActionEmail({
       preheader: 'Complete your payment — Pay now inside',
-      logoBlock: '<img src="https://shamellentertainment.com/01_bailarina.png" width="140" height="141" alt="Shamell" />',
+      logoBlock:
+        '<img src="https://shamellentertainment.com/01_bailarina.png" width="140" height="141" alt="Shamell" />',
       heading: 'Complete your payment',
       greeting: 'Hi Jane,',
       introParagraph: 'Please complete your payment.',
