@@ -13,7 +13,6 @@ import {
   VenueSeatKind,
   VenueSeatReservation,
   VenueSeatReservationStatus,
-  VenueTableSize,
 } from '@prisma/client';
 import { formatPaymentMethodLabel } from '../stripe/stripe-payment-details.util';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -508,7 +507,7 @@ export class AdminPaymentsService {
           ? {
               id: r.venueTableConfigId,
               tableName: r.venueTableConfig.tableName,
-              size: r.venueTableConfig.size as VenueTableSize,
+              size: r.venueTableConfig.size,
             }
           : null,
     });
@@ -546,7 +545,9 @@ export class AdminPaymentsService {
     };
   }
 
-  private async mapVenueReservation(r: VenueRow): Promise<AdminStripePaymentRow> {
+  private async mapVenueReservation(
+    r: VenueRow,
+  ): Promise<AdminStripePaymentRow> {
     const seatLabel = await this.resolveVenueSeatLabelForRow(r);
     return this.buildVenuePaymentRow(r, seatLabel);
   }
@@ -630,8 +631,7 @@ export class AdminPaymentsService {
       eventName,
       eventDate: r.eventDate.toISOString(),
       seatKind: r.kind === VenueSeatKind.STANDALONE_CHAIR ? 'CHAIR' : 'TABLE',
-      tableName:
-        r.kind === VenueSeatKind.CATALOG_TABLE ? seatLabel : null,
+      tableName: r.kind === VenueSeatKind.CATALOG_TABLE ? seatLabel : null,
       layoutItemId: r.layoutItemId,
     };
     return {
