@@ -23,6 +23,8 @@ export type VenueLayoutPageCacheEntry = {
   reservationsOpen: boolean;
   salesClosedReason: SalesClosedReason | null;
   reservedLayoutItemIds: string[];
+  reservedVenueTableConfigIds: string[];
+  reservedSeatShortLabels: string[];
   paidSeatHolders: { layoutItemId: string; customerName: string }[];
 };
 
@@ -45,6 +47,8 @@ export function patchVenueLayoutPageAvailability(
   patch: Pick<
     VenueLayoutPageCacheEntry,
     | "reservedLayoutItemIds"
+    | "reservedVenueTableConfigIds"
+    | "reservedSeatShortLabels"
     | "paidSeatHolders"
     | "reservationsOpen"
     | "salesClosedReason"

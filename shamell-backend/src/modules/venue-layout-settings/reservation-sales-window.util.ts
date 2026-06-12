@@ -1,6 +1,8 @@
 export type ReservationWindow = {
   opensAt: Date | null;
   closesAt: Date | null;
+  /** Event night / reservation date (not the sales window start). */
+  eventDate: Date | null;
 };
 
 export type SalesClosedReason =
@@ -14,9 +16,12 @@ export function resolveReservationWindow(row: {
   reservationClosesAt?: Date | null;
   reservationEventDate?: Date | null;
 }): ReservationWindow {
+  const opensAt = row.reservationOpensAt ?? row.reservationEventDate ?? null;
+  const eventDate = row.reservationEventDate ?? row.reservationOpensAt ?? null;
   return {
-    opensAt: row.reservationOpensAt ?? row.reservationEventDate ?? null,
+    opensAt,
     closesAt: row.reservationClosesAt ?? null,
+    eventDate,
   };
 }
 
@@ -38,8 +43,9 @@ export function evaluateSalesWindow(
   return { open: true };
 }
 
+/** Date stored on seat reservations and used for inventory (event night, not sales open). */
 export function eventDateForReservations(
   window: ReservationWindow,
 ): Date | null {
-  return window.opensAt;
+  return window.eventDate;
 }

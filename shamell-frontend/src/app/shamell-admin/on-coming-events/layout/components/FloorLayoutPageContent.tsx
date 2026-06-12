@@ -5,6 +5,7 @@ import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import { toast } from "@/hooks/use-toast";
 import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/onComingEventsRoutes";
+import { buildReservedLayoutItemIdSet } from "@/lib/venueLayoutReservedIds";
 import { useFloorLayoutEditor } from "../hooks/useFloorLayoutEditor";
 import type { PaletteDragKind } from "../hooks/useFloorLayoutEditor";
 import AdminVenueReservationModal from "./AdminVenueReservationModal";
@@ -41,7 +42,23 @@ export default function FloorLayoutPageContent() {
   const [reservationItem, setReservationItem] = useState<PlacedLayoutItem | null>(null);
   const isReserveMode = editor.editorMode === "reserve";
 
-  const reservedIds = useMemo(() => new Set(editor.reservedLayoutItemIds), [editor.reservedLayoutItemIds]);
+  const reservedIds = useMemo(
+    () =>
+      buildReservedLayoutItemIdSet(
+        editor.items,
+        editor.reservedLayoutItemIds,
+        editor.reservedVenueTableConfigIds,
+        editor.itemLabels,
+        editor.reservedSeatShortLabels,
+      ),
+    [
+      editor.items,
+      editor.reservedLayoutItemIds,
+      editor.reservedVenueTableConfigIds,
+      editor.itemLabels,
+      editor.reservedSeatShortLabels,
+    ],
+  );
   const reservedLabels = useMemo(() => {
     const map = new Map<string, string>();
     for (const [layoutItemId, name] of Object.entries(editor.reservedLabelsByLayoutItemId)) {
@@ -204,6 +221,7 @@ export default function FloorLayoutPageContent() {
               sceneZones={editor.sceneZones}
               reservedIds={reservedIds}
               reservedLabels={reservedLabelsForScene}
+              itemLabels={editor.itemLabels}
               selectedId={editor.selectedId}
               onSelect={
                 isReserveMode ? editor.handlePlacedItemSelect : editor.setSelectedId

@@ -40,7 +40,7 @@ export class StandaloneChairsService {
     const chairs = await this.prisma.venueStandaloneChair.findMany({
       where: { isActive: true },
       orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-      select: { id: true, unitPrice: true },
+      select: { id: true, unitPrice: true, chairName: true, sortOrder: true },
     });
     return {
       id: row?.id ?? null,
@@ -51,6 +51,9 @@ export class StandaloneChairsService {
       chairs: chairs.map((chair) => ({
         id: chair.id,
         unitPrice: Number(chair.unitPrice),
+        chairName: chair.chairName,
+        sortOrder: chair.sortOrder,
+        isActive: true,
       })),
     };
   }

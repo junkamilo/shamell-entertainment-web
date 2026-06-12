@@ -5,6 +5,7 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { Canvas } from "@react-three/fiber";
 import { Environment, OrbitControls } from "@react-three/drei";
 import type { FloorSceneZones, PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { LayoutItemLabel } from "@/lib/venueSeatDisplayLabel";
 import { FloorSceneZonesProvider } from "./FloorSceneZonesContext";
 import { mergeFloorSceneZones } from "./floorSceneZonesDefaults";
 import {
@@ -19,7 +20,7 @@ import {
   WORLD_WIDTH,
 } from "./venueSceneConstants";
 import type * as THREE from "three";
-import { MOUSE, TOUCH } from "three";
+import { Color, MOUSE, TOUCH } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import {
   VenueSceneCanvasContext,
@@ -42,6 +43,7 @@ type Props = {
   selectedId?: string | null;
   reservedIds?: Set<string>;
   reservedLabels?: ReadonlyMap<string, string>;
+  itemLabels?: ReadonlyMap<string, LayoutItemLabel>;
   onSelect?: (id: string | null) => void;
   onItemSelect?: (id: string) => void;
   /** Must be used inside Canvas (uses useThree). */
@@ -93,6 +95,7 @@ function SceneContent({
   selectedId,
   reservedIds,
   reservedLabels,
+  itemLabels,
   placedItemsAdmin,
   sceneDecorAdmin,
   onBackgroundClick,
@@ -150,6 +153,7 @@ function SceneContent({
           selectedId={selectedId}
           reservedIds={reservedIds}
           reservedLabels={reservedLabels}
+          itemLabels={itemLabels}
           interactive={selectable}
           onSelect={selectable ? (id) => onItemSelect?.(id) : undefined}
           pointerCursor={selectable}
@@ -201,6 +205,7 @@ export default function VenueScene3D({
   selectedId,
   reservedIds,
   reservedLabels,
+  itemLabels,
   onSelect,
   placedItemsAdmin,
   sceneDecorAdmin,
@@ -299,9 +304,12 @@ export default function VenueScene3D({
           }}
           gl={{ antialias: true, alpha: false }}
           style={{ width: "100%", height: "100%", display: "block" }}
-          onCreated={({ gl, camera }) => {
+          onCreated={({ gl, camera, scene }) => {
             gl.debug.checkShaderErrors = false;
             gl.toneMappingExposure = SCENE_LIGHTING.toneMappingExposure;
+            gl.setClearColor(SCENE_BACKGROUND, 1);
+            gl.domElement.style.background = SCENE_BACKGROUND;
+            scene.background = new Color(SCENE_BACKGROUND);
             handleRef.current.getCanvas = () => gl.domElement;
             handleRef.current.getCamera = () => camera;
           }}
@@ -320,6 +328,7 @@ export default function VenueScene3D({
                 selectedId={selectedId}
                 reservedIds={reservedIds}
                 reservedLabels={reservedLabels}
+                itemLabels={itemLabels}
                 onSelect={onSelect}
                 placedItemsAdmin={placedItemsAdmin}
                 sceneDecorAdmin={sceneDecorAdmin}

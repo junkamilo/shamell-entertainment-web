@@ -2,9 +2,11 @@
 
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import { layoutToWorld } from "./layoutCoords3d";
+import type { LayoutItemLabel } from "@/lib/venueSeatDisplayLabel";
 import CatalogTableMesh from "./CatalogTableMesh";
 import ReservationSpeechBubble from "./ReservationSpeechBubble";
 import StandaloneChairMesh from "./StandaloneChairMesh";
+import VenueItemNumberBubble from "./VenueItemNumberBubble";
 
 type Props = {
   items: PlacedLayoutItem[];
@@ -13,6 +15,7 @@ type Props = {
   selectedId?: string | null;
   reservedIds?: Set<string>;
   reservedLabels?: ReadonlyMap<string, string>;
+  itemLabels?: ReadonlyMap<string, LayoutItemLabel>;
   interactive?: boolean;
   onSelect?: (id: string) => void;
   onReservedSelect?: (id: string) => void;
@@ -26,7 +29,8 @@ export default function PlacedItemsLayer({
   viewBoxHeight,
   selectedId = null,
   reservedIds,
-  reservedLabels,
+  reservedLabels: _reservedLabels,
+  itemLabels,
   interactive = false,
   onSelect,
   onReservedSelect,
@@ -40,7 +44,15 @@ export default function PlacedItemsLayer({
         const rotY = (item.rotation * Math.PI) / 180;
         const selected = selectedId === item.id;
         const reserved = reservedIds?.has(item.id) ?? false;
-        const bubbleHeight = item.kind === "catalog_table" ? 1.35 : 1.05;
+        const reservedBubbleHeight = item.kind === "catalog_table" ? 1.35 : 1.05;
+        const numberBubbleHeight = reserved
+          ? item.kind === "catalog_table"
+            ? 0.72
+            : 0.58
+          : item.kind === "catalog_table"
+            ? 0.95
+            : 0.75;
+        const itemLabel = itemLabels?.get(item.id);
 
         return (
           <group
@@ -95,7 +107,15 @@ export default function PlacedItemsLayer({
             ) : (
               <StandaloneChairMesh selected={selected && !reserved} reserved={reserved} />
             )}
-            {reserved ? <ReservationSpeechBubble height={bubbleHeight} /> : null}
+            {itemLabel ? (
+              <VenueItemNumberBubble
+                shortLabel={itemLabel.short}
+                fullLabel={itemLabel.full}
+                height={numberBubbleHeight}
+                variant={item.kind === "catalog_table" ? "table" : "chair"}
+              />
+            ) : null}
+            {reserved ? <ReservationSpeechBubble height={reservedBubbleHeight} /> : null}
           </group>
         );
       })}
