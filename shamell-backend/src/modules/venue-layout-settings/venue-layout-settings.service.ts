@@ -76,9 +76,6 @@ export class VenueLayoutSettingsService {
                   reservationOpensAt: dto.reservationOpensAt
                     ? new Date(dto.reservationOpensAt)
                     : null,
-                  reservationEventDate: dto.reservationOpensAt
-                    ? new Date(dto.reservationOpensAt)
-                    : null,
                 }
               : {}),
             ...(dto.reservationClosesAt !== undefined
@@ -245,7 +242,7 @@ export class VenueLayoutSettingsService {
       promoTitle: row?.promoTitle ?? null,
       promoDescription: row?.promoDescription ?? null,
       promoImageUrl: row?.promoImageUrl ?? null,
-      reservationEventDate: window.opensAt?.toISOString() ?? null,
+      reservationEventDate: row?.reservationEventDate?.toISOString() ?? null,
       reservationOpensAt: window.opensAt?.toISOString() ?? null,
       reservationClosesAt: window.closesAt?.toISOString() ?? null,
       reservationEventLabel: row?.reservationEventLabel ?? null,

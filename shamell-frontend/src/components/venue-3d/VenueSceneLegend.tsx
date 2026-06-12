@@ -106,6 +106,14 @@ export default function VenueSceneLegend({
           <p className="text-shamell-text-primary/90">
             <span className="inline-block h-2 w-2 rounded-full bg-amber-300" /> Selected
           </p>
+          <p
+            className={cn(
+              "text-shamell-text-primary/75",
+              layoutTopOnNarrow ? "basis-full" : "mt-1",
+            )}
+          >
+            Numbers match your confirmation (e.g. Large 4)
+          </p>
         </div>
       ) : null}
     </div>

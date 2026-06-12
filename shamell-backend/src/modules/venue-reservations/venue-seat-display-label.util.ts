@@ -27,6 +27,11 @@ export function formatChairDisplayLabel(ordinal: number): string {
   return `Chair ${ordinal}`;
 }
 
+/** Short label for 3D bubbles: "Large table 4" → "Large 4". */
+export function toShortSeatDisplayLabel(full: string): string {
+  return full.replace(/\s+table\s+/i, ' ').trim();
+}
+
 function ordinalFromOrderedIds(
   orderedIds: readonly string[],
   targetId: string,

@@ -10,9 +10,14 @@ function mapChairRow(data: unknown): StandaloneChairInventoryItem | null {
       ? o.reservationStatus
       : undefined;
 
+  const chairName =
+    typeof o.chairName === "string" && o.chairName.trim()
+      ? o.chairName
+      : `CHAIR-${o.id.replace(/-/g, "").slice(0, 8)}`;
+
   return {
     id: o.id,
-    chairName: typeof o.chairName === "string" ? o.chairName : "Chair",
+    chairName,
     displayLabel:
       typeof o.displayLabel === "string" ? o.displayLabel : "Chair",
     unitPrice: Number(o.unitPrice ?? 0),

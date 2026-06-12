@@ -26,6 +26,8 @@ import {
   setVenueLayoutPageCache,
   type VenueLayoutPageCacheEntry,
 } from "../lib/venueLayoutPageCache";
+import { buildReservedLayoutItemIdSet } from "@/lib/venueLayoutReservedIds";
+import { buildLayoutItemLabelMap } from "@/lib/venueSeatDisplayLabel";
 import { placedSummaryFromItems } from "../lib/placedSummaryFromItems";
 import { buildStandaloneChairPriceMap } from "../lib/resolveStandaloneChairUnitPrice";
 import { fetchPublicFloorLayout } from "../services/fetchPublicFloorLayout";
@@ -84,6 +86,8 @@ function stateFromCache(entry: VenueLayoutPageCacheEntry) {
     reservationsOpen: entry.reservationsOpen,
     salesClosedReason: entry.salesClosedReason,
     reservedLayoutItemIds: entry.reservedLayoutItemIds,
+    reservedVenueTableConfigIds: entry.reservedVenueTableConfigIds ?? [],
+    reservedSeatShortLabels: entry.reservedSeatShortLabels ?? [],
     paidSeatHolders: entry.paidSeatHolders,
   };
 }
@@ -130,6 +134,12 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
   const [reservedLayoutItemIds, setReservedLayoutItemIds] = useState<string[]>(
     cachedState?.reservedLayoutItemIds ?? [],
   );
+  const [reservedVenueTableConfigIds, setReservedVenueTableConfigIds] = useState<
+    string[]
+  >(cachedState?.reservedVenueTableConfigIds ?? []);
+  const [reservedSeatShortLabels, setReservedSeatShortLabels] = useState<string[]>(
+    cachedState?.reservedSeatShortLabels ?? [],
+  );
   const [paidSeatHolders, setPaidSeatHolders] = useState<
     { layoutItemId: string; customerName: string }[]
   >(cachedState?.paidSeatHolders ?? []);
@@ -159,6 +169,8 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     setReservationsOpen(next.reservationsOpen);
     setSalesClosedReason(next.salesClosedReason);
     setReservedLayoutItemIds(next.reservedLayoutItemIds);
+    setReservedVenueTableConfigIds(next.reservedVenueTableConfigIds);
+    setReservedSeatShortLabels(next.reservedSeatShortLabels);
     setPaidSeatHolders(next.paidSeatHolders);
     setHasLoadedOnce(true);
   }, []);
@@ -175,7 +187,33 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     [standaloneChairs?.chairs],
   );
 
-  const reservedIds = useMemo(() => new Set(reservedLayoutItemIds), [reservedLayoutItemIds]);
+  const itemLabels = useMemo(
+    () =>
+      buildLayoutItemLabelMap(
+        layout?.items ?? [],
+        tables,
+        standaloneChairs?.chairs ?? [],
+      ),
+    [layout?.items, tables, standaloneChairs?.chairs],
+  );
+
+  const reservedIds = useMemo(
+    () =>
+      buildReservedLayoutItemIdSet(
+        layout?.items ?? [],
+        reservedLayoutItemIds,
+        reservedVenueTableConfigIds,
+        itemLabels,
+        reservedSeatShortLabels,
+      ),
+    [
+      layout?.items,
+      reservedLayoutItemIds,
+      reservedVenueTableConfigIds,
+      itemLabels,
+      reservedSeatShortLabels,
+    ],
+  );
   const reservedLabels = useMemo(() => {
     const map = new Map<string, string>();
     for (const holder of paidSeatHolders) {
@@ -213,6 +251,8 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
       eventDetail?: Awaited<ReturnType<typeof fetchOnComingEventDetail>> | null,
     ) => {
       setReservedLayoutItemIds(availability.reservedLayoutItemIds);
+      setReservedVenueTableConfigIds(availability.reservedVenueTableConfigIds);
+      setReservedSeatShortLabels(availability.reservedSeatShortLabels);
       setPaidSeatHolders(availability.paidSeatHolders);
       setReservationsOpen(availability.reservationsOpen);
       setSalesClosedReason(availability.salesClosedReason);
@@ -227,6 +267,8 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
       }
       patchVenueLayoutPageAvailability(eventSlug, {
         reservedLayoutItemIds: availability.reservedLayoutItemIds,
+        reservedVenueTableConfigIds: availability.reservedVenueTableConfigIds,
+        reservedSeatShortLabels: availability.reservedSeatShortLabels,
         paidSeatHolders: availability.paidSeatHolders,
         reservationsOpen: availability.reservationsOpen,
         salesClosedReason: availability.salesClosedReason,
@@ -371,6 +413,8 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
           setReservationsOpen(availability.reservationsOpen);
           setSalesClosedReason(availability.salesClosedReason);
           setReservedLayoutItemIds(availability.reservedLayoutItemIds);
+          setReservedVenueTableConfigIds(availability.reservedVenueTableConfigIds);
+          setReservedSeatShortLabels(availability.reservedSeatShortLabels);
           setPaidSeatHolders(availability.paidSeatHolders);
           if (availability.eventDate) {
             nextEventDateIso = availability.eventDate;
@@ -426,6 +470,8 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
             reservationsOpen: availability.reservationsOpen,
             salesClosedReason: availability.salesClosedReason,
             reservedLayoutItemIds: availability.reservedLayoutItemIds,
+            reservedVenueTableConfigIds: availability.reservedVenueTableConfigIds,
+            reservedSeatShortLabels: availability.reservedSeatShortLabels,
             paidSeatHolders: availability.paidSeatHolders,
           });
 
@@ -607,7 +653,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
             className="relative mx-auto mt-10 w-full max-w-[min(100%,1920px)] px-2 pb-16 sm:px-4 md:px-6 lg:px-10 min-[1920px]:max-w-[min(100%,2400px)]"
             style={{ ["--venue-chrome" as string]: sceneLayout.chromeCss }}
           >
-            <div className="relative w-full overflow-hidden rounded-lg border border-shamell-line-soft bg-[#1a1218] shadow-[0_24px_64px_rgba(0,0,0,0.45)] sm:rounded-xl">
+            <div className="relative isolate w-full overflow-hidden rounded-lg border border-shamell-line-soft bg-[#1a1218] shadow-[0_24px_64px_rgba(0,0,0,0.45)] sm:rounded-xl">
               <VenueScene3D
                 mode="public-select"
                 viewBoxWidth={layout.viewBoxWidth}
@@ -617,6 +663,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
                 selectedId={selectedItemId}
                 reservedIds={reservedIds}
                 reservedLabels={reservedLabels}
+                itemLabels={itemLabels}
                 onItemSelect={handleItemSelect}
                 viewportHeight={sceneLayout.viewportHeight}
                 viewportMinHeight={sceneLayout.viewportMinHeight}

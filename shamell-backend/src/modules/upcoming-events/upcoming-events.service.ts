@@ -37,6 +37,7 @@ import {
   eventDateForReservations,
   resolveReservationWindow,
 } from '../venue-layout-settings/reservation-sales-window.util';
+import { syncVenueSeatReservationEventDates } from '../venue-reservations/sync-venue-seat-reservation-event-date.util';
 import { CreateClassCheckoutDto } from './dto/create-class-checkout.dto';
 import { CreateClassBundleCheckoutDto } from './dto/create-class-bundle-checkout.dto';
 import { CreateClassPackageCheckoutDto } from './dto/create-class-package-checkout.dto';
@@ -1538,6 +1539,9 @@ export class UpcomingEventsService {
       classPackageLabel: data.classPackageLabel ?? null,
     };
 
+    const previousEventDateMs =
+      existingConfig?.reservationEventDate?.getTime() ?? null;
+
     const saved = await this.prisma.upcomingVenueConfig.upsert({
       where: { eventId },
       create: createData,
@@ -1601,6 +1605,19 @@ export class UpcomingEventsService {
     // saves the template and venue config, so this PATCH never fails after a
     // successful link when section rows are still settling.
 
+    const nextEventDateMs = saved.reservationEventDate?.getTime() ?? null;
+    if (
+      saved.reservationEventDate &&
+      nextEventDateMs !== null &&
+      nextEventDateMs !== previousEventDateMs
+    ) {
+      await syncVenueSeatReservationEventDates(
+        this.prisma,
+        eventId,
+        saved.reservationEventDate,
+      );
+    }
+
     return this.mapVenueConfig(saved);
   }
 
@@ -1649,6 +1666,7 @@ export class UpcomingEventsService {
       config: {
         reservationEventLabel: config.reservationEventLabel,
         reservationTimezone: config.reservationTimezone,
+        reservationEventDate: config.window.eventDate?.toISOString() ?? null,
         reservationOpensAt: config.window.opensAt?.toISOString() ?? null,
         reservationClosesAt: config.window.closesAt?.toISOString() ?? null,
         floorLayoutId: config.floorLayoutId,

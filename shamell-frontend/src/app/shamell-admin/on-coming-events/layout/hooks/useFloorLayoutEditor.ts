@@ -10,7 +10,11 @@ import { totalChairs } from "../lib/floorLayoutStats";
 import { fetchAdminFloorLayout } from "../services/fetchAdminFloorLayout";
 import { fetchAdminFloorLayoutPalette } from "../services/fetchAdminFloorLayoutPalette";
 import { putAdminFloorLayout } from "../services/putAdminFloorLayout";
+import { fetchAdminStandaloneChairs } from "@/app/shamell-admin/venue-tables/services/fetchAdminStandaloneChairs";
 import { fetchAdminVenueTables } from "@/app/shamell-admin/venue-tables/services/fetchAdminVenueTables";
+import type { StandaloneChairInventoryItem } from "@/app/shamell-admin/venue-tables/types/standaloneChairs.types";
+import type { VenueTableConfig } from "@/app/shamell-admin/venue-tables/types/venueTables.types";
+import { buildLayoutItemLabelMap } from "@/lib/venueSeatDisplayLabel";
 import { fetchAdminVenueReservations } from "@/app/shamell-admin/venue-reservations/services/fetchAdminVenueReservations";
 import { fetchAdminVenueAvailability } from "../services/fetchAdminVenueAvailability";
 import { VENUE_RESERVATIONS_ADMIN_PATH } from "@/app/shamell-admin/venue-reservations/lib/venueReservationsRoutes";
@@ -81,6 +85,12 @@ export function useFloorLayoutEditor() {
   const [error, setError] = useState<string | null>(null);
   const [editorMode, setEditorMode] = useState<FloorLayoutEditorMode>("edit");
   const [reservedLayoutItemIds, setReservedLayoutItemIds] = useState<string[]>([]);
+  const [reservedVenueTableConfigIds, setReservedVenueTableConfigIds] = useState<
+    string[]
+  >([]);
+  const [reservedSeatShortLabels, setReservedSeatShortLabels] = useState<string[]>(
+    [],
+  );
   const [pendingLayoutItemIds, setPendingLayoutItemIds] = useState<string[]>([]);
   const [reservedLabelsByLayoutItemId, setReservedLabelsByLayoutItemId] = useState<
     Record<string, string>
@@ -92,6 +102,10 @@ export function useFloorLayoutEditor() {
   const [tableBundlePriceByConfigId, setTableBundlePriceByConfigId] = useState<
     Record<string, number>
   >({});
+  const [venueTablesCatalog, setVenueTablesCatalog] = useState<VenueTableConfig[]>([]);
+  const [standaloneChairsCatalog, setStandaloneChairsCatalog] = useState<
+    StandaloneChairInventoryItem[]
+  >([]);
 
   const palette = useMemo((): FloorLayoutPalette => {
     const placedTableIds = new Set(
@@ -186,9 +200,10 @@ export function useFloorLayoutEditor() {
       if (paletteResult.ok && paletteResult.palette) {
         setServerPalette(paletteResult.palette);
       }
-      const [availabilityResult, tablesResult] = await Promise.all([
+      const [availabilityResult, tablesResult, chairsResult] = await Promise.all([
         fetchAdminVenueAvailability(token),
         fetchAdminVenueTables(token),
+        fetchAdminStandaloneChairs(token),
       ]);
 
       const previousSeenAt = readLastSeenPaidReservationAtMs();
@@ -199,6 +214,8 @@ export function useFloorLayoutEditor() {
           upcomingEventSlug: data.upcomingEventSlug,
         });
         setReservedLayoutItemIds(data.reservedLayoutItemIds);
+        setReservedVenueTableConfigIds(data.reservedVenueTableConfigIds);
+        setReservedSeatShortLabels(data.reservedSeatShortLabels);
         setPendingLayoutItemIds(data.pendingLayoutItemIds);
         const labels: Record<string, string> = {};
         for (const row of data.paidSeatHolders) {
@@ -224,19 +241,29 @@ export function useFloorLayoutEditor() {
         }
       } else {
         setReservedLayoutItemIds([]);
+        setReservedVenueTableConfigIds([]);
+        setReservedSeatShortLabels([]);
         setPendingLayoutItemIds([]);
         setReservedLabelsByLayoutItemId({});
         setVenueReservationContext({ eventDateIso: null, upcomingEventSlug: null });
       }
 
       if (tablesResult.ok) {
+        setVenueTablesCatalog(tablesResult.items);
         const prices: Record<string, number> = {};
         for (const table of tablesResult.items) {
           prices[table.id] = table.bundlePrice;
         }
         setTableBundlePriceByConfigId(prices);
       } else {
+        setVenueTablesCatalog([]);
         setTableBundlePriceByConfigId({});
+      }
+
+      if (chairsResult.ok && chairsResult.config?.chairs) {
+        setStandaloneChairsCatalog(chairsResult.config.chairs);
+      } else {
+        setStandaloneChairsCatalog([]);
       }
       setDirty(false);
     } catch {
@@ -532,6 +559,11 @@ export function useFloorLayoutEditor() {
     return () => window.removeEventListener("keydown", onKey);
   }, [removeSelected]);
 
+  const itemLabels = useMemo(
+    () => buildLayoutItemLabelMap(items, venueTablesCatalog, standaloneChairsCatalog),
+    [items, venueTablesCatalog, standaloneChairsCatalog],
+  );
+
   return {
     sceneHandleRef,
     layoutMeta,
@@ -548,11 +580,14 @@ export function useFloorLayoutEditor() {
     saving,
     error,
     reservedLayoutItemIds,
+    reservedVenueTableConfigIds,
+    reservedSeatShortLabels,
     pendingLayoutItemIds,
     reservedLabelsByLayoutItemId,
     eventDateIso: venueReservationContext.eventDateIso,
     upcomingEventSlug: venueReservationContext.upcomingEventSlug,
     tableBundlePriceByConfigId,
+    itemLabels,
     chairTotal: totalChairs(items),
     load,
     moveItem,

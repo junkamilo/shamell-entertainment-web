@@ -679,3 +679,8 @@
   font-size: 0.9375rem !important;
   line-height: 1.5 !important;
 }
+
+/* drei Html labels in the 3D venue scene — keep pills opaque on public pages */
+.venue-3d-html-label {
+  pointer-events: none;
+}

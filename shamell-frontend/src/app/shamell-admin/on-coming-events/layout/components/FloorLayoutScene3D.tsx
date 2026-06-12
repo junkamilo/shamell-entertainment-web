@@ -3,6 +3,7 @@
 import VenueScene3D, { type VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
 import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
 import { isSceneSelectId } from "@/components/venue-3d/floorSceneZonesDefaults";
+import type { LayoutItemLabel } from "@/lib/venueSeatDisplayLabel";
 import type { FloorSceneZones, PlacedLayoutItem } from "../types/floorLayout.types";
 import FloorLayoutEditorActions, { sceneSelectionLabel } from "./FloorLayoutEditorActions";
 import PlacedItemsLayer3d from "./PlacedItemsLayer3d";
@@ -15,6 +16,7 @@ type Props = {
   sceneZones: FloorSceneZones;
   reservedIds?: Set<string>;
   reservedLabels?: ReadonlyMap<string, string>;
+  itemLabels?: ReadonlyMap<string, LayoutItemLabel>;
   selectedId: string | null;
   sceneHandleRef: React.RefObject<VenueScene3DHandle | null>;
   canvasContainerRef: React.RefObject<HTMLDivElement | null>;
@@ -40,6 +42,7 @@ export default function FloorLayoutScene3D({
   sceneZones,
   reservedIds,
   reservedLabels,
+  itemLabels,
   selectedId,
   sceneHandleRef,
   canvasContainerRef,
@@ -76,6 +79,7 @@ export default function FloorLayoutScene3D({
       selectedId={selectedId}
       reservedIds={reservedIds}
       reservedLabels={reservedLabels}
+      itemLabels={itemLabels}
       onSelect={onSelect}
       onReservedSelect={onReservedSelect}
       onMoveItem={onMoveItem}

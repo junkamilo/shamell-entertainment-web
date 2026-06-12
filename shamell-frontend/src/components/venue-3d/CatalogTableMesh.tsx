@@ -61,6 +61,10 @@ export default function CatalogTableMesh({
           color={reserved ? VENUE_COLORS.tableTopReserved : VENUE_COLORS.tableTop}
           emissive={reserved ? "#000000" : selected ? "#332200" : "#000000"}
           emissiveIntensity={reserved ? 0 : selected ? 0.3 : 0}
+          roughness={0.9}
+          metalness={0.02}
+          transparent={false}
+          depthWrite
         />
       </mesh>
       {/* Pedestal */}
@@ -68,6 +72,10 @@ export default function CatalogTableMesh({
         <cylinderGeometry args={[cfg.tableRadius * 0.35, cfg.tableRadius * 0.5, cfg.tableHeight * 0.85, 16]} />
         <meshStandardMaterial
           color={reserved ? VENUE_COLORS.tableBaseReserved : VENUE_COLORS.tableBase}
+          roughness={0.9}
+          metalness={0.02}
+          transparent={false}
+          depthWrite
         />
       </mesh>
       {/* Center accent */}

@@ -5,6 +5,7 @@ import {
   isTechnicalChairName,
   isTechnicalTableName,
   resolveVenueSeatDisplayLabel,
+  toShortSeatDisplayLabel,
 } from './venue-seat-display-label.util';
 
 describe('venue-seat-display-label.util', () => {
@@ -18,6 +19,7 @@ describe('venue-seat-display-label.util', () => {
   it('formats friendly English labels', () => {
     expect(formatTableDisplayLabel(VenueTableSize.LARGE, 1)).toBe('Large table 1');
     expect(formatChairDisplayLabel(3)).toBe('Chair 3');
+    expect(toShortSeatDisplayLabel('Large table 4')).toBe('Large 4');
   });
 
   it('uses custom table name when not technical', async () => {

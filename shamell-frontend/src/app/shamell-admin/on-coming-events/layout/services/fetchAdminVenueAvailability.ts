@@ -5,6 +5,8 @@ export type AdminVenueAvailability = {
   upcomingEventSlug: string | null;
   eventDate: string;
   reservedLayoutItemIds: string[];
+  reservedVenueTableConfigIds: string[];
+  reservedSeatShortLabels: string[];
   pendingLayoutItemIds: string[];
   paidSeatHolders: { layoutItemId: string; customerName: string }[];
 };
@@ -45,6 +47,12 @@ export async function fetchAdminVenueAvailability(
       eventDate: String(o.eventDate ?? ""),
       reservedLayoutItemIds: Array.isArray(o.reservedLayoutItemIds)
         ? o.reservedLayoutItemIds.map(String)
+        : [],
+      reservedVenueTableConfigIds: Array.isArray(o.reservedVenueTableConfigIds)
+        ? o.reservedVenueTableConfigIds.map(String)
+        : [],
+      reservedSeatShortLabels: Array.isArray(o.reservedSeatShortLabels)
+        ? o.reservedSeatShortLabels.map(String)
         : [],
       pendingLayoutItemIds: Array.isArray(o.pendingLayoutItemIds)
         ? o.pendingLayoutItemIds.map(String)

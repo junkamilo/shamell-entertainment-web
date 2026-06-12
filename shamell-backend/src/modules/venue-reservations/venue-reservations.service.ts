@@ -47,7 +47,10 @@ import {
   buildVenueReservationPaymentRequestSubject,
   buildVenueReservationPaymentRequestText,
 } from './venue-reservation-payment-request.mail';
-import { resolveVenueSeatDisplayLabel } from './venue-seat-display-label.util';
+import {
+  resolveVenueSeatDisplayLabel,
+  toShortSeatDisplayLabel,
+} from './venue-seat-display-label.util';
 
 const CHECKOUT_TTL_MINUTES = 30;
 
@@ -110,16 +113,17 @@ export class VenueReservationsService {
         salesClosedReason: 'not_configured' as const,
         reservedLayoutItemIds: [] as string[],
         reservedVenueTableConfigIds: [] as string[],
+        reservedSeatShortLabels: [] as string[],
         paidSeatHolders: [] as { layoutItemId: string; customerName: string }[],
       };
     }
 
-    const paid = await this.findPaidReservations(
-      eventDate,
-      ctx.upcomingEventId,
+    const paid = await this.findPaidReservations(ctx.upcomingEventId);
+    const reservedSeatShortLabels = await this.resolveReservedSeatShortLabels(
+      paid,
+      ctx.floorLayoutId,
     );
     const soldOut = await this.isInventorySoldOut(
-      eventDate,
       ctx.upcomingEventId,
       ctx.floorLayoutId,
     );
@@ -147,6 +151,7 @@ export class VenueReservationsService {
             .filter((id): id is string => Boolean(id)),
         ),
       ],
+      reservedSeatShortLabels,
       paidSeatHolders: paid.map((r) => ({
         layoutItemId: r.layoutItemId,
         customerName: r.customerName.trim() || 'Guest',
@@ -182,11 +187,7 @@ export class VenueReservationsService {
     }
 
     if (
-      await this.isInventorySoldOut(
-        eventDate,
-        ctx.upcomingEventId,
-        ctx.floorLayoutId,
-      )
+      await this.isInventorySoldOut(ctx.upcomingEventId, ctx.floorLayoutId)
     ) {
       throw new BadRequestException('All seats are sold.');
     }
@@ -259,13 +260,14 @@ export class VenueReservationsService {
     const eventDate = this.assertAdminEventDate(ctx);
     const upcomingEventId = ctx.upcomingEventId!;
 
-    const paid = await this.findPaidReservations(eventDate, upcomingEventId);
-    const blocking = await this.findBlockingReservations(
-      eventDate,
-      upcomingEventId,
-    );
+    const paid = await this.findPaidReservations(upcomingEventId);
+    const blocking = await this.findBlockingReservations(upcomingEventId);
     const pending = blocking.filter(
       (r) => !paid.some((p) => p.layoutItemId === r.layoutItemId),
+    );
+    const reservedSeatShortLabels = await this.resolveReservedSeatShortLabels(
+      paid,
+      ctx.floorLayoutId,
     );
 
     return {
@@ -273,6 +275,14 @@ export class VenueReservationsService {
       upcomingEventSlug: ctx.slug,
       eventDate: eventDate.toISOString(),
       reservedLayoutItemIds: [...new Set(paid.map((r) => r.layoutItemId))],
+      reservedVenueTableConfigIds: [
+        ...new Set(
+          paid
+            .map((r) => r.venueTableConfigId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ],
+      reservedSeatShortLabels,
       pendingLayoutItemIds: [...new Set(pending.map((r) => r.layoutItemId))],
       paidSeatHolders: paid.map((r) => ({
         layoutItemId: r.layoutItemId,
@@ -926,7 +936,6 @@ export class VenueReservationsService {
   }
 
   private async isInventorySoldOut(
-    eventDate: Date,
     upcomingEventId: string,
     floorLayoutId: string | null,
   ): Promise<boolean> {
@@ -942,7 +951,7 @@ export class VenueReservationsService {
       return true;
     }
 
-    const paid = await this.findPaidReservations(eventDate, upcomingEventId);
+    const paid = await this.findPaidReservations(upcomingEventId);
     const reserved = new Set(paid.map((r) => r.layoutItemId));
     return reservableIds.every((id) => reserved.has(id));
   }
@@ -1276,14 +1285,39 @@ export class VenueReservationsService {
       : VenueSeatKind.STANDALONE_CHAIR;
   }
 
-  private async findPaidReservations(eventDate: Date, upcomingEventId: string) {
+  private async resolveReservedSeatShortLabels(
+    paid: Array<{
+      kind: VenueSeatKind;
+      layoutItemId: string;
+      venueTableConfigId: string | null;
+    }>,
+    floorLayoutId: string | null,
+  ): Promise<string[]> {
+    const labels: string[] = [];
+    for (const row of paid) {
+      const full = await resolveVenueSeatDisplayLabel(
+        this.prisma,
+        this.floorLayout,
+        {
+          kind: row.kind,
+          layoutItemId: row.layoutItemId,
+          venueTableConfigId: row.venueTableConfigId,
+          floorLayoutId,
+        },
+      );
+      labels.push(toShortSeatDisplayLabel(full));
+    }
+    return [...new Set(labels)];
+  }
+
+  private async findPaidReservations(upcomingEventId: string) {
     return this.prisma.venueSeatReservation.findMany({
       where: {
         upcomingEventId,
-        eventDate,
         status: VenueSeatReservationStatus.PAID,
       },
       select: {
+        kind: true,
         layoutItemId: true,
         venueTableConfigId: true,
         customerName: true,
@@ -1291,15 +1325,11 @@ export class VenueReservationsService {
     });
   }
 
-  private async findBlockingReservations(
-    eventDate: Date,
-    upcomingEventId: string,
-  ) {
+  private async findBlockingReservations(upcomingEventId: string) {
     const now = new Date();
     return this.prisma.venueSeatReservation.findMany({
       where: {
         upcomingEventId,
-        eventDate,
         OR: [
           { status: VenueSeatReservationStatus.PAID },
           {
@@ -1322,10 +1352,7 @@ export class VenueReservationsService {
     eventDate: Date;
     upcomingEventId: string;
   }) {
-    const blocking = await this.findBlockingReservations(
-      args.eventDate,
-      args.upcomingEventId,
-    );
+    const blocking = await this.findBlockingReservations(args.upcomingEventId);
 
     if (
       blocking.some((r) => r.layoutItemId === args.layoutItemId) ||

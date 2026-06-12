@@ -9,11 +9,13 @@ import type { CreateReservationEventTemplateDto } from './dto/create-reservation
 import type { UpdateReservationEventTemplateDto } from './dto/update-reservation-event-template.dto';
 import {
   buildTemplateSummary,
+  deriveVenueConfigFromTemplate,
   inactiveWeekdays,
   validateTemplatePayload,
   type ValidatedTemplatePayload,
   type WeekdayInput,
 } from './reservation-event-template.util';
+import { syncVenueSeatReservationEventDates } from '../venue-reservations/sync-venue-seat-reservation-event-date.util';
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const templateInclude = {
@@ -93,6 +95,9 @@ export class ReservationEventTemplatesService {
         include: templateInclude,
       });
     });
+
+    await this.syncLinkedVenueConfigsFromTemplate(updated);
+
     return this.mapTemplate(updated);
   }
 
@@ -352,5 +357,39 @@ export class ReservationEventTemplatesService {
       linkedEventIds: row.venueConfigs.map((config) => config.eventId),
       updatedAt: row.updatedAt.toISOString(),
     };
+  }
+
+  private async syncLinkedVenueConfigsFromTemplate(
+    template: TemplateWithWeekdays,
+  ): Promise<void> {
+    if (template.venueConfigs.length === 0) return;
+
+    const derived = deriveVenueConfigFromTemplate(template);
+    const linked = await this.prisma.upcomingVenueConfig.findMany({
+      where: { reservationEventTemplateId: template.id },
+      select: { eventId: true, reservationEventDate: true },
+    });
+
+    for (const config of linked) {
+      const previousMs = config.reservationEventDate?.getTime() ?? null;
+      const nextMs = derived.reservationEventDate.getTime();
+      await this.prisma.upcomingVenueConfig.update({
+        where: { eventId: config.eventId },
+        data: {
+          reservationOpensAt: derived.reservationOpensAt,
+          reservationClosesAt: derived.reservationClosesAt,
+          reservationEventDate: derived.reservationEventDate,
+          reservationEventLabel: derived.reservationEventLabel,
+          reservationTimezone: derived.reservationTimezone,
+        },
+      });
+      if (previousMs !== nextMs) {
+        await syncVenueSeatReservationEventDates(
+          this.prisma,
+          config.eventId,
+          derived.reservationEventDate,
+        );
+      }
+    }
   }
 }

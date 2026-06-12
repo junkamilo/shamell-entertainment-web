@@ -19,6 +19,7 @@ export type VenueReservationAvailability = {
   salesClosedReason: SalesClosedReason | null;
   reservedLayoutItemIds: string[];
   reservedVenueTableConfigIds: string[];
+  reservedSeatShortLabels: string[];
   paidSeatHolders: PaidSeatHolder[];
 };
 
@@ -30,6 +31,7 @@ const emptyAvailability: VenueReservationAvailability = {
   salesClosedReason: "not_configured",
   reservedLayoutItemIds: [],
   reservedVenueTableConfigIds: [],
+  reservedSeatShortLabels: [],
   paidSeatHolders: [],
 };
 
@@ -71,6 +73,9 @@ export async function fetchVenueReservationAvailability(
       : [],
     reservedVenueTableConfigIds: Array.isArray(o.reservedVenueTableConfigIds)
       ? o.reservedVenueTableConfigIds.filter((id): id is string => typeof id === "string")
+      : [],
+    reservedSeatShortLabels: Array.isArray(o.reservedSeatShortLabels)
+      ? o.reservedSeatShortLabels.filter((label): label is string => typeof label === "string")
       : [],
     paidSeatHolders: Array.isArray(o.paidSeatHolders)
       ? o.paidSeatHolders
