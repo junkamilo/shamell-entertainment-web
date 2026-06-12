@@ -20,7 +20,7 @@ import { maskEmail } from '../../common/util/mask-pii.util';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { fetchPaymentMethodDetails } from '../stripe/stripe-payment-details.util';
-import { STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS } from '../stripe/stripe-embedded-checkout.util';
+import { STRIPE_EMBEDDED_CHECKOUT_BASE } from '../stripe/stripe-embedded-checkout.util';
 import {
   assertCheckoutPaidAmounts,
   stripeAutomaticTaxParams,
@@ -344,10 +344,9 @@ export class UpcomingEventsService {
     const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/classes/return?session_id={CHECKOUT_SESSION_ID}`;
 
     const sessionParams = {
-      ui_mode: 'embedded_page',
+      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
       mode: 'payment',
       customer_email: dto.customerEmail,
-      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
       ...stripeAutomaticTaxParams(),
       payment_intent_data: {
         receipt_email: dto.customerEmail.trim().toLowerCase(),
@@ -485,10 +484,9 @@ export class UpcomingEventsService {
     const dateLabel = bundleDateIso;
 
     const checkout = await this.stripeService.client.checkout.sessions.create({
-      ui_mode: 'embedded_page',
+      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
       mode: 'payment',
       customer_email: dto.customerEmail,
-      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
       ...stripeAutomaticTaxParams(),
       payment_intent_data: {
         receipt_email: dto.customerEmail.trim().toLowerCase(),
@@ -681,10 +679,9 @@ export class UpcomingEventsService {
     const sessionCount = resolved.length;
 
     const checkoutParams = {
-      ui_mode: 'embedded_page',
+      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
       mode: 'payment',
       customer_email: dto.customerEmail,
-      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
       ...stripeAutomaticTaxParams(),
       payment_intent_data: {
         receipt_email: dto.customerEmail.trim().toLowerCase(),
@@ -813,10 +810,9 @@ export class UpcomingEventsService {
     const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/return?session_id={CHECKOUT_SESSION_ID}`;
 
     const sessionParams = {
-      ui_mode: 'embedded_page',
+      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
       mode: 'payment',
       customer_email: dto.customerEmail,
-      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
       ...stripeAutomaticTaxParams(),
       payment_intent_data: {
         receipt_email: dto.customerEmail.trim().toLowerCase(),

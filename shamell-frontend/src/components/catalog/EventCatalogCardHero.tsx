@@ -30,7 +30,7 @@ export function EventCatalogCardHero({
   isVideo,
   title,
   className,
-  aspectClassName = "aspect-4/5",
+  aspectClassName = "aspect-[3/4] @[300px]:aspect-4/5",
 }: EventCatalogCardHeroProps) {
   return (
     <div

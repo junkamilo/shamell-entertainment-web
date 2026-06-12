@@ -47,7 +47,7 @@ import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminCustomerActivityNotifyService } from '../mail/admin-customer-activity-notify.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
-import { STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS } from '../stripe/stripe-embedded-checkout.util';
+import { STRIPE_EMBEDDED_CHECKOUT_BASE } from '../stripe/stripe-embedded-checkout.util';
 import {
   assertCheckoutPaidAmounts,
   stripeAutomaticTaxParams,
@@ -1587,10 +1587,9 @@ export class BookingsService {
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const returnUrl = `${this.stripeService.frontendUrl()}/pay/quote/return?session_id={CHECKOUT_SESSION_ID}`;
     const sessionParams = {
-      ui_mode: 'embedded_page' as const,
+      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
       mode: 'payment' as const,
       customer_email: args.customerEmail,
-      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
       ...stripeAutomaticTaxParams(),
       line_items: [
         {

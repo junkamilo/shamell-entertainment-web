@@ -30,7 +30,7 @@ export function PayQuoteCheckoutClient({ token }: Props) {
 
   if (error) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0a0908] px-4 py-16 text-center">
+      <main className="flex min-h-screen items-center justify-center bg-white px-4 py-16 text-center">
         <div className="max-w-md">
           <h1 className="font-display text-2xl text-gold">Payment unavailable</h1>
           <p className="mt-4 font-body text-sm text-foreground/75">{error}</p>
@@ -55,8 +55,8 @@ export function PayQuoteCheckoutClient({ token }: Props) {
 
   return (
     <StripeCheckoutHost
+      layout="page"
       clientSecret={clientSecret}
-      usePortal={false}
       ariaLabel="Complete your booking payment"
     />
   );

@@ -6,22 +6,23 @@ import {
   isValidElement,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
 } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
+import { resolveCarouselLayout } from "./catalog-carousel-layout";
 
-const DEFAULT_VISIBLE_DESKTOP = 3;
-const GAP_PX_MD = 32;
+const DEFAULT_MAX_VISIBLE_DESKTOP = 3;
 
 type CatalogCardCarouselProps = {
   children: ReactNode;
   /** Accessible name for the carousel region. */
   ariaLabel: string;
   className?: string;
-  /** How many cards are fully visible on md+ before scrolling (default 3). */
+  /** Maximum cards visible on xl+ (default 3). */
   visibleOnDesktop?: number;
 };
 
@@ -62,53 +63,55 @@ const navButtonClass = cn(
 );
 
 /**
- * Horizontal catalog rail: up to `visibleOnDesktop` cards on desktop; touch scroll on mobile.
- * Prev/next arrows when there are more items than fit in one viewport.
+ * Horizontal catalog rail: 1 card below lg, 2 at lg–xl, 3 at xl+.
+ * Touch scroll on mobile/tablet; prev/next arrows when more items than fit.
  */
 export default function CatalogCardCarousel({
   children,
   ariaLabel,
   className,
-  visibleOnDesktop = DEFAULT_VISIBLE_DESKTOP,
+  visibleOnDesktop = DEFAULT_MAX_VISIBLE_DESKTOP,
 }: CatalogCardCarouselProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const isMdUp = useMediaQuery("(min-width: 768px)");
+  const isLgUp = useMediaQuery("(min-width: 1024px)");
+  const isXlUp = useMediaQuery("(min-width: 1280px)");
   const { atStart, atEnd, sync } = useScrollEdges(scrollerRef);
+
+  const layout = useMemo(
+    () => resolveCarouselLayout(isLgUp, isXlUp, visibleOnDesktop),
+    [isLgUp, isXlUp, visibleOnDesktop],
+  );
 
   const items = Children.toArray(children).filter(isValidElement);
   const count = items.length;
-  const showArrows = isMdUp && count > visibleOnDesktop;
   const horizontalRail = count > 1;
+  const showArrows =
+    isLgUp && !layout.useSwipeRail && count > layout.visibleCount;
 
   const scrollByPage = useCallback(
     (direction: -1 | 1) => {
       const el = scrollerRef.current;
       if (!el) return;
-      const gap = isMdUp ? GAP_PX_MD : 24;
-      const slideWidth =
-        isMdUp && visibleOnDesktop > 0
-          ? (el.clientWidth - gap * (visibleOnDesktop - 1)) / visibleOnDesktop + gap
-          : el.clientWidth * 0.88 + gap;
+      const gap = layout.gapPx;
+      const slideWidth = layout.useSwipeRail
+        ? el.clientWidth * 0.88 + gap
+        : (el.clientWidth - gap * (layout.visibleCount - 1)) / layout.visibleCount +
+          gap;
       el.scrollBy({ left: direction * slideWidth, behavior: "smooth" });
       window.setTimeout(sync, 400);
     },
-    [isMdUp, sync, visibleOnDesktop],
+    [layout, sync],
   );
 
   if (count === 0) return null;
 
-  const desktopBasis =
-    visibleOnDesktop > 0
-      ? `calc((100% - ${(visibleOnDesktop - 1) * GAP_PX_MD}px) / ${visibleOnDesktop})`
-      : "100%";
-
   return (
-    <div className={cn("relative", showArrows && "md:px-12", className)}>
+    <div className={cn("relative", showArrows && "lg:px-12", className)}>
       {showArrows ? (
         <>
           <button
             type="button"
-            className={cn(navButtonClass, "left-0 -translate-x-1/2 md:left-2 md:translate-x-0")}
+            className={cn(navButtonClass, "left-0 -translate-x-1/2 lg:left-2 lg:translate-x-0")}
             onClick={() => scrollByPage(-1)}
             disabled={atStart}
             aria-label="Previous cards"
@@ -117,7 +120,7 @@ export default function CatalogCardCarousel({
           </button>
           <button
             type="button"
-            className={cn(navButtonClass, "right-0 translate-x-1/2 md:right-2 md:translate-x-0")}
+            className={cn(navButtonClass, "right-0 translate-x-1/2 lg:right-2 lg:translate-x-0")}
             onClick={() => scrollByPage(1)}
             disabled={atEnd}
             aria-label="Next cards"
@@ -145,9 +148,9 @@ export default function CatalogCardCarousel({
           }
         }}
         className={cn(
-          "flex items-stretch gap-6 pb-2 md:gap-8",
+          "flex items-stretch gap-6 pb-2 lg:gap-8",
           horizontalRail
-            ? "snap-x snap-mandatory overflow-x-auto overscroll-x-contain shamell-scrollbar [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] max-md:px-1"
+            ? "snap-x snap-mandatory overflow-x-auto overscroll-x-contain shamell-scrollbar [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] max-lg:px-1"
             : "flex-row flex-nowrap justify-center",
         )}
       >
@@ -157,18 +160,21 @@ export default function CatalogCardCarousel({
             className={cn(
               "min-w-0 shrink-0",
               horizontalRail && "snap-start snap-always",
-              horizontalRail
-                ? "w-[min(88vw,22rem)] md:w-auto md:max-w-none md:flex-[0_0_auto]"
-                : "w-full max-w-[min(100%,17.5rem)]",
+              layout.useSwipeRail
+                ? "w-[min(88vw,26rem)]"
+                : "lg:w-auto lg:max-w-none lg:flex-[0_0_auto]",
+              !horizontalRail && "w-full max-w-[min(100%,17.5rem)]",
             )}
             style={
-              horizontalRail && isMdUp
+              horizontalRail && !layout.useSwipeRail
                 ? {
-                    flexBasis: desktopBasis,
-                    width: desktopBasis,
-                    maxWidth: desktopBasis,
+                    flexBasis: layout.slideBasis,
+                    width: layout.slideBasis,
+                    maxWidth: layout.slideBasis,
                   }
-                : undefined
+                : layout.useSwipeRail
+                  ? { width: layout.slideBasis, maxWidth: layout.slideBasis }
+                  : undefined
             }
           >
             {child}
@@ -176,8 +182,8 @@ export default function CatalogCardCarousel({
         ))}
       </div>
 
-      {horizontalRail && !showArrows ? (
-        <p className="mt-3 text-center font-body text-xs text-foreground/55 md:hidden">
+      {layout.useSwipeRail && horizontalRail ? (
+        <p className="mt-3 text-center font-body text-xs text-foreground/55 lg:hidden">
           Swipe sideways to see more
         </p>
       ) : null}

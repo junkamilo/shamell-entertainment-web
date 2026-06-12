@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "../styles/shamell-admin-tokens.css";
 @import "../styles/shamell-admin-typography.css";
+@import "../styles/stripe-checkout.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -539,8 +540,8 @@
 }
 
 .admin-theme .shamell-admin-checkbox {
-  width: 15px;
-  height: 15px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--shamell-gold);
   border-radius: 3px;
   border: 1px solid var(--shamell-border-gold);
@@ -677,37 +678,4 @@
 .admin-theme .admin-modal-scroll :where(.text-xs) {
   font-size: 0.9375rem !important;
   line-height: 1.5 !important;
-}
-
-/* Stripe Embedded Checkout — native host, no Shamell wrapper */
-html[data-stripe-checkout-open],
-body[data-stripe-checkout-open] {
-  overflow: hidden;
-}
-
-.stripe-checkout-host {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  width: 100%;
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.stripe-embedded-checkout-mount {
-  flex: 1;
-  width: 100%;
-  min-height: 0;
-}
-
-.stripe-embedded-checkout-mount iframe {
-  display: block;
-  width: 100% !important;
-  border: 0;
-}
-
-body[data-stripe-checkout-open] .site-floating-actions {
-  display: none;
 }

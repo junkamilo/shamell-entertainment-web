@@ -5,59 +5,27 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ADMIN_SESSION_CHANGED_EVENT,
   isAdminLoggedIn,
 } from "@/lib/adminSession";
 import { cn } from "@/lib/utils";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
+import { useHeaderNavOverflow } from "@/hooks/use-header-nav-fits";
 import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/onComingEventsRoutes";
 import bailarinaLogo from "@/public/01_bailarina.png";
-
-type NavItem = {
-  label: string;
-  href: string;
-  sectionId?: string;
-};
-
-/**
- * Vertical order of section `id`s on `app/page.tsx`.
- * Note: `ExperiencesSection` renders SERVICE CATALOG (`id="services"`);
- * `ServicesSection` renders TYPES OF EVENTS (`id="experiences"`).
- */
-const HOME_SECTION_SCROLL_ORDER = [
-  "hero",
-  "services",
-  "experiences",
-  "about",
-  "on-coming-events",
-  "gallery",
-] as const;
-
-const baseNavItems: NavItem[] = [
-  { label: "HOME", href: "/#hero", sectionId: "hero" },
-  { label: "SERVICE CATALOG", href: "/#services", sectionId: "services" },
-  {
-    label: "TYPES OF EVENTS",
-    href: "/#experiences",
-    sectionId: "experiences",
-  },
-  { label: "ABOUT", href: "/#about", sectionId: "about" },
-  { label: "GALLERY", href: "/#gallery", sectionId: "gallery" },
-];
-
-const onComingEventsNavItem: NavItem = {
-  label: "ON COMING EVENTS",
-  href: "/#on-coming-events",
-  sectionId: "on-coming-events",
-};
+import {
+  buildHomeScrollSectionIds,
+  buildSiteHeaderNavItems,
+  type SiteHeaderNavItem,
+} from "@/components/site-header-nav";
 
 function isNavItemActive(
   pathname: string,
   activeSection: string,
   activeHref: string,
-  item: NavItem,
+  item: SiteHeaderNavItem,
 ): boolean {
   if (pathname === "/") {
     return Boolean(item.sectionId && item.sectionId === activeSection);
@@ -89,7 +57,13 @@ function computeHomeActiveSectionId(sectionIds: string[]): string {
   return current;
 }
 
-function HeaderBrandImage({ compact }: { compact?: boolean }) {
+function HeaderBrandImage({
+  compact,
+  compactDesktop,
+}: {
+  compact?: boolean;
+  compactDesktop?: boolean;
+}) {
   return (
     <Image
       src={bailarinaLogo}
@@ -100,7 +74,9 @@ function HeaderBrandImage({ compact }: { compact?: boolean }) {
         "w-auto object-contain object-left drop-shadow-[0_2px_14px_rgba(0,0,0,0.45)] transition-[opacity,filter] duration-300 group-hover:opacity-95",
         compact
           ? "h-11 max-w-16 sm:h-12 sm:max-w-18"
-          : "h-12 max-w-18 sm:h-14 sm:max-w-20 md:h-15 md:max-w-22 lg:h-16 lg:max-w-24",
+          : compactDesktop
+            ? "h-12 max-w-18 lg:h-12 lg:max-w-20 xl:h-16 xl:max-w-24"
+            : "h-12 max-w-18 sm:h-14 sm:max-w-20 lg:h-16 lg:max-w-24",
       )}
     />
   );
@@ -108,12 +84,14 @@ function HeaderBrandImage({ compact }: { compact?: boolean }) {
 
 function DesktopNavLink({
   href,
-  label,
+  fullLabel,
+  shortLabel,
   active,
   underlineWhenActive = true,
 }: {
   href: string;
-  label: string;
+  fullLabel: string;
+  shortLabel: string;
   active: boolean;
   underlineWhenActive?: boolean;
 }) {
@@ -121,8 +99,9 @@ function DesktopNavLink({
     <Link
       href={href}
       className={cn(
-        "group/nav relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-md border font-brand text-[0.625rem] font-semibold uppercase leading-none tracking-[0.08em] transition-[color,background-color,border-color,box-shadow] duration-300 sm:text-[0.6875rem] sm:tracking-widest lg:text-xs lg:tracking-[0.11em] xl:tracking-[0.12em]",
-        "min-h-9 whitespace-nowrap px-2 py-2 sm:min-h-10 sm:px-2.5 lg:px-3",
+        "group/nav relative inline-flex items-center justify-center overflow-hidden rounded-md border font-brand font-semibold uppercase leading-none transition-[color,background-color,border-color,box-shadow] duration-300",
+        "min-h-9 whitespace-nowrap px-1.5 py-2 text-[0.625rem] tracking-[0.06em] lg:shrink xl:shrink-0 sm:min-h-10 sm:px-2",
+        "xl:min-h-10 xl:px-2.5 xl:text-xs xl:tracking-[0.12em]",
         active
           ? "border-gold/50 bg-black/45 text-gold shadow-[inset_0_1px_0_rgba(197,165,90,0.12)]"
           : "border-transparent text-foreground/72 hover:border-gold/22 hover:bg-white/6 hover:text-gold-light",
@@ -136,7 +115,8 @@ function DesktopNavLink({
           aria-hidden
         />
       ) : null}
-      <span className="relative z-10">{label}</span>
+      <span className="relative z-10 hidden xl:inline">{fullLabel}</span>
+      <span className="relative z-10 xl:hidden">{shortLabel}</span>
       <motion.span
         className="absolute bottom-1.5 left-2 right-2 h-px origin-center bg-linear-to-r from-transparent via-gold to-transparent"
         initial={false}
@@ -155,25 +135,30 @@ function DesktopNavLink({
 export default function SiteHeader() {
   const pathname = usePathname();
   const { clientEnabled: onComingEventsEnabled } = useOnComingEventsSettings();
-  const navItems = useMemo(() => {
-    if (!onComingEventsEnabled) return baseNavItems;
-    const items = [...baseNavItems];
-    const galleryIndex = items.findIndex((item) => item.sectionId === "gallery");
-    const insertAt = galleryIndex >= 0 ? galleryIndex : items.length;
-    items.splice(insertAt, 0, onComingEventsNavItem);
-    return items;
-  }, [onComingEventsEnabled]);
-  const homeScrollSectionIds = useMemo(() => {
-    if (!onComingEventsEnabled) {
-      return HOME_SECTION_SCROLL_ORDER.filter((id) => id !== "on-coming-events");
-    }
-    return [...HOME_SECTION_SCROLL_ORDER];
-  }, [onComingEventsEnabled]);
+  const navItems = useMemo(
+    () => buildSiteHeaderNavItems(onComingEventsEnabled),
+    [onComingEventsEnabled],
+  );
+  const homeScrollSectionIds = useMemo(
+    () => buildHomeScrollSectionIds(onComingEventsEnabled),
+    [onComingEventsEnabled],
+  );
+  const desktopRowRef = useRef<HTMLDivElement>(null);
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
   const [showAdminEntry, setShowAdminEntry] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [desktopEffectsEnabled, setDesktopEffectsEnabled] = useState(false);
+  const [isLargeViewport, setIsLargeViewport] = useState(false);
+
+  const navOverflows = useHeaderNavOverflow(
+    desktopRowRef,
+    isLargeViewport,
+    navItems.length + (showAdminEntry ? 1 : 0),
+  );
+  const showDesktopShell = isLargeViewport && !navOverflows;
+  const showMobileShell = !showDesktopShell;
 
   useEffect(() => {
     const syncAdmin = () => setShowAdminEntry(isAdminLoggedIn());
@@ -194,8 +179,11 @@ export default function SiteHeader() {
   }, []);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 768px)");
-    const syncViewport = () => setDesktopEffectsEnabled(mediaQuery.matches);
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const syncViewport = () => {
+      setIsLargeViewport(mediaQuery.matches);
+      setDesktopEffectsEnabled(mediaQuery.matches);
+    };
 
     syncViewport();
     mediaQuery.addEventListener("change", syncViewport);
@@ -225,11 +213,12 @@ export default function SiteHeader() {
   }, [pathname, homeScrollSectionIds]);
 
   useEffect(() => {
+    if (!showMobileShell) return;
     document.body.style.overflow = isMenuOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isMenuOpen]);
+  }, [isMenuOpen, showMobileShell]);
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -239,6 +228,10 @@ export default function SiteHeader() {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isMenuOpen]);
+
+  useEffect(() => {
+    if (showDesktopShell) setIsMenuOpen(false);
+  }, [showDesktopShell]);
 
   const activeHref = useMemo(() => {
     if (pathname === "/") {
@@ -256,7 +249,7 @@ export default function SiteHeader() {
 
     return "";
   }, [activeSection, pathname, navItems]);
-  const headerElevated = scrolled || isMenuOpen;
+  const headerElevated = scrolled || (showMobileShell && isMenuOpen);
 
   return (
     <>
@@ -281,9 +274,9 @@ export default function SiteHeader() {
         className={cn(
           "fixed top-0 left-0 right-0 z-90 transition-[background-color,border-color] duration-500 ease-out",
           headerElevated
-            ? "border-b border-gold/28 bg-[linear-gradient(180deg,rgba(10,6,14,0.94),rgba(8,6,10,0.78))] shadow-[0_18px_56px_rgba(0,0,0,0.62)] md:backdrop-blur-xl"
-            : "border-b border-gold/16 bg-[linear-gradient(180deg,rgba(12,8,16,0.68),rgba(12,8,16,0.36))] md:backdrop-blur-md",
-          isMenuOpen && "md:border-gold/20",
+            ? "border-b border-gold/28 bg-[linear-gradient(180deg,rgba(10,6,14,0.94),rgba(8,6,10,0.78))] shadow-[0_18px_56px_rgba(0,0,0,0.62)] lg:backdrop-blur-xl"
+            : "border-b border-gold/16 bg-[linear-gradient(180deg,rgba(12,8,16,0.68),rgba(12,8,16,0.36))] lg:backdrop-blur-md",
+          showMobileShell && isMenuOpen && "lg:border-gold/20",
         )}
       >
         <div
@@ -294,10 +287,19 @@ export default function SiteHeader() {
           <div className="absolute inset-x-0 top-0 h-10 bg-[radial-gradient(65%_120%_at_50%_0%,rgba(197,165,90,0.10),transparent_62%)]" />
         </div>
 
-        <div className="relative mx-auto w-full max-w-[1920px] px-4 py-2.5 sm:px-6 md:px-8 lg:px-10 xl:px-12">
-          {/* Desktop: margin | logo + nav row ············ ADMIN | Inquire | margin */}
-          <div className="hidden min-h-17 w-full items-center justify-between gap-6 md:flex lg:gap-8 xl:gap-10">
-            <div className="flex min-w-0 flex-1 items-center gap-4 lg:gap-6 xl:gap-8">
+        <div className="relative mx-auto w-full max-w-[1920px] px-4 py-2.5 sm:px-6 lg:px-8 xl:px-12">
+          {/* Desktop: logo + inline nav + ADMIN + Inquire (lg+, hidden when overflow forces hamburger) */}
+          <div
+            ref={desktopRowRef}
+            className={cn(
+              "min-h-17 w-full items-center justify-between gap-4 xl:gap-8",
+              isLargeViewport ? "flex" : "hidden",
+              !showDesktopShell &&
+                "pointer-events-none invisible absolute inset-x-0 top-0 -z-10",
+            )}
+            aria-hidden={!showDesktopShell}
+          >
+            <div className="flex min-w-0 flex-1 items-center gap-3 xl:gap-8">
               <motion.div
                 whileHover={{
                   scale: 1.035,
@@ -311,39 +313,46 @@ export default function SiteHeader() {
                   href="/#hero"
                   className="group relative flex shrink-0 items-center rounded-sm outline-offset-4 focus-visible:outline-2 focus-visible:outline-gold/45"
                 >
-                  <HeaderBrandImage />
+                  <HeaderBrandImage compactDesktop />
                 </Link>
               </motion.div>
 
               <nav
-                className="flex min-w-0 flex-1 justify-center overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="flex min-w-0 flex-1 justify-center"
                 aria-label="Main navigation"
               >
-                <div className="flex w-max flex-nowrap items-center justify-center gap-x-1 sm:gap-x-1.5 lg:gap-x-2 xl:gap-x-2.5">
+                <div className="flex flex-nowrap items-center justify-center gap-x-1 lg:gap-x-1.5 xl:gap-x-2.5">
                   {navItems.map((item) => (
-                    <DesktopNavLink
+                    <div
                       key={item.label}
-                      href={item.href}
-                      label={item.label.toUpperCase()}
-                      active={isNavItemActive(
-                        pathname,
-                        activeSection,
-                        activeHref,
-                        item,
+                      className={cn(
+                        item.hideInCompactNav && "hidden xl:contents",
                       )}
-                      underlineWhenActive={
-                        !(
-                          pathname === "/" &&
-                          item.sectionId === "on-coming-events"
-                        )
-                      }
-                    />
+                    >
+                      <DesktopNavLink
+                        href={item.href}
+                        fullLabel={item.label}
+                        shortLabel={item.shortLabel}
+                        active={isNavItemActive(
+                          pathname,
+                          activeSection,
+                          activeHref,
+                          item,
+                        )}
+                        underlineWhenActive={
+                          !(
+                            pathname === "/" &&
+                            item.sectionId === "on-coming-events"
+                          )
+                        }
+                      />
+                    </div>
                   ))}
                 </div>
               </nav>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2 sm:gap-2.5 lg:gap-3">
+            <div className="flex shrink-0 items-center gap-2 xl:gap-3">
               {showAdminEntry ? (
                 <motion.div
                   whileHover={{
@@ -357,8 +366,9 @@ export default function SiteHeader() {
                   <Link
                     href="/shamell-admin"
                     className={cn(
-                      "inline-flex min-h-9 items-center gap-1.5 rounded-md border border-gold/40 bg-black/30 px-2.5 py-2 text-gold transition-all duration-300 sm:min-h-10 sm:px-3",
+                      "inline-flex min-h-9 items-center justify-center rounded-md border border-gold/40 bg-black/30 text-gold transition-all duration-300 sm:min-h-10",
                       "hover:border-gold/60 hover:bg-gold/10 hover:shadow-[0_0_20px_rgba(197,165,90,0.14)]",
+                      "px-2.5 py-2 xl:gap-1.5 xl:px-3",
                     )}
                     aria-label="Admin panel"
                     title="Admin"
@@ -370,7 +380,7 @@ export default function SiteHeader() {
                       height={20}
                       className="h-5 w-auto max-w-[18px] shrink-0 object-contain opacity-90"
                     />
-                    <span className="font-brand text-xs font-semibold tracking-[0.16em] lg:tracking-[0.18em]">
+                    <span className="hidden font-brand text-xs font-semibold tracking-[0.16em] xl:inline xl:tracking-[0.18em]">
                       ADMIN
                     </span>
                   </Link>
@@ -389,7 +399,7 @@ export default function SiteHeader() {
                 <a
                   href="/contacto"
                   className={cn(
-                    "relative inline-flex min-h-9 items-center justify-center overflow-hidden rounded-md border border-gold/55 bg-gold/8 px-3 py-2 font-brand text-xs font-semibold tracking-[0.18em] text-gold uppercase transition-all duration-300 sm:min-h-10 sm:px-4 lg:px-5 lg:tracking-[0.2em]",
+                    "relative inline-flex min-h-9 items-center justify-center overflow-hidden rounded-md border border-gold/55 bg-gold/8 px-3 py-2 font-brand text-xs font-semibold tracking-[0.16em] text-gold uppercase transition-all duration-300 sm:min-h-10 xl:px-5 xl:tracking-[0.2em]",
                     "before:pointer-events-none before:absolute before:inset-0 before:-translate-x-full before:bg-linear-to-r before:from-transparent before:via-white/10 before:to-transparent before:transition-transform before:duration-500",
                     "hover:border-gold hover:bg-gold/14 hover:text-gold-light hover:shadow-[0_0_24px_rgba(197,165,90,0.2)] hover:before:translate-x-full",
                   )}
@@ -400,8 +410,13 @@ export default function SiteHeader() {
             </div>
           </div>
 
-          {/* Mobile */}
-          <div className="flex min-h-17 w-full items-center justify-between gap-3 md:hidden">
+          {/* Mobile / overflow fallback */}
+          <div
+            className={cn(
+              "min-h-17 w-full items-center justify-between gap-3",
+              showMobileShell ? "flex" : "hidden",
+            )}
+          >
             <div className="transition-transform duration-200 ease-out will-change-transform hover:scale-[1.03] active:scale-[0.98]">
               <Link
                 href="/#hero"
@@ -443,11 +458,11 @@ export default function SiteHeader() {
       </motion.header>
 
       <AnimatePresence>
-        {isMenuOpen ? (
+        {showMobileShell && isMenuOpen ? (
           <>
             <motion.div
               key="mobile-header-overlay"
-              className="fixed inset-0 z-80 bg-black/70 backdrop-blur-md md:hidden"
+              className="fixed inset-0 z-80 bg-black/70 backdrop-blur-md"
               aria-hidden
               onClick={() => setIsMenuOpen(false)}
               initial={{ opacity: 0 }}
@@ -458,7 +473,7 @@ export default function SiteHeader() {
 
             <motion.nav
               key="mobile-header-nav"
-              className="fixed top-17 right-0 left-0 z-85 flex max-h-[min(85dvh,calc(100dvh-5rem))] flex-col border-b border-gold/20 bg-[oklch(0.08_0.02_45/0.97)] shadow-[0_24px_48px_rgba(0,0,0,0.65)] backdrop-blur-2xl md:hidden"
+              className="fixed top-17 right-0 left-0 z-85 flex max-h-[min(85dvh,calc(100dvh-5rem))] flex-col border-b border-gold/20 bg-[oklch(0.08_0.02_45/0.97)] shadow-[0_24px_48px_rgba(0,0,0,0.65)] backdrop-blur-2xl"
               aria-label="Mobile menu"
               initial={{ opacity: 0, y: -12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -485,7 +500,7 @@ export default function SiteHeader() {
                 <a
                   href="/contacto"
                   onClick={() => setIsMenuOpen(false)}
-                  className="btn-outline-gold mx-auto mt-6 flex min-h-12 w-full max-w-xs items-center justify-center px-4 py-3 text-center font-brand tracking-[0.2em] transition-transform duration-200 ease-out will-change-transform hover:scale-[1.02] hover:shadow-[0_0_22px_rgba(197,165,90,0.18)] active:scale-[0.98] md:text-xs"
+                  className="btn-outline-gold mx-auto mt-6 flex min-h-12 w-full max-w-xs items-center justify-center px-4 py-3 text-center font-brand tracking-[0.2em] transition-transform duration-200 ease-out will-change-transform hover:scale-[1.02] hover:shadow-[0_0_22px_rgba(197,165,90,0.18)] active:scale-[0.98]"
                 >
                   Inquire
                 </a>

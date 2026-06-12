@@ -1,3 +1,7 @@
+import {
+  disponibilidadTabButtonActiveClass,
+  disponibilidadTabButtonInactiveClass,
+} from "../lib/disponibilidadStyles";
 import type { ActivePanel } from "../types/disponibilidad.types";
 
 type Props = {
@@ -13,8 +17,8 @@ export default function DisponibilidadPanelTabs({ activePanel, onPanelChange }: 
         onClick={() => onPanelChange("weekly")}
         className={
           activePanel === "weekly"
-            ? "rounded-full border border-gold/40 bg-gold/12 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-gold sm:px-4 sm:py-1.5"
-            : "rounded-full border border-gold/18 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold sm:px-4 sm:py-1.5"
+            ? disponibilidadTabButtonActiveClass
+            : disponibilidadTabButtonInactiveClass
         }
       >
         WEEKLY HOURS
@@ -24,8 +28,8 @@ export default function DisponibilidadPanelTabs({ activePanel, onPanelChange }: 
         onClick={() => onPanelChange("closures")}
         className={
           activePanel === "closures"
-            ? "rounded-full border border-gold/40 bg-gold/12 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-gold sm:px-4 sm:py-1.5"
-            : "rounded-full border border-gold/18 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold sm:px-4 sm:py-1.5"
+            ? disponibilidadTabButtonActiveClass
+            : disponibilidadTabButtonInactiveClass
         }
       >
         CLOSURES

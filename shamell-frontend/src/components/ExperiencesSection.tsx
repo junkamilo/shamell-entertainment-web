@@ -9,7 +9,7 @@ const ExperiencesSection = () => {
   const { experiences, isLoading } = useExperiences();
 
   return (
-    <section id="services" className="bg-transparent py-20 px-4">
+    <section id="services" className="overflow-x-hidden bg-transparent py-20 px-4">
       <div className="relative mx-auto mb-12 max-w-6xl text-center">
         <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2">
           <div className="h-28 w-[min(22rem,90vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.14),transparent_72%)] blur-3xl opacity-70" />

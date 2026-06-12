@@ -21,7 +21,7 @@ import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
 import { fetchPaymentMethodDetails } from '../stripe/stripe-payment-details.util';
-import { STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS } from '../stripe/stripe-embedded-checkout.util';
+import { STRIPE_EMBEDDED_CHECKOUT_BASE } from '../stripe/stripe-embedded-checkout.util';
 import {
   assertCheckoutPaidAmounts,
   stripeAutomaticTaxParams,
@@ -1068,10 +1068,9 @@ export class VenueReservationsService {
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const sessionParams = {
-      ui_mode: 'embedded_page',
+      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
       mode: 'payment',
       customer_email: args.customerEmail,
-      wallet_options: STRIPE_EMBEDDED_CHECKOUT_WALLET_OPTIONS,
       ...stripeAutomaticTaxParams(),
       line_items: [
         {

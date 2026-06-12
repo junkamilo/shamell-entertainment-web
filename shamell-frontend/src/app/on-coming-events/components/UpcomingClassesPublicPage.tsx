@@ -87,6 +87,7 @@ export default function UpcomingClassesPublicPage({ slug }: Props) {
   if (mounted && checkoutSecret) {
     return (
       <StripeCheckoutHost
+        layout="overlay"
         clientSecret={checkoutSecret}
         ariaLabel="Class booking payment"
       />

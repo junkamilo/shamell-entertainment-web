@@ -1,6 +1,11 @@
 import { motion } from "motion/react";
 import { formatTimeDisplayUs } from "@/lib/contactLogisticsUtils";
 import { WEEKDAY_LABEL } from "../lib/disponibilidadConstants";
+import {
+  disponibilidadBodyTextClass,
+  disponibilidadDayLabelClass,
+  disponibilidadTimeTriggerClass,
+} from "../lib/disponibilidadStyles";
 import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
 import type { TimePickerTarget } from "../types/disponibilidad.types";
 
@@ -19,10 +24,10 @@ export default function DisponibilidadWeeklyRow({ row, onClosedChange, onOpenTim
       className="shamell-glass-surface flex flex-col gap-3 rounded-xl px-3 py-3 sm:px-4 md:flex-row md:items-center md:gap-5"
     >
       <div className="flex min-w-0 items-center justify-between gap-3 md:block md:w-36 md:shrink-0">
-        <div className="min-w-0 font-brand text-[11px] tracking-wide text-gold/90">
+        <div className={disponibilidadDayLabelClass}>
           {WEEKDAY_LABEL[row.weekday] ?? row.weekday}
         </div>
-        <label className="flex shrink-0 items-center gap-2 font-body text-xs text-foreground/70 md:mt-2">
+        <label className={`flex shrink-0 items-center gap-2.5 md:mt-2 ${disponibilidadBodyTextClass}`}>
           <input
             type="checkbox"
             className="shamell-admin-checkbox"
@@ -37,17 +42,17 @@ export default function DisponibilidadWeeklyRow({ row, onClosedChange, onOpenTim
           <button
             type="button"
             onClick={() => onOpenTimePicker({ weekday: row.weekday, field: "start" })}
-            className="shamell-glass-trigger w-full min-w-0 rounded-lg border border-gold/25 px-3 py-2 text-left font-body text-xs text-foreground sm:py-1.5"
+            className={disponibilidadTimeTriggerClass}
           >
             {row.startTime ? formatTimeDisplayUs(row.startTime) : "Choose time"}
           </button>
-          <span className="hidden text-center text-foreground/40 sm:block" aria-hidden>
+          <span className="hidden text-center text-base text-foreground/40 sm:block" aria-hidden>
             —
           </span>
           <button
             type="button"
             onClick={() => onOpenTimePicker({ weekday: row.weekday, field: "end" })}
-            className="shamell-glass-trigger w-full min-w-0 rounded-lg border border-gold/25 px-3 py-2 text-left font-body text-xs text-foreground sm:py-1.5"
+            className={disponibilidadTimeTriggerClass}
           >
             {row.endTime ? formatTimeDisplayUs(row.endTime) : "Choose time"}
           </button>

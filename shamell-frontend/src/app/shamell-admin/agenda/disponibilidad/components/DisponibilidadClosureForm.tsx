@@ -5,6 +5,11 @@ import {
   CLOSURE_KIND_OPTIONS,
   CLOSURE_WEEKDAY_OPTIONS,
 } from "../lib/disponibilidadConstants";
+import {
+  disponibilidadActionButtonClass,
+  disponibilidadFieldLabelClass,
+  disponibilidadTimeTriggerClass,
+} from "../lib/disponibilidadStyles";
 import type { ClosureDatePickerTarget, ClosureKind } from "../types/disponibilidad.types";
 
 type Props = {
@@ -39,7 +44,7 @@ export default function DisponibilidadClosureForm({
   return (
     <form onSubmit={onSubmit} className="mt-6 grid gap-4 overflow-visible md:grid-cols-2">
       <label className="block overflow-visible md:col-span-2">
-        <span className="font-brand text-[10px] tracking-widest text-gold/65">TYPE</span>
+        <span className={disponibilidadFieldLabelClass}>TYPE</span>
         <AdminAccordionSingleSelect
           options={CLOSURE_KIND_OPTIONS}
           value={closureKind}
@@ -51,12 +56,12 @@ export default function DisponibilidadClosureForm({
       </label>
       {closureKind === "SPECIFIC_DATE" ? (
         <label className="block">
-          <span className="font-brand text-[10px] tracking-widest text-gold/65">DATE</span>
+          <span className={disponibilidadFieldLabelClass}>DATE</span>
           <input type="hidden" required value={closureDate} readOnly />
           <button
             type="button"
             onClick={() => onOpenDatePicker("single")}
-            className="shamell-glass-trigger mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 text-left font-body text-sm text-foreground"
+            className={`mt-2 ${disponibilidadTimeTriggerClass}`}
           >
             {closureDate || "Choose date"}
           </button>
@@ -64,23 +69,23 @@ export default function DisponibilidadClosureForm({
       ) : closureKind === "DATE_RANGE" ? (
         <>
           <label className="block">
-            <span className="font-brand text-[10px] tracking-widest text-gold/65">FROM</span>
+            <span className={disponibilidadFieldLabelClass}>FROM</span>
             <input type="hidden" required value={closureStartDate} readOnly />
             <button
               type="button"
               onClick={() => onOpenDatePicker("start")}
-              className="shamell-glass-trigger mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 text-left font-body text-sm text-foreground"
+              className={`mt-2 ${disponibilidadTimeTriggerClass}`}
             >
               {closureStartDate || "Choose start date"}
             </button>
           </label>
           <label className="block">
-            <span className="font-brand text-[10px] tracking-widest text-gold/65">THROUGH</span>
+            <span className={disponibilidadFieldLabelClass}>THROUGH</span>
             <input type="hidden" required value={closureEndDate} readOnly />
             <button
               type="button"
               onClick={() => onOpenDatePicker("end")}
-              className="shamell-glass-trigger mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 text-left font-body text-sm text-foreground"
+              className={`mt-2 ${disponibilidadTimeTriggerClass}`}
             >
               {closureEndDate || "Choose end date"}
             </button>
@@ -88,7 +93,7 @@ export default function DisponibilidadClosureForm({
         </>
       ) : (
         <label className="block md:col-span-2">
-          <span className="font-brand text-[10px] tracking-widest text-gold/65">DAY OF WEEK</span>
+          <span className={disponibilidadFieldLabelClass}>DAY OF WEEK</span>
           <AdminAccordionSingleSelect
             options={CLOSURE_WEEKDAY_OPTIONS}
             value={String(closureWeekday)}
@@ -100,12 +105,12 @@ export default function DisponibilidadClosureForm({
         </label>
       )}
       <label className="block md:col-span-2">
-        <span className="font-brand text-[10px] tracking-widest text-gold/65">NOTE (OPTIONAL)</span>
+        <span className={disponibilidadFieldLabelClass}>NOTE (OPTIONAL)</span>
         <input
           type="text"
           value={closureNote}
           onChange={(e) => onClosureNoteChange(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-gold/25 px-3 py-2.5 font-body text-sm text-foreground outline-none focus:border-gold"
+          className="mt-2 min-h-[44px] w-full rounded-lg border border-gold/25 px-3 py-2.5 font-body text-sm text-foreground outline-none focus:border-gold sm:text-base"
           placeholder="e.g. Travel, holiday"
         />
       </label>
@@ -113,7 +118,7 @@ export default function DisponibilidadClosureForm({
         <button
           type="submit"
           disabled={addingClosure}
-          className="w-full rounded-full border border-gold/35 px-5 py-2.5 font-brand text-[10px] tracking-[0.14em] text-gold transition hover:bg-gold/10 disabled:opacity-50 sm:w-auto sm:py-2"
+          className={disponibilidadActionButtonClass}
         >
           {addingClosure ? <Loader2 className="inline h-4 w-4 animate-spin" /> : null}
           ADD CLOSURE

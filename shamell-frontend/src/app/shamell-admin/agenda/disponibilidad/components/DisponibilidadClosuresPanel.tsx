@@ -1,6 +1,7 @@
 import { type FormEvent } from "react";
 import { motion } from "motion/react";
 import type { AdminAvailabilitySnapshot, ClosureDatePickerTarget, ClosureKind } from "../types/disponibilidad.types";
+import { disponibilidadSectionTitleClass } from "../lib/disponibilidadStyles";
 import DisponibilidadClosureForm from "./DisponibilidadClosureForm";
 import DisponibilidadClosuresList from "./DisponibilidadClosuresList";
 
@@ -50,11 +51,11 @@ export default function DisponibilidadClosuresPanel({
       className="shamell-glass-surface overflow-visible rounded-2xl p-4 sm:p-5 md:p-7"
     >
       <div className="border-b border-gold/10 pb-4">
-        <h2 className="font-brand text-[10px] leading-snug tracking-[0.16em] text-gold sm:text-[11px] sm:tracking-[0.18em]">
+        <h2 className={`leading-snug ${disponibilidadSectionTitleClass}`}>
           <span className="block sm:hidden">CLOSURES</span>
           <span className="hidden sm:block">CLOSURES (time off / single day / weekly recurring)</span>
         </h2>
-        <p className="mt-1 font-body text-[11px] leading-relaxed text-foreground/50 sm:hidden">
+        <p className="mt-1 font-body text-sm leading-relaxed text-foreground/50 sm:hidden">
           Single date, date range, or the same weekday every week.
         </p>
       </div>
