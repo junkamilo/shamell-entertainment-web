@@ -1,9 +1,4 @@
-import {
-  buildEmailCtaButton,
-  buildEmailHeading,
-  buildEmailParagraph,
-  buildEmailSimpleCardBody,
-} from '../mail/email-html-layout';
+import { buildPaymentActionEmail } from '../mail/email-html-layout';
 import { escapeHtml } from '../mail/email-html.util';
 import {
   buildEmailLogoWordmarkHtml,
@@ -35,20 +30,25 @@ export function buildVenueReservationPaymentRequestHtml(
   const logoBlock = buildEmailLogoWordmarkHtml(
     input.branding ?? input.frontendBaseUrl,
   );
-  const extra = [
-    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Booking reference:</strong> ${escapeHtml(input.reservationReference)}</p>`,
-    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Event:</strong> ${escapeHtml(input.eventLabel)}</p>`,
-    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Seat:</strong> ${escapeHtml(input.seatLabel)}</p>`,
-    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Amount:</strong> ${escapeHtml(input.amountUsd)}</p>`,
-  ].join('');
-  const inner = `
-${logoBlock}
-${buildEmailHeading('Complete your seat reservation', 1)}
-${buildEmailParagraph(`Hi ${escapeHtml(input.recipientName)},`)}
-${buildEmailParagraph('Your seat has been held. Please use the secure link below to complete your payment.')}
-${extra}
-${buildEmailCtaButton('Pay now', input.payUrl)}`;
-  return buildEmailSimpleCardBody(inner);
+
+  return buildPaymentActionEmail({
+    title: 'Complete your seat reservation',
+    preheader: 'Complete your payment — Pay now inside',
+    logoBlock,
+    heading: 'Complete your seat reservation',
+    greeting: `Hi ${escapeHtml(input.recipientName)},`,
+    introParagraph:
+      'Your seat has been held. Please use the secure link below to complete your payment.',
+    amountUsd: input.amountUsd,
+    cta: { label: 'Pay now', href: input.payUrl },
+    detailLines: [
+      { label: 'Booking reference', value: input.reservationReference },
+      { label: 'Event', value: input.eventLabel },
+      { label: 'Seat', value: input.seatLabel },
+    ],
+    disclaimer:
+      'Tax is calculated at checkout based on your billing address.',
+  });
 }
 
 export function buildVenueReservationPaymentRequestText(
@@ -58,13 +58,13 @@ export function buildVenueReservationPaymentRequestText(
     plainTextBrandLead(input.frontendBaseUrl),
     `${input.appPublicName} — Complete your seat reservation payment`,
     '',
+    `Pay now: ${input.payUrl}`,
+    '',
     `Hi ${input.recipientName},`,
-    'Your seat has been held. Please use the secure link below to complete your payment.',
+    'Your seat has been held. Please use the secure link above to complete your payment.',
     `Booking reference: ${input.reservationReference}`,
     `Event: ${input.eventLabel}`,
     `Seat: ${input.seatLabel}`,
     `Amount: ${input.amountUsd}`,
-    '',
-    `Pay now: ${input.payUrl}`,
   ].join('\n');
 }

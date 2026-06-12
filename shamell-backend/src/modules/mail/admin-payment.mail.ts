@@ -142,12 +142,15 @@ ${logoBlock}
 <p class="email-text-muted" style="margin:10px 0 0;font-size:14px;line-height:1.65;color:${emailLightInlineStyle('textMuted')};">${escapeHtml(subtitle)}</p>
 `);
 
-  const body = buildEmailCardSection(`
+  const body = buildEmailCardSection(
+    `
 ${buildEmailDetailTable(detailRows)}
 ${buildEmailAmountHighlight(input.amountUsd)}
 ${buildEmailFooterDisclaimer(`This is an automated ops notification from ${app}. Reply to the customer email above if you need to follow up.`)}
 ${siteLink}
-`);
+`,
+    { sectionRole: 'bottom' },
+  );
 
   return `${buildEmailDocumentOpen(`${app} — ${headline}`)}
 ${buildEmailOuterTable(buildEmailCard(`${header}${body}`))}

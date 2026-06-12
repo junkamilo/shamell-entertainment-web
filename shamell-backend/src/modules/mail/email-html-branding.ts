@@ -7,6 +7,10 @@ import { escapeHtml } from './email-html.util';
 /** Public path on the Next.js site (`public/01_bailarina.png`). */
 export const EMAIL_LOGO_PUBLIC_PATH = '/01_bailarina.png';
 
+/** Display size in HTML emails (matches optimized `assets/email/01_bailarina.png`). */
+export const EMAIL_LOGO_DISPLAY_WIDTH = 140;
+export const EMAIL_LOGO_DISPLAY_HEIGHT = 141;
+
 export type EmailBranding = {
   siteBaseUrl?: string;
   logoImageUrl?: string;
@@ -158,7 +162,7 @@ export function buildEmailLogoWordmarkHtml(
   }
   const src = escapeHtml(logoImageUrl);
   return `<div class="email-header-divider" style="text-align:center;padding:0 0 20px;border-bottom:1px solid ${dividerColor};">
-<img src="${src}" alt="Shamell" width="140" style="display:block;margin:0 auto;max-width:180px;height:auto;border:0;outline:none;text-decoration:none;" />
+<img src="${src}" alt="Shamell" width="${EMAIL_LOGO_DISPLAY_WIDTH}" height="${EMAIL_LOGO_DISPLAY_HEIGHT}" style="display:block;margin:0 auto;max-width:${EMAIL_LOGO_DISPLAY_WIDTH}px;width:${EMAIL_LOGO_DISPLAY_WIDTH}px;height:auto;border:0;outline:none;text-decoration:none;" />
 ${wordmark}
 </div>`;
 }

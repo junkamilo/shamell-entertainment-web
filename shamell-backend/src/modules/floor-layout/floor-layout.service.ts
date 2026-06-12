@@ -27,6 +27,8 @@ import {
 import { STANDALONE_CHAIR_DISPLAY_LABEL } from '../standalone-chairs/standalone-chair-names.util';
 import { formatVenueTableSizeLabel } from '../venue-tables/venue-table-names.util';
 
+const FLOOR_LAYOUT_UPSERT_TX_TIMEOUT_MS = 30_000;
+
 @Injectable()
 export class FloorLayoutService {
   constructor(private readonly prisma: PrismaService) {}
@@ -184,39 +186,42 @@ export class FloorLayoutService {
     const sceneZones = normalizeFloorSceneZonesInput(dto.sceneZones);
     const sceneZonesJson = sceneZones as unknown as Prisma.InputJsonValue;
 
-    const row = await this.prisma.$transaction(async (tx) => {
-      const saved = existing
-        ? await tx.venueFloorLayout.update({
-            where: { id: existing.id },
-            data: {
-              viewBoxWidth,
-              viewBoxHeight,
-              backgroundVersion,
-              items: itemsJson,
-              sceneZones: sceneZonesJson,
-            },
-          })
-        : await tx.venueFloorLayout.create({
-            data: {
-              viewBoxWidth,
-              viewBoxHeight,
-              backgroundVersion,
-              items: itemsJson,
-              sceneZones: sceneZonesJson,
-              isActive: true,
-            },
-          });
+    const row = await this.prisma.$transaction(
+      async (tx) => {
+        const saved = existing
+          ? await tx.venueFloorLayout.update({
+              where: { id: existing.id },
+              data: {
+                viewBoxWidth,
+                viewBoxHeight,
+                backgroundVersion,
+                items: itemsJson,
+                sceneZones: sceneZonesJson,
+              },
+            })
+          : await tx.venueFloorLayout.create({
+              data: {
+                viewBoxWidth,
+                viewBoxHeight,
+                backgroundVersion,
+                items: itemsJson,
+                sceneZones: sceneZonesJson,
+                isActive: true,
+              },
+            });
 
-      await this.syncTableVisualCoordinates(tx, items);
+        await this.syncTableVisualCoordinates(tx, items);
 
-      // Link the saved plan to venue events that never got an explicit floorLayoutId.
-      await tx.upcomingVenueConfig.updateMany({
-        where: { floorLayoutId: null },
-        data: { floorLayoutId: saved.id },
-      });
+        // Link the saved plan to venue events that never got an explicit floorLayoutId.
+        await tx.upcomingVenueConfig.updateMany({
+          where: { floorLayoutId: null },
+          data: { floorLayoutId: saved.id },
+        });
 
-      return saved;
-    });
+        return saved;
+      },
+      { timeout: FLOOR_LAYOUT_UPSERT_TX_TIMEOUT_MS },
+    );
 
     return this.mapRow(row);
   }
@@ -234,36 +239,30 @@ export class FloorLayoutService {
     tx: Prisma.TransactionClient,
     items: PlacedLayoutItem[],
   ) {
-    const placedIds = new Set(
-      items
-        .filter(
-          (i): i is Extract<PlacedLayoutItem, { kind: 'catalog_table' }> =>
-            i.kind === 'catalog_table',
-        )
-        .map((i) => i.venueTableConfigId),
+    const placedTables = items.filter(
+      (i): i is Extract<PlacedLayoutItem, { kind: 'catalog_table' }> =>
+        i.kind === 'catalog_table',
     );
+    const placedIds = placedTables.map((i) => i.venueTableConfigId);
 
-    for (const item of items) {
-      if (item.kind !== 'catalog_table') continue;
-      await tx.venueTableConfig.update({
-        where: { id: item.venueTableConfigId },
-        data: { visualX: item.x, visualY: item.y },
-      });
+    if (placedTables.length > 0) {
+      await Promise.all(
+        placedTables.map((item) =>
+          tx.venueTableConfig.update({
+            where: { id: item.venueTableConfigId },
+            data: { visualX: item.x, visualY: item.y },
+          }),
+        ),
+      );
     }
 
-    const activeTables = await tx.venueTableConfig.findMany({
-      where: { isActive: true },
-      select: { id: true },
+    await tx.venueTableConfig.updateMany({
+      where: {
+        isActive: true,
+        ...(placedIds.length > 0 ? { id: { notIn: placedIds } } : {}),
+      },
+      data: { visualX: null, visualY: null },
     });
-
-    for (const t of activeTables) {
-      if (!placedIds.has(t.id)) {
-        await tx.venueTableConfig.update({
-          where: { id: t.id },
-          data: { visualX: null, visualY: null },
-        });
-      }
-    }
   }
 
   /** Active layout saved from the admin 3D editor (shared default floor plan). */

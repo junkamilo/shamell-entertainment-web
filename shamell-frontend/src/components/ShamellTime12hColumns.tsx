@@ -2,7 +2,7 @@
 
 import { useId, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
-import { isTimeSlotSelectable } from "@/lib/contactLogisticsUtils";
+import { format12hPeriodHint, isTimeSlotSelectable } from "@/lib/contactLogisticsUtils";
 
 const HOURS = Array.from({ length: 12 }, (_, i) => i + 1);
 const MINUTES = Array.from({ length: 60 }, (_, i) => i);
@@ -160,6 +160,7 @@ export default function ShamellTime12hColumns({
                 tabIndex={-1}
                 data-hour={h}
                 aria-selected={selected}
+                aria-label={h === 12 ? "12 — midnight with AM, noon with PM" : String(h)}
                 disabled={!enabled}
                 onClick={() => enabled && emit({ h12: h })}
                 className={cn(
@@ -238,19 +239,26 @@ export default function ShamellTime12hColumns({
         <div className="mt-2 grid min-h-[48px] grid-cols-2 gap-1 rounded-xl border border-gold/35 bg-[#170824] p-1">
           {(["AM", "PM"] as const).map((p) => {
             const periodOk = isTimeSlotSelectable(h12, min, p, timeClamp, blockedRanges);
+            const periodHint = format12hPeriodHint(h12, p);
             return (
               <button
                 key={p}
                 type="button"
                 disabled={!periodOk}
+                aria-label={periodHint ? `${p} (${periodHint})` : p}
                 onClick={() => emit({ ap: p })}
                 className={cn(
-                  "rounded-lg py-2.5 font-brand text-xs tracking-[0.14em] transition-colors",
+                  "flex flex-col items-center justify-center rounded-lg py-2 font-brand text-xs tracking-[0.14em] transition-colors",
                   ap === p ? "bg-gold/30 text-gold-bright" : "text-foreground/80 hover:bg-gold/12 hover:text-gold",
                   !periodOk && "cursor-not-allowed opacity-35 hover:text-foreground/55",
                 )}
               >
-                {p}
+                <span>{p}</span>
+                {periodHint ? (
+                  <span className="mt-0.5 font-body text-[10px] tracking-normal text-foreground/55 normal-case">
+                    {periodHint}
+                  </span>
+                ) : null}
               </button>
             );
           })}
