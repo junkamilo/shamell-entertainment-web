@@ -40,28 +40,51 @@ export function hhmmToMinutes(hhmm: string): number | null {
   return h * 60 + m;
 }
 
-export function formatTimeDisplayUs(hhmm: string): string {
-  if (!/^\d{2}:\d{2}$/.test(hhmm.trim())) return "";
-  const [hs, ms] = hhmm.split(":");
-  const d = new Date();
-  d.setHours(Number(hs), Number(ms), 0, 0);
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+export type Time12hParts = { h12: number; min: number; ap: "AM" | "PM" };
+
+/** Unambiguous US 12-hour label — always includes AM or PM (e.g. "12:00 PM" = noon). */
+export function formatPartsDisplayUs(h12: number, min: number, ap: "AM" | "PM"): string {
+  return `${h12}:${String(min).padStart(2, "0")} ${ap}`;
 }
 
-export function hhmmToParts(hhmm: string): { h12: number; min: number; ap: "AM" | "PM" } {
+/** Short hint when hour is 12 to disambiguate midnight vs noon. */
+export function format12hPeriodHint(h12: number, ap: "AM" | "PM"): string | null {
+  if (h12 !== 12) return null;
+  return ap === "AM" ? "Midnight" : "Noon";
+}
+
+export function formatTimeDisplayUs(hhmm: string): string {
+  if (!/^\d{2}:\d{2}$/.test(hhmm.trim())) return "";
+  const parts = hhmmToParts(hhmm);
+  return formatPartsDisplayUs(parts.h12, parts.min, parts.ap);
+}
+
+export function formatMinutesAsTimeDisplayUs(totalMinutes: number): string {
+  const h24 = Math.floor(totalMinutes / 60) % 24;
+  const m = totalMinutes % 60;
+  const hhmm = `${String(h24).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return formatTimeDisplayUs(hhmm);
+}
+
+export function hhmmToParts(hhmm: string): Time12hParts {
   if (!/^\d{2}:\d{2}$/.test(hhmm.trim())) return { h12: 12, min: 0, ap: "PM" };
   const h24 = Number(hhmm.slice(0, 2));
   const min = Number(hhmm.slice(3, 5));
-  const ap = h24 >= 12 ? "PM" : "AM";
-  let h12 = h24 % 12;
-  if (h12 === 0) h12 = 12;
+  if (!Number.isFinite(h24) || !Number.isFinite(min) || h24 > 23 || min > 59) {
+    return { h12: 12, min: 0, ap: "PM" };
+  }
+  const ap: "AM" | "PM" = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
   return { h12, min, ap };
 }
 
 export function partsToHHMM(h12: number, min: number, ap: "AM" | "PM"): string {
-  let h24 = h12 % 12;
-  if (ap === "PM") h24 += 12;
-  if (ap === "AM" && h12 === 12) h24 = 0;
+  let h24: number;
+  if (ap === "AM") {
+    h24 = h12 === 12 ? 0 : h12;
+  } else {
+    h24 = h12 === 12 ? 12 : h12 + 12;
+  }
   return `${String(h24).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
 }
 

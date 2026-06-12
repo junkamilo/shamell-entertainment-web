@@ -1,8 +1,8 @@
 import {
-  buildEmailCtaButton,
   buildEmailHeading,
   buildEmailParagraph,
   buildEmailSimpleCardBody,
+  buildPaymentActionEmail,
 } from '../mail/email-html-layout';
 import { escapeHtml } from '../mail/email-html.util';
 import {
@@ -23,22 +23,6 @@ type QuoteMailInput = {
   payUrl: string;
 };
 
-function buildPaymentCardBody(
-  logoBlock: string,
-  heading: string,
-  paragraphs: string[],
-  extraHtml = '',
-  cta?: { label: string; href: string },
-): string {
-  const inner = `
-${logoBlock}
-${buildEmailHeading(heading, 1)}
-${paragraphs.map((p) => buildEmailParagraph(p)).join('')}
-${extraHtml}
-${cta ? buildEmailCtaButton(cta.label, cta.href) : ''}`;
-  return buildEmailSimpleCardBody(inner);
-}
-
 export function buildBookingQuoteSubject(appPublicName: string): string {
   return `${appPublicName} — Complete your payment`;
 }
@@ -47,26 +31,34 @@ export function buildBookingQuoteHtml(input: QuoteMailInput): string {
   const logoBlock = buildEmailLogoWordmarkHtml(
     input.branding ?? input.frontendBaseUrl,
   );
-  const extra = [
-    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>`,
-    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Total:</strong> ${escapeHtml(input.totalAmountUsd)}</p>`,
-    input.depositAmountUsd
-      ? `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Deposit:</strong> ${escapeHtml(input.depositAmountUsd)}</p>`
-      : '',
-    input.balanceAmountUsd
-      ? `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Remaining balance:</strong> ${escapeHtml(input.balanceAmountUsd)}</p>`
-      : '',
-  ].join('');
-  return buildPaymentCardBody(
+  const extraLines: string[] = [];
+  if (input.depositAmountUsd) {
+    extraLines.push(
+      `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Deposit:</strong> ${escapeHtml(input.depositAmountUsd)}</p>`,
+    );
+  }
+  if (input.balanceAmountUsd) {
+    extraLines.push(
+      `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Remaining balance:</strong> ${escapeHtml(input.balanceAmountUsd)}</p>`,
+    );
+  }
+
+  return buildPaymentActionEmail({
+    title: 'Complete your payment',
+    preheader: 'Complete your payment — Pay now inside',
     logoBlock,
-    'Complete your payment',
-    [
-      `Hi ${escapeHtml(input.recipientName)},`,
+    heading: 'Complete your payment',
+    greeting: `Hi ${escapeHtml(input.recipientName)},`,
+    introParagraph:
       'Thank you for your inquiry. Please use the secure link below to complete your payment.',
+    amountUsd: input.totalAmountUsd,
+    cta: { label: 'Pay now', href: input.payUrl },
+    detailLines: [
+      { label: 'Booking reference', value: input.bookingReference },
+      { label: 'Total', value: input.totalAmountUsd },
     ],
-    extra,
-    { label: 'Pay now', href: input.payUrl },
-  );
+    extraHtml: extraLines.join(''),
+  });
 }
 
 export function buildBookingQuoteText(input: QuoteMailInput): string {
@@ -74,16 +66,16 @@ export function buildBookingQuoteText(input: QuoteMailInput): string {
     plainTextBrandLead(input.frontendBaseUrl),
     `${input.appPublicName} — Complete your payment`,
     '',
+    `Pay now: ${input.payUrl}`,
+    '',
     `Hi ${input.recipientName},`,
-    'Please use the secure link below to complete your payment.',
+    'Please use the secure link above to complete your payment.',
     `Booking reference: ${input.bookingReference}`,
     `Total: ${input.totalAmountUsd}`,
     ...(input.depositAmountUsd ? [`Deposit: ${input.depositAmountUsd}`] : []),
     ...(input.balanceAmountUsd
       ? [`Remaining balance: ${input.balanceAmountUsd}`]
       : []),
-    '',
-    `Pay now: ${input.payUrl}`,
   ].join('\n');
 }
 
@@ -110,15 +102,13 @@ export function buildBookingDepositPaidHtml(input: {
       : '',
     `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Amount paid:</strong> ${escapeHtml(input.amountUsd)}</p>`,
   ].join('');
-  return buildPaymentCardBody(
-    logoBlock,
-    'Deposit received',
-    [
-      `Hi ${escapeHtml(input.recipientName)},`,
-      'We received your deposit. Your reservation with Shamell is in progress — the remaining balance will be collected separately.',
-    ],
-    extra,
-  );
+  const inner = `
+${logoBlock}
+${buildEmailHeading('Deposit received', 1)}
+${buildEmailParagraph(`Hi ${escapeHtml(input.recipientName)},`)}
+${buildEmailParagraph('We received your deposit. Your reservation with Shamell is in progress — the remaining balance will be collected separately.')}
+${extra}`;
+  return buildEmailSimpleCardBody(inner);
 }
 
 export function buildBookingDepositPaidText(input: {
@@ -197,20 +187,22 @@ export function buildBookingBalanceLinkHtml(input: QuoteMailInput): string {
   const logoBlock = buildEmailLogoWordmarkHtml(
     input.branding ?? input.frontendBaseUrl,
   );
-  const extra = [
-    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Booking reference:</strong> ${escapeHtml(input.bookingReference)}</p>`,
-    `<p class="email-text-body" style="margin:0 0 14px;font-size:15px;line-height:1.7;"><strong>Balance due:</strong> ${escapeHtml(input.totalAmountUsd)}</p>`,
-  ].join('');
-  return buildPaymentCardBody(
+
+  return buildPaymentActionEmail({
+    title: 'Complete your balance payment',
+    preheader: 'Complete your balance payment — Pay now inside',
     logoBlock,
-    'Complete your balance payment',
-    [
-      `Hi ${escapeHtml(input.recipientName)},`,
+    heading: 'Complete your balance payment',
+    greeting: `Hi ${escapeHtml(input.recipientName)},`,
+    introParagraph:
       'Your deposit has been received. Please use the secure link below to pay the remaining balance and confirm your reservation.',
+    amountUsd: input.totalAmountUsd,
+    cta: { label: 'Pay balance now', href: input.payUrl },
+    detailLines: [
+      { label: 'Booking reference', value: input.bookingReference },
+      { label: 'Balance due', value: input.totalAmountUsd },
     ],
-    extra,
-    { label: 'Pay balance now', href: input.payUrl },
-  );
+  });
 }
 
 export function buildBookingBalanceLinkText(input: QuoteMailInput): string {
@@ -218,11 +210,11 @@ export function buildBookingBalanceLinkText(input: QuoteMailInput): string {
     plainTextBrandLead(input.frontendBaseUrl),
     `${input.appPublicName} — Complete your balance payment`,
     '',
+    `Pay now: ${input.payUrl}`,
+    '',
     `Hi ${input.recipientName},`,
-    'Your deposit has been received. Please use the secure link below to pay the remaining balance.',
+    'Your deposit has been received. Please use the secure link above to pay the remaining balance.',
     `Booking reference: ${input.bookingReference}`,
     `Balance due: ${input.totalAmountUsd}`,
-    '',
-    `Pay now: ${input.payUrl}`,
   ].join('\n');
 }

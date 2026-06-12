@@ -1,5 +1,6 @@
 import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
 import { mapFloorLayoutFromApi } from "../lib/mapFloorLayoutFromApi";
+import { serializeFloorLayoutPayloadForApi } from "../lib/serializeFloorLayoutForApi";
 import type {
   FloorSceneZones,
   PlacedLayoutItem,
@@ -32,7 +33,7 @@ export async function putAdminFloorLayout(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(serializeFloorLayoutPayloadForApi(payload)),
     cache: "no-store",
   });
   const data: unknown = await response.json().catch(() => null);

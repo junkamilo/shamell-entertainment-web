@@ -252,7 +252,7 @@ export default function VenueLayoutItemModal({
               onClick={() => setStep("details")}
               className="inline-flex flex-1 items-center justify-center rounded-lg bg-gold px-4 py-2.5 text-center font-brand text-xs font-semibold uppercase tracking-[0.12em] text-black transition hover:bg-gold-light disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {reservationsOpen ? "Apartar" : "Reservations closed"}
+              {reservationsOpen ? "Reserve" : "Reservations closed"}
             </button>
           ) : null}
           {step === "details" ? (

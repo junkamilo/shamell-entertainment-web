@@ -128,10 +128,13 @@ ${logoBlock}
 ${buildEmailHeading('Customer activity', 1)}
 `);
 
-  const body = buildEmailCardSection(`
+  const body = buildEmailCardSection(
+    `
 ${buildEmailDetailTable(detailRows)}
 ${detailsHtml}
-`);
+`,
+    { sectionRole: 'bottom' },
+  );
 
   return `${buildEmailDocumentOpen('Customer activity')}
 ${buildEmailOuterTable(buildEmailCard(`${header}${body}`))}

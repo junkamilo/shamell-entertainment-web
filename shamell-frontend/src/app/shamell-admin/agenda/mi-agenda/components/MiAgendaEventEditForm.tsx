@@ -1,6 +1,6 @@
 import ShamellTime12hColumns from "@/components/ShamellTime12hColumns";
 import { ShamellDateField } from "@/components/admin/ShamellDateField";
-import { hhmmToParts, partsToHHMM } from "@/lib/contactLogisticsUtils";
+import { formatTimeDisplayUs, hhmmToParts, partsToHHMM } from "@/lib/contactLogisticsUtils";
 
 type Props = {
   editDateIso: string;
@@ -58,6 +58,11 @@ export default function MiAgendaEventEditForm({
           onChange={(p) => onEditStartChange(partsToHHMM(p.h12, p.min, p.ap))}
           labels={{ hour: "HOUR", minute: "MIN", period: "AM/PM" }}
         />
+        {/^\d{2}:\d{2}$/.test(editStart.trim()) ? (
+          <p className="mt-1 font-body text-xs text-foreground/65">
+            Selected: {formatTimeDisplayUs(editStart.trim())}
+          </p>
+        ) : null}
       </div>
       <div className="block md:col-span-2">
         <span className="font-brand text-[10px] tracking-widest text-gold/70">END TIME</span>
@@ -73,6 +78,11 @@ export default function MiAgendaEventEditForm({
           onChange={(p) => onEditEndChange(partsToHHMM(p.h12, p.min, p.ap))}
           labels={{ hour: "HOUR", minute: "MIN", period: "AM/PM" }}
         />
+        {/^\d{2}:\d{2}$/.test(editEnd.trim()) ? (
+          <p className="mt-1 font-body text-xs text-foreground/65">
+            Selected: {formatTimeDisplayUs(editEnd.trim())}
+          </p>
+        ) : null}
       </div>
       <label className="block md:col-span-2">
         <span className="font-brand text-[10px] tracking-widest text-gold/70">NOTES</span>

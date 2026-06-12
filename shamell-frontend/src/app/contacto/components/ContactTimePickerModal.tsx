@@ -7,19 +7,14 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ShamellTime12hColumns from "@/components/ShamellTime12hColumns";
 import {
+  format12hPeriodHint,
+  formatMinutesAsTimeDisplayUs,
+  formatPartsDisplayUs,
   hhmmToMinutes,
   hhmmToParts,
   partsToHHMM,
   snapToNearestSelectableParts,
 } from "@/lib/contactLogisticsUtils";
-
-function formatClampHint(totalMinutes: number): string {
-  const h24 = Math.floor(totalMinutes / 60) % 24;
-  const m = totalMinutes % 60;
-  const d = new Date();
-  d.setHours(h24, m, 0, 0);
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-}
 
 type Props = {
   isOpen: boolean;
@@ -93,10 +88,8 @@ export default function ContactTimePickerModal({
   }, [isOpen]);
 
   const preview = partsToHHMM(h12, min, ap);
-  const d = new Date();
-  const [hs, ms] = preview.split(":");
-  d.setHours(Number(hs), Number(ms), 0, 0);
-  const usLabel = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  const usLabel = formatPartsDisplayUs(h12, min, ap);
+  const periodHint = format12hPeriodHint(h12, ap);
   const previewMinutes = hhmmToMinutes(preview);
   const isBlockedByBooking =
     previewMinutes !== null &&
@@ -170,7 +163,12 @@ export default function ContactTimePickerModal({
               >
                 {usLabel}
               </motion.p>
-              <p className="mt-1 font-body text-xs text-foreground/65">US format · 12-hour clock</p>
+              {periodHint ? (
+                <p className="mt-1 font-body text-xs text-gold/80">{periodHint}</p>
+              ) : null}
+              <p className="mt-1 font-body text-xs text-foreground/65">
+                US format · 12-hour clock · always includes AM or PM
+              </p>
             </div>
 
             {clampError ? (
@@ -210,7 +208,7 @@ export default function ContactTimePickerModal({
                     const m = hhmmToMinutes(hhmm);
                     if (m === null || m < timeClamp.minMinutes || m > timeClamp.maxMinutes) {
                       setClampError(
-                        `Choose a time between ${formatClampHint(timeClamp.minMinutes)} and ${formatClampHint(timeClamp.maxMinutes)}.`,
+                        `Choose a time between ${formatMinutesAsTimeDisplayUs(timeClamp.minMinutes)} and ${formatMinutesAsTimeDisplayUs(timeClamp.maxMinutes)}.`,
                       );
                       return;
                     }
