@@ -298,7 +298,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
                 : "IMAGE"
               : null;
             nextEventDateIso =
-              settings.reservationOpensAt ?? settings.reservationEventDate ?? null;
+              settings.reservationEventDate ?? settings.reservationOpensAt ?? null;
           } else {
             const venueRes = await fetch(
               `${apiBase}/api/v1/upcoming-events/${encodeURIComponent(eventSlug)}/venue`,
@@ -316,6 +316,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
               };
               config?: {
                 reservationEventLabel?: string | null;
+                reservationEventDate?: string | null;
                 reservationOpensAt?: string | null;
               };
             };
@@ -332,7 +333,10 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
             nextEventItems = Array.isArray(venueData.event?.items)
               ? venueData.event.items.filter((item): item is string => typeof item === "string")
               : [];
-            nextEventDateIso = venueData.config?.reservationOpensAt ?? null;
+            nextEventDateIso =
+              venueData.config?.reservationEventDate ??
+              venueData.config?.reservationOpensAt ??
+              null;
           }
 
           const [layoutData, tablesData, chairsData, availability, eventDetail] =

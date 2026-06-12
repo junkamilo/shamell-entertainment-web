@@ -74,7 +74,7 @@ export function VenueLayoutReservationEventCard({ settings, onSaved }: Props) {
   useEffect(() => {
     setEventLabel(settings?.reservationEventLabel ?? "");
     const open = splitIsoToDateAndTime(
-      settings?.reservationOpensAt ?? settings?.reservationEventDate,
+      settings?.reservationEventDate ?? settings?.reservationOpensAt,
     );
     const close = splitIsoToDateAndTime(settings?.reservationClosesAt);
     setOpenDate(open.date);
