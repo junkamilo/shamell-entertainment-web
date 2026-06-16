@@ -117,7 +117,6 @@ function SceneContent({
   viewBoxWidth,
   viewBoxHeight,
   items,
-  sceneZones,
   selectedId,
   reservedIds,
   reservedLabels,

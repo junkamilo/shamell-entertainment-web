@@ -53,9 +53,6 @@ export type TableSharedGeometries = {
   accent: CylinderGeometry;
 };
 
-let tableHighGeometries: TableSharedGeometries | null = null;
-let tableMobileGeometries: TableSharedGeometries | null = null;
-
 function createTableGeometries(
   tableRadius: number,
   tableHeight: number,

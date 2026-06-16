@@ -36,7 +36,6 @@ export default function PlacedItemsLayer({
   viewBoxHeight,
   selectedId = null,
   reservedIds,
-  reservedLabels: _reservedLabels,
   itemLabels,
   interactive = false,
   onSelect,
