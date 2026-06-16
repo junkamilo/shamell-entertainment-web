@@ -1,12 +1,17 @@
 "use client";
 
+import type { VenuePerfProfile } from "./venueScenePerformance";
 import RedCarpetRunner from "./carpet/RedCarpetRunner";
 import VenueStage from "./stage/VenueStage";
 import VenueWallSconces from "./VenueWallSconces";
 import VenueWoodFloor from "./VenueWoodFloor";
 import { VENUE_COLORS, WORLD_DEPTH, WORLD_WIDTH } from "./venueSceneConstants";
 
-export default function VenueRoomPlaceholder() {
+export default function VenueRoomPlaceholder({
+  perfProfile = "high",
+}: {
+  perfProfile?: VenuePerfProfile;
+}) {
   const hw = WORLD_WIDTH / 2;
   const hd = WORLD_DEPTH / 2;
 
@@ -35,7 +40,7 @@ export default function VenueRoomPlaceholder() {
         <meshStandardMaterial color={VENUE_COLORS.wall} roughness={0.9} />
       </mesh>
 
-      <VenueWallSconces />
+      <VenueWallSconces perfProfile={perfProfile} />
     </group>
   );
 }

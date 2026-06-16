@@ -47,8 +47,7 @@ export default function VenueHtmlLabelShell({
     <Html
       position={[0, height, 0]}
       center
-      transform
-      distanceFactor={6}
+      distanceFactor={10}
       occlude={false}
       zIndexRange={variant === "number" ? [70, 0] : [80, 0]}
       wrapperClass="venue-3d-html-label"

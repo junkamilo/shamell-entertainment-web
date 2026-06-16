@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Footer from "@/components/Footer";
 import { FixedTicketInventoryDisplay } from "@/components/shared/FixedTicketInventoryDisplay";
 import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
@@ -146,6 +146,8 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
   const [loading, setLoading] = useState(!cachedEntry);
   const [error, setError] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const sceneContainerRef = useRef<HTMLDivElement>(null);
+  const [sceneVisible, setSceneVisible] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(Boolean(cachedEntry));
 
   const hydrateFromCache = useCallback((entry: VenueLayoutPageCacheEntry) => {
@@ -179,6 +181,20 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     () => (layout ? placedSummaryFromItems(layout.items) : null),
     [layout],
   );
+
+  useEffect(() => {
+    const el = sceneContainerRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setSceneVisible((entry?.intersectionRatio ?? 0) > 0);
+      },
+      { threshold: [0, 0.01, 0.1] },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [layout]);
 
   const tablesById = useMemo(() => new Map(tables.map((t) => [t.id, t])), [tables]);
 
@@ -653,7 +669,10 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
             className="relative mx-auto mt-10 w-full max-w-[min(100%,1920px)] px-2 pb-16 sm:px-4 md:px-6 lg:px-10 min-[1920px]:max-w-[min(100%,2400px)]"
             style={{ ["--venue-chrome" as string]: sceneLayout.chromeCss }}
           >
-            <div className="relative isolate w-full overflow-hidden rounded-lg border border-shamell-line-soft bg-[#1a1218] shadow-[0_24px_64px_rgba(0,0,0,0.45)] sm:rounded-xl">
+            <div
+              ref={sceneContainerRef}
+              className="relative isolate w-full overflow-hidden rounded-lg border border-shamell-line-soft bg-[#1a1218] shadow-[0_24px_64px_rgba(0,0,0,0.45)] sm:rounded-xl"
+            >
               <VenueScene3D
                 mode="public-select"
                 viewBoxWidth={layout.viewBoxWidth}
@@ -669,12 +688,15 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
                 viewportMinHeight={sceneLayout.viewportMinHeight}
                 layoutBucket={sceneLayout.bucket}
                 dpr={sceneLayout.dpr}
+                perfProfile={sceneLayout.perfProfile}
+                sceneActive={sceneVisible}
               />
               {placedSummary ? (
                 <VenueSceneLegend
                   placedSummary={placedSummary}
                   showReservationKey
                   layoutTopOnNarrow={sceneLayout.isPhone || sceneLayout.isTablet}
+                  showMobileLabelHint={sceneLayout.perfProfile === "mobile"}
                 />
               ) : null}
             </div>

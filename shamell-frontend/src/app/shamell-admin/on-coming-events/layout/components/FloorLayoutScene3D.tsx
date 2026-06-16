@@ -102,6 +102,7 @@ export default function FloorLayoutScene3D({
           viewportMinHeight="0"
           layoutBucket={sceneLayout.bucket}
           dpr={sceneLayout.dpr}
+          perfProfile={sceneLayout.perfProfile}
           viewBoxWidth={viewBoxWidth}
           viewBoxHeight={viewBoxHeight}
           items={items}
