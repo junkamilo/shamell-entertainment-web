@@ -16,6 +16,8 @@ type Props = {
   showEditorHints?: boolean;
   /** Place legend along the top on phones/tablets so it does not cover the floor. */
   layoutTopOnNarrow?: boolean;
+  /** Brief hint for mobile tap-to-reveal labels. */
+  showMobileLabelHint?: boolean;
 };
 
 export default function VenueSceneLegend({
@@ -24,6 +26,7 @@ export default function VenueSceneLegend({
   showReservationKey = false,
   showEditorHints = false,
   layoutTopOnNarrow = false,
+  showMobileLabelHint = false,
 }: Props) {
   const large = palette?.tablesBySize.LARGE ?? placedSummary?.large ?? 0;
   const medium = palette?.tablesBySize.MEDIUM ?? placedSummary?.medium ?? 0;
@@ -114,6 +117,11 @@ export default function VenueSceneLegend({
           >
             Numbers match your confirmation (e.g. Large 4)
           </p>
+          {showMobileLabelHint ? (
+            <p className="basis-full text-shamell-text-primary/70">
+              Tap a table or chair to see its number
+            </p>
+          ) : null}
         </div>
       ) : null}
     </div>

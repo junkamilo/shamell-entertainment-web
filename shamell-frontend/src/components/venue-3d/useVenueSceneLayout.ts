@@ -6,6 +6,7 @@ import {
   type VenueSceneLayoutBucket,
   VIEWPORT_HEIGHT_BY_BUCKET,
 } from "./venueSceneConstants";
+import { dprForPerfProfile, resolveVenuePerfProfile } from "./venueScenePerformance";
 
 export type VenueSceneLayoutVariant = "public" | "admin";
 
@@ -27,9 +28,21 @@ export function useVenueSceneLayout(variant: VenueSceneLayoutVariant = "public")
 
   const heights = VIEWPORT_HEIGHT_BY_BUCKET[bucket];
 
+  const perfProfile = useMemo(
+    () =>
+      resolveVenuePerfProfile({
+        bucket,
+        isPhone,
+        isTablet,
+        isCoarsePointer,
+      }),
+    [bucket, isCoarsePointer, isPhone, isTablet],
+  );
+
   return useMemo(
     () => ({
       bucket,
+      perfProfile,
       viewportHeight: variant === "public" ? heights.public : heights.admin,
       viewportMinHeight: heights.minHeight,
       isCoarsePointer,
@@ -37,7 +50,7 @@ export function useVenueSceneLayout(variant: VenueSceneLayoutVariant = "public")
       isTablet,
       isLaptop,
       isTv,
-      dpr: useHighDpr ? ([1, 2] as [number, number]) : ([1, 1.5] as [number, number]),
+      dpr: dprForPerfProfile(perfProfile, useHighDpr),
       /** Chrome offset for public page header + site header. */
       chromeCss: variant === "public" ? "14rem" : "10rem",
     }),
@@ -51,6 +64,7 @@ export function useVenueSceneLayout(variant: VenueSceneLayoutVariant = "public")
       isPhone,
       isTablet,
       isTv,
+      perfProfile,
       useHighDpr,
       variant,
     ],

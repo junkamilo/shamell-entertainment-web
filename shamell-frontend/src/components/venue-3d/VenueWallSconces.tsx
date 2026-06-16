@@ -1,13 +1,19 @@
 "use client";
 
+import type { VenuePerfProfile } from "./venueScenePerformance";
 import { STAGE_COLORS } from "./stage/stageMaterials";
 import { WORLD_DEPTH, WORLD_WIDTH } from "./venueSceneConstants";
 
 const SCONCE_HEIGHT = 2.2;
 
-export default function VenueWallSconces() {
+type Props = {
+  perfProfile?: VenuePerfProfile;
+};
+
+export default function VenueWallSconces({ perfProfile = "high" }: Props) {
   const hw = WORLD_WIDTH / 2;
   const hd = WORLD_DEPTH / 2;
+  const includeLights = perfProfile !== "mobile";
 
   const leftWall: [number, number, number][] = [
     [0.22, SCONCE_HEIGHT, hd * 0.25],
@@ -21,7 +27,9 @@ export default function VenueWallSconces() {
     [hw, SCONCE_HEIGHT, 0.22],
   ];
 
-  const positions = [...leftWall, ...backWall];
+  const positions = includeLights
+    ? [...leftWall, ...backWall]
+    : [leftWall[1], backWall[1]];
 
   return (
     <group>
@@ -39,12 +47,14 @@ export default function VenueWallSconces() {
               emissiveIntensity={1.5}
             />
           </mesh>
-          <pointLight
-            position={[0.15, -0.2, 0]}
-            intensity={0.42}
-            color={STAGE_COLORS.wallSconce}
-            distance={4}
-          />
+          {includeLights ? (
+            <pointLight
+              position={[0.15, -0.2, 0]}
+              intensity={0.42}
+              color={STAGE_COLORS.wallSconce}
+              distance={4}
+            />
+          ) : null}
         </group>
       ))}
     </group>

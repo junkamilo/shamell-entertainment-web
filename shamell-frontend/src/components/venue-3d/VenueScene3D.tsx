@@ -2,7 +2,7 @@
 
 import "@/lib/threeR3fCompat";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { Environment, OrbitControls } from "@react-three/drei";
 import type { FloorSceneZones, PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import type { LayoutItemLabel } from "@/lib/venueSeatDisplayLabel";
@@ -29,6 +29,7 @@ import {
 import FloorPickPlane from "./FloorPickPlane";
 import PlacedItemsLayer from "./PlacedItemsLayer";
 import VenueRoomPlaceholder from "./VenueRoomPlaceholder";
+import type { VenuePerfProfile } from "./venueScenePerformance";
 
 export type VenueScene3DHandle = VenueSceneCanvasContextValue & {
   getCamera: () => THREE.Camera | null;
@@ -58,6 +59,9 @@ type Props = {
   viewportMinHeight?: string;
   layoutBucket?: VenueSceneLayoutBucket;
   dpr?: [number, number];
+  perfProfile?: VenuePerfProfile;
+  /** When false, demand frameloop stops invalidating (e.g. off-screen). */
+  sceneActive?: boolean;
 };
 
 type SceneContentProps = Omit<
@@ -67,23 +71,45 @@ type SceneContentProps = Omit<
   orbitControlsRef: React.RefObject<OrbitControlsImpl | null>;
   cameraPreset: VenueCameraPreset;
   cameraPresetKey: string;
+  perfProfile: VenuePerfProfile;
+  sceneActive: boolean;
 };
 
-function DeferredEnvironment() {
+function DeferredEnvironment({ enabled }: { enabled: boolean }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (!enabled) {
+      setReady(false);
+      return;
+    }
     const id = window.requestAnimationFrame(() => setReady(true));
     return () => window.cancelAnimationFrame(id);
-  }, []);
+  }, [enabled]);
 
-  if (!ready) return null;
+  if (!enabled || !ready) return null;
   return (
     <Environment
       preset="apartment"
       environmentIntensity={SCENE_LIGHTING.environmentIntensity}
     />
   );
+}
+
+function DemandFrameInvalidator({
+  selectedId,
+  sceneActive,
+}: {
+  selectedId?: string | null;
+  sceneActive: boolean;
+}) {
+  const invalidate = useThree((state) => state.invalidate);
+
+  useEffect(() => {
+    if (sceneActive) invalidate();
+  }, [invalidate, sceneActive, selectedId]);
+
+  return null;
 }
 
 function SceneContent({
@@ -103,12 +129,29 @@ function SceneContent({
   orbitControlsRef,
   cameraPreset,
   cameraPresetKey,
+  perfProfile,
+  sceneActive,
 }: SceneContentProps) {
+  const invalidate = useThree((state) => state.invalidate);
   const interactive = mode === "admin";
   const selectable = mode === "public-select";
+  const useDemandLoop = selectable;
+  const castShadow = perfProfile !== "mobile";
+  const shadowMapSize = perfProfile === "mobile" ? 512 : 1024;
+
+  const handleControlsChange = () => {
+    if (useDemandLoop && sceneActive) invalidate();
+  };
+
+  useEffect(() => {
+    if (useDemandLoop && sceneActive) invalidate();
+  }, [invalidate, sceneActive, useDemandLoop, viewBoxWidth, viewBoxHeight, items.length]);
 
   return (
     <>
+      {useDemandLoop ? (
+        <DemandFrameInvalidator selectedId={selectedId} sceneActive={sceneActive} />
+      ) : null}
       <color attach="background" args={[SCENE_BACKGROUND]} />
       <fog attach="fog" args={[SCENE_FOG.color, SCENE_FOG.near, SCENE_FOG.far]} />
       <ambientLight intensity={SCENE_LIGHTING.ambient} />
@@ -122,8 +165,8 @@ function SceneContent({
         position={[8, 14, 6]}
         intensity={SCENE_LIGHTING.keyDirectionalIntensity}
         color={SCENE_LIGHTING.keyDirectionalColor}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
+        castShadow={castShadow}
+        shadow-mapSize={[shadowMapSize, shadowMapSize]}
         shadow-camera-far={40}
         shadow-camera-left={-(WORLD_WIDTH / 2 + 2)}
         shadow-camera-right={WORLD_WIDTH / 2 + 2}
@@ -135,13 +178,15 @@ function SceneContent({
         intensity={SCENE_LIGHTING.fillDirectionalIntensity}
         color={SCENE_LIGHTING.fillDirectionalColor}
       />
-      <pointLight
-        position={[WORLD_WIDTH * 0.5, 9, WORLD_DEPTH * 0.45]}
-        intensity={SCENE_LIGHTING.roomPointIntensity}
-        color="#fff0e0"
-        distance={34}
-      />
-      <VenueRoomPlaceholder />
+      {perfProfile !== "mobile" ? (
+        <pointLight
+          position={[WORLD_WIDTH * 0.5, 9, WORLD_DEPTH * 0.45]}
+          intensity={SCENE_LIGHTING.roomPointIntensity}
+          color="#fff0e0"
+          distance={34}
+        />
+      ) : null}
+      <VenueRoomPlaceholder perfProfile={perfProfile} />
       {interactive && sceneDecorAdmin ? sceneDecorAdmin : null}
       {interactive && placedItemsAdmin ? (
         placedItemsAdmin
@@ -157,23 +202,27 @@ function SceneContent({
           interactive={selectable}
           onSelect={selectable ? (id) => onItemSelect?.(id) : undefined}
           pointerCursor={selectable}
+          perfProfile={perfProfile}
+          useInstancedChairs={false}
         />
       )}
       {interactive ? (
         <FloorPickPlane onPointerMissed={() => onBackgroundClick?.()} />
       ) : null}
-      <DeferredEnvironment />
+      <DeferredEnvironment enabled={perfProfile !== "mobile"} />
       <OrbitControls
         key={cameraPresetKey}
         ref={orbitControlsRef}
         makeDefault
         target={cameraPreset.target}
         enablePan={interactive || selectable}
-        enableRotate={interactive || selectable}
+        enableRotate={(interactive || selectable) && sceneActive}
+        enabled={sceneActive}
         minDistance={cameraPreset.minDistance}
         maxDistance={cameraPreset.maxDistance}
         maxPolarAngle={Math.PI / 2.2}
         minPolarAngle={0.25}
+        onChange={useDemandLoop ? handleControlsChange : undefined}
         mouseButtons={
           interactive
             ? {
@@ -189,7 +238,12 @@ function SceneContent({
                 ONE: TOUCH.ROTATE,
                 TWO: TOUCH.DOLLY_PAN,
               }
-            : undefined
+            : selectable
+              ? {
+                  ONE: TOUCH.ROTATE,
+                  TWO: TOUCH.DOLLY_ROTATE,
+                }
+              : undefined
         }
       />
     </>
@@ -217,11 +271,14 @@ export default function VenueScene3D({
   viewportMinHeight = "min(420px, 55vh)",
   layoutBucket = "laptop",
   dpr,
+  perfProfile = "high",
+  sceneActive = true,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [viewportAspect, setViewportAspect] = useState(16 / 9);
   const [isNarrowViewport, setIsNarrowViewport] = useState(false);
   const orbitControlsRef = useRef<OrbitControlsImpl | null>(null);
+  const useDemandLoop = mode === "public-select";
 
   useEffect(() => {
     const el = containerRef.current;
@@ -244,7 +301,8 @@ export default function VenueScene3D({
     return () => observer.disconnect();
   }, []);
 
-  const resolvedDpr = dpr ?? (isNarrowViewport ? [1, 1.25] : [1, 1.5]);
+  const resolvedDpr =
+    dpr ?? (perfProfile === "mobile" ? ([1, 1] as [number, number]) : isNarrowViewport ? [1, 1.25] : [1, 1.5]);
 
   const cameraPreset = useMemo(
     () =>
@@ -285,6 +343,15 @@ export default function VenueScene3D({
     }
   });
 
+  const glOptions = useMemo(
+    () => ({
+      antialias: perfProfile !== "mobile",
+      alpha: false,
+      powerPreference: (perfProfile === "mobile" ? "low-power" : "default") as WebGLPowerPreference,
+    }),
+    [perfProfile],
+  );
+
   return (
     <div
       ref={containerRef}
@@ -294,15 +361,16 @@ export default function VenueScene3D({
       <VenueSceneCanvasContext.Provider value={ctxValue}>
         <Canvas
           className="block! h-full! w-full! touch-none"
-          shadows="percentage"
+          shadows={perfProfile === "mobile" ? false : "percentage"}
           dpr={resolvedDpr}
+          frameloop={useDemandLoop ? "demand" : "always"}
           camera={{
             position: cameraPreset.position,
             fov: cameraPreset.fov,
             near: 0.1,
             far: 100,
           }}
-          gl={{ antialias: true, alpha: false }}
+          gl={glOptions}
           style={{ width: "100%", height: "100%", display: "block" }}
           onCreated={({ gl, camera, scene }) => {
             gl.debug.checkShaderErrors = false;
@@ -337,6 +405,8 @@ export default function VenueScene3D({
                 orbitControlsRef={orbitControlsRef}
                 cameraPreset={cameraPreset}
                 cameraPresetKey={cameraPresetKey}
+                perfProfile={perfProfile}
+                sceneActive={sceneActive}
               />
             </FloorSceneZonesProvider>
           </Suspense>
