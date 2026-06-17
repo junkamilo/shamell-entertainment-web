@@ -34,10 +34,10 @@ export function AboutEditorialPreview({
             {heroIsVideo ? (
               <>
                 <div className="w-full overflow-hidden rounded-xl border border-gold/25 bg-[#080a0e] shadow-lg ring-1 ring-gold/10">
-                  <div className="relative aspect-video w-full min-h-30">
+                  <div className="relative aspect-9/16 w-full min-h-30">
                     <video
                       src={record.imageUrl}
-                      className="absolute inset-0 h-full w-full object-contain"
+                      className="absolute inset-0 h-full w-full object-contain object-center"
                       controls
                       playsInline
                       preload="metadata"

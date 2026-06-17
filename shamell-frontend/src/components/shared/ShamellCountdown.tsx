@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useHasMounted } from "@/hooks/use-has-mounted";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 export type ShamellCountdownProps = {
@@ -75,19 +76,25 @@ export function ShamellCountdown({
   size = "md",
   onComplete,
 }: ShamellCountdownProps) {
-  const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const hasMounted = useHasMounted();
+  const prefersReducedMotionQuery = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const prefersReducedMotion = hasMounted && prefersReducedMotionQuery;
   const targetMs = useMemo(() => parseTarget(targetAt), [targetAt]);
-  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [nowMs, setNowMs] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!Number.isFinite(targetMs)) return;
+    if (!hasMounted || !Number.isFinite(targetMs)) return;
+    setNowMs(Date.now());
     const intervalMs = prefersReducedMotion ? 60_000 : 1_000;
     const id = window.setInterval(() => setNowMs(Date.now()), intervalMs);
     return () => window.clearInterval(id);
-  }, [targetMs, prefersReducedMotion]);
+  }, [hasMounted, targetMs, prefersReducedMotion]);
 
   const parts = useMemo(
-    () => (Number.isFinite(targetMs) ? computeParts(targetMs, nowMs) : null),
+    () =>
+      Number.isFinite(targetMs) && nowMs !== null
+        ? computeParts(targetMs, nowMs)
+        : null,
     [targetMs, nowMs],
   );
 
@@ -95,7 +102,51 @@ export function ShamellCountdown({
     if (parts?.complete) onComplete?.();
   }, [parts?.complete, onComplete]);
 
-  if (!parts || !Number.isFinite(targetMs)) return null;
+  if (!Number.isFinite(targetMs)) return null;
+
+  const compact = size === "sm";
+  const sepClass = cn("text-gold/35", compact ? "text-sm" : "text-base");
+
+  if (!hasMounted || nowMs === null || !parts) {
+    return (
+      <div
+        className={cn(
+          "rounded-xl border border-gold/20 bg-black/40",
+          compact ? "px-3 py-2.5" : "px-4 py-3.5 md:px-5 md:py-4",
+          className,
+        )}
+        role="timer"
+        aria-busy="true"
+        aria-live="off"
+      >
+        {label ? (
+          <p
+            className={cn(
+              "mb-2 text-center font-brand uppercase tracking-[0.14em] text-foreground/55",
+              compact ? "text-[9px]" : "text-[10px] md:text-xs",
+            )}
+          >
+            {label}
+          </p>
+        ) : null}
+        <div className="flex items-center justify-center gap-2 md:gap-3">
+          <CountdownUnit value="0" label="Days" compact={compact} />
+          <span className={sepClass} aria-hidden>
+            ·
+          </span>
+          <CountdownUnit value="00" label="Hours" compact={compact} />
+          <span className={sepClass} aria-hidden>
+            ·
+          </span>
+          <CountdownUnit value="00" label="Min" compact={compact} />
+          <span className={sepClass} aria-hidden>
+            ·
+          </span>
+          <CountdownUnit value="00" label="Sec" compact={compact} />
+        </div>
+      </div>
+    );
+  }
 
   if (parts.complete) {
     return (
@@ -110,9 +161,6 @@ export function ShamellCountdown({
       </div>
     );
   }
-
-  const compact = size === "sm";
-  const sepClass = cn("text-gold/35", compact ? "text-sm" : "text-base");
 
   return (
     <div

@@ -27,7 +27,7 @@ function AboutHeroPosterFallback() {
       src={portrait}
       alt=""
       fill
-      className="object-cover object-center"
+      className="object-contain object-center"
       sizes="(max-width: 1024px) 100vw, 40vw"
       aria-hidden
     />
@@ -182,7 +182,7 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
           decoding="async"
           onError={() => setPosterFailed(true)}
           className={cn(
-            "absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500",
+            "absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-500",
             posterVisible ? "opacity-100" : "opacity-0",
           )}
           aria-hidden
@@ -198,7 +198,7 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
           poster={posterSrc ?? undefined}
           muted
           className={cn(
-            "absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-500",
+            "absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-500",
             isBuffering ? "opacity-0" : "opacity-100",
           )}
           playsInline
@@ -308,7 +308,8 @@ const AboutSection = ({ initialAbout }: AboutSectionProps) => {
           <RevealOnView className="lg:col-span-5" delay={80} amount={0.18}>
             <div
               className={cn(
-                "group/portrait relative aspect-3/4 w-full overflow-hidden rounded-2xl border border-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_16px_48px_rgba(0,0,0,0.45)] transition-[border-color,box-shadow] duration-500",
+                "group/portrait relative w-full overflow-hidden rounded-2xl border border-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_16px_48px_rgba(0,0,0,0.45)] transition-[border-color,box-shadow] duration-500",
+                heroIsVideo ? "aspect-9/16" : "aspect-3/4",
                 heroIsVideoReady
                   ? "bg-black"
                   : "bg-[radial-gradient(ellipse_at_center,rgba(32,28,24,1)_0%,#060606_70%)]",
@@ -326,7 +327,7 @@ const AboutSection = ({ initialAbout }: AboutSectionProps) => {
                       src={about.videoPosterUrl}
                       alt=""
                       fetchPriority="high"
-                      className="absolute inset-0 h-full w-full object-cover object-center"
+                      className="absolute inset-0 h-full w-full object-contain object-center"
                       aria-hidden
                     />
                   ) : (

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import Footer from "@/components/Footer";
 import { FixedTicketInventoryDisplay } from "@/components/shared/FixedTicketInventoryDisplay";
 import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
+import ShamellAlertDialog from "@/components/shared/ShamellAlertDialog";
 import {
   isFutureEventStart,
   ShamellCountdown,
@@ -43,10 +44,10 @@ import {
 import { OnComingEventHeroSection } from "./OnComingEventHeroSection";
 import { OnComingEventItemsSection } from "./OnComingEventItemsSection";
 import VenueLayoutItemModal from "./VenueLayoutItemModal";
+import { useHasMounted } from "@/hooks/use-has-mounted";
 
-const VenueScene3D = dynamic(() => import("@/components/venue-3d/VenueScene3D"), {
-  ssr: false,
-  loading: () => (
+function VenueSceneLoadingPlaceholder() {
+  return (
     <div
       className="flex w-full items-center justify-center rounded-xl border border-shamell-line-soft bg-shamell-twilight text-sm text-shamell-muted"
       style={{
@@ -54,7 +55,11 @@ const VenueScene3D = dynamic(() => import("@/components/venue-3d/VenueScene3D"),
       }}
       aria-hidden
     />
-  ),
+  );
+}
+
+const VenueScene3D = dynamic(() => import("@/components/venue-3d/VenueScene3D"), {
+  ssr: false,
 });
 
 type Props = { eventSlug?: string };
@@ -94,6 +99,7 @@ function stateFromCache(entry: VenueLayoutPageCacheEntry) {
 
 export default function VenueLayoutPublicPage({ eventSlug }: Props) {
   const sceneLayout = useVenueSceneLayout("public");
+  const hasMounted = useHasMounted();
   const backFallbackHref = eventSlug
     ? onComingEventDetailHref(eventSlug)
     : onComingEventHubHref();
@@ -146,6 +152,10 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
   const [loading, setLoading] = useState(!cachedEntry);
   const [error, setError] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [reservedAlert, setReservedAlert] = useState<{
+    title: string;
+    description: string;
+  } | null>(null);
   const sceneContainerRef = useRef<HTMLDivElement>(null);
   const [sceneVisible, setSceneVisible] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(Boolean(cachedEntry));
@@ -252,7 +262,12 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
 
   const selectedIsReserved = selectedItemId ? reservedIds.has(selectedItemId) : false;
 
-  const showCountdown = isFutureEventStart(eventStartsAt);
+  const selectedDisplayLabel = useMemo(() => {
+    if (!selectedItemId) return null;
+    return itemLabels.get(selectedItemId)?.full ?? null;
+  }, [itemLabels, selectedItemId]);
+
+  const showCountdown = hasMounted && isFutureEventStart(eventStartsAt);
   const showTableInventory = tableCapacity != null && tableCapacity >= 1;
   const seatingSoldOut =
     showTableInventory &&
@@ -551,6 +566,23 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     [],
   );
 
+  const handleReservedItemSelect = useCallback(
+    (id: string) => {
+      const item = layout?.items.find((entry) => entry.id === id);
+      const label = itemLabels.get(id)?.full?.trim();
+      const isTable = item?.kind === "catalog_table";
+      setReservedAlert({
+        title: "Already reserved",
+        description: label
+          ? `${label} is already sold for this event.`
+          : isTable
+            ? "This table is already sold for this event."
+            : "This chair is already sold for this event.",
+      });
+    },
+    [itemLabels, layout?.items],
+  );
+
   const showBusyOverlay = (loading && !hasLoadedOnce) || leaving;
   const busyTitle = loading ? "Loading floor plan…" : "Loading…";
 
@@ -673,30 +705,39 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
               ref={sceneContainerRef}
               className="relative isolate w-full overflow-hidden rounded-lg border border-shamell-line-soft bg-[#1a1218] shadow-[0_24px_64px_rgba(0,0,0,0.45)] sm:rounded-xl"
             >
-              <VenueScene3D
-                mode="public-select"
-                viewBoxWidth={layout.viewBoxWidth}
-                viewBoxHeight={layout.viewBoxHeight}
-                items={layout.items}
-                sceneZones={layout.sceneZones}
-                selectedId={selectedItemId}
-                reservedIds={reservedIds}
-                reservedLabels={reservedLabels}
-                itemLabels={itemLabels}
-                onItemSelect={handleItemSelect}
-                viewportHeight={sceneLayout.viewportHeight}
-                viewportMinHeight={sceneLayout.viewportMinHeight}
-                layoutBucket={sceneLayout.bucket}
-                dpr={sceneLayout.dpr}
-                perfProfile={sceneLayout.perfProfile}
-                sceneActive={sceneVisible}
-              />
+              {hasMounted ? (
+                <VenueScene3D
+                  mode="public-select"
+                  viewBoxWidth={layout.viewBoxWidth}
+                  viewBoxHeight={layout.viewBoxHeight}
+                  items={layout.items}
+                  sceneZones={layout.sceneZones}
+                  selectedId={selectedItemId}
+                  reservedIds={reservedIds}
+                  reservedLabels={reservedLabels}
+                  itemLabels={itemLabels}
+                  onItemSelect={handleItemSelect}
+                  onItemReservedSelect={handleReservedItemSelect}
+                  viewportHeight={sceneLayout.viewportHeight}
+                  viewportMinHeight={sceneLayout.viewportMinHeight}
+                  layoutBucket={sceneLayout.bucket}
+                  dpr={sceneLayout.dpr}
+                  perfProfile={sceneLayout.perfProfile}
+                  sceneActive={sceneVisible}
+                />
+              ) : (
+                <VenueSceneLoadingPlaceholder />
+              )}
               {placedSummary ? (
                 <VenueSceneLegend
                   placedSummary={placedSummary}
                   showReservationKey
-                  layoutTopOnNarrow={sceneLayout.isPhone || sceneLayout.isTablet}
-                  showMobileLabelHint={sceneLayout.perfProfile === "mobile"}
+                  layoutTopOnNarrow={
+                    hasMounted && (sceneLayout.isPhone || sceneLayout.isTablet)
+                  }
+                  showMobileLabelHint={
+                    hasMounted && sceneLayout.perfProfile === "mobile"
+                  }
                 />
               ) : null}
             </div>
@@ -718,9 +759,17 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
           reservationsOpen={reservationsOpen}
           reservationsClosedMessage={salesClosedMessage(salesClosedReason)}
           upcomingEventSlug={eventSlug}
+          displayLabel={selectedDisplayLabel}
           onClose={() => setSelectedItemId(null)}
         />
       ) : null}
+
+      <ShamellAlertDialog
+        open={reservedAlert != null}
+        onClose={() => setReservedAlert(null)}
+        title={reservedAlert?.title ?? ""}
+        description={reservedAlert?.description ?? ""}
+      />
     </>
   );
 }
