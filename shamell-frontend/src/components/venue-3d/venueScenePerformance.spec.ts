@@ -42,6 +42,14 @@ describe("venueScenePerformance", () => {
           isCoarsePointer: false,
         }),
       ).toBe("mobile");
+      expect(
+        resolveVenuePerfProfile({
+          bucket: "phone",
+          isPhone: false,
+          isTablet: false,
+          isCoarsePointer: false,
+        }),
+      ).toBe("mobile");
     });
   });
 
@@ -57,14 +65,12 @@ describe("venueScenePerformance", () => {
   });
 
   describe("shouldShowItemLabels", () => {
-    it("always shows labels on high profile", () => {
-      expect(shouldShowItemLabels("high", false)).toBe(true);
-      expect(shouldShowItemLabels("high", true)).toBe(true);
+    it("shows labels on high profile only", () => {
+      expect(shouldShowItemLabels("high")).toBe(true);
     });
 
-    it("shows labels on mobile only when selected", () => {
-      expect(shouldShowItemLabels("mobile", false)).toBe(false);
-      expect(shouldShowItemLabels("mobile", true)).toBe(true);
+    it("never shows labels on mobile profile", () => {
+      expect(shouldShowItemLabels("mobile")).toBe(false);
     });
   });
 });

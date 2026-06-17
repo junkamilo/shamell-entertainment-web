@@ -47,6 +47,7 @@ type Props = {
   itemLabels?: ReadonlyMap<string, LayoutItemLabel>;
   onSelect?: (id: string | null) => void;
   onItemSelect?: (id: string) => void;
+  onItemReservedSelect?: (id: string) => void;
   /** Must be used inside Canvas (uses useThree). */
   placedItemsAdmin?: React.ReactNode;
   /** Stage/carpet pick handles (admin layout editor). */
@@ -125,6 +126,7 @@ function SceneContent({
   sceneDecorAdmin,
   onBackgroundClick,
   onItemSelect,
+  onItemReservedSelect,
   orbitControlsRef,
   cameraPreset,
   cameraPresetKey,
@@ -200,6 +202,7 @@ function SceneContent({
           itemLabels={itemLabels}
           interactive={selectable}
           onSelect={selectable ? (id) => onItemSelect?.(id) : undefined}
+          onReservedSelect={selectable ? (id) => onItemReservedSelect?.(id) : undefined}
           pointerCursor={selectable}
           perfProfile={perfProfile}
           useInstancedChairs={false}
@@ -264,6 +267,7 @@ export default function VenueScene3D({
   sceneDecorAdmin,
   onBackgroundClick,
   onItemSelect,
+  onItemReservedSelect,
   canvasRef,
   className = "",
   viewportHeight = "min(72vh, 720px)",
@@ -401,6 +405,7 @@ export default function VenueScene3D({
                 sceneDecorAdmin={sceneDecorAdmin}
                 onBackgroundClick={onBackgroundClick}
                 onItemSelect={onItemSelect}
+                onItemReservedSelect={onItemReservedSelect}
                 orbitControlsRef={orbitControlsRef}
                 cameraPreset={cameraPreset}
                 cameraPresetKey={cameraPresetKey}

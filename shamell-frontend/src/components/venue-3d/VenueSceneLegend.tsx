@@ -119,7 +119,7 @@ export default function VenueSceneLegend({
           </p>
           {showMobileLabelHint ? (
             <p className="basis-full text-shamell-text-primary/70">
-              Tap a table or chair to see its number
+              Tap a table or chair for details
             </p>
           ) : null}
         </div>

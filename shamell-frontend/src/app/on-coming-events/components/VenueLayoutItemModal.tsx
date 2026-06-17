@@ -21,6 +21,7 @@ type Props = {
   reservationsOpen: boolean;
   reservationsClosedMessage?: string;
   upcomingEventSlug?: string;
+  displayLabel?: string | null;
   onClose: () => void;
 };
 
@@ -50,6 +51,7 @@ export default function VenueLayoutItemModal({
   reservationsOpen,
   reservationsClosedMessage = "Reservations closed",
   upcomingEventSlug,
+  displayLabel,
   onClose,
 }: Props) {
   const [step, setStep] = useState<Step>("summary");
@@ -79,7 +81,8 @@ export default function VenueLayoutItemModal({
   }, [onClose, step, exitPayment]);
 
   const isTable = item.kind === "catalog_table";
-  const title = isTable ? TABLE_SIZE_LABELS[item.size] : "Standalone chair";
+  const fallbackTitle = isTable ? TABLE_SIZE_LABELS[item.size] : "Standalone chair";
+  const title = displayLabel?.trim() || fallbackTitle;
   const price = isTable
     ? (tableConfig?.bundlePrice ?? null)
     : resolveStandaloneChairUnitPrice(item, chairPricesById, standaloneChairs.unitPrice);

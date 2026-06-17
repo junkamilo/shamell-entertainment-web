@@ -9,7 +9,15 @@ export function resolveVenuePerfProfile(opts: {
   isCoarsePointer: boolean;
 }): VenuePerfProfile {
   if (opts.bucket === "laptop" || opts.bucket === "tv") return "high";
-  if (opts.isPhone || opts.isTablet || opts.isCoarsePointer) return "mobile";
+  if (
+    opts.bucket === "phone" ||
+    opts.bucket === "tablet" ||
+    opts.isPhone ||
+    opts.isTablet ||
+    opts.isCoarsePointer
+  ) {
+    return "mobile";
+  }
   return "high";
 }
 
@@ -22,7 +30,6 @@ export function dprForPerfProfile(
   return [1, 1.5];
 }
 
-export function shouldShowItemLabels(profile: VenuePerfProfile, selected: boolean): boolean {
-  if (profile === "high") return true;
-  return selected;
+export function shouldShowItemLabels(profile: VenuePerfProfile): boolean {
+  return profile === "high";
 }

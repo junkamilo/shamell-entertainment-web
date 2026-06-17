@@ -75,7 +75,7 @@ export default function PlacedItemsLayer({
         const rotY = (item.rotation * Math.PI) / 180;
         const selected = selectedId === item.id;
         const reserved = reservedIds?.has(item.id) ?? false;
-        const showLabels = shouldShowItemLabels(perfProfile, selected);
+        const showLabels = shouldShowItemLabels(perfProfile);
         const reservedBubbleHeight = item.kind === "catalog_table" ? 1.35 : 1.05;
         const numberBubbleHeight = reserved
           ? item.kind === "catalog_table"
