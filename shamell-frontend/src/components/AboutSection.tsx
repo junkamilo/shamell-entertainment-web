@@ -9,6 +9,12 @@ import RevealOnView from "@/components/shared/RevealOnView";
 import type { AboutContentItem } from "@/lib/aboutContent";
 import { useAboutContent } from "@/hooks/use-about-content";
 import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
+import {
+  aboutHeroImageCardClassName,
+  aboutHeroMediaClassName,
+  aboutHeroMediaFrameClassName,
+  aboutHeroVideoCardClassName,
+} from "@/lib/aboutHeroLayout";
 import { prefetchAboutHeroVideo } from "@/lib/aboutMediaPreload";
 import { splitAboutParagraphs } from "@/lib/aboutParagraphs";
 import { cn } from "@/lib/utils";
@@ -23,14 +29,16 @@ type AboutHeroVideoProps = {
 
 function AboutHeroPosterFallback() {
   return (
-    <Image
-      src={portrait}
-      alt=""
-      fill
-      className="object-contain object-center"
-      sizes="(max-width: 1024px) 100vw, 40vw"
-      aria-hidden
-    />
+    <div className="absolute inset-0">
+      <Image
+        src={portrait}
+        alt=""
+        fill
+        className={aboutHeroMediaClassName()}
+        sizes="(max-width: 1024px) 100vw, 40vw"
+        aria-hidden
+      />
+    </div>
   );
 }
 
@@ -172,45 +180,48 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
   };
 
   return (
-    <div className="absolute inset-0">
-      {posterSrc ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={posterSrc}
-          alt=""
-          fetchPriority="high"
-          decoding="async"
-          onError={() => setPosterFailed(true)}
-          className={cn(
-            "absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-500",
-            posterVisible ? "opacity-100" : "opacity-0",
-          )}
-          aria-hidden
-        />
-      ) : (
-        <AboutHeroPosterFallback />
-      )}
+    <div className="relative h-full w-full min-h-0">
+      <div className={aboutHeroMediaFrameClassName("relative")}>
+        {posterSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={posterSrc}
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            onError={() => setPosterFailed(true)}
+            className={cn(
+              aboutHeroMediaClassName(),
+              "absolute z-0 transition-opacity duration-500",
+              posterVisible ? "opacity-100" : "opacity-0",
+            )}
+            aria-hidden
+          />
+        ) : (
+          <AboutHeroPosterFallback />
+        )}
 
-      {showVideo ? (
-        <video
-          ref={videoRef}
-          src={src}
-          poster={posterSrc ?? undefined}
-          muted
-          className={cn(
-            "absolute inset-0 h-full w-full object-contain object-center transition-opacity duration-500",
-            isBuffering ? "opacity-0" : "opacity-100",
-          )}
-          playsInline
-          loop
-          preload={isInView ? "auto" : "metadata"}
-          onCanPlay={onCanPlay}
-          onPlaying={onCanPlay}
-          onWaiting={onWaiting}
-          onProgress={updateBufferProgress}
-          aria-label="Video about Shamell"
-        />
-      ) : null}
+        {showVideo ? (
+          <video
+            ref={videoRef}
+            src={src}
+            poster={posterSrc ?? undefined}
+            muted
+            className={cn(
+              aboutHeroMediaClassName("relative z-1 transition-opacity duration-500"),
+              isBuffering ? "opacity-0" : "opacity-100",
+            )}
+            playsInline
+            loop
+            preload={isInView ? "auto" : "metadata"}
+            onCanPlay={onCanPlay}
+            onPlaying={onCanPlay}
+            onWaiting={onWaiting}
+            onProgress={updateBufferProgress}
+            aria-label="Video about Shamell"
+          />
+        ) : null}
+      </div>
 
       {showVideo && isBuffering ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-8 z-10 flex flex-col items-center gap-2 px-6">
@@ -304,17 +315,30 @@ const AboutSection = ({ initialAbout }: AboutSectionProps) => {
           </div>
         </RevealOnView>
 
-        <div className="grid grid-cols-1 items-stretch gap-10 lg:grid-cols-12 lg:gap-14">
+        <div
+          className={cn(
+            "grid grid-cols-1 gap-10 lg:grid-cols-12 lg:gap-14",
+            heroIsVideo ? "items-start" : "items-stretch",
+          )}
+        >
           <RevealOnView className="lg:col-span-5" delay={80} amount={0.18}>
             <div
               className={cn(
-                "group/portrait relative w-full overflow-hidden rounded-2xl border border-white/10 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_16px_48px_rgba(0,0,0,0.45)] transition-[border-color,box-shadow] duration-500",
-                heroIsVideo ? "aspect-9/16" : "aspect-3/4",
-                heroIsVideoReady
-                  ? "bg-black"
-                  : "bg-[radial-gradient(ellipse_at_center,rgba(32,28,24,1)_0%,#060606_70%)]",
-                "hover:border-white/16 hover:shadow-[0_22px_56px_rgba(0,0,0,0.55),inset_0_0_0_1px_rgba(255,255,255,0.06)]",
-                isLoading && !initialAbout && "animate-pulse",
+                heroIsVideo
+                  ? aboutHeroVideoCardClassName({
+                      className: cn(
+                        heroIsVideoReady
+                          ? "bg-black"
+                          : "bg-[radial-gradient(ellipse_at_center,rgba(32,28,24,1)_0%,#060606_70%)]",
+                        isLoading && !initialAbout && "animate-pulse",
+                      ),
+                    })
+                  : aboutHeroImageCardClassName(
+                      cn(
+                        "bg-[radial-gradient(ellipse_at_center,rgba(32,28,24,1)_0%,#060606_70%)]",
+                        isLoading && !initialAbout && "animate-pulse",
+                      ),
+                    ),
               )}
             >
               {showHeroMedia ? (
@@ -322,14 +346,16 @@ const AboutSection = ({ initialAbout }: AboutSectionProps) => {
                   {heroIsVideoReady ? (
                     <AboutHeroVideo src={heroVideoSrc!} poster={about.videoPosterUrl} />
                   ) : heroIsVideo && about.videoPosterUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={about.videoPosterUrl}
-                      alt=""
-                      fetchPriority="high"
-                      className="absolute inset-0 h-full w-full object-contain object-center"
-                      aria-hidden
-                    />
+                    <div className={aboutHeroMediaFrameClassName("relative")}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={about.videoPosterUrl}
+                        alt=""
+                        fetchPriority="high"
+                        className={aboutHeroMediaClassName()}
+                        aria-hidden
+                      />
+                    </div>
                   ) : (
                     <Image
                       src={about.imageUrl ?? portrait}
