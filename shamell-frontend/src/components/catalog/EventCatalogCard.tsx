@@ -19,6 +19,8 @@ export type EventCatalogItem = {
   heroImageUrl: string | null;
   /** First catalog media; drives hero `<img>` vs `<video>`. */
   heroMediaType?: "IMAGE" | "VIDEO";
+  heroPosterUrl?: string | null;
+  heroPosterUrlMobile?: string | null;
 };
 
 const inquireLinkClass = cn(
@@ -58,9 +60,9 @@ export function EventCatalogCard({
         "@container group/card relative flex h-full min-h-0 flex-col overflow-hidden rounded-2xl",
         "border border-gold/30",
         "bg-[linear-gradient(168deg,rgba(18,15,12,0.98)_0%,rgba(8,7,5,1)_48%,rgba(3,2,2,1)_100%)]",
-        "shadow-[0_18px_56px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.035)]",
-        "transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        "hover:-translate-y-2 hover:shadow-[0_36px_96px_rgba(0,0,0,0.72),inset_0_1px_0_rgba(255,255,255,0.05)]",
+        "shadow-[0_8px_24px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.035)]",
+        "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "hover:-translate-y-2 hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.05)]",
         "motion-reduce:hover:translate-y-0 motion-reduce:transition-colors",
       )}
     >
@@ -81,7 +83,10 @@ export function EventCatalogCard({
 
       <EventCatalogCardHero
         imageUrl={service.heroImageUrl}
-        isVideo={heroIsVideo}
+        mediaType={heroIsVideo ? "VIDEO" : "IMAGE"}
+        posterUrl={service.heroPosterUrl}
+        posterUrlMobile={service.heroPosterUrlMobile}
+        videoUrl={heroIsVideo ? service.heroImageUrl : null}
         title={service.eventTypeName}
       />
 

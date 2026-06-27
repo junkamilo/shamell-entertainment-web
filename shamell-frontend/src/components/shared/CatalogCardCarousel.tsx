@@ -13,6 +13,7 @@ import {
 } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
+import { CatalogSlideProvider } from "./catalog-slide-context";
 import { resolveCarouselLayout } from "./catalog-carousel-layout";
 
 const DEFAULT_MAX_VISIBLE_DESKTOP = 3;
@@ -54,6 +55,47 @@ function useScrollEdges(scrollerRef: React.RefObject<HTMLDivElement | null>) {
   return { atStart, atEnd, sync };
 }
 
+/** Reports intersection ratio to parent for swipe-rail active slide detection. */
+function CatalogCarouselSlide({
+  slideIndex,
+  trackVisibility,
+  className,
+  style,
+  children,
+}: {
+  slideIndex: number;
+  trackVisibility: (index: number, ratio: number) => void;
+  className?: string;
+  style?: React.CSSProperties;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      trackVisibility(slideIndex, 1);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry) trackVisibility(slideIndex, entry.intersectionRatio);
+      },
+      { threshold: [0, 0.25, 0.5, 0.75, 1] },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [slideIndex, trackVisibility]);
+
+  return (
+    <div ref={ref} className={className} style={style}>
+      {children}
+    </div>
+  );
+}
+
 const navButtonClass = cn(
   "absolute top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-gold/35 bg-black/55 text-gold shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-sm transition",
   "hover:border-gold/55 hover:bg-black/70 hover:text-gold-light",
@@ -76,17 +118,33 @@ export default function CatalogCardCarousel({
   const isLgUp = useMediaQuery("(min-width: 1024px)");
   const isXlUp = useMediaQuery("(min-width: 1280px)");
   const { atStart, atEnd, sync } = useScrollEdges(scrollerRef);
+  const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+  const visibilityRef = useRef<Map<number, number>>(new Map());
 
   const layout = useMemo(
     () => resolveCarouselLayout(isLgUp, isXlUp, visibleOnDesktop),
     [isLgUp, isXlUp, visibleOnDesktop],
   );
 
+  const trackVisibility = useCallback((index: number, ratio: number) => {
+    visibilityRef.current.set(index, ratio);
+    let bestIndex = 0;
+    let bestRatio = 0;
+    visibilityRef.current.forEach((r, i) => {
+      if (r > bestRatio) {
+        bestRatio = r;
+        bestIndex = i;
+      }
+    });
+    setActiveSlideIndex(bestIndex);
+  }, []);
+
   const items = Children.toArray(children).filter(isValidElement);
   const count = items.length;
   const horizontalRail = count > 1;
   const showArrows =
     isLgUp && !layout.useSwipeRail && count > layout.visibleCount;
+  const enableSlideActive = layout.useSwipeRail;
 
   const scrollByPage = useCallback(
     (direction: -1 | 1) => {
@@ -154,32 +212,42 @@ export default function CatalogCardCarousel({
             : "flex-row flex-nowrap justify-center",
         )}
       >
-        {items.map((child, index) => (
-          <div
-            key={child.key ?? `catalog-slide-${index}`}
-            className={cn(
-              "min-w-0 shrink-0",
-              horizontalRail && "snap-start snap-always",
-              layout.useSwipeRail
-                ? "w-[min(88vw,26rem)]"
-                : "lg:w-auto lg:max-w-none lg:flex-[0_0_auto]",
-              !horizontalRail && "w-full max-w-[min(100%,17.5rem)]",
-            )}
-            style={
-              horizontalRail && !layout.useSwipeRail
-                ? {
-                    flexBasis: layout.slideBasis,
-                    width: layout.slideBasis,
-                    maxWidth: layout.slideBasis,
-                  }
-                : layout.useSwipeRail
-                  ? { width: layout.slideBasis, maxWidth: layout.slideBasis }
-                  : undefined
-            }
-          >
-            {child}
-          </div>
-        ))}
+        {items.map((child, index) => {
+          const slideClass = cn(
+            "catalog-carousel-slide min-w-0 shrink-0",
+            horizontalRail && "snap-start snap-always",
+            layout.useSwipeRail
+              ? "w-[min(88vw,26rem)]"
+              : "lg:w-auto lg:max-w-none lg:flex-[0_0_auto]",
+            !horizontalRail && "w-full max-w-[min(100%,17.5rem)]",
+          );
+          const slideStyle =
+            horizontalRail && !layout.useSwipeRail
+              ? {
+                  flexBasis: layout.slideBasis,
+                  width: layout.slideBasis,
+                  maxWidth: layout.slideBasis,
+                }
+              : layout.useSwipeRail
+                ? { width: layout.slideBasis, maxWidth: layout.slideBasis }
+                : undefined;
+
+          const isActive = enableSlideActive && index === activeSlideIndex;
+
+          return (
+            <CatalogCarouselSlide
+              key={child.key ?? `catalog-slide-${index}`}
+              slideIndex={index}
+              trackVisibility={enableSlideActive ? trackVisibility : () => undefined}
+              className={slideClass}
+              style={slideStyle}
+            >
+              <CatalogSlideProvider isActive={isActive}>
+                {child}
+              </CatalogSlideProvider>
+            </CatalogCarouselSlide>
+          );
+        })}
       </div>
 
       {layout.useSwipeRail && horizontalRail ? (

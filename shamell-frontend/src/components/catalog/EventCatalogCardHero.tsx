@@ -1,18 +1,18 @@
 "use client";
 
 import { Sparkles } from "lucide-react";
+import CardMedia from "@/components/media/CardMedia";
+import { useCatalogSlideActive } from "@/components/shared/catalog-slide-context";
 import { cn } from "@/lib/utils";
-
-const mediaClassName = cn(
-  "h-full w-full object-cover object-[center_28%]",
-  "transition-[transform,filter] duration-[1.1s] ease-out",
-  "group-hover/card:scale-[1.03] group-hover/card:brightness-[1.04]",
-  "motion-reduce:group-hover/card:scale-100 motion-reduce:group-hover/card:brightness-100",
-);
 
 type EventCatalogCardHeroProps = {
   imageUrl: string | null;
-  isVideo: boolean;
+  mediaType?: "IMAGE" | "VIDEO";
+  /** @deprecated Prefer mediaType; kept for callers that still pass isVideo. */
+  isVideo?: boolean;
+  posterUrl?: string | null;
+  posterUrlMobile?: string | null;
+  videoUrl?: string | null;
   /** Used for image alt when not decorative. */
   title: string;
   className?: string;
@@ -22,16 +22,27 @@ type EventCatalogCardHeroProps = {
 
 /**
  * Portrait-first hero frame for event-type catalog cards.
- * Taller aspect ratio and top-weighted object-position keep performers in frame
- * inside narrow carousel columns.
+ * Delegates media rendering to CardMedia (poster + gated video).
  */
 export function EventCatalogCardHero({
   imageUrl,
-  isVideo,
+  mediaType,
+  isVideo = false,
+  posterUrl,
+  posterUrlMobile,
+  videoUrl,
   title,
   className,
   aspectClassName = "aspect-[3/4] @[300px]:aspect-4/5",
 }: EventCatalogCardHeroProps) {
+  const isActiveSlide = useCatalogSlideActive();
+  const resolvedType: "IMAGE" | "VIDEO" =
+    mediaType ?? (isVideo ? "VIDEO" : "IMAGE");
+  const hasMedia =
+    resolvedType === "IMAGE"
+      ? Boolean(imageUrl?.trim())
+      : Boolean(posterUrl?.trim() || posterUrlMobile?.trim() || videoUrl?.trim() || imageUrl?.trim());
+
   return (
     <div
       className={cn(
@@ -40,22 +51,18 @@ export function EventCatalogCardHero({
       )}
     >
       <div className={cn("relative w-full", aspectClassName)}>
-        {imageUrl ? (
+        {hasMedia ? (
           <>
-            {isVideo ? (
-              <video
-                src={imageUrl}
-                className={mediaClassName}
-                muted
-                playsInline
-                loop
-                autoPlay
-                aria-label={`${title} — video preview`}
-              />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt={title} className={mediaClassName} loading="lazy" decoding="async" />
-            )}
+            <CardMedia
+              mediaType={resolvedType}
+              imageUrl={imageUrl}
+              videoUrl={videoUrl ?? (resolvedType === "VIDEO" ? imageUrl : null)}
+              posterUrl={posterUrl}
+              posterUrlMobile={posterUrlMobile}
+              isActive={isActiveSlide}
+              alt={title}
+              className="absolute inset-0"
+            />
 
             {/* Bottom vignette only — avoids crushing faces at the top */}
             <div

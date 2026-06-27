@@ -4,9 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { CatalogExpandRow } from "@/components/catalog/CatalogExpandRow";
+import CardMedia from "@/components/media/CardMedia";
+import { useCatalogSlideActive } from "@/components/shared/catalog-slide-context";
 import type { Experience } from "@/lib/experiencesData";
 import { appendCatalogToContactHref, buildServiceInquireHref } from "@/lib/contactInquiryConstants";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import { cn } from "@/lib/utils";
 
 type ExperienceCardProps = {
@@ -17,6 +18,7 @@ type ExperienceCardProps = {
 export default function ExperienceCard({ experience }: ExperienceCardProps) {
   const [isDescriptionCollapsed, setIsDescriptionCollapsed] = useState(true);
   const [isItemsCollapsed, setIsItemsCollapsed] = useState(true);
+  const isActiveSlide = useCatalogSlideActive();
   const descriptionPanelId = useId();
   const itemsPanelId = useId();
   const inquireHref = useMemo(
@@ -25,20 +27,23 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
     [experience.contactInquiryCode, experience.id],
   );
 
-  const stringMediaUrl = typeof experience.image === "string" ? experience.image.trim() : "";
-  const heroIsVideo =
-    experience.heroMediaType === "VIDEO" ||
-    (stringMediaUrl.length > 0 && serviceCatalogMediaTypeFromUrl(stringMediaUrl) === "VIDEO");
+  const apiMediaType: "IMAGE" | "VIDEO" =
+    experience.heroMediaType === "VIDEO" ? "VIDEO" : "IMAGE";
+  const hasApiMedia =
+    typeof experience.image === "string" &&
+    (experience.image.trim().length > 0 ||
+      Boolean(experience.videoUrl?.trim()) ||
+      Boolean(experience.posterUrl?.trim()));
 
   return (
     <article
       className={cn(
         "@container group relative flex h-full flex-col overflow-hidden rounded-2xl",
         "border border-gold/22 bg-[linear-gradient(195deg,rgba(18,14,22,0.97)_0%,rgba(8,7,10,0.99)_42%,rgba(3,2,4,1)_100%)]",
-        "shadow-[0_18px_52px_rgba(0,0,0,0.58),inset_0_1px_0_rgba(255,255,255,0.04)]",
+        "shadow-[0_8px_24px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.04)]",
         "ring-1 ring-white/6",
-        "transition-[box-shadow,border-color,ring-color] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
-        "hover:border-white/14 hover:shadow-[0_36px_90px_rgba(0,0,0,0.78),0_1px_0_rgba(255,255,255,0.06)_inset]",
+        "transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "hover:border-white/14 hover:shadow-[0_16px_40px_rgba(0,0,0,0.55)]",
         "hover:ring-white/10",
       )}
     >
@@ -60,10 +65,9 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
       <div
         className={cn(
-          "relative z-10 flex flex-1 flex-col transition-[transform] duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform",
-          "motion-reduce:transition-colors",
-          "group-hover:transform-[perspective(1100px)_rotateX(3.5deg)_translateY(-10px)]",
+          "relative z-10 flex flex-1 flex-col transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
           "motion-reduce:group-hover:transform-none",
+          "[@media(hover:hover)]:group-hover:transform-[perspective(1100px)_rotateX(3.5deg)_translateY(-10px)]",
         )}
       >
         <div className="relative isolate z-10 aspect-[3/4] w-full overflow-hidden @[300px]:aspect-4/5">
@@ -77,25 +81,17 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
             <div className="animate-shamell-xp-spot-sweep absolute left-1/2 top-1/2 h-[190%] w-[75%] -translate-x-1/2 -translate-y-1/2 rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(220,228,240,0.14),transparent_62%)] blur-lg" />
           </div>
 
-          {typeof experience.image === "string" ? (
-            heroIsVideo ? (
-              <video
-                src={experience.image}
-                className="h-full w-full scale-100 object-cover transition-[transform,filter] duration-1100 ease-out group-hover:scale-[1.05] group-hover:brightness-[1.05] group-hover:-rotate-1 motion-reduce:group-hover:scale-100 motion-reduce:group-hover:rotate-0"
-                muted
-                playsInline
-                loop
-                autoPlay
-                aria-label={`${experience.title} — video preview`}
-              />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={experience.image}
-                alt={`${experience.title} — special experience`}
-                className="h-full w-full scale-100 object-cover transition-[transform,filter] duration-1100 ease-out group-hover:scale-[1.05] group-hover:brightness-[1.05] group-hover:-rotate-1 motion-reduce:group-hover:scale-100 motion-reduce:group-hover:rotate-0"
-              />
-            )
+          {hasApiMedia ? (
+            <CardMedia
+              mediaType={apiMediaType}
+              imageUrl={apiMediaType === "IMAGE" && typeof experience.image === "string" ? experience.image : null}
+              videoUrl={experience.videoUrl}
+              posterUrl={experience.posterUrl}
+              posterUrlMobile={experience.posterUrlMobile}
+              isActive={isActiveSlide}
+              alt={`${experience.title} — special experience`}
+              className="h-full w-full scale-100 transition-[transform,filter] duration-1100 ease-out [@media(hover:hover)]:group-hover:scale-[1.05] [@media(hover:hover)]:group-hover:brightness-[1.05] [@media(hover:hover)]:group-hover:-rotate-1 motion-reduce:group-hover:scale-100 motion-reduce:group-hover:rotate-0"
+            />
           ) : (
             <Image
               src={experience.image}

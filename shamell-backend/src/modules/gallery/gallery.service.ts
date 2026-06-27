@@ -7,7 +7,10 @@ import {
 } from '@nestjs/common';
 import { GalleryMediaType } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
-import { cloudinaryDeliveryUrl } from '../../common/util/cloudinary-delivery.util';
+import {
+  imageUrl as toDeliveryImageUrl,
+  videoUrl as toDeliveryVideoUrl,
+} from '../../common/util/cloudinary-delivery.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateGalleryCategoryDto } from './dto/create-gallery-category.dto';
 import { CreateGalleryPhotoDto } from './dto/create-gallery-photo.dto';
@@ -590,12 +593,19 @@ export class GalleryService {
 
   private mapPublicPhoto(photo: PhotoWithCategory) {
     const mapped = this.mapPhoto(photo);
-    if (mapped.mediaType !== GalleryMediaType.IMAGE) return mapped;
+    if (mapped.mediaType === GalleryMediaType.VIDEO) {
+      // Static first-frame poster so the gallery can show an image instead of
+      // autoplaying every video tile.
+      return {
+        ...mapped,
+        posterUrl: toDeliveryVideoUrl(mapped.imageUrl, 'poster720'),
+      };
+    }
     return {
       ...mapped,
       imageUrl:
-        cloudinaryDeliveryUrl(mapped.imageUrl, { width: 1200 }) ??
-        mapped.imageUrl,
+        toDeliveryImageUrl(mapped.imageUrl, 'galleryThumb') ?? mapped.imageUrl,
+      posterUrl: null as string | null,
     };
   }
 

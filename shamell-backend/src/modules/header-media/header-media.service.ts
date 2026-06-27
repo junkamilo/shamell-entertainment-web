@@ -7,7 +7,10 @@ import { GalleryMediaType } from '@prisma/client';
 import { imageSize } from 'image-size';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GalleryService } from '../gallery/gallery.service';
-import { cloudinaryDeliveryUrl } from '../../common/util/cloudinary-delivery.util';
+import {
+  imageUrl as toHeroImageUrl,
+  videoUrl as toVideoUrl,
+} from '../../common/util/cloudinary-delivery.util';
 
 type HeaderPhoto = {
   id: string;
@@ -81,7 +84,7 @@ export class HeaderMediaService {
         updatedAt: true,
       },
     });
-    return rows.map((row) => this.mapHeaderPhoto(row));
+    return rows.map((row) => this.mapHeaderPhotoAdmin(row));
   }
 
   async uploadAdminHeaderPhotos(files: Express.Multer.File[]) {
@@ -112,7 +115,7 @@ export class HeaderMediaService {
     return {
       message: 'Header media uploaded successfully.',
       items: created.items.map((item) =>
-        this.mapHeaderPhoto({
+        this.mapHeaderPhotoAdmin({
           id: item.id,
           imageUrl: item.imageUrl,
           imagePublicId: item.imagePublicId,
@@ -158,7 +161,7 @@ export class HeaderMediaService {
     });
     return {
       message: 'Header photo updated successfully.',
-      item: this.mapHeaderPhoto(updated),
+      item: this.mapHeaderPhotoAdmin(updated),
     };
   }
 
@@ -214,19 +217,28 @@ export class HeaderMediaService {
     });
     return {
       message: 'Header photo focus updated successfully.',
-      item: this.mapHeaderPhoto(updated),
+      item: this.mapHeaderPhotoAdmin(updated),
     };
   }
 
   private mapHeaderPhoto(photo: HeaderPhoto) {
-    const imageUrl =
-      photo.mediaType === GalleryMediaType.IMAGE
-        ? (cloudinaryDeliveryUrl(photo.imageUrl, { width: 1920 }) ??
-          photo.imageUrl)
-        : photo.imageUrl;
+    const isVideo = photo.mediaType === GalleryMediaType.VIDEO;
+    // VIDEO: imageUrl is null; the hero plays `videoDeliveryUrl` and shows the
+    // poster (720/480) as the LCP image. IMAGE: responsive desktop/mobile pair
+    // consumed via <img srcset> on the public hero.
     return {
       id: photo.id,
-      imageUrl,
+      imageUrl: isVideo ? null : toHeroImageUrl(photo.imageUrl, 'hero'),
+      imageUrlMobile: isVideo
+        ? null
+        : toHeroImageUrl(photo.imageUrl, 'heroMobile'),
+      videoDeliveryUrl: isVideo
+        ? toVideoUrl(photo.imageUrl, 'stream720')
+        : null,
+      videoPosterUrl: isVideo ? toVideoUrl(photo.imageUrl, 'poster720') : null,
+      videoPosterUrlMobile: isVideo
+        ? toVideoUrl(photo.imageUrl, 'poster480')
+        : null,
       imagePublicId: photo.imagePublicId,
       mediaType: photo.mediaType,
       focalX: photo.focalX,
@@ -237,6 +249,17 @@ export class HeaderMediaService {
       createdAt: photo.createdAt,
       updatedAt: photo.updatedAt,
     };
+  }
+
+  // Admin mapper: reuses the public payload but restores a playable `imageUrl`
+  // for VIDEO so the admin library/focus preview (which renders <video src>)
+  // keeps working. The public mapper intentionally returns imageUrl: null.
+  private mapHeaderPhotoAdmin(photo: HeaderPhoto) {
+    const base = this.mapHeaderPhoto(photo);
+    if (photo.mediaType === GalleryMediaType.VIDEO) {
+      return { ...base, imageUrl: photo.imageUrl };
+    }
+    return base;
   }
 
   private validateHeroImageDimensions(file: Express.Multer.File) {

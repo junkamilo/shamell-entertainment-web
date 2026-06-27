@@ -14,7 +14,9 @@ export function galleryMediaTypeFromItem(
   const fromApi = String(rawMediaType ?? "")
     .trim()
     .toUpperCase();
+  // Trust the API mediaType; fall back to URL inference only when absent.
   if (fromApi === "VIDEO") return "VIDEO";
+  if (fromApi === "IMAGE") return "IMAGE";
   if (serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO") return "VIDEO";
   return "IMAGE";
 }
@@ -41,6 +43,10 @@ export function mapGalleryPhotosFromApi(data: unknown): GalleryPhotoItem[] {
   return payload.items.map((item) => ({
     id: item.id,
     src: item.imageUrl,
+    posterUrl:
+      typeof item.posterUrl === "string" && item.posterUrl.trim()
+        ? item.posterUrl.trim()
+        : null,
     alt: `${item.category.name} — gallery`,
     categorySlug: item.category.slug,
     mediaType: galleryMediaTypeFromItem(item.imageUrl, item.mediaType),

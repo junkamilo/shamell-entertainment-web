@@ -8,6 +8,7 @@ import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
 import { useGalleryCategories } from "@/app/gallery/hooks/useGalleryCategories";
 import { useGalleryPhotos } from "@/app/gallery/hooks/useGalleryPhotos";
 import type { GalleryPhotoItem } from "@/app/gallery/types/gallery.types";
+import { useInViewLoad } from "@/hooks/use-in-view-load";
 import { cn } from "@/lib/utils";
 
 /** Home preview: brick layout 3 + 2 + 3 (mockup), up to 8 images; shorter rows when fewer photos. */
@@ -45,8 +46,18 @@ function galleryCellClass(rowLength: number) {
 }
 
 function GalleryPreviewTile({ item }: { item: GalleryPhotoItem }) {
+  const { ref, inView } = useInViewLoad<HTMLDivElement>({ rootMargin: "200px" });
+  const [hovered, setHovered] = useState(false);
+  const isVideo = item.mediaType === "VIDEO";
+  // Load the heavy <video> only when the tile is near the viewport AND hovered.
+  const showVideo = isVideo && inView && hovered && Boolean(item.src);
+  const posterSrc = item.posterUrl ?? (isVideo ? null : item.src);
+
   return (
     <div
+      ref={ref}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className={cn(
         "shamell-gallery-card-bg group relative aspect-3/4 w-full overflow-visible rounded-xl border border-gold/15 shadow-[inset_0_1px_0_rgba(197,165,90,0.06),inset_0_0_0_1px_rgba(255,255,255,0.04),0_8px_28px_rgba(0,0,0,0.35)] transition-[border-color,box-shadow] duration-500",
         "group-hover:border-gold/35 group-hover:shadow-[0_16px_40px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(197,165,90,0.1),inset_0_0_0_1px_rgba(255,255,255,0.06)]",
@@ -54,7 +65,18 @@ function GalleryPreviewTile({ item }: { item: GalleryPhotoItem }) {
     >
       <div className="pointer-events-none absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(42,32,26,0.2),transparent_38%,transparent_62%,rgba(24,18,14,0.25))] opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
-      {item.mediaType === "VIDEO" ? (
+      {posterSrc ? (
+        <Image
+          src={posterSrc}
+          alt={item.alt}
+          fill
+          sizes="(max-width: 640px) 33vw, (max-width: 1024px) 30vw, 440px"
+          loading="lazy"
+          className="rounded-xl object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
+        />
+      ) : null}
+
+      {showVideo ? (
         <video
           key={item.id}
           src={item.src}
@@ -63,19 +85,10 @@ function GalleryPreviewTile({ item }: { item: GalleryPhotoItem }) {
           loop
           muted
           playsInline
-          preload="auto"
+          preload="metadata"
           aria-label={item.alt}
         />
-      ) : (
-        <Image
-          src={item.src}
-          alt={item.alt}
-          fill
-          sizes="(max-width: 640px) 33vw, (max-width: 1024px) 30vw, 440px"
-          loading="lazy"
-          className="rounded-xl object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.02]"
-        />
-      )}
+      ) : null}
 
       <span
         className="pointer-events-none absolute left-1.5 top-1.5 h-4 w-4 border-l border-t border-gold/25 opacity-50 transition-opacity group-hover:opacity-90"
@@ -91,13 +104,14 @@ function GalleryPreviewTile({ item }: { item: GalleryPhotoItem }) {
 
 const GallerySection = () => {
   const [filter, setFilter] = useState("all");
-  const { categories } = useGalleryCategories();
-  const { photos, isLoading } = useGalleryPhotos(filter, 8);
+  const { ref, inView } = useInViewLoad<HTMLElement>();
+  const { categories } = useGalleryCategories(inView);
+  const { photos, isLoading } = useGalleryPhotos(filter, 8, inView);
   const previewPhotos = useMemo(() => photos.slice(0, 8), [photos]);
   const rows = useMemo(() => brickRows(previewPhotos), [previewPhotos]);
 
   return (
-    <section id="gallery" className="bg-transparent px-4 py-20">
+    <section ref={ref} id="gallery" className="bg-transparent px-4 py-20">
       <div className="relative mx-auto mb-10 max-w-6xl text-center">
         <div className="pointer-events-none absolute left-1/2 top-2 -translate-x-1/2">
           <div className="h-32 w-[min(26rem,92vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(197,165,90,0.1),transparent_75%)] blur-3xl opacity-75" />

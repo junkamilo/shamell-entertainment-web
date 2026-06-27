@@ -9,11 +9,21 @@ import {
 import RevealOnView from "@/components/shared/RevealOnView";
 import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
+import { useInViewLoad } from "@/hooks/use-in-view-load";
+import type { OnComingEventsPromo } from "@/lib/onComingSettings";
 import { mapPublicUpcomingHubEvents } from "@/lib/mapPublicUpcomingHubEvents";
 import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/onComingEventsRoutes";
 
-export default function OnComingEventsPromoSection() {
-  const { clientEnabled, promo, isLoading: settingsLoading } = useOnComingEventsSettings();
+type OnComingEventsPromoSectionProps = {
+  initialSettings?: OnComingEventsPromo | null;
+};
+
+export default function OnComingEventsPromoSection({
+  initialSettings,
+}: OnComingEventsPromoSectionProps = {}) {
+  const { clientEnabled, promo, isLoading: settingsLoading } =
+    useOnComingEventsSettings(initialSettings);
+  const { ref, inView } = useInViewLoad<HTMLElement>();
   const apiBaseUrl = useMemo(
     () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
     [],
@@ -26,6 +36,7 @@ export default function OnComingEventsPromoSection() {
       setEventsLoading(false);
       return;
     }
+    if (!inView) return;
 
     let cancelled = false;
     setEventsLoading(true);
@@ -45,7 +56,7 @@ export default function OnComingEventsPromoSection() {
     return () => {
       cancelled = true;
     };
-  }, [apiBaseUrl, clientEnabled]);
+  }, [apiBaseUrl, clientEnabled, inView]);
 
   if (settingsLoading || !clientEnabled) return null;
 
@@ -56,7 +67,11 @@ export default function OnComingEventsPromoSection() {
   const loading = eventsLoading;
 
   return (
-    <section id="on-coming-events" className="bg-transparent px-4 py-20 md:py-24">
+    <section
+      ref={ref}
+      id="on-coming-events"
+      className="bg-transparent px-4 py-20 md:py-24"
+    >
       <div className="mx-auto max-w-6xl">
         <RevealOnView className="relative mb-10 text-center md:mb-12" delay={40}>
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">

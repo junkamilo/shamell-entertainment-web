@@ -1,8 +1,4 @@
 import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
-import {
-  buildAboutHeroVideoPosterUrl,
-  buildAboutHeroVideoStreamUrl,
-} from "@/lib/aboutHeroVideoDelivery";
 
 export type AboutContentItem = {
   title: string;
@@ -63,18 +59,15 @@ export function normalizeAboutPayload(data: unknown): AboutContentItem | null {
 
   const heroMediaType = inferHeroMediaType(payload);
   const imageUrl = typeof payload.imageUrl === "string" ? payload.imageUrl : null;
+  // The backend always emits delivery URLs for video heroes; no client fallback.
   const videoDeliveryUrl =
     typeof payload.videoDeliveryUrl === "string" && payload.videoDeliveryUrl.trim()
       ? payload.videoDeliveryUrl.trim()
-      : heroMediaType === "VIDEO"
-        ? buildAboutHeroVideoStreamUrl(imageUrl)
-        : null;
+      : null;
   const videoPosterUrl =
     typeof payload.videoPosterUrl === "string" && payload.videoPosterUrl.trim()
       ? payload.videoPosterUrl.trim()
-      : heroMediaType === "VIDEO"
-        ? buildAboutHeroVideoPosterUrl(imageUrl)
-        : null;
+      : null;
 
   return {
     title: payload.title,

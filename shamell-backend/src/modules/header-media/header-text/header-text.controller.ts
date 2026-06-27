@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Patch,
@@ -18,6 +19,7 @@ export class HeaderTextController {
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
   getPublicHeaderText() {
     return this.headerTextService.getPublicHeaderText();
   }

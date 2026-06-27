@@ -1,89 +1,165 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useHeaderText } from "@/hooks/use-header-text";
 import { fontClassForToken } from "@/lib/headerTextStyleTokens";
+import type { HeaderTextContent } from "@/lib/headerTextTypes";
 import { buildHeroWaveClipPathD } from "@/lib/heroPearlWave";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import { cn } from "@/lib/utils";
 import HeroFallbackBackground from "./HeroFallbackBackground";
-import type { PublicHeaderPhoto } from "@/lib/fetchPublicHeaderMedia";
+import {
+  normalizeHeaderPhotos,
+  type PublicHeaderPhoto,
+} from "@/lib/fetchPublicHeaderMedia";
 
 const heroWaveClipPathId = "shamell-hero-wave-clip";
 const heroClipPath = `url(#${heroWaveClipPathId})`;
-
-type HeaderHeroPhoto = {
-  id: string;
-  imageUrl: string;
-  mediaType: "IMAGE" | "VIDEO";
-  focalX?: number;
-  focalY?: number;
-  focalMobileX?: number;
-  focalMobileY?: number;
-};
 
 function clampPercent(value: number | undefined, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function headerHeroMediaType(
-  imageUrl: string,
-  raw: unknown,
-): "IMAGE" | "VIDEO" {
-  if (serviceCatalogMediaTypeFromUrl(imageUrl) === "VIDEO") return "VIDEO";
-  if (raw === "VIDEO") return "VIDEO";
-  return "IMAGE";
+/** Build a Cloudinary width-descriptor srcset from a mobile/desktop pair. */
+function buildSrcSet(
+  mobileUrl: string | null,
+  desktopUrl: string | null,
+  mobileW: number,
+  desktopW: number,
+): string | undefined {
+  const parts = [
+    mobileUrl ? `${mobileUrl} ${mobileW}w` : null,
+    desktopUrl ? `${desktopUrl} ${desktopW}w` : null,
+  ].filter(Boolean);
+  return parts.length ? parts.join(", ") : undefined;
 }
 
-function HeroSlideMedia({
-  url,
-  isVideo,
-  objectPosition,
-  className,
+/** Build inline CSS vars so a single element can switch object-position per breakpoint. */
+function heroFocalStyle(
+  desktopPosition: string,
+  mobilePosition: string,
+): CSSProperties {
+  return {
+    ["--hero-focal" as string]: desktopPosition,
+    ["--hero-focal-mobile" as string]: mobilePosition,
+  };
+}
+
+/** Deferred hero video: poster is the LCP image; <video> fades in once playable. */
+function HeroSlideVideo({
+  photo,
+  isFirst,
+  canPlay,
+  desktopPosition,
+  mobilePosition,
 }: {
-  url: string;
-  isVideo: boolean;
-  objectPosition: string;
-  className: string;
+  photo: PublicHeaderPhoto;
+  isFirst: boolean;
+  canPlay: boolean;
+  desktopPosition: string;
+  mobilePosition: string;
 }) {
-  if (isVideo) {
-    return (
-      <video
-        src={url}
-        className={className}
-        style={{ objectPosition }}
-        muted
-        playsInline
-        loop
-        autoPlay
-        aria-hidden
-      />
-    );
-  }
+  const [videoReady, setVideoReady] = useState(false);
+  const posterSrc = photo.videoPosterUrl ?? photo.videoPosterUrlMobile;
+  const posterSrcSet = buildSrcSet(
+    photo.videoPosterUrlMobile,
+    photo.videoPosterUrl,
+    480,
+    720,
+  );
+  const focalStyle = heroFocalStyle(desktopPosition, mobilePosition);
+
+  return (
+    <div className="absolute inset-0">
+      {posterSrc ? (
+        <img
+          src={posterSrc}
+          srcSet={posterSrcSet}
+          sizes="100vw"
+          alt=""
+          fetchPriority={isFirst ? "high" : "auto"}
+          loading={isFirst ? "eager" : "lazy"}
+          decoding="async"
+          className={cn(
+            "hero-focal-img absolute inset-0 h-full w-full object-cover transition-opacity duration-500",
+            videoReady ? "opacity-0" : "opacity-100",
+          )}
+          style={focalStyle}
+          aria-hidden
+        />
+      ) : null}
+      {canPlay && photo.videoDeliveryUrl ? (
+        <video
+          src={photo.videoDeliveryUrl}
+          className={cn(
+            "hero-focal-img absolute inset-0 h-full w-full object-cover transition-opacity duration-500",
+            videoReady ? "opacity-100" : "opacity-0",
+          )}
+          style={focalStyle}
+          muted
+          playsInline
+          loop
+          autoPlay
+          preload={isFirst ? "metadata" : "none"}
+          onCanPlay={() => setVideoReady(true)}
+          onPlaying={() => setVideoReady(true)}
+          aria-hidden
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Responsive hero image: a single <img> with a Cloudinary srcset (served
+ * straight from the CDN). Per-device focal point is preserved via CSS vars
+ * (`--hero-focal` / `--hero-focal-mobile`) consumed by `.hero-focal-img`.
+ */
+function HeroSlideImage({
+  photo,
+  isFirst,
+  desktopPosition,
+  mobilePosition,
+}: {
+  photo: PublicHeaderPhoto;
+  isFirst: boolean;
+  desktopPosition: string;
+  mobilePosition: string;
+}) {
+  const src = photo.imageUrl ?? photo.imageUrlMobile;
+  if (!src) return null;
   return (
     <img
-      src={url}
+      src={src}
+      srcSet={buildSrcSet(photo.imageUrlMobile, photo.imageUrl, 960, 1920)}
+      sizes="100vw"
       alt=""
-      className={className}
-      style={{ objectPosition }}
+      fetchPriority={isFirst ? "high" : "auto"}
+      loading={isFirst ? "eager" : "lazy"}
+      decoding={isFirst ? "sync" : "async"}
+      className="hero-focal-img absolute inset-0 h-full w-full object-cover"
+      style={heroFocalStyle(desktopPosition, mobilePosition)}
     />
   );
 }
 
 type HeroSectionProps = {
   initialPhotos?: PublicHeaderPhoto[];
+  initialHeaderText?: HeaderTextContent | null;
 };
 
-const HeroSection = ({ initialPhotos = [] }: HeroSectionProps) => {
-  const { content: headerText } = useHeaderText();
+const HeroSection = ({
+  initialPhotos = [],
+  initialHeaderText,
+}: HeroSectionProps) => {
+  const { content: headerText } = useHeaderText(initialHeaderText);
   const apiBaseUrl = useMemo(
     () => process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001",
     [],
   );
-  const [photos, setPhotos] = useState<HeaderHeroPhoto[]>(initialPhotos);
+  const [photos, setPhotos] = useState<PublicHeaderPhoto[]>(initialPhotos);
   const [activeIndex, setActiveIndex] = useState(0);
   const [hasHydrated, setHasHydrated] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -107,35 +183,12 @@ const HeroSection = ({ initialPhotos = [] }: HeroSectionProps) => {
     const load = async () => {
       try {
         const response = await fetch(`${apiBaseUrl}/api/v1/header-media`, {
-          cache: "no-store",
+          next: { revalidate: 120 },
         });
+        if (!response.ok) return;
         const data = await response.json().catch(() => []);
-        if (!response.ok || !Array.isArray(data)) return;
-        const items = data
-          .map((item) => {
-            const imageUrl =
-              typeof item?.imageUrl === "string" ? item.imageUrl.trim() : "";
-            if (!imageUrl) return null;
-            return {
-              id: typeof item?.id === "string" ? item.id : imageUrl,
-              imageUrl,
-              mediaType: headerHeroMediaType(imageUrl, item?.mediaType),
-              focalX:
-                typeof item?.focalX === "number" ? item.focalX : undefined,
-              focalY:
-                typeof item?.focalY === "number" ? item.focalY : undefined,
-              focalMobileX:
-                typeof item?.focalMobileX === "number"
-                  ? item.focalMobileX
-                  : undefined,
-              focalMobileY:
-                typeof item?.focalMobileY === "number"
-                  ? item.focalMobileY
-                  : undefined,
-            } as HeaderHeroPhoto;
-          })
-          .filter((item) => item !== null) as HeaderHeroPhoto[];
-        setPhotos(items);
+        const items = normalizeHeaderPhotos(data);
+        if (items.length) setPhotos(items);
       } catch {
         // Keep fallback background when API is unavailable.
       }
@@ -208,18 +261,34 @@ const HeroSection = ({ initialPhotos = [] }: HeroSectionProps) => {
                           }}
                         >
                           <div className="absolute inset-0">
-                            <HeroSlideMedia
-                              url={activePhoto.imageUrl}
-                              isVideo={activePhoto.mediaType === "VIDEO"}
-                              objectPosition={`${clampPercent(activePhoto.focalX, 50)}% ${clampPercent(activePhoto.focalY, 35)}%`}
-                              className="absolute inset-0 hidden h-full w-full object-cover md:block"
-                            />
-                            <HeroSlideMedia
-                              url={activePhoto.imageUrl}
-                              isVideo={activePhoto.mediaType === "VIDEO"}
-                              objectPosition={`${clampPercent(activePhoto.focalMobileX, clampPercent(activePhoto.focalX, 50))}% ${clampPercent(activePhoto.focalMobileY, clampPercent(activePhoto.focalY, 35))}%`}
-                              className="absolute inset-0 h-full w-full object-cover md:hidden"
-                            />
+                            {(() => {
+                              const desktopX = clampPercent(
+                                activePhoto.focalX,
+                                50,
+                              );
+                              const desktopY = clampPercent(
+                                activePhoto.focalY,
+                                35,
+                              );
+                              const desktopPosition = `${desktopX}% ${desktopY}%`;
+                              const mobilePosition = `${clampPercent(activePhoto.focalMobileX, desktopX)}% ${clampPercent(activePhoto.focalMobileY, desktopY)}%`;
+                              return activePhoto.mediaType === "VIDEO" ? (
+                                <HeroSlideVideo
+                                  photo={activePhoto}
+                                  isFirst={activeIndex === 0}
+                                  canPlay={animateVisuals}
+                                  desktopPosition={desktopPosition}
+                                  mobilePosition={mobilePosition}
+                                />
+                              ) : (
+                                <HeroSlideImage
+                                  photo={activePhoto}
+                                  isFirst={activeIndex === 0}
+                                  desktopPosition={desktopPosition}
+                                  mobilePosition={mobilePosition}
+                                />
+                              );
+                            })()}
                           </div>
                         </motion.div>
                       ) : null}

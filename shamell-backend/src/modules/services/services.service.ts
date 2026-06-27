@@ -6,7 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
-import { cloudinaryDeliveryUrl } from '../../common/util/cloudinary-delivery.util';
+import {
+  imageUrl as toDeliveryImageUrl,
+  videoUrl as toDeliveryVideoUrl,
+} from '../../common/util/cloudinary-delivery.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { CreateServiceTypeDto } from './dto/create-service-type.dto';
@@ -105,6 +108,7 @@ export class ServicesService {
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 280);
+    const hero = this.deliverCatalogHeroUrls(service.imageUrl);
     return {
       kind: 'service' as const,
       id: service.id,
@@ -112,8 +116,10 @@ export class ServicesService {
       description: service.description,
       descriptionPreview: preview || undefined,
       items: service.items,
-      imageUrl: this.publicServiceImageUrl(service.imageUrl),
-      heroMediaType: this.catalogHeroMediaType(service.imageUrl),
+      imageUrl: hero.imageUrl,
+      heroMediaType: hero.heroMediaType,
+      heroPosterUrl: hero.heroPosterUrl,
+      heroPosterUrlMobile: hero.heroPosterUrlMobile,
       contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
     };
   }
@@ -143,6 +149,7 @@ export class ServicesService {
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 280);
+    const hero = this.deliverCatalogHeroUrls(service.imageUrl);
     return {
       kind: 'service' as const,
       id: service.id,
@@ -150,8 +157,10 @@ export class ServicesService {
       description: service.description,
       descriptionPreview: preview || undefined,
       items: service.items,
-      imageUrl: this.publicServiceImageUrl(service.imageUrl),
-      heroMediaType: this.catalogHeroMediaType(service.imageUrl),
+      imageUrl: hero.imageUrl,
+      heroMediaType: hero.heroMediaType,
+      heroPosterUrl: hero.heroPosterUrl,
+      heroPosterUrlMobile: hero.heroPosterUrlMobile,
       contactInquiryCode: service.serviceType.contactInquiryCode ?? null,
     };
   }
@@ -438,9 +447,35 @@ export class ServicesService {
     }
   }
 
-  private publicServiceImageUrl(imageUrl: string | null): string | null {
-    if (!imageUrl) return null;
-    return cloudinaryDeliveryUrl(imageUrl, { width: 1200 }) ?? imageUrl;
+  private deliverCatalogHeroUrls(imageUrl: string | null): {
+    imageUrl: string | null;
+    heroMediaType: 'IMAGE' | 'VIDEO' | undefined;
+    heroPosterUrl: string | null;
+    heroPosterUrlMobile: string | null;
+  } {
+    if (!imageUrl) {
+      return {
+        imageUrl: null,
+        heroMediaType: undefined,
+        heroPosterUrl: null,
+        heroPosterUrlMobile: null,
+      };
+    }
+    const heroMediaType = this.catalogHeroMediaType(imageUrl);
+    if (heroMediaType === 'VIDEO') {
+      return {
+        imageUrl: toDeliveryVideoUrl(imageUrl, 'stream720') ?? imageUrl,
+        heroMediaType: 'VIDEO',
+        heroPosterUrl: toDeliveryVideoUrl(imageUrl, 'poster720'),
+        heroPosterUrlMobile: toDeliveryVideoUrl(imageUrl, 'poster480'),
+      };
+    }
+    return {
+      imageUrl: toDeliveryImageUrl(imageUrl, 'card') ?? imageUrl,
+      heroMediaType: 'IMAGE',
+      heroPosterUrl: null,
+      heroPosterUrlMobile: null,
+    };
   }
 
   private mapPublicService(service: {
@@ -462,9 +497,13 @@ export class ServicesService {
     updatedAt: Date;
   }) {
     const mapped = this.mapService(service);
+    const hero = this.deliverCatalogHeroUrls(mapped.imageUrl);
     return {
       ...mapped,
-      imageUrl: this.publicServiceImageUrl(mapped.imageUrl),
+      imageUrl: hero.imageUrl,
+      heroMediaType: hero.heroMediaType ?? mapped.heroMediaType,
+      heroPosterUrl: hero.heroPosterUrl,
+      heroPosterUrlMobile: hero.heroPosterUrlMobile,
     };
   }
 

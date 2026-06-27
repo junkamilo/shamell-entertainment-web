@@ -4,7 +4,6 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EventCatalogCardHero } from "@/components/catalog/EventCatalogCardHero";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 import { FixedTicketInventoryDisplay } from "@/components/shared/FixedTicketInventoryDisplay";
 import {
   isFutureEventStart,
@@ -21,6 +20,8 @@ export type OnComingEventHubCardItem = {
   eventTypeName: string;
   heroImageUrl: string | null;
   heroMediaType?: "IMAGE" | "VIDEO";
+  heroPosterUrl?: string | null;
+  heroPosterUrlMobile?: string | null;
   experienceType?: "CLASSES" | "VENUE_SEATING" | null;
   purchaseMode?: UpcomingPurchaseMode;
   purchasable?: boolean;
@@ -94,9 +95,7 @@ export function OnComingEventHubCard({
   const tableInventoryVisible = showTableInventory(event);
   const showCountdown =
     (isFixedTicket || isSeating) && isFutureEventStart(event.eventStartsAt);
-  const heroIsVideo =
-    event.heroMediaType === "VIDEO" ||
-    serviceCatalogMediaTypeFromUrl(event.heroImageUrl) === "VIDEO";
+  const heroIsVideo = event.heroMediaType === "VIDEO";
 
   return (
     <article
@@ -125,7 +124,10 @@ export function OnComingEventHubCard({
       <div className="relative">
         <EventCatalogCardHero
           imageUrl={event.heroImageUrl}
-          isVideo={heroIsVideo}
+          mediaType={heroIsVideo ? "VIDEO" : "IMAGE"}
+          posterUrl={event.heroPosterUrl}
+          posterUrlMobile={event.heroPosterUrlMobile}
+          videoUrl={heroIsVideo ? event.heroImageUrl : null}
           title={event.eventTypeName}
           aspectClassName="aspect-[3/4]"
         />

@@ -11,12 +11,14 @@ type ServicesApiItem = {
   items?: string[];
   imageUrl?: string | null;
   heroMediaType?: string | null;
+  heroPosterUrl?: string | null;
+  heroPosterUrlMobile?: string | null;
   contactInquiryCode?: string | null;
 };
 
 type ValidServiceApiItem = Required<Pick<ServicesApiItem, "id" | "serviceTypeName" | "description" | "items">> & {
   imageUrl: string;
-} & Pick<ServicesApiItem, "contactInquiryCode" | "heroMediaType">;
+} & Pick<ServicesApiItem, "contactInquiryCode" | "heroMediaType" | "heroPosterUrl" | "heroPosterUrlMobile">;
 
 const isValidService = (item: ServicesApiItem): item is ValidServiceApiItem =>
   Boolean(
@@ -36,11 +38,12 @@ const toSlug = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-export function useExperiences() {
+export function useExperiences(enabled: boolean = true) {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return;
     const baseUrl = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, "");
 
     let isCancelled = false;
@@ -62,20 +65,29 @@ export function useExperiences() {
               typeof item.heroMediaType === "string" && item.heroMediaType.trim()
                 ? item.heroMediaType.trim().toUpperCase()
                 : "";
-            const heroMediaType: "IMAGE" | "VIDEO" | undefined =
-              explicit === "VIDEO" || serviceCatalogMediaTypeFromUrl(url) === "VIDEO"
+            const heroMediaType: "IMAGE" | "VIDEO" =
+              explicit === "VIDEO"
                 ? "VIDEO"
                 : explicit === "IMAGE"
                   ? "IMAGE"
-                  : undefined;
+                  : serviceCatalogMediaTypeFromUrl(url) === "VIDEO"
+                    ? "VIDEO"
+                    : "IMAGE";
             return {
               id: item.id,
               slug: toSlug(item.serviceTypeName),
               title: item.serviceTypeName,
               description: item.description,
               items: item.items,
-              image: url,
-              ...(heroMediaType ? { heroMediaType } : {}),
+              image: heroMediaType === "IMAGE" ? url : "",
+              heroMediaType,
+              videoUrl: heroMediaType === "VIDEO" ? url : null,
+              posterUrl:
+                typeof item.heroPosterUrl === "string" ? item.heroPosterUrl : null,
+              posterUrlMobile:
+                typeof item.heroPosterUrlMobile === "string"
+                  ? item.heroPosterUrlMobile
+                  : null,
               contactInquiryCode: item.contactInquiryCode ?? null,
             };
           });
@@ -92,7 +104,7 @@ export function useExperiences() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return { experiences, isLoading };
 }

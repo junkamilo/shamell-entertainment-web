@@ -1,72 +1,51 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getPublicApiBaseUrl } from "@/app/contacto/lib/apiBaseUrl";
 import { ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT } from "@/lib/onComingEventsSettingsEvents";
+import {
+  defaultOnComingSettings,
+  normalizeOnComingSettings,
+  type OnComingEventsPromo,
+} from "@/lib/onComingSettings";
 
-export type OnComingEventsPromo = {
-  clientEnabled: boolean;
-  promoTitle: string | null;
-  promoDescription: string | null;
-  promoImageUrl: string | null;
-  reservationEventDate: string | null;
-  reservationOpensAt: string | null;
-  reservationClosesAt: string | null;
-  reservationEventLabel: string | null;
-  reservationTimezone: string;
-  updatedAt: string | null;
-};
+export type { OnComingEventsPromo };
 
 /** @deprecated Use OnComingEventsPromo */
 export type VenueLayoutPromo = OnComingEventsPromo;
 
-const defaultPromo: OnComingEventsPromo = {
-  clientEnabled: false,
-  promoTitle: null,
-  promoDescription: null,
-  promoImageUrl: null,
-  reservationEventDate: null,
-  reservationOpensAt: null,
-  reservationClosesAt: null,
-  reservationEventLabel: null,
-  reservationTimezone: "America/New_York",
-  updatedAt: null,
-};
-
-export function useOnComingEventsSettings() {
-  const [promo, setPromo] = useState<OnComingEventsPromo>(defaultPromo);
-  const [isLoading, setIsLoading] = useState(true);
+export function useOnComingEventsSettings(
+  initialSettings?: OnComingEventsPromo | null,
+) {
+  const [promo, setPromo] = useState<OnComingEventsPromo>(
+    initialSettings ?? defaultOnComingSettings,
+  );
+  const [isLoading, setIsLoading] = useState(!initialSettings);
+  const skipInitialLoad = useRef(Boolean(initialSettings));
 
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
       const apiBaseUrl = getPublicApiBaseUrl();
       const response = await fetch(`${apiBaseUrl}/api/v1/on-coming-events/settings`, {
-        cache: "no-store",
+        next: { revalidate: 120 },
       });
       if (!response.ok) throw new Error("settings unavailable");
-      const data = (await response.json()) as OnComingEventsPromo;
-      setPromo({
-        clientEnabled: Boolean(data.clientEnabled),
-        promoTitle: data.promoTitle ?? null,
-        promoDescription: data.promoDescription ?? null,
-        promoImageUrl: data.promoImageUrl ?? null,
-        reservationEventDate: data.reservationEventDate ?? null,
-        reservationOpensAt: data.reservationOpensAt ?? null,
-        reservationClosesAt: data.reservationClosesAt ?? null,
-        reservationEventLabel: data.reservationEventLabel ?? null,
-        reservationTimezone: data.reservationTimezone ?? "America/New_York",
-        updatedAt: data.updatedAt ?? null,
-      });
+      setPromo(normalizeOnComingSettings(await response.json()));
     } catch {
-      setPromo(defaultPromo);
+      setPromo(defaultOnComingSettings);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void load();
+    // SSR already seeded the settings; skip the first client fetch.
+    if (skipInitialLoad.current) {
+      skipInitialLoad.current = false;
+    } else {
+      void load();
+    }
 
     const onChanged = () => void load();
     window.addEventListener(ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT, onChanged);
