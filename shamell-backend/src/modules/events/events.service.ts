@@ -12,6 +12,12 @@ import {
   UpcomingExperienceType,
 } from '@prisma/client';
 import { ensureUniqueEventSlug } from '../../common/event-slug.util';
+import {
+  type ImagePreset,
+  type VideoVariant,
+  mediaDeliveryUrl,
+  videoUrl as toDeliveryVideoUrl,
+} from '../../common/util/cloudinary-delivery.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GalleryService } from '../gallery/gallery.service';
 import { resolveUpcomingPurchaseContext } from '../upcoming-events/upcoming-purchase-mode.util';
@@ -66,6 +72,44 @@ export class EventsService {
       }
     }
     return mediaType ?? GalleryMediaType.IMAGE;
+  }
+
+  /** Optimized delivery URL for a gallery row, branching image vs video. */
+  private deliverGalleryUrl(
+    url: string | null | undefined,
+    mediaType: GalleryMediaType | null | undefined,
+    imagePreset: ImagePreset,
+    videoVariant: VideoVariant = 'stream720',
+  ): string | null {
+    if (!url?.trim()) return null;
+    const isVideo =
+      this.effectiveGalleryMediaType(url, mediaType) === GalleryMediaType.VIDEO;
+    return mediaDeliveryUrl(url, isVideo, imagePreset, videoVariant) ?? url;
+  }
+
+  /** Catalog hero: stream/image URL + poster pair for video cards. */
+  private mapCatalogHeroFields(
+    rawUrl: string | null | undefined,
+    mediaType: GalleryMediaType | null | undefined,
+  ) {
+    if (!rawUrl?.trim()) {
+      return {
+        heroImageUrl: null as string | null,
+        heroMediaType: null as GalleryMediaType | null,
+        heroPosterUrl: null as string | null,
+        heroPosterUrlMobile: null as string | null,
+      };
+    }
+    const heroMediaType = this.effectiveGalleryMediaType(rawUrl, mediaType);
+    const isVideo = heroMediaType === GalleryMediaType.VIDEO;
+    return {
+      heroImageUrl: this.deliverGalleryUrl(rawUrl, mediaType, 'card'),
+      heroMediaType,
+      heroPosterUrl: isVideo ? toDeliveryVideoUrl(rawUrl, 'poster720') : null,
+      heroPosterUrlMobile: isVideo
+        ? toDeliveryVideoUrl(rawUrl, 'poster480')
+        : null,
+    };
   }
 
   private async resolveEventTypeIdForWrite(dto: {
@@ -957,6 +1001,7 @@ export class EventsService {
     const groups = this.mapOccasionGroups(item.eventType.occasionLinks);
     const photos = item.galleryPhotos ?? [];
     const first = photos[0];
+    const hero = this.mapCatalogHeroFields(first?.imageUrl, first?.mediaType);
     return {
       id: item.id,
       eventTypeId: item.eventType.id,
@@ -966,11 +1011,8 @@ export class EventsService {
       items: item.items,
       images: photos
         .filter((p) => p.mediaType === GalleryMediaType.IMAGE)
-        .map((p) => p.imageUrl),
-      heroImageUrl: first?.imageUrl ?? null,
-      heroMediaType: first
-        ? this.effectiveGalleryMediaType(first.imageUrl, first.mediaType)
-        : null,
+        .map((p) => this.deliverGalleryUrl(p.imageUrl, p.mediaType, 'card')),
+      ...hero,
       showOnHome: item.showOnHome,
       publicSection: item.publicSection,
       lineKind: 'event' as const,
@@ -1041,12 +1083,9 @@ export class EventsService {
         'mediaType' in p,
     );
     const first = rows[0];
-    const firstMediaType = first
-      ? this.effectiveGalleryMediaType(
-          first.imageUrl,
-          'mediaType' in first && first.mediaType ? first.mediaType : null,
-        )
-      : GalleryMediaType.IMAGE;
+    const firstMediaType =
+      first && 'mediaType' in first && first.mediaType ? first.mediaType : null;
+    const hero = this.mapCatalogHeroFields(first?.imageUrl, firstMediaType);
 
     return {
       id: item.id,
@@ -1057,12 +1096,20 @@ export class EventsService {
       description: item.description,
       items: item.items,
       price: item.price != null ? Number(item.price) : null,
-      images: imageRows.map((p) => p.imageUrl),
-      heroImageUrl: first?.imageUrl ?? null,
-      heroMediaType: first ? firstMediaType : null,
+      images: imageRows.map(
+        (p) =>
+          this.deliverGalleryUrl(
+            p.imageUrl,
+            'mediaType' in p ? p.mediaType : null,
+            'card',
+          ) ?? p.imageUrl,
+      ),
+      ...hero,
       catalogImages: catalogImages.map((p) => ({
         id: p.id,
-        imageUrl: p.imageUrl,
+        imageUrl:
+          this.deliverGalleryUrl(p.imageUrl, p.mediaType, 'galleryThumb') ??
+          p.imageUrl,
         mediaType: p.mediaType,
       })),
       isActive: item.isActive,

@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Patch,
@@ -26,6 +27,7 @@ export class VenueLayoutSettingsController {
 
   @Get('settings')
   @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=300')
   getPublicSettings() {
     return this.venueLayoutSettingsService.getPublicSettings();
   }

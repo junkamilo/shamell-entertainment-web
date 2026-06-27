@@ -8,6 +8,7 @@ export type GalleryCategoryApiItem = {
 export type GalleryPhotoApiItem = {
   id: string;
   imageUrl: string;
+  posterUrl?: string | null;
   mediaType: "IMAGE" | "VIDEO";
   category: {
     id: string;
@@ -34,6 +35,7 @@ export type GalleryTabItem = {
 export type GalleryPhotoItem = {
   id: string;
   src: string;
+  posterUrl: string | null;
   alt: string;
   categorySlug: string;
   mediaType: "IMAGE" | "VIDEO";

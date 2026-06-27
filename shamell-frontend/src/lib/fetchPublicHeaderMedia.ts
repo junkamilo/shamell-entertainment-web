@@ -1,7 +1,11 @@
 export type PublicHeaderPhoto = {
   id: string;
-  imageUrl: string;
   mediaType: "IMAGE" | "VIDEO";
+  imageUrl: string | null;
+  imageUrlMobile: string | null;
+  videoDeliveryUrl: string | null;
+  videoPosterUrl: string | null;
+  videoPosterUrlMobile: string | null;
   focalX?: number;
   focalY?: number;
   focalMobileX?: number;
@@ -15,17 +19,33 @@ function clampPercent(value: unknown): number | undefined {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+export function normalizeHeaderPhotos(data: unknown): PublicHeaderPhoto[] {
+  if (!Array.isArray(data)) return [];
+  return data
+    .map(normalizeHeaderPhoto)
+    .filter((item): item is PublicHeaderPhoto => item !== null);
+}
+
+function trimmedOrNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 function normalizeHeaderPhoto(item: unknown): PublicHeaderPhoto | null {
   if (!item || typeof item !== "object") return null;
   const row = item as Record<string, unknown>;
-  const imageUrl =
-    typeof row.imageUrl === "string" ? row.imageUrl.trim() : "";
-  if (!imageUrl) return null;
   const mediaType = row.mediaType === "VIDEO" ? "VIDEO" : "IMAGE";
+  const imageUrl = trimmedOrNull(row.imageUrl);
+  const videoDeliveryUrl = trimmedOrNull(row.videoDeliveryUrl);
+  // Keep the item if it carries any playable/displayable source.
+  if (!imageUrl && !videoDeliveryUrl) return null;
   return {
-    id: typeof row.id === "string" ? row.id : imageUrl,
-    imageUrl,
+    id: typeof row.id === "string" ? row.id : (imageUrl ?? videoDeliveryUrl)!,
     mediaType,
+    imageUrl,
+    imageUrlMobile: trimmedOrNull(row.imageUrlMobile),
+    videoDeliveryUrl,
+    videoPosterUrl: trimmedOrNull(row.videoPosterUrl),
+    videoPosterUrlMobile: trimmedOrNull(row.videoPosterUrlMobile),
     focalX: clampPercent(row.focalX),
     focalY: clampPercent(row.focalY),
     focalMobileX: clampPercent(row.focalMobileX),
@@ -43,10 +63,7 @@ export async function fetchPublicHeaderMedia(): Promise<PublicHeaderPhoto[]> {
     });
     if (!response.ok) return [];
     const data = await response.json().catch(() => []);
-    if (!Array.isArray(data)) return [];
-    return data
-      .map(normalizeHeaderPhoto)
-      .filter((item): item is PublicHeaderPhoto => item !== null);
+    return normalizeHeaderPhotos(data);
   } catch {
     return [];
   }

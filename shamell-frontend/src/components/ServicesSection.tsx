@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EventCatalogCard, type EventCatalogItem } from "@/components/catalog/EventCatalogCard";
 import RevealOnView from "@/components/shared/RevealOnView";
 import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
+import { useInViewLoad } from "@/hooks/use-in-view-load";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 
 type EventsApiItem = {
@@ -16,10 +17,21 @@ type EventsApiItem = {
   images?: string[];
   heroImageUrl?: string | null;
   heroMediaType?: string | null;
+  heroPosterUrl?: string | null;
+  heroPosterUrlMobile?: string | null;
 };
 
 type ValidEventApiItem = Required<Pick<EventsApiItem, "id" | "eventTypeName" | "description" | "items">> &
-  Pick<EventsApiItem, "contactInquiryCode" | "price" | "images" | "heroImageUrl" | "heroMediaType">;
+  Pick<
+    EventsApiItem,
+    | "contactInquiryCode"
+    | "price"
+    | "images"
+    | "heroImageUrl"
+    | "heroMediaType"
+    | "heroPosterUrl"
+    | "heroPosterUrlMobile"
+  >;
 
 const isValidEvent = (item: EventsApiItem): item is ValidEventApiItem =>
   Boolean(
@@ -35,10 +47,12 @@ const ServicesSection = () => {
     () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
     [],
   );
+  const { ref, inView } = useInViewLoad<HTMLElement>();
   const [services, setServices] = useState<EventCatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (!inView) return;
     let isCancelled = false;
     setIsLoading(true);
 
@@ -71,9 +85,14 @@ const ServicesSection = () => {
               typeof item.heroMediaType === "string" && item.heroMediaType.trim()
                 ? item.heroMediaType.trim().toUpperCase()
                 : "";
-            const inferredFromUrl = serviceCatalogMediaTypeFromUrl(heroUrl);
             const heroMediaType: "IMAGE" | "VIDEO" =
-              explicitMt === "VIDEO" || inferredFromUrl === "VIDEO" ? "VIDEO" : "IMAGE";
+              explicitMt === "VIDEO"
+                ? "VIDEO"
+                : explicitMt === "IMAGE"
+                  ? "IMAGE"
+                  : serviceCatalogMediaTypeFromUrl(heroUrl) === "VIDEO"
+                    ? "VIDEO"
+                    : "IMAGE";
             return {
               id: item.id,
               eventTypeName: item.eventTypeName,
@@ -83,6 +102,12 @@ const ServicesSection = () => {
               price: Number.isFinite(priceParsed as number) ? (priceParsed as number) : null,
               heroImageUrl: heroUrl,
               heroMediaType,
+              heroPosterUrl:
+                typeof item.heroPosterUrl === "string" ? item.heroPosterUrl : null,
+              heroPosterUrlMobile:
+                typeof item.heroPosterUrlMobile === "string"
+                  ? item.heroPosterUrlMobile
+                  : null,
             };
           });
 
@@ -98,10 +123,14 @@ const ServicesSection = () => {
     return () => {
       isCancelled = true;
     };
-  }, [apiBaseUrl]);
+  }, [apiBaseUrl, inView]);
 
   return (
-    <section id="experiences" className="overflow-x-hidden bg-transparent px-4 pb-20 pt-0">
+    <section
+      ref={ref}
+      id="experiences"
+      className="overflow-x-hidden bg-transparent px-4 pb-20 pt-0"
+    >
       <div className="relative mx-auto mb-12 max-w-6xl text-center">
         <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2">
           <div className="h-24 w-[min(20rem,88vw)] rounded-[100%] bg-[radial-gradient(ellipse_at_center,rgba(120,90,160,0.12),transparent_70%)] blur-3xl opacity-80" />

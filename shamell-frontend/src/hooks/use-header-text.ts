@@ -5,18 +5,23 @@ import { getPublicApiBaseUrl } from "@/app/contacto/lib/apiBaseUrl";
 import { mapHeaderTextFromApi } from "@/lib/headerTextStyleTokens";
 import { DEFAULT_HEADER_TEXT, type HeaderTextContent } from "@/lib/headerTextTypes";
 
-export function useHeaderText() {
-  const [content, setContent] = useState<HeaderTextContent>(DEFAULT_HEADER_TEXT);
-  const [isLoading, setIsLoading] = useState(true);
+export function useHeaderText(initialContent?: HeaderTextContent | null) {
+  const [content, setContent] = useState<HeaderTextContent>(
+    initialContent ?? DEFAULT_HEADER_TEXT,
+  );
+  const [isLoading, setIsLoading] = useState(!initialContent);
 
   useEffect(() => {
+    // SSR already provided the header text; no client fetch needed.
+    if (initialContent) return;
+
     let cancelled = false;
 
     async function load() {
       try {
         const base = getPublicApiBaseUrl();
         const response = await fetch(`${base}/api/v1/header-text`, {
-          cache: "no-store",
+          next: { revalidate: 300 },
         });
 
         if (!response.ok) {
@@ -39,7 +44,7 @@ export function useHeaderText() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [initialContent]);
 
   return { content, isLoading };
 }

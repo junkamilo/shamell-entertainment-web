@@ -5,11 +5,12 @@ import { galleryTabs as fallbackTabs } from "@/lib/galleryData";
 import { fetchGalleryCategories } from "../services/fetchGalleryCategories";
 import type { GalleryTabItem } from "../types/gallery.types";
 
-export function useGalleryCategories() {
+export function useGalleryCategories(enabled: boolean = true) {
   const [categories, setCategories] = useState<GalleryTabItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return;
     let isCancelled = false;
     setIsLoading(true);
 
@@ -28,7 +29,7 @@ export function useGalleryCategories() {
     return () => {
       isCancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return { categories, isLoading };
 }

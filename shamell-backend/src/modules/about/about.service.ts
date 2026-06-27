@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
+import { imageUrl as toDeliveryImageUrl } from '../../common/util/cloudinary-delivery.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpsertAboutContentDto } from './dto/upsert-about-content.dto';
 import {
@@ -35,8 +36,17 @@ export class AboutService {
     if (!latest) {
       throw new NotFoundException('About content not found.');
     }
-    const withDelivery = await this.ensureVideoDeliveryUrlsPersisted(latest);
-    return this.mapPublicAboutContent(withDelivery);
+    // No DB write on a public GET; delivery URLs are derived on the fly here
+    // and persisted only via the admin backfill endpoint.
+    return this.mapPublicAboutContent(latest);
+  }
+
+  /** Like getPublicAboutContent but returns null instead of throwing (aggregation-safe). */
+  async getPublicAboutContentOrNull() {
+    const latest = await this.prisma.aboutContent.findFirst({
+      orderBy: { updatedAt: 'desc' },
+    });
+    return latest ? this.mapPublicAboutContent(latest) : null;
   }
 
   /** Admin: persist derived delivery URLs and optionally warm Cloudinary CDN. */
@@ -495,32 +505,6 @@ export class AboutService {
     }
   }
 
-  private async ensureVideoDeliveryUrlsPersisted(
-    row: AboutContentRow,
-  ): Promise<AboutContentRow> {
-    if (this.normalizeHeroMediaType(row.heroMediaType) !== 'VIDEO') {
-      return row;
-    }
-    const imageUrl = row.imageUrl?.trim() ?? '';
-    if (!imageUrl) return row;
-
-    const videoDeliveryUrl = buildAboutHeroVideoDeliveryUrl(imageUrl);
-    const videoPosterUrl = buildAboutHeroVideoPosterUrl(imageUrl);
-    if (!videoDeliveryUrl || !videoPosterUrl) return row;
-
-    if (row.videoDeliveryUrl?.trim() && row.videoPosterUrl?.trim()) {
-      return row;
-    }
-
-    return await this.prisma.aboutContent.update({
-      where: { id: row.id },
-      data: {
-        videoDeliveryUrl: row.videoDeliveryUrl?.trim() || videoDeliveryUrl,
-        videoPosterUrl: row.videoPosterUrl?.trim() || videoPosterUrl,
-      },
-    });
-  }
-
   private async warmAboutVideoCdn(
     videoDeliveryUrl: string,
     videoPosterUrl: string,
@@ -539,6 +523,10 @@ export class AboutService {
     const heroMediaType = this.normalizeHeroMediaType(content.heroMediaType);
     return {
       ...base,
+      imageUrl:
+        heroMediaType === 'VIDEO'
+          ? null
+          : toDeliveryImageUrl(content.imageUrl, 'portrait'),
       videoDeliveryUrl:
         heroMediaType === 'VIDEO'
           ? content.videoDeliveryUrl?.trim() ||

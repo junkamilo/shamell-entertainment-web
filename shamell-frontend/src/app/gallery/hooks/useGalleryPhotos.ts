@@ -8,11 +8,16 @@ import {
 import { fetchGalleryPhotos } from "../services/fetchGalleryPhotos";
 import type { GalleryPhotoItem } from "../types/gallery.types";
 
-export function useGalleryPhotos(filter: string, limit?: number) {
+export function useGalleryPhotos(
+  filter: string,
+  limit?: number,
+  enabled: boolean = true,
+) {
   const [photos, setPhotos] = useState<GalleryPhotoItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (!enabled) return;
     let isCancelled = false;
     setIsLoading(true);
 
@@ -30,6 +35,7 @@ export function useGalleryPhotos(filter: string, limit?: number) {
           fallback.map((item) => ({
             id: item.id,
             src: item.src.src,
+            posterUrl: null,
             alt: item.alt,
             categorySlug: item.category,
             mediaType: "IMAGE" as const,
@@ -43,7 +49,7 @@ export function useGalleryPhotos(filter: string, limit?: number) {
     return () => {
       isCancelled = true;
     };
-  }, [filter, limit]);
+  }, [filter, limit, enabled]);
 
   return { photos, isLoading };
 }

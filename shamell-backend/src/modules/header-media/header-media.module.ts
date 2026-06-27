@@ -21,5 +21,6 @@ import { HeaderTextService } from './header-text/header-text.service';
   ],
   controllers: [HeaderMediaController, HeaderTextController],
   providers: [HeaderMediaService, HeaderTextService, AdminJwtGuard],
+  exports: [HeaderMediaService, HeaderTextService],
 })
 export class HeaderMediaModule {}

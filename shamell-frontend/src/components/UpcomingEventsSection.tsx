@@ -19,6 +19,8 @@ type EventsApiItem = {
   images?: string[];
   heroImageUrl?: string | null;
   heroMediaType?: string | null;
+  heroPosterUrl?: string | null;
+  heroPosterUrlMobile?: string | null;
   slug?: string;
   experienceType?: string;
   purchaseMode?: string;
@@ -35,6 +37,8 @@ type ValidEventApiItem = Required<
     | "images"
     | "heroImageUrl"
     | "heroMediaType"
+    | "heroPosterUrl"
+    | "heroPosterUrlMobile"
     | "slug"
     | "experienceType"
     | "purchaseMode"
@@ -112,6 +116,12 @@ export default function UpcomingEventsSection() {
                 eventTypeName: item.eventTypeName,
                 heroImageUrl: heroUrl,
                 heroMediaType,
+                heroPosterUrl:
+                  typeof item.heroPosterUrl === "string" ? item.heroPosterUrl : null,
+                heroPosterUrlMobile:
+                  typeof item.heroPosterUrlMobile === "string"
+                    ? item.heroPosterUrlMobile
+                    : null,
                 experienceType,
                 purchaseMode,
                 purchasable: item.purchasable === true,

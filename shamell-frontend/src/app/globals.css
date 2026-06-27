@@ -247,6 +247,11 @@
   }
 
   /* Service catalog cards (EventCatalogCard) */
+  .catalog-carousel-slide {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 480px;
+  }
+
   .animate-shamell-exp-card-in {
     opacity: 0;
     animation: shamell-exp-card-in 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -315,6 +320,21 @@
       animation: none;
       opacity: 1;
       transform: none;
+    }
+  }
+
+  /*
+   * Hero media focal point: a single <img>/<video> switches object-position per
+   * breakpoint via CSS vars set inline (--hero-focal desktop, --hero-focal-mobile).
+   * `max-width: 767.98px` matches Tailwind's `md` breakpoint (768px).
+   */
+  .hero-focal-img {
+    object-position: var(--hero-focal, 50% 35%);
+  }
+
+  @media (max-width: 767.98px) {
+    .hero-focal-img {
+      object-position: var(--hero-focal-mobile, var(--hero-focal, 50% 35%));
     }
   }
 }

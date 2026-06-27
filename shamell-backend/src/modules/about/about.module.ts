@@ -17,5 +17,6 @@ import { AboutService } from './about.service';
   ],
   controllers: [AboutController],
   providers: [AboutService, AdminJwtGuard],
+  exports: [AboutService],
 })
 export class AboutModule {}

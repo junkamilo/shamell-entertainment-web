@@ -24,6 +24,7 @@ import { ReservationEventTemplatesModule } from './modules/reservation-event-tem
 import { AdminPaymentsModule } from './modules/admin-payments/admin-payments.module';
 import { AdminStripeWebhooksModule } from './modules/admin-stripe-webhooks/admin-stripe-webhooks.module';
 import { HealthModule } from './modules/health/health.module';
+import { HomeModule } from './modules/home/home.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { HealthModule } from './modules/health/health.module';
     AdminPaymentsModule,
     AdminStripeWebhooksModule,
     HealthModule,
+    HomeModule,
   ],
 })
 export class AppModule {}
