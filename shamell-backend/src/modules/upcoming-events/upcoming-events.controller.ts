@@ -14,18 +14,27 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import {
+  CurrentAdmin,
+  type AdminJwtPayload,
+} from '../auth/decorators/current-admin.decorator';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { CreateClassCheckoutDto } from './dto/create-class-checkout.dto';
+import { CreateAdminClassEnrollmentDto } from './dto/create-admin-class-enrollment.dto';
 import { CreateClassBundleCheckoutDto } from './dto/create-class-bundle-checkout.dto';
 import { CreateClassPackageCheckoutDto } from './dto/create-class-package-checkout.dto';
 import { CreateFixedEventCheckoutDto } from './dto/create-fixed-event-checkout.dto';
 import { UpsertClassSessionDto } from './dto/upsert-class-session.dto';
 import { UpsertVenueConfigDto } from './dto/upsert-venue-config.dto';
 import { UpcomingEventsService } from './upcoming-events.service';
+import { AdminClassEnrollmentService } from './admin-class-enrollment.service';
 
 @Controller()
 export class UpcomingEventsController {
-  constructor(private readonly upcomingEventsService: UpcomingEventsService) {}
+  constructor(
+    private readonly upcomingEventsService: UpcomingEventsService,
+    private readonly adminClassEnrollment: AdminClassEnrollmentService,
+  ) {}
 
   @Get('class-enrollments/session-status')
   @HttpCode(HttpStatus.OK)
@@ -47,6 +56,31 @@ export class UpcomingEventsController {
       throw new BadRequestException('session_id is required.');
     }
     return this.upcomingEventsService.reconcileClassFromStripeSession(
+      sessionId.trim(),
+    );
+  }
+
+  @Get('class-enrollments/public/pay/checkout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  resolveClassPayCheckout(@Query('token') token: string) {
+    if (!token?.trim()) {
+      throw new BadRequestException('token is required.');
+    }
+    return this.adminClassEnrollment
+      .resolveClassPayCheckoutClientSecret(token.trim())
+      .then((clientSecret) => ({ clientSecret }));
+  }
+
+  @Post('upcoming-events/admin/fixed-event-enrollments/reconcile')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  reconcileFixedTicketAdmin(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.upcomingEventsService.reconcileFixedTicketFromStripeSession(
       sessionId.trim(),
     );
   }
@@ -82,6 +116,50 @@ export class UpcomingEventsController {
   @UseGuards(AdminJwtGuard)
   listAdminSessions(@Param('eventId', new ParseUUIDPipe()) eventId: string) {
     return this.upcomingEventsService.listAdminSessions(eventId);
+  }
+
+  @Get('upcoming-events/admin/bookable-class-events')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  listAdminBookableClassEvents() {
+    return this.adminClassEnrollment.listAdminBookableClassEvents();
+  }
+
+  @Get('upcoming-events/admin/events/:eventId/class-booking-context')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  getAdminClassBookingContext(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+  ) {
+    return this.adminClassEnrollment.getAdminClassBookingContext(eventId);
+  }
+
+  @Post('upcoming-events/admin/class-enrollments/checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  createAdminClassCheckoutSession(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreateAdminClassEnrollmentDto,
+  ) {
+    return this.adminClassEnrollment.createAdminClassCheckoutSession(
+      admin.id,
+      dto,
+    );
+  }
+
+  @Post('upcoming-events/admin/class-enrollments/cash')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  createAdminClassCashEnrollment(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreateAdminClassEnrollmentDto,
+  ) {
+    return this.adminClassEnrollment.createAdminClassCashEnrollment(
+      admin.id,
+      dto,
+    );
   }
 
   @Post('upcoming-events/admin/events/:eventId/sessions')

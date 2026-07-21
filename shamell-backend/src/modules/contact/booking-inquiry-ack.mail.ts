@@ -1,4 +1,4 @@
-import type { GuideInvestmentCompute } from './booking-guide-investment';
+import type { GuideInvestmentCompute } from '../booking-inquiry/booking-guide-investment';
 import {
   buildEmailHeading,
   buildEmailLabelLine,

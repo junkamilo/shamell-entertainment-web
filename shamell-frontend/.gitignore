@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+src/app/shamell-admin/agenda/agendar/tests/e2e/.auth/
+test-results/
+playwright-report/
 
 # next.js
 /.next/

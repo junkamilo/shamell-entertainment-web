@@ -5,7 +5,7 @@ import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import {
   fieldLabelClass,
   logisticsPickerTriggerClass,
-} from "@/app/shamell-admin/agenda/agendar/lib/agendarStyles";
+} from "@/app/shamell-admin/agenda/shared/lib/agendaFormStyles";
 import {
   formatDateDisplayUs,
   formatTimeDisplayUs,

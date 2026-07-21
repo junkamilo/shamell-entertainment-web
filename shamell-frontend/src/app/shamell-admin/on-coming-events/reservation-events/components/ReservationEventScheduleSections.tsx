@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 
 import {
   fieldLabelClass,
   logisticsPickerTriggerClass,
-} from "@/app/shamell-admin/agenda/agendar/lib/agendarStyles";
+} from "@/app/shamell-admin/agenda/shared/lib/agendaFormStyles";
 import { formatDateDisplayUs, formatTimeDisplayUs } from "@/lib/contactLogisticsUtils";
 import {
   defaultReservationWeekdays,

@@ -1,6 +1,6 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { AdminStripeWebhooksService } from './admin-stripe-webhooks.service';
 import { AdminStripeWebhookEventsQueryDto } from './dto/admin-stripe-webhook-events-query.dto';
 

@@ -18,7 +18,7 @@ import {
   CurrentAdmin,
   type AdminJwtPayload,
 } from '../auth/decorators/current-admin.decorator';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { AdminVenueReservationsQueryDto } from './dto/admin-venue-reservations-query.dto';
 import { CreateCheckoutSessionDto } from './dto/create-checkout-session.dto';
 import { ResendVenueConfirmationDto } from './dto/resend-confirmation.dto';

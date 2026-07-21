@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, StripeWebhookProcessingStatus } from '@prisma/client';
+import { buildPaginationMeta } from '../../common/pagination/pagination.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AdminStripeWebhookEventDetail,
@@ -103,17 +104,9 @@ export class AdminStripeWebhooksService {
       }),
     ]);
 
-    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
     return {
       items: rows.map(toRow),
-      meta: {
-        page,
-        perPage: limit,
-        totalItems,
-        totalPages,
-        hasPrev: page > 1,
-        hasNext: page < totalPages,
-      },
+      meta: buildPaginationMeta({ page, perPage: limit, totalItems }),
     };
   }
 

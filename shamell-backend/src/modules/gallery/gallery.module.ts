@@ -1,22 +1,12 @@
 import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
 import { GalleryController } from './gallery.controller';
 import { GalleryService } from './gallery.service';
 
 @Module({
-  imports: [
-    PrismaModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'change-me-in-production',
-      signOptions: {
-        expiresIn: (process.env.JWT_EXPIRES_IN ?? '7d') as never,
-      },
-    }),
-  ],
+  imports: [PrismaModule],
   controllers: [GalleryController],
-  providers: [GalleryService, AdminJwtGuard],
+  providers: [GalleryService],
   exports: [GalleryService],
 })
 export class GalleryModule {}

@@ -3,23 +3,14 @@
 import { Eye } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
-import type { AgendarFormState } from "../hooks/useAgendarFormState";
+import { AGENDAR_MOBILE_SECTIONS } from "../lib/agendarMobileSections";
+import type { AgendarMobileSectionListProps } from "../types/agendarComponents.types";
 import type { AgendarMobileSectionId } from "../types/agendar.types";
-
-const MOBILE_SECTIONS = [
-  { id: "event" as const, title: "EVENT SETUP", subtitle: "Type, occasion, service(s)" },
-  { id: "logistics" as const, title: "WHEN & WHERE", subtitle: "Date, time, location" },
-  { id: "client" as const, title: "CLIENT & NOTES", subtitle: "Guest details & notes" },
-];
-
-type AgendarMobileSectionListProps = {
-  form: AgendarFormState;
-};
 
 export function AgendarMobileSectionList({ form }: AgendarMobileSectionListProps) {
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-3">
-      {MOBILE_SECTIONS.map((row) => {
+      {AGENDAR_MOBILE_SECTIONS.map((row) => {
         const complete = form.mobileSectionStatus[row.id as AgendarMobileSectionId];
         return (
           <motion.div

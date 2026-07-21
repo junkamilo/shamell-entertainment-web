@@ -1,1 +1,1 @@
-export { AGENDA_HUB_PATH, AGENDA_MI_AGENDA_PATH } from "../../agendar/lib/agendarRoutes";
+export { AGENDA_HUB_PATH, AGENDA_MI_AGENDA_PATH } from "../../lib/agendaRoutes";

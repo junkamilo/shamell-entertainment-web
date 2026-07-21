@@ -7,7 +7,12 @@ function apiBase() {
   return (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, "");
 }
 
-export function usePublicAvailability(enabled = true) {
+type UsePublicAvailabilityOptions = {
+  polling?: boolean;
+};
+
+export function usePublicAvailability(enabled = true, options?: UsePublicAvailabilityOptions) {
+  const polling = options?.polling ?? true;
   const [rules, setRules] = useState<PublicAvailabilityRules | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +57,7 @@ export function usePublicAvailability(enabled = true) {
   }, [reload]);
 
   useEffect(() => {
-    if (!enabled || typeof window === "undefined") return;
+    if (!enabled || !polling || typeof window === "undefined") return;
 
     const onVisible = () => {
       if (document.visibilityState === "visible") reload();
@@ -67,7 +72,7 @@ export function usePublicAvailability(enabled = true) {
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("focus", onFocus);
     };
-  }, [enabled, reload]);
+  }, [enabled, polling, reload]);
 
   return { rules, isLoading, error, reload };
 }

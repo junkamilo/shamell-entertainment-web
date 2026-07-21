@@ -1,4 +1,4 @@
-import { AGENDA_PETICIONES_PATH } from "@/app/shamell-admin/agenda/agendar/lib/agendarRoutes";
+import { AGENDA_PETICIONES_PATH } from "@/app/shamell-admin/agenda/lib/agendaRoutes";
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
 import type { AdminBookingRow, CreateAdminBookingPayload } from "@/hooks/use-admin-bookings";
 import { buildInquiryDetailRows, type InquiryDetailRow } from "@/components/admin/InquiryDetailsReadable";

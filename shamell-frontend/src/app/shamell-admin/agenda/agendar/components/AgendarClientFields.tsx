@@ -4,13 +4,12 @@ import {
   sanitizeIntegerInput,
   sanitizeNameInput,
   sanitizePhoneInput,
-} from "../form-validation";
-import { fieldLabelClass } from "../lib/agendarStyles";
-import type { AgendarFormState } from "../hooks/useAgendarFormState";
-
-type AgendarClientFieldsProps = {
-  form: AgendarFormState;
-};
+} from "../lib/agendarValidation";
+import { fieldLabelClass } from "../../shared/lib/agendaFormStyles";
+import type {
+  AgendarClientFieldsProps,
+  AgendarLocationFieldProps,
+} from "../types/agendarComponents.types";
 
 export function AgendarClientFields({ form }: AgendarClientFieldsProps) {
   return (
@@ -83,7 +82,7 @@ export function AgendarClientFields({ form }: AgendarClientFieldsProps) {
   );
 }
 
-export function AgendarLocationField({ form }: AgendarClientFieldsProps) {
+export function AgendarLocationField({ form }: AgendarLocationFieldProps) {
   return (
     <label className="block">
       <span className={fieldLabelClass}>LOCATION</span>

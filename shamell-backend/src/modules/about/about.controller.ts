@@ -19,7 +19,7 @@ import { randomUUID } from 'crypto';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
 import { tmpdir } from 'os';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { UpsertAboutContentDto } from './dto/upsert-about-content.dto';
 import { AboutService } from './about.service';
 

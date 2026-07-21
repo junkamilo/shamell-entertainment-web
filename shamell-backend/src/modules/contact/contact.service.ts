@@ -13,6 +13,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { buildPaginationMeta } from '../../common/pagination/pagination.util';
 import { AvailabilityService } from '../availability/availability.service';
 import { parseHHMM, utcInstantForWallClock } from '../availability/booking-tz';
 import { AdminContactQueryDto } from './dto/admin-contact-query.dto';
@@ -21,13 +22,14 @@ import { CreateContactDto } from './dto/create-contact.dto';
 import {
   computeBookingGuideInvestmentUsd,
   type GuideInvestmentCompute,
-} from './booking-guide-investment';
+} from '../booking-inquiry/booking-guide-investment';
 import {
   BOOKING_INQUIRY_ENTRY_SOURCES,
   formatInquiryDetailsSummary,
   sanitizeInquiryDetails,
   type SanitizedInquiryDetails,
-} from './contact-inquiry-details';
+} from '../booking-inquiry/contact-inquiry-details';
+import { ContactInboxService } from './contact-inbox.service';
 import {
   buildBookingInquiryAckHtml,
   buildBookingInquiryAckSubject,
@@ -58,15 +60,8 @@ export class ContactService {
     private readonly adminActivityNotify: AdminCustomerActivityNotifyService,
     private readonly config: ConfigService,
     private readonly bookings: BookingsService,
+    private readonly inbox: ContactInboxService,
   ) {}
-
-  private readonly bookingFeedInclude = {
-    service: { include: { serviceType: true } },
-    eventType: true,
-    occasionType: true,
-    event: true,
-    user: true,
-  } satisfies Prisma.BookingInclude;
 
   private async enrichInquiryDetails(
     details: SanitizedInquiryDetails,
@@ -322,92 +317,8 @@ export class ContactService {
     return null;
   }
 
-  private peticionesSqlFragments() {
-    const isOrphanContact = Prisma.sql`
-      NOT EXISTS (
-        SELECT 1
-        FROM "bookings" b
-        WHERE b."contactRequestId" = cr.id
-      )
-    `;
-    const isShadowedBookingInquiryContact = Prisma.sql`
-      NOT (
-        (cr."inquiryDetails"->>'entrySource') IN ('contact_page', 'home_service_card', 'inquire_section')
-        AND EXISTS (
-          SELECT 1
-          FROM "bookings" b
-          WHERE LOWER(TRIM(b."guestEmail")) = LOWER(TRIM(cr.email))
-            AND cr."eventDate" IS NOT NULL
-            AND DATE(b."eventDate") = DATE(cr."eventDate")
-            AND b."createdAt" BETWEEN cr."createdAt" - INTERVAL '30 minutes'
-              AND cr."createdAt" + INTERVAL '30 minutes'
-        )
-      )
-    `;
-    const isConciergeContact = Prisma.sql`
-      (
-        (cr."inquiryDetails"->>'entrySource') = 'concierge_gate'
-        OR LOWER(COALESCE(cr."subject", '')) LIKE '%concierge inquiry%'
-      )
-    `;
-    return {
-      isOrphanContact,
-      isShadowedBookingInquiryContact,
-      isConciergeContact,
-    };
-  }
-
-  async countPeticionesBadge(query: {
-    since?: number;
-    lane?: string;
-  }): Promise<{ count: number }> {
-    const lane = query.lane === 'guidance' ? 'guidance' : 'bookings';
-    const since =
-      query.since != null && Number.isFinite(query.since) && query.since > 0
-        ? new Date(query.since)
-        : null;
-    const {
-      isOrphanContact,
-      isShadowedBookingInquiryContact,
-      isConciergeContact,
-    } = this.peticionesSqlFragments();
-    const sinceFilter = since
-      ? Prisma.sql`WHERE unified.created_at > ${since}`
-      : Prisma.empty;
-
-    if (lane === 'guidance') {
-      const rows = await this.prisma.$queryRaw<
-        Array<{ total: bigint }>
-      >(Prisma.sql`
-        SELECT COUNT(*)::bigint AS total
-        FROM (
-          SELECT cr."createdAt" AS created_at
-          FROM "contact_requests" cr
-          WHERE ${isOrphanContact}
-            AND ${isConciergeContact}
-        ) unified
-        ${sinceFilter}
-      `);
-      return { count: Number(rows[0]?.total ?? 0n) };
-    }
-
-    const rows = await this.prisma.$queryRaw<
-      Array<{ total: bigint }>
-    >(Prisma.sql`
-      SELECT COUNT(*)::bigint AS total
-      FROM (
-        SELECT cr."createdAt" AS created_at
-        FROM "contact_requests" cr
-        WHERE ${isOrphanContact}
-          AND ${isShadowedBookingInquiryContact}
-          AND NOT ${isConciergeContact}
-        UNION ALL
-        SELECT b."createdAt" AS created_at
-        FROM "bookings" b
-      ) unified
-      ${sinceFilter}
-    `);
-    return { count: Number(rows[0]?.total ?? 0n) };
+  countPeticionesBadge(query: { since?: number; lane?: string }) {
+    return this.inbox.countPeticionesBadge(query);
   }
 
   /**
@@ -562,239 +473,14 @@ export class ContactService {
       }),
     ]);
 
-    const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
     return {
       items,
-      meta: {
-        page,
-        perPage,
-        totalItems,
-        totalPages,
-        hasPrev: page > 1,
-        hasNext: page < totalPages,
-      },
+      meta: buildPaginationMeta({ page, perPage, totalItems }),
     };
   }
 
-  async findAllPeticiones(query: AdminPeticionesQueryDto) {
-    const page = Math.max(1, Number(query.page ?? 1));
-    const perPage = Number(query.perPage ?? 10);
-    const skip = (page - 1) * perPage;
-    const lane = query.lane === 'guidance' ? 'guidance' : 'bookings';
-
-    const {
-      isOrphanContact,
-      isShadowedBookingInquiryContact,
-      isConciergeContact,
-    } = this.peticionesSqlFragments();
-
-    if (lane === 'guidance') {
-      const guidanceCountRows = await this.prisma.$queryRaw<
-        Array<{ total: bigint }>
-      >(Prisma.sql`
-          SELECT COUNT(*)::bigint AS total
-          FROM "contact_requests" cr
-          WHERE ${isOrphanContact}
-            AND ${isConciergeContact}
-        `);
-      const totalItems = Number(guidanceCountRows[0]?.total ?? 0n);
-      const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
-      if (totalItems === 0) {
-        return {
-          items: [],
-          meta: {
-            page,
-            perPage,
-            totalItems,
-            totalPages,
-            hasPrev: page > 1,
-            hasNext: page < totalPages,
-          },
-        };
-      }
-
-      const feedRows = await this.prisma.$queryRaw<
-        Array<{
-          origin: 'CONTACT' | 'BOOKING_ADMIN';
-          id: string;
-          created_at: Date;
-        }>
-      >(Prisma.sql`
-        SELECT 'CONTACT'::text AS origin, cr.id AS id, cr."createdAt" AS created_at
-        FROM "contact_requests" cr
-        WHERE ${isOrphanContact}
-          AND ${isConciergeContact}
-        ORDER BY cr."createdAt" DESC
-        OFFSET ${skip}
-        LIMIT ${perPage}
-      `);
-
-      return this.hydratePeticionesPage(
-        feedRows,
-        page,
-        perPage,
-        totalItems,
-        totalPages,
-      );
-    }
-
-    const [nonConciergeOrphanRows, bookingTotalRows] = await Promise.all([
-      this.prisma.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
-        SELECT COUNT(*)::bigint AS total
-        FROM "contact_requests" cr
-        WHERE ${isOrphanContact}
-          AND ${isShadowedBookingInquiryContact}
-          AND NOT ${isConciergeContact}
-      `),
-      this.prisma.booking.count(),
-    ]);
-    const nonConciergeOrphanTotal = Number(
-      nonConciergeOrphanRows[0]?.total ?? 0n,
-    );
-    const bookingTotal = bookingTotalRows;
-    const totalItems = bookingTotal + nonConciergeOrphanTotal;
-    const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / perPage);
-    if (totalItems === 0) {
-      return {
-        items: [],
-        meta: {
-          page,
-          perPage,
-          totalItems,
-          totalPages,
-          hasPrev: page > 1,
-          hasNext: page < totalPages,
-        },
-      };
-    }
-
-    const feedRows = await this.prisma.$queryRaw<
-      Array<{
-        origin: 'CONTACT' | 'BOOKING_ADMIN';
-        id: string;
-        created_at: Date;
-      }>
-    >(Prisma.sql`
-      SELECT *
-      FROM (
-        SELECT 'CONTACT'::text AS origin, cr.id AS id, cr."createdAt" AS created_at
-        FROM "contact_requests" cr
-        WHERE ${isOrphanContact}
-          AND ${isShadowedBookingInquiryContact}
-          AND NOT ${isConciergeContact}
-        UNION ALL
-        SELECT 'BOOKING_ADMIN'::text AS origin, b.id AS id, b."createdAt" AS created_at
-        FROM "bookings" b
-      ) unified
-      ORDER BY created_at DESC
-      OFFSET ${skip}
-      LIMIT ${perPage}
-    `);
-
-    return this.hydratePeticionesPage(
-      feedRows,
-      page,
-      perPage,
-      totalItems,
-      totalPages,
-    );
-  }
-
-  private async hydratePeticionesPage(
-    feedRows: Array<{
-      origin: 'CONTACT' | 'BOOKING_ADMIN';
-      id: string;
-      created_at: Date;
-    }>,
-    page: number,
-    perPage: number,
-    totalItems: number,
-    totalPages: number,
-  ) {
-    const contactIds = feedRows
-      .filter((r) => r.origin === 'CONTACT')
-      .map((r) => r.id);
-    const bookingIds = feedRows
-      .filter((r) => r.origin === 'BOOKING_ADMIN')
-      .map((r) => r.id);
-
-    const [contactRows, bookingRows] = await Promise.all([
-      this.prisma.contactRequest.findMany({
-        where: { id: { in: contactIds } },
-        include: { _count: { select: { bookings: true } } },
-      }),
-      this.prisma.booking.findMany({
-        where: { id: { in: bookingIds } },
-        include: this.bookingFeedInclude,
-      }),
-    ]);
-
-    const linkedContactIds = [
-      ...new Set(
-        bookingRows
-          .map((b) => b.contactRequestId)
-          .filter(
-            (id): id is string => typeof id === 'string' && id.length > 0,
-          ),
-      ),
-    ].filter((id) => !contactIds.includes(id));
-
-    const linkedContactRows =
-      linkedContactIds.length > 0
-        ? await this.prisma.contactRequest.findMany({
-            where: { id: { in: linkedContactIds } },
-          })
-        : [];
-
-    const contactById = new Map(
-      [...contactRows, ...linkedContactRows].map((row) => [row.id, row]),
-    );
-    const hasLinkedBookingByContactId = new Map(
-      contactRows.map((row) => [row.id, row._count.bookings > 0]),
-    );
-    const bookingById = new Map(bookingRows.map((row) => [row.id, row]));
-    const pageItems = feedRows
-      .map((row) => {
-        if (row.origin === 'CONTACT') {
-          const contact = contactById.get(row.id);
-          if (!contact) return null;
-          return {
-            origin: 'CONTACT' as const,
-            id: contact.id,
-            createdAt: contact.createdAt,
-            state: contact.status,
-            hasLinkedBooking:
-              hasLinkedBookingByContactId.get(contact.id) ?? false,
-            contact,
-          };
-        }
-        const booking = bookingById.get(row.id);
-        if (!booking) return null;
-        const linkedContact = booking.contactRequestId
-          ? (contactById.get(booking.contactRequestId) ?? null)
-          : null;
-        return {
-          origin: 'BOOKING_ADMIN' as const,
-          id: booking.id,
-          createdAt: booking.createdAt,
-          status: booking.status,
-          booking,
-          ...(linkedContact ? { linkedContact } : {}),
-        };
-      })
-      .filter((x): x is NonNullable<typeof x> => Boolean(x));
-
-    return {
-      items: pageItems,
-      meta: {
-        page,
-        perPage,
-        totalItems,
-        totalPages,
-        hasPrev: page > 1,
-        hasNext: page < totalPages,
-      },
-    };
+  findAllPeticiones(query: AdminPeticionesQueryDto) {
+    return this.inbox.findAllPeticiones(query);
   }
 
   async findOne(id: string) {

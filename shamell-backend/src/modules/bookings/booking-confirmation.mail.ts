@@ -1,4 +1,4 @@
-import type { SanitizedInquiryDetails } from '../contact/contact-inquiry-details';
+import type { SanitizedInquiryDetails } from '../booking-inquiry/contact-inquiry-details';
 import {
   buildEmailCallout,
   buildEmailFooterDisclaimer,

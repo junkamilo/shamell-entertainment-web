@@ -1,5 +1,5 @@
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
-import { buildChairInstancesFromItems } from "./chair/chairInstanceBuilder";
+import { buildChairInstancesFromItems } from "./chairInstanceBuilder";
 
 describe("buildChairInstancesFromItems", () => {
   const viewBoxWidth = 1000;

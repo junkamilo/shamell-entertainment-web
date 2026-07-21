@@ -4,7 +4,7 @@ import { useState } from "react";
 import AdminBackButton from "@/components/admin/AdminBackButton";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminPagination from "@/components/admin/AdminPagination";
-import { AGENDA_HUB_PATH } from "../../agendar/lib/agendarRoutes";
+import { AGENDA_HUB_PATH } from "../../lib/agendaRoutes";
 import { usePaymentHistoryPage } from "../hooks/usePaymentHistoryPage";
 import PaymentHistoryDetailModal from "./PaymentHistoryDetailModal";
 import PaymentHistoryFilters from "./PaymentHistoryFilters";

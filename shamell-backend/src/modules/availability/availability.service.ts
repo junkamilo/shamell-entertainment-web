@@ -211,28 +211,28 @@ export class AvailabilityService {
     dateISO: string,
     weekday: number,
   ): Promise<boolean> {
-    const closures = await this.prisma.availabilityClosure.findMany();
-    for (const c of closures) {
-      if (c.kind === AvailabilityClosureKind.SPECIFIC_DATE && c.date) {
-        if (prismaDateToISODate(c.date) === dateISO) return true;
-      }
-      if (
-        c.kind === AvailabilityClosureKind.DATE_RANGE &&
-        c.startDate &&
-        c.endDate
-      ) {
-        const startISO = prismaDateToISODate(c.startDate);
-        const endISO = prismaDateToISODate(c.endDate);
-        if (dateISO >= startISO && dateISO <= endISO) return true;
-      }
-      if (
-        c.kind === AvailabilityClosureKind.RECURRING_WEEKDAY &&
-        c.weekday !== null
-      ) {
-        if (c.weekday === weekday) return true;
-      }
-    }
-    return false;
+    const dateAtNoon = new Date(`${dateISO}T12:00:00.000Z`);
+    const hit = await this.prisma.availabilityClosure.findFirst({
+      where: {
+        OR: [
+          {
+            kind: AvailabilityClosureKind.SPECIFIC_DATE,
+            date: dateAtNoon,
+          },
+          {
+            kind: AvailabilityClosureKind.DATE_RANGE,
+            startDate: { lte: dateAtNoon },
+            endDate: { gte: dateAtNoon },
+          },
+          {
+            kind: AvailabilityClosureKind.RECURRING_WEEKDAY,
+            weekday,
+          },
+        ],
+      },
+      select: { id: true },
+    });
+    return Boolean(hit);
   }
 
   /**
@@ -248,7 +248,7 @@ export class AvailabilityService {
 
     if (await this.isClosedByClosure(dateISO, weekday)) {
       throw new BadRequestException(
-        'Esa fecha no está disponible para reservas (día cerrado o fuera de servicio).',
+        'That date is not available for bookings (closed or out of service).',
       );
     }
 
@@ -259,7 +259,7 @@ export class AvailabilityService {
     if (!slot || slot.isClosed) {
       if (!slot) return;
       throw new BadRequestException(
-        'Esa fecha no está disponible para reservas (día habitual cerrado en la agenda).',
+        'That date is not available for bookings (weekly schedule is closed).',
       );
     }
 
@@ -267,7 +267,7 @@ export class AvailabilityService {
     const end = parseHHMM(slot.endTime ?? '23:59', 'endTime');
     if (minutesSinceMidnight < start || minutesSinceMidnight > end) {
       throw new BadRequestException(
-        'La hora elegida está fuera del horario de disponibilidad para ese día.',
+        'The selected time is outside availability hours for that day.',
       );
     }
   }

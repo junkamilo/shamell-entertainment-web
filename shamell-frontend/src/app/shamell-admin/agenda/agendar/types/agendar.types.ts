@@ -1,4 +1,23 @@
-export type { AgendarFormValues, NormalizedAgendarForm } from "../form-validation";
+export type AgendarFormValues = {
+  serviceIds: string[];
+  eventTypeId: string;
+  occasionTypeId: string;
+  eventDateIso: string;
+  eventTimeStart: string;
+  eventTimeEnd: string;
+  location: string;
+  guestFullName: string;
+  guestEmail: string;
+  guestPhone: string;
+  guestCount: string;
+  notes: string;
+};
+
+export type NormalizedAgendarForm = Omit<AgendarFormValues, "guestCount"> & {
+  guestCount: number;
+  /** Same as `serviceIds[0]`; sent as top-level `serviceId` to the API. */
+  serviceId: string;
+};
 
 export type IdName = { id: string; name: string };
 

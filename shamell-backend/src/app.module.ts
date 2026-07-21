@@ -2,6 +2,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AdminAuthModule } from './common/auth/admin-auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
 import { ServicesModule } from './modules/services/services.module';
@@ -23,6 +24,7 @@ import { UpcomingEventsModule } from './modules/upcoming-events/upcoming-events.
 import { ReservationEventTemplatesModule } from './modules/reservation-event-templates/reservation-event-templates.module';
 import { AdminPaymentsModule } from './modules/admin-payments/admin-payments.module';
 import { AdminStripeWebhooksModule } from './modules/admin-stripe-webhooks/admin-stripe-webhooks.module';
+import { AgendaModule } from './modules/agenda/agenda.module';
 import { HealthModule } from './modules/health/health.module';
 import { HomeModule } from './modules/home/home.module';
 
@@ -30,6 +32,7 @@ import { HomeModule } from './modules/home/home.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    AdminAuthModule,
     PrismaModule,
     UsersModule,
     ServicesModule,
@@ -51,6 +54,7 @@ import { HomeModule } from './modules/home/home.module';
     ReservationEventTemplatesModule,
     AdminPaymentsModule,
     AdminStripeWebhooksModule,
+    AgendaModule,
     HealthModule,
     HomeModule,
   ],

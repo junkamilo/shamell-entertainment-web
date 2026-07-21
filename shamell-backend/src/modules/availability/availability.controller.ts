@@ -13,7 +13,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AvailabilityService } from './availability.service';
 import { CreateClosureDto } from './dto/create-closure.dto';
 import { UpsertWeeklySlotsDto } from './dto/upsert-weekly-slots.dto';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 
 @ApiTags('Availability')
 @Controller('availability')

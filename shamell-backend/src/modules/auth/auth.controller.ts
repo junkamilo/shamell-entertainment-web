@@ -16,7 +16,7 @@ import { BootstrapAdminDto } from './dto/bootstrap-admin.dto';
 import { InviteAdminDto } from './dto/invite-admin.dto';
 import { VerifyAdminInviteDto } from './dto/verify-admin-invite.dto';
 import { GoogleCredentialDto } from './dto/google-credential.dto';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import {
   CurrentAdmin,
   type AdminJwtPayload,

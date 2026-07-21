@@ -7,7 +7,7 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { UpsertFloorLayoutDto } from './dto/upsert-floor-layout.dto';
 import { FloorLayoutService } from './floor-layout.service';
 
