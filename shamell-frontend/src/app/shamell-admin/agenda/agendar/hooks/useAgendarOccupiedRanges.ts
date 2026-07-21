@@ -1,10 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchOccupiedRangesForDate } from "../services/fetchOccupiedRangesForDate";
+import { fetchOccupiedRanges } from "@/app/contacto/services/fetchOccupiedRanges";
 import type { OccupiedRange } from "../types/agendar.types";
 
-export function useAgendarOccupiedRanges(eventDateIso: string) {
+type UseAgendarOccupiedRangesOptions = {
+  polling?: boolean;
+  refreshKey?: number | string | boolean;
+};
+
+export function useAgendarOccupiedRanges(
+  eventDateIso: string,
+  options?: UseAgendarOccupiedRangesOptions,
+) {
+  const polling = options?.polling ?? true;
+  const refreshKey = options?.refreshKey ?? 0;
   const [occupiedRanges, setOccupiedRanges] = useState<OccupiedRange[]>([]);
 
   useEffect(() => {
@@ -15,7 +25,7 @@ export function useAgendarOccupiedRanges(eventDateIso: string) {
 
     let cancelled = false;
     const loadOccupied = () => {
-      fetchOccupiedRangesForDate(eventDateIso)
+      fetchOccupiedRanges(eventDateIso)
         .then((parsed) => {
           if (!cancelled) setOccupiedRanges(parsed);
         })
@@ -25,6 +35,13 @@ export function useAgendarOccupiedRanges(eventDateIso: string) {
     };
 
     loadOccupied();
+
+    if (!polling) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const interval = window.setInterval(loadOccupied, 45000);
     const onFocus = () => loadOccupied();
     const onVisible = () => {
@@ -38,7 +55,7 @@ export function useAgendarOccupiedRanges(eventDateIso: string) {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [eventDateIso]);
+  }, [eventDateIso, polling, refreshKey]);
 
   return { occupiedRanges };
 }

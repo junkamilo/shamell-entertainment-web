@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg data-dc-tpl="16" width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bandeja de entrada">
+          <defs data-dc-tpl="17">
+            <linearGradient data-dc-tpl="18" id="ibBg" x1="16" y1="12" x2="104" y2="108" gradientUnits="userSpaceOnUse">
+              <stop data-dc-tpl="19" stop-color="#241f2f"></stop>
+              <stop data-dc-tpl="20" offset="1" stop-color="#17131f"></stop>
+            </linearGradient>
+            <linearGradient data-dc-tpl="21" id="ibGold" x1="34" y1="38" x2="86" y2="84" gradientUnits="userSpaceOnUse">
+              <stop data-dc-tpl="22" stop-color="#F4CE6E"></stop>
+              <stop data-dc-tpl="23" offset="1" stop-color="#D9A63C"></stop>
+            </linearGradient>
+          </defs>
+          <rect data-dc-tpl="24" x="10" y="10" width="100" height="100" rx="26" fill="url(#ibBg)" stroke="#3a3348" stroke-width="1.5"></rect>
+          <rect data-dc-tpl="25" x="10.75" y="10.75" width="98.5" height="98.5" rx="25.25" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1.5"></rect>
+          <g data-dc-tpl="26" stroke="url(#ibGold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path data-dc-tpl="27" d="M89 68 L78 46 A7 7 0 0 0 71.7 42 H48.3 A7 7 0 0 0 42 46 L31 68 v14 a8 8 0 0 0 8 8 h42 a8 8 0 0 0 8 -8 z"></path>
+            <path data-dc-tpl="28" d="M31 68 h16 l5 7 h16 l5 -7 h16"></path>
+          </g>
+        </svg>

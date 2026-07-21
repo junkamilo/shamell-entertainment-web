@@ -17,10 +17,11 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { CurrentAdmin } from '../auth/decorators/current-admin.decorator';
 import type { AdminJwtPayload } from '../auth/decorators/current-admin.decorator';
 import { AdminBookingQueryDto } from './dto/admin-booking-query.dto';
+import { AdminCalendarQueryDto } from './dto/admin-calendar-query.dto';
 import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
 import { CreateAdminBookingDto } from './dto/create-admin-booking.dto';
 import { SendBookingBalanceLinkDto } from './dto/send-booking-balance-link.dto';
@@ -40,7 +41,8 @@ export class BookingsController {
   }
 
   @Post('admin')
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Create booking on behalf of a guest or registered client (admin)',
@@ -60,6 +62,14 @@ export class BookingsController {
     return this.bookingsService.findAllAdmin(query);
   }
 
+  @Get('admin/calendar')
+  @UseGuards(AdminJwtGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Bookings in date range for calendar view (admin)' })
+  findCalendarAdmin(@Query() query: AdminCalendarQueryDto) {
+    return this.bookingsService.findCalendarAdmin(query);
+  }
+
   @Get('admin/:id')
   @UseGuards(AdminJwtGuard)
   @ApiBearerAuth()
@@ -69,7 +79,8 @@ export class BookingsController {
   }
 
   @Patch('admin/:id')
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update booking schedule/catalog/status (admin)' })
   updateAdmin(

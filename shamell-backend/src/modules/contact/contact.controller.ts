@@ -18,7 +18,7 @@ import { AdminPeticionesBadgeQueryDto } from './dto/admin-peticiones-badge-query
 import { AdminPeticionesQueryDto } from './dto/admin-peticiones-query.dto';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactStatusDto } from './dto/update-contact-status.dto';
-import { AdminJwtGuard } from './guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 
 @ApiTags('Contact')
 @Controller('contact')

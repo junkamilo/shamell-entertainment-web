@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { getAgendarMobileSectionStatus } from "../form-validation";
+import { getAgendarMobileSectionStatus } from "../lib/agendarValidation";
 import type { AgendarMobileSectionId } from "../types/agendar.types";
 
 export function useAgendarFormState() {
@@ -96,5 +96,3 @@ export function useAgendarFormState() {
     clearNotesAndGuestCountAfterSubmit,
   };
 }
-
-export type AgendarFormState = ReturnType<typeof useAgendarFormState>;

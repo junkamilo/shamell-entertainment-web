@@ -2,14 +2,8 @@
 
 import AdminAccordionSingleSelect from "@/components/admin/AdminAccordionSingleSelect";
 import AdminServicesMultiSelect from "@/components/admin/AdminServicesMultiSelect";
-import { fieldLabelClass } from "../lib/agendarStyles";
-import type { AgendarCatalog } from "../types/agendar.types";
-import type { AgendarFormState } from "../hooks/useAgendarFormState";
-
-type AgendarEventFieldsProps = {
-  catalog: AgendarCatalog;
-  form: AgendarFormState;
-};
+import { fieldLabelClass } from "../../shared/lib/agendaFormStyles";
+import type { AgendarEventFieldsProps } from "../types/agendarComponents.types";
 
 export function AgendarEventFields({ catalog, form }: AgendarEventFieldsProps) {
   return (

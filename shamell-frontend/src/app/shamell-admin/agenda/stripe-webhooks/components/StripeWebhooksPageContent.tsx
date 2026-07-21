@@ -3,7 +3,7 @@
 import AdminBackButton from "@/components/admin/AdminBackButton";
 import AdminModuleHero from "@/components/admin/AdminModuleHero";
 import AdminPagination from "@/components/admin/AdminPagination";
-import { AGENDA_HUB_PATH } from "../../agendar/lib/agendarRoutes";
+import { AGENDA_HUB_PATH } from "../../lib/agendaRoutes";
 import { useStripeWebhooksPage } from "../hooks/useStripeWebhooksPage";
 import type { AdminWebhookStatus } from "../types/stripeWebhooks.types";
 

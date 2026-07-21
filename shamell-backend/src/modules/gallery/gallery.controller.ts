@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { CreateGalleryCategoryDto } from './dto/create-gallery-category.dto';
 import { CreateGalleryPhotoDto } from './dto/create-gallery-photo.dto';
 import { UpdateGalleryCategoryDto } from './dto/update-gallery-category.dto';

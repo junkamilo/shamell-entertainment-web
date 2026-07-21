@@ -15,6 +15,7 @@ import {
   VenueSeatReservationStatus,
 } from '@prisma/client';
 import { formatPaymentMethodLabel } from '../stripe/stripe-payment-details.util';
+import { buildLimitPaginationMeta } from '../../common/pagination/pagination.util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FloorLayoutService } from '../floor-layout/floor-layout.service';
 import { resolveVenueSeatDisplayLabel } from '../venue-reservations/venue-seat-display-label.util';
@@ -75,6 +76,36 @@ const fixedInclude = {
     },
   },
 } satisfies Prisma.UpcomingFixedEventEnrollmentInclude;
+
+const packageInclude = {
+  event: {
+    select: {
+      id: true,
+      slug: true,
+      eventType: { select: { name: true, id: true } },
+    },
+  },
+  items: { select: { id: true } },
+} satisfies Prisma.UpcomingClassPackageEnrollmentInclude;
+
+const ALL_PAYMENT_FLOWS: AdminPaymentFlow[] = [
+  'BOOKING_QUOTE',
+  'VENUE_SEAT',
+  'CLASS_SESSION',
+  'CLASS_PACKAGE',
+  'CLASS_DAY_BUNDLE',
+  'FIXED_TICKET',
+];
+
+type PaymentListKey = {
+  flow: AdminPaymentFlow;
+  id: string;
+  updated_at: Date;
+};
+
+type PackageRow = Prisma.UpcomingClassPackageEnrollmentGetPayload<{
+  include: typeof packageInclude;
+}>;
 
 type BookingPaymentRow = BookingPayment &
   Prisma.BookingPaymentGetPayload<{ include: typeof bookingPaymentInclude }>;
@@ -142,7 +173,8 @@ export class AdminPaymentsService {
   async listPayments(query: AdminPaymentsQueryDto) {
     const page = Math.max(1, Number(query.page ?? 1));
     const limit = Math.min(100, Math.max(1, Number(query.limit ?? 20)));
-    const q = query.q?.trim().toLowerCase();
+    const skip = (page - 1) * limit;
+    const q = query.q?.trim();
     const from = query.from ? new Date(query.from) : null;
     const to = query.to ? new Date(query.to) : null;
     if (from && Number.isNaN(from.getTime())) {
@@ -154,76 +186,46 @@ export class AdminPaymentsService {
 
     const flows: AdminPaymentFlow[] = query.flow
       ? [query.flow]
-      : ['BOOKING_QUOTE', 'VENUE_SEAT', 'CLASS_SESSION', 'FIXED_TICKET'];
+      : ALL_PAYMENT_FLOWS;
 
-    const rows: AdminStripePaymentRow[] = [];
-
-    if (flows.includes('BOOKING_QUOTE')) {
-      const bookingRows = await this.prisma.bookingPayment.findMany({
-        where: this.bookingPaymentWhere(query.status, q, from, to),
-        include: bookingPaymentInclude,
-        orderBy: { updatedAt: 'desc' },
-      });
-      for (const p of bookingRows) {
-        rows.push(this.mapBookingPayment(p));
-      }
+    const unionParts = this.paymentUnionParts(flows, query.status, q, from, to);
+    if (unionParts.length === 0) {
+      return {
+        items: [],
+        meta: buildLimitPaginationMeta({ page, limit, totalItems: 0 }),
+      };
     }
 
-    if (flows.includes('VENUE_SEAT')) {
-      const venueRows = await this.prisma.venueSeatReservation.findMany({
-        where: this.venueWhere(query.status, q, from, to),
-        include: venueInclude,
-        orderBy: { updatedAt: 'desc' },
-      });
-      for (const r of venueRows) {
-        rows.push(await this.mapVenueReservation(r));
-      }
+    const unionSql = Prisma.join(unionParts, ' UNION ALL ');
+    const countRows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(
+      Prisma.sql`
+        SELECT COUNT(*)::bigint AS total
+        FROM (${unionSql}) merged
+      `,
+    );
+    const totalItems = Number(countRows[0]?.total ?? 0n);
+    if (totalItems === 0) {
+      return {
+        items: [],
+        meta: buildLimitPaginationMeta({ page, limit, totalItems }),
+      };
     }
 
-    if (flows.includes('CLASS_SESSION')) {
-      const classRows = await this.prisma.upcomingClassEnrollment.findMany({
-        where: this.classWhere(query.status, q, from, to),
-        include: classInclude,
-        orderBy: { updatedAt: 'desc' },
-      });
-      for (const e of classRows) {
-        rows.push(this.mapClassEnrollment(e));
-      }
-    }
-
-    if (flows.includes('FIXED_TICKET')) {
-      const fixedRows = await this.prisma.upcomingFixedEventEnrollment.findMany(
-        {
-          where: this.fixedWhere(query.status, q, from, to),
-          include: fixedInclude,
-          orderBy: { updatedAt: 'desc' },
-        },
-      );
-      for (const e of fixedRows) {
-        rows.push(this.mapFixedEnrollment(e));
-      }
-    }
-
-    rows.sort(
-      (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    const pageRows = await this.prisma.$queryRaw<PaymentListKey[]>(
+      Prisma.sql`
+        SELECT flow, id, updated_at
+        FROM (${unionSql}) merged
+        ORDER BY updated_at DESC
+        OFFSET ${skip}
+        LIMIT ${limit}
+      `,
     );
 
-    const totalItems = rows.length;
-    const totalPages = totalItems === 0 ? 1 : Math.ceil(totalItems / limit);
-    const start = (page - 1) * limit;
-    const items = rows.slice(start, start + limit);
+    const items = await this.hydratePaymentRows(pageRows);
 
     return {
       items,
-      meta: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-        hasPrev: page > 1,
-        hasNext: page < totalPages,
-      },
+      meta: buildLimitPaginationMeta({ page, limit, totalItems }),
     };
   }
 
@@ -333,6 +335,320 @@ export class AdminPaymentsService {
     return { count: booking + venue + classEnroll + fixedEnroll };
   }
 
+  private paymentUnionParts(
+    flows: AdminPaymentFlow[],
+    status: AdminPaymentStatus | undefined,
+    q: string | undefined,
+    from: Date | null,
+    to: Date | null,
+  ): Prisma.Sql[] {
+    const parts: Prisma.Sql[] = [];
+    const updatedAtBooking = this.updatedAtSql('bp', from, to);
+    const updatedAtVenue = this.updatedAtSql('vsr', from, to);
+    const updatedAtClass = this.updatedAtSql('uce', from, to);
+    const updatedAtPackage = this.updatedAtSql('ucp', from, to);
+    const updatedAtFixed = this.updatedAtSql('ufe', from, to);
+    const searchPattern = q ? `%${q}%` : null;
+
+    if (flows.includes('BOOKING_QUOTE')) {
+      const statusSql = this.bookingStatusSql(status);
+      const searchSql = searchPattern
+        ? Prisma.sql`(
+            b."guestFullName" ILIKE ${searchPattern}
+            OR b."guestEmail" ILIKE ${searchPattern}
+            OR u."fullName" ILIKE ${searchPattern}
+            OR u.email ILIKE ${searchPattern}
+          )`
+        : Prisma.sql`TRUE`;
+      parts.push(Prisma.sql`
+        SELECT 'BOOKING_QUOTE'::text AS flow, bp.id, bp."updatedAt" AS updated_at
+        FROM "booking_payments" bp
+        INNER JOIN "bookings" b ON b.id = bp."bookingId"
+        LEFT JOIN "users" u ON u.id = b."userId"
+        WHERE ${statusSql}
+          AND ${updatedAtBooking}
+          AND ${searchSql}
+      `);
+    }
+
+    if (flows.includes('VENUE_SEAT')) {
+      const statusSql = this.venueStatusSql(status);
+      const searchSql = searchPattern
+        ? Prisma.sql`(
+            vsr."customerName" ILIKE ${searchPattern}
+            OR vsr."customerEmail" ILIKE ${searchPattern}
+          )`
+        : Prisma.sql`TRUE`;
+      parts.push(Prisma.sql`
+        SELECT 'VENUE_SEAT'::text AS flow, vsr.id, vsr."updatedAt" AS updated_at
+        FROM "venue_seat_reservations" vsr
+        WHERE ${statusSql}
+          AND ${updatedAtVenue}
+          AND ${searchSql}
+      `);
+    }
+
+    if (flows.includes('CLASS_SESSION')) {
+      const statusSql = this.enrollmentStatusSql('uce', status);
+      const searchSql = searchPattern
+        ? Prisma.sql`(
+            uce."customerName" ILIKE ${searchPattern}
+            OR uce."customerEmail" ILIKE ${searchPattern}
+          )`
+        : Prisma.sql`TRUE`;
+      parts.push(Prisma.sql`
+        SELECT 'CLASS_SESSION'::text AS flow, uce.id, uce."updatedAt" AS updated_at
+        FROM "upcoming_class_enrollments" uce
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM "upcoming_class_package_enrollment_items" pei
+          WHERE pei."enrollmentId" = uce.id
+        )
+          AND ${statusSql}
+          AND ${updatedAtClass}
+          AND ${searchSql}
+      `);
+    }
+
+    if (flows.includes('CLASS_PACKAGE')) {
+      const statusSql = this.enrollmentStatusSql('ucp', status);
+      const searchSql = searchPattern
+        ? Prisma.sql`(
+            ucp."customerName" ILIKE ${searchPattern}
+            OR ucp."customerEmail" ILIKE ${searchPattern}
+          )`
+        : Prisma.sql`TRUE`;
+      parts.push(Prisma.sql`
+        SELECT 'CLASS_PACKAGE'::text AS flow, ucp.id, ucp."updatedAt" AS updated_at
+        FROM "upcoming_class_package_enrollments" ucp
+        WHERE COALESCE(ucp.selections->>'kind', '') IN ('class_month_package', 'class_package')
+          AND ${statusSql}
+          AND ${updatedAtPackage}
+          AND ${searchSql}
+      `);
+    }
+
+    if (flows.includes('CLASS_DAY_BUNDLE')) {
+      const statusSql = this.enrollmentStatusSql('ucp', status);
+      const searchSql = searchPattern
+        ? Prisma.sql`(
+            ucp."customerName" ILIKE ${searchPattern}
+            OR ucp."customerEmail" ILIKE ${searchPattern}
+          )`
+        : Prisma.sql`TRUE`;
+      parts.push(Prisma.sql`
+        SELECT 'CLASS_DAY_BUNDLE'::text AS flow, ucp.id, ucp."updatedAt" AS updated_at
+        FROM "upcoming_class_package_enrollments" ucp
+        WHERE ucp.selections->>'kind' = 'class_session_bundle'
+          AND ${statusSql}
+          AND ${updatedAtPackage}
+          AND ${searchSql}
+      `);
+    }
+
+    if (flows.includes('FIXED_TICKET')) {
+      const statusSql = this.enrollmentStatusSql('ufe', status);
+      const searchSql = searchPattern
+        ? Prisma.sql`(
+            ufe."customerName" ILIKE ${searchPattern}
+            OR ufe."customerEmail" ILIKE ${searchPattern}
+          )`
+        : Prisma.sql`TRUE`;
+      parts.push(Prisma.sql`
+        SELECT 'FIXED_TICKET'::text AS flow, ufe.id, ufe."updatedAt" AS updated_at
+        FROM "upcoming_fixed_event_enrollments" ufe
+        WHERE ${statusSql}
+          AND ${updatedAtFixed}
+          AND ${searchSql}
+      `);
+    }
+
+    return parts;
+  }
+
+  private updatedAtSql(
+    alias: string,
+    from: Date | null,
+    to: Date | null,
+  ): Prisma.Sql {
+    const column = Prisma.raw(`${alias}."updatedAt"`);
+    if (from && to) {
+      return Prisma.sql`${column} >= ${from} AND ${column} <= ${to}`;
+    }
+    if (from) {
+      return Prisma.sql`${column} >= ${from}`;
+    }
+    if (to) {
+      return Prisma.sql`${column} <= ${to}`;
+    }
+    return Prisma.sql`TRUE`;
+  }
+
+  private bookingStatusSql(status: AdminPaymentStatus | undefined): Prisma.Sql {
+    if (!status) return Prisma.sql`TRUE`;
+    return Prisma.sql`bp.status = ${status}::"BookingPaymentStatus"`;
+  }
+
+  private venueStatusSql(status: AdminPaymentStatus | undefined): Prisma.Sql {
+    if (!status) return Prisma.sql`TRUE`;
+    const mapped =
+      status === 'PENDING' ? VenueSeatReservationStatus.PENDING_PAYMENT : status;
+    return Prisma.sql`vsr.status = ${mapped}::"VenueSeatReservationStatus"`;
+  }
+
+  private enrollmentStatusSql(
+    alias: 'uce' | 'ucp' | 'ufe',
+    status: AdminPaymentStatus | undefined,
+  ): Prisma.Sql {
+    if (!status) return Prisma.sql`TRUE`;
+    const mapped =
+      status === 'PENDING'
+        ? UpcomingClassEnrollmentStatus.PENDING_PAYMENT
+        : status;
+    return Prisma.sql`${Prisma.raw(alias)}.status = ${mapped}::"UpcomingClassEnrollmentStatus"`;
+  }
+
+  private async hydratePaymentRows(
+    keys: PaymentListKey[],
+  ): Promise<AdminStripePaymentRow[]> {
+    if (keys.length === 0) return [];
+
+    const byFlow = new Map<AdminPaymentFlow, string[]>();
+    for (const key of keys) {
+      const ids = byFlow.get(key.flow) ?? [];
+      ids.push(key.id);
+      byFlow.set(key.flow, ids);
+    }
+
+    const rowByKey = new Map<string, AdminStripePaymentRow>();
+
+    const bookingIds = byFlow.get('BOOKING_QUOTE') ?? [];
+    if (bookingIds.length > 0) {
+      const rows = await this.prisma.bookingPayment.findMany({
+        where: { id: { in: bookingIds } },
+        include: bookingPaymentInclude,
+      });
+      for (const row of rows) {
+        rowByKey.set(`BOOKING_QUOTE:${row.id}`, this.mapBookingPayment(row));
+      }
+    }
+
+    const venueIds = byFlow.get('VENUE_SEAT') ?? [];
+    if (venueIds.length > 0) {
+      const rows = await this.prisma.venueSeatReservation.findMany({
+        where: { id: { in: venueIds } },
+        include: venueInclude,
+      });
+      for (const row of rows) {
+        rowByKey.set(
+          `VENUE_SEAT:${row.id}`,
+          await this.mapVenueReservation(row),
+        );
+      }
+    }
+
+    const classIds = byFlow.get('CLASS_SESSION') ?? [];
+    if (classIds.length > 0) {
+      const rows = await this.prisma.upcomingClassEnrollment.findMany({
+        where: { id: { in: classIds } },
+        include: classInclude,
+      });
+      for (const row of rows) {
+        rowByKey.set(`CLASS_SESSION:${row.id}`, this.mapClassEnrollment(row));
+      }
+    }
+
+    const packageIds = [
+      ...(byFlow.get('CLASS_PACKAGE') ?? []),
+      ...(byFlow.get('CLASS_DAY_BUNDLE') ?? []),
+    ];
+    if (packageIds.length > 0) {
+      const rows = await this.prisma.upcomingClassPackageEnrollment.findMany({
+        where: { id: { in: packageIds } },
+        include: packageInclude,
+      });
+      for (const row of rows) {
+        const flow = this.packagePaymentFlow(row);
+        rowByKey.set(`${flow}:${row.id}`, this.mapClassPackageEnrollment(row, flow));
+      }
+    }
+
+    const fixedIds = byFlow.get('FIXED_TICKET') ?? [];
+    if (fixedIds.length > 0) {
+      const rows = await this.prisma.upcomingFixedEventEnrollment.findMany({
+        where: { id: { in: fixedIds } },
+        include: fixedInclude,
+      });
+      for (const row of rows) {
+        rowByKey.set(`FIXED_TICKET:${row.id}`, this.mapFixedEnrollment(row));
+      }
+    }
+
+    return keys
+      .map((key) => rowByKey.get(`${key.flow}:${key.id}`))
+      .filter((row): row is AdminStripePaymentRow => row != null);
+  }
+
+  private packagePaymentFlow(
+    row: PackageRow,
+  ): 'CLASS_PACKAGE' | 'CLASS_DAY_BUNDLE' {
+    const kind =
+      row.selections &&
+      typeof row.selections === 'object' &&
+      !Array.isArray(row.selections)
+        ? (row.selections as { kind?: string }).kind
+        : undefined;
+    return kind === 'class_session_bundle' ? 'CLASS_DAY_BUNDLE' : 'CLASS_PACKAGE';
+  }
+
+  private mapClassPackageEnrollment(
+    pkg: PackageRow,
+    flow: 'CLASS_PACKAGE' | 'CLASS_DAY_BUNDLE',
+  ): AdminStripePaymentRow {
+    const event = pkg.event;
+    const selections =
+      pkg.selections &&
+      typeof pkg.selections === 'object' &&
+      !Array.isArray(pkg.selections)
+        ? (pkg.selections as {
+            kind?: string;
+            monthIso?: string;
+            dateIso?: string;
+            sessionCount?: number;
+          })
+        : {};
+    const sessionCount =
+      pkg.items.length > 0
+        ? pkg.items.length
+        : (selections.sessionCount ?? 0);
+    const contextLabel =
+      flow === 'CLASS_DAY_BUNDLE'
+        ? `${event.eventType.name} — ${sessionCount} section(s) on ${selections.dateIso ?? 'selected day'}`
+        : `${event.eventType.name} — class package (${sessionCount} sessions)`;
+
+    return {
+      id: pkg.id,
+      flow,
+      status: mapEnrollmentStatus(pkg.status),
+      stage: null,
+      amount: Number(pkg.amount),
+      currency: pkg.currency,
+      customerName: pkg.customerName,
+      customerEmail: pkg.customerEmail,
+      contextLabel,
+      bookingId: null,
+      eventSlug: event.slug ?? null,
+      eventId: event.id,
+      reservationId: null,
+      stripeCheckoutSessionId: pkg.stripeCheckoutSessionId,
+      paymentMethodLabel: paymentLabelFromRow(pkg),
+      createdAt: pkg.createdAt.toISOString(),
+      paidAt: iso(pkg.paidAt),
+      expiresAt: iso(pkg.expiresAt),
+      updatedAt: pkg.updatedAt.toISOString(),
+    };
+  }
+
   private bookingPaymentWhere(
     status: AdminPaymentStatus | undefined,
     q: string | undefined,
@@ -398,7 +714,9 @@ export class AdminPaymentsService {
     from: Date | null,
     to: Date | null,
   ): Prisma.UpcomingClassEnrollmentWhereInput {
-    const where: Prisma.UpcomingClassEnrollmentWhereInput = {};
+    const where: Prisma.UpcomingClassEnrollmentWhereInput = {
+      packageItem: { is: null },
+    };
     if (status) {
       where.status =
         status === 'PENDING'

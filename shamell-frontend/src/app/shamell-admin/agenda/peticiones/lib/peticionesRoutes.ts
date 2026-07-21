@@ -3,4 +3,4 @@ export {
   AGENDA_HUB_PATH,
   AGENDA_MI_AGENDA_PATH,
   AGENDA_PETICIONES_PATH,
-} from "../../agendar/lib/agendarRoutes";
+} from "../../lib/agendaRoutes";

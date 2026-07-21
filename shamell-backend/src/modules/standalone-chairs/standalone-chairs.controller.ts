@@ -11,7 +11,7 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PatchStandaloneChairDto } from './dto/patch-standalone-chair.dto';
 import { PatchStandaloneChairsBulkPriceDto } from './dto/patch-standalone-chairs-bulk-price.dto';
 import { UpsertStandaloneChairConfigDto } from './dto/upsert-standalone-chair-config.dto';

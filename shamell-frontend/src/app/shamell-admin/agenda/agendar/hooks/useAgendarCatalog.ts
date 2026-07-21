@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "@/hooks/use-toast";
-import { getAgendarBearerToken } from "../lib/agendarAuth";
+import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import { fetchAgendarCatalog } from "../services/fetchAgendarCatalog";
 import type { AgendarCatalog } from "../types/agendar.types";
 
@@ -18,7 +18,7 @@ export function useAgendarCatalog() {
 
   useEffect(() => {
     let cancelled = false;
-    const token = getAgendarBearerToken();
+    const token = getAdminBearerToken();
     if (!token) {
       setCatalogLoading(false);
       return;

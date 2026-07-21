@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import { DEFAULT_PAGINATION_META, type PaginationMeta } from "@/lib/pagination";
 import { fetchAdminPeticiones } from "../services/fetchAdminPeticiones";
 import type { AdminPeticionesQuery, UnifiedPeticionRow } from "../types/peticiones.types";
@@ -18,7 +18,7 @@ export function usePeticionesInbox(enabled = true, query?: AdminPeticionesQuery)
 
   const reload = useCallback(() => {
     if (!enabled || typeof window === "undefined") return;
-    const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
+    const token = getAdminBearerToken();
     if (!token) {
       setRows([]);
       setMeta(DEFAULT_PAGINATION_META);

@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import { fieldLabelClass } from "@/app/shamell-admin/agenda/agendar/lib/agendarStyles";
+import { fieldLabelClass } from "@/app/shamell-admin/agenda/shared/lib/agendaFormStyles";
 
 /** Keeps paired grid fields aligned when one label wraps to two lines. */
 const pairedFieldLabelClass = `${fieldLabelClass} block min-h-11 leading-snug`;

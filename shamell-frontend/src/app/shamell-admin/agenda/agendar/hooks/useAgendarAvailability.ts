@@ -9,8 +9,16 @@ import {
 } from "@/lib/bookingAvailability";
 import { usePublicAvailability } from "@/hooks/use-public-availability";
 
-export function useAgendarAvailability(eventDateIso: string) {
-  const { rules: availabilityRules } = usePublicAvailability(true);
+type UseAgendarAvailabilityOptions = {
+  polling?: boolean;
+};
+
+export function useAgendarAvailability(
+  eventDateIso: string,
+  options?: UseAgendarAvailabilityOptions,
+) {
+  const polling = options?.polling ?? true;
+  const { rules: availabilityRules } = usePublicAvailability(true, { polling });
 
   const bookingTz = useMemo(
     () => availabilityRules?.timeZone ?? process.env.NEXT_PUBLIC_BOOKING_TZ ?? "America/New_York",

@@ -1,17 +1,11 @@
 "use client";
 
 import AdminModal from "@/components/admin/AdminModal";
-import type { AgendarCatalog } from "../types/agendar.types";
-import type { AgendarFormState } from "../hooks/useAgendarFormState";
+import type { AgendarMobileSectionModalsProps } from "../types/agendarComponents.types";
 import { AgendarClientFields } from "./AgendarClientFields";
 import { AgendarEventFields } from "./AgendarEventFields";
 import { AgendarLocationField } from "./AgendarClientFields";
 import { AgendarLogisticsFields } from "./AgendarLogisticsFields";
-
-type AgendarMobileSectionModalsProps = {
-  form: AgendarFormState;
-  catalog: AgendarCatalog;
-};
 
 export function AgendarMobileSectionModals({ form, catalog }: AgendarMobileSectionModalsProps) {
   return (

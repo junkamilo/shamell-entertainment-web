@@ -11,7 +11,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { BulkCreateVenueTableConfigDto } from './dto/bulk-create-venue-table-config.dto';
 import { BulkDeleteVenueTableConfigDto } from './dto/bulk-delete-venue-table-config.dto';
 import { PatchVenueTablesBulkPriceDto } from './dto/patch-venue-tables-bulk-price.dto';

@@ -1,3 +1,5 @@
 import EventsPage from "./components/EventsPage";
 
-export default EventsPage;
+export default function EventsAdminPage() {
+  return <EventsPage />;
+}

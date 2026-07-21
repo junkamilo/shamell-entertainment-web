@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import AdminModal from "@/components/admin/AdminModal";
 import { InquiryDetailsReadable } from "@/components/admin/InquiryDetailsReadable";
 import { cn } from "@/lib/utils";
@@ -15,11 +13,8 @@ import {
   statusLabel,
 } from "../lib/paymentHistoryDisplay";
 import { paymentStatusStyles } from "../lib/paymentHistoryStatusStyles";
-import { fetchAdminPaymentDetail } from "../services/fetchAdminPaymentDetail";
-import type {
-  AdminStripePaymentDetail,
-  AdminStripePaymentRow,
-} from "../types/paymentHistory.types";
+import { usePaymentHistoryDetail } from "../hooks/usePaymentHistoryDetail";
+import type { AdminStripePaymentRow } from "../types/paymentHistory.types";
 
 type Props = {
   row: AdminStripePaymentRow | null;
@@ -32,47 +27,10 @@ export default function PaymentHistoryDetailModal({
   isOpen,
   onClose,
 }: Props) {
-  const [detail, setDetail] = useState<AdminStripePaymentDetail | null>(null);
-  const [isLoadingDetail, setIsLoadingDetail] = useState(false);
-  const [detailError, setDetailError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!isOpen || !row) {
-      setDetail(null);
-      setDetailError(null);
-      setIsLoadingDetail(false);
-      return;
-    }
-
-    const token = getAdminBearerToken();
-    if (!token) {
-      setDetailError("Not signed in.");
-      return;
-    }
-
-    let cancelled = false;
-    setIsLoadingDetail(true);
-    setDetailError(null);
-
-    void fetchAdminPaymentDetail(token, row.flow, row.id)
-      .then((data) => {
-        if (!cancelled) setDetail(data);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setDetailError(
-            err instanceof Error ? err.message : "Could not load full details.",
-          );
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoadingDetail(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, row?.flow, row?.id]);
+  const { detail, isLoadingDetail, detailError } = usePaymentHistoryDetail(
+    row ? { flow: row.flow, id: row.id } : null,
+    isOpen,
+  );
 
   const { badgeClass, Icon } = row
     ? paymentStatusStyles(row.status)

@@ -9,7 +9,7 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
-import { AdminJwtGuard } from '../../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
 import { UpsertHeaderTextDto } from './dto/upsert-header-text.dto';
 import { HeaderTextService } from './header-text.service';
 

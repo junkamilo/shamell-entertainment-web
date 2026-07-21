@@ -17,7 +17,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { HeaderMediaService } from './header-media.service';
 
 @Controller('header-media')

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg data-dc-tpl="11" width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Book" data-om-id="0388d891:16">
+          <defs data-dc-tpl="12" data-om-id="0388d891:17">
+            <linearGradient data-dc-tpl="13" id="bkBg" x1="16" y1="12" x2="104" y2="108" gradientUnits="userSpaceOnUse" data-om-id="0388d891:18">
+              <stop data-dc-tpl="14" stop-color="#241f2f" data-om-id="0388d891:19"></stop>
+              <stop data-dc-tpl="15" offset="1" stop-color="#17131f" data-om-id="0388d891:20"></stop>
+            </linearGradient>
+            <linearGradient data-dc-tpl="16" id="bkGold" x1="30" y1="34" x2="90" y2="86" gradientUnits="userSpaceOnUse" data-om-id="0388d891:21">
+              <stop data-dc-tpl="17" stop-color="#F4CE6E" data-om-id="0388d891:22"></stop>
+              <stop data-dc-tpl="18" offset="1" stop-color="#D9A63C" data-om-id="0388d891:23"></stop>
+            </linearGradient>
+          </defs>
+          <rect data-dc-tpl="19" x="10" y="10" width="100" height="100" rx="26" fill="url(#bkBg)" stroke="#3a3348" stroke-width="1.5" data-om-id="0388d891:24"></rect>
+          <rect data-dc-tpl="20" x="10.75" y="10.75" width="98.5" height="98.5" rx="25.25" stroke="#ffffff" stroke-opacity="0.05" stroke-width="1.5" data-om-id="0388d891:25"></rect>
+          <g data-dc-tpl="21" stroke="url(#bkGold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" data-om-id="0388d891:26">
+            
+            <path data-dc-tpl="22" d="M60 41 V85" data-om-id="0388d891:27"></path>
+            
+            <path data-dc-tpl="23" d="M60 41 C52 35 42 34 33 36 A3 3 0 0 0 31 39 V78 A3 3 0 0 0 34 81 C42 80 52 81 60 85" data-om-id="0388d891:28"></path>
+            
+            <path data-dc-tpl="24" d="M60 41 C68 35 78 34 87 36 A3 3 0 0 1 89 39 V78 A3 3 0 0 1 86 81 C78 80 68 81 60 85" data-om-id="0388d891:29"></path>
+            
+            <path data-dc-tpl="25" d="M40 48 h11" data-om-id="0388d891:30"></path>
+            <path data-dc-tpl="26" d="M40 58 h13" data-om-id="0388d891:31"></path>
+            <path data-dc-tpl="27" d="M69 48 h11" data-om-id="0388d891:32"></path>
+            <path data-dc-tpl="28" d="M67 58 h13" data-om-id="0388d891:33"></path>
+          </g>
+        </svg>

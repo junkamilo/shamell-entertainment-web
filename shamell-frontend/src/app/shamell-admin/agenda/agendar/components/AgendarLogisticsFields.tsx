@@ -4,13 +4,8 @@ import {
   formatDateDisplayUs,
   formatTimeDisplayUs,
 } from "@/lib/contactLogisticsUtils";
-import { fieldLabelClass, logisticsPickerTriggerClass } from "../lib/agendarStyles";
-import type { AgendarFormState } from "../hooks/useAgendarFormState";
-
-type AgendarLogisticsFieldsProps = {
-  form: AgendarFormState;
-  variant: "desktop" | "mobile";
-};
+import { fieldLabelClass, logisticsPickerTriggerClass } from "../../shared/lib/agendaFormStyles";
+import type { AgendarLogisticsFieldsProps } from "../types/agendarComponents.types";
 
 export function AgendarLogisticsFields({ form, variant }: AgendarLogisticsFieldsProps) {
   const dateButton = (

@@ -2,13 +2,8 @@
 
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AGENDAR_FORM_ID, submitButtonClass, submitButtonClassMobile } from "../lib/agendarStyles";
-
-type AgendarSubmitBarProps = {
-  isEditMode: boolean;
-  submitting: boolean;
-  variant: "desktop" | "mobile-fixed";
-};
+import { AGENDAR_FORM_ID, submitButtonClass, submitButtonClassMobile } from "../../shared/lib/agendaFormStyles";
+import type { AgendarSubmitBarProps } from "../types/agendarComponents.types";
 
 export function AgendarSubmitBar({ isEditMode, submitting, variant }: AgendarSubmitBarProps) {
   const label = isEditMode ? "SAVE BOOKING" : "CREATE BOOKING";
@@ -19,6 +14,7 @@ export function AgendarSubmitBar({ isEditMode, submitting, variant }: AgendarSub
         <button
           type="submit"
           form={AGENDAR_FORM_ID}
+          data-testid="agendar-submit"
           disabled={submitting}
           className={cn(submitButtonClassMobile, "pointer-events-auto w-full max-w-lg")}
         >
@@ -32,6 +28,7 @@ export function AgendarSubmitBar({ isEditMode, submitting, variant }: AgendarSub
   return (
     <button
       type="submit"
+      data-testid="agendar-submit"
       disabled={submitting}
       className={cn(submitButtonClass, "md:max-w-none")}
     >

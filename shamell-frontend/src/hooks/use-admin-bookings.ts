@@ -31,6 +31,11 @@ export type AdminBookingRow = {
   guestCount?: number | null;
   user?: { fullName: string; email: string } | null;
   service?: { id: string; serviceType?: { name: string } };
+  bookingServices?: Array<{
+    serviceId: string;
+    sortOrder: number;
+    service?: { id: string; serviceType?: { name: string } };
+  }>;
   eventType?: { id?: string; name: string } | null;
   occasionType?: { id?: string; name: string } | null;
   event?: { id?: string; name: string } | null;
@@ -184,10 +189,10 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
       if (!res.ok) {
         throw new Error(nestApiErrorMessage(data, "Could not create booking."));
       }
-      reload();
+      if (enabled) reload();
       return data;
     },
-    [authHeaders, reload],
+    [authHeaders, enabled, reload],
   );
 
   const patchBooking = useCallback(
@@ -204,10 +209,10 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
       if (!res.ok) {
         throw new Error(nestApiErrorMessage(data, "Could not update."));
       }
-      reload();
+      if (enabled) reload();
       return data;
     },
-    [authHeaders, reload],
+    [authHeaders, enabled, reload],
   );
 
   const removeBooking = useCallback(
@@ -223,9 +228,9 @@ export function useAdminBookings(enabled = true, query?: AdminBookingQuery) {
         const data = await res.json().catch(() => ({}));
         throw new Error(nestApiErrorMessage(data, "Could not delete."));
       }
-      reload();
+      if (enabled) reload();
     },
-    [authHeaders, reload],
+    [authHeaders, enabled, reload],
   );
 
   const createBookingQuote = useCallback(

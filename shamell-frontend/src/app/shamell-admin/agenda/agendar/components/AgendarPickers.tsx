@@ -2,16 +2,7 @@
 
 import ContactDatePickerModal from "@/app/contacto/components/ContactDatePickerModal";
 import ContactTimePickerModal from "@/app/contacto/components/ContactTimePickerModal";
-import type { useAgendarAvailability } from "../hooks/useAgendarAvailability";
-import type { AgendarFormState } from "../hooks/useAgendarFormState";
-import type { OccupiedRange } from "../types/agendar.types";
-
-type AgendarPickersProps = {
-  form: AgendarFormState;
-  availability: ReturnType<typeof useAgendarAvailability>;
-  occupiedRanges: OccupiedRange[];
-  isMobileLayout: boolean;
-};
+import type { AgendarPickersProps } from "../types/agendarComponents.types";
 
 export function AgendarPickers({
   form,

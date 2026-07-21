@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import { PatchVenueLayoutEnabledDto } from './dto/patch-venue-layout-enabled.dto';
 import { UpsertVenueLayoutSettingsDto } from './dto/upsert-venue-layout-settings.dto';
 import { VenueLayoutSettingsService } from './venue-layout-settings.service';

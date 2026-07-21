@@ -2,16 +2,12 @@ import {
   BadRequestException,
   Controller,
   Get,
-  HttpCode,
-  HttpStatus,
   Param,
-  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AdminJwtGuard } from '../contact/guards/admin-jwt.guard';
-import { UpcomingEventsService } from '../upcoming-events/upcoming-events.service';
+import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import {
   ADMIN_PAYMENT_DETAIL_FLOWS,
   type AdminPaymentDetailFlow,
@@ -25,10 +21,7 @@ import {
 @ApiTags('Admin Payments')
 @Controller('admin/payments')
 export class AdminPaymentsController {
-  constructor(
-    private readonly adminPaymentsService: AdminPaymentsService,
-    private readonly upcomingEventsService: UpcomingEventsService,
-  ) {}
+  constructor(private readonly adminPaymentsService: AdminPaymentsService) {}
 
   @Get()
   @UseGuards(AdminJwtGuard)
@@ -62,23 +55,6 @@ export class AdminPaymentsController {
     return this.adminPaymentsService.getPaymentDetail(
       flow as AdminPaymentDetailFlow,
       id.trim(),
-    );
-  }
-
-  @Post('reconcile-fixed-ticket')
-  @HttpCode(HttpStatus.OK)
-  @UseGuards(AdminJwtGuard)
-  @ApiBearerAuth()
-  @ApiOperation({
-    summary:
-      'Reconcile a paid Stripe checkout session into a fixed ticket enrollment',
-  })
-  reconcileFixedTicket(@Query('session_id') sessionId: string) {
-    if (!sessionId?.trim()) {
-      throw new BadRequestException('session_id is required.');
-    }
-    return this.upcomingEventsService.reconcileFixedTicketFromStripeSession(
-      sessionId.trim(),
     );
   }
 }

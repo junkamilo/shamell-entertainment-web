@@ -6,15 +6,15 @@ import { hhmmToMinutes } from "@/lib/contactLogisticsUtils";
 import { utcInstantForWallClock } from "@/lib/bookingAvailability";
 import { toast } from "@/hooks/use-toast";
 import { useAdminBookings } from "@/hooks/use-admin-bookings";
-import { useAdminContactRequests } from "@/hooks/use-admin-contact-requests";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { validateAgendarForm } from "../form-validation";
-import { AGENDA_HUB_PATH } from "../lib/agendarRoutes";
+import { validateAgendarForm } from "../lib/agendarValidation";
+import { AGENDA_HUB_PATH } from "../../lib/agendaRoutes";
 import { buildAgendarBookingPayload } from "../lib/buildAgendarBookingPayload";
 import { isBookingIdUuid } from "../lib/agendarQuery";
 import { useAgendarAvailability } from "./useAgendarAvailability";
 import { useAgendarCatalog } from "./useAgendarCatalog";
 import { useAgendarFormState } from "./useAgendarFormState";
+import { useAgendarEditPrefill } from "./useAgendarEditPrefill";
 import { useAgendarOccupiedRanges } from "./useAgendarOccupiedRanges";
 import { useAgendarQueryPrefill } from "./useAgendarQueryPrefill";
 
@@ -23,18 +23,28 @@ export function useAgendarPage() {
   const searchParams = useSearchParams();
   const form = useAgendarFormState();
   const { catalogLoading, catalog } = useAgendarCatalog();
-  const availability = useAgendarAvailability(form.eventDateIso);
-  const { occupiedRanges } = useAgendarOccupiedRanges(form.eventDateIso);
-  useAgendarQueryPrefill(searchParams, form);
+  const availability = useAgendarAvailability(form.eventDateIso, { polling: false });
+  const { occupiedRanges } = useAgendarOccupiedRanges(form.eventDateIso, {
+    polling: false,
+    refreshKey: `${form.eventDateIso}:${form.datePickerOpen}:${form.timePickerWhich ?? ""}`,
+  });
+
+  const bookingId = searchParams.get("bookingId")?.trim() ?? "";
+  const isEditMode = isBookingIdUuid(bookingId);
+  const { editLoading } = useAgendarEditPrefill(
+    bookingId,
+    isEditMode,
+    searchParams,
+    form,
+    availability.bookingTz,
+  );
+  useAgendarQueryPrefill(searchParams, form, { enabled: !isEditMode });
 
   const { createBooking, patchBooking } = useAdminBookings(false);
-  const { setStatus: setContactRequestStatus } = useAdminContactRequests(false);
   const isMobileLayout = useIsMobile();
   const [submitting, setSubmitting] = useState(false);
 
-  const bookingId = searchParams.get("bookingId")?.trim() ?? "";
   const returnTo = searchParams.get("returnTo")?.trim() || AGENDA_HUB_PATH;
-  const isEditMode = isBookingIdUuid(bookingId);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -97,19 +107,7 @@ export function useAgendarPage() {
               }
             : {}),
         });
-        let extraDescription = "";
-        if (form.linkedContactRequestId) {
-          try {
-            await setContactRequestStatus(form.linkedContactRequestId, "RESERVED");
-          } catch {
-            extraDescription =
-              "The contact request could not be marked as reserved automatically; update it from Inbox if needed.";
-          }
-        }
-        toast({
-          title: "Booking created",
-          ...(extraDescription ? { description: extraDescription } : {}),
-        });
+        toast({ title: "Booking created" });
       }
       form.clearNotesAndGuestCountAfterSubmit();
       if (returnTo.startsWith("/")) {
@@ -131,6 +129,7 @@ export function useAgendarPage() {
     form,
     catalog,
     catalogLoading,
+    editLoading,
     availability,
     occupiedRanges,
     isMobileLayout,

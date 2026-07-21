@@ -1,6 +1,8 @@
-import {
+﻿import {
   BadRequestException,
   ConflictException,
+  forwardRef,
+  Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -41,6 +43,8 @@ import { syncVenueSeatReservationEventDates } from '../venue-reservations/sync-v
 import { CreateClassCheckoutDto } from './dto/create-class-checkout.dto';
 import { CreateClassBundleCheckoutDto } from './dto/create-class-bundle-checkout.dto';
 import { CreateClassPackageCheckoutDto } from './dto/create-class-package-checkout.dto';
+import { AdminClassEnrollmentService } from './admin-class-enrollment.service';
+import type { CreateAdminClassEnrollmentDto } from './dto/create-admin-class-enrollment.dto';
 import { regenerateClassSessionsForEvent } from './class-session-generator.util';
 import { CreateFixedEventCheckoutDto } from './dto/create-fixed-event-checkout.dto';
 import { UpsertClassSessionDto } from './dto/upsert-class-session.dto';
@@ -103,7 +107,41 @@ export class UpcomingEventsService {
     private readonly mail: MailService,
     private readonly adminPaymentNotify: AdminPaymentNotifyService,
     private readonly reservationTemplates: ReservationEventTemplatesService,
+    @Inject(forwardRef(() => AdminClassEnrollmentService))
+    private readonly adminClassEnrollment: AdminClassEnrollmentService,
   ) {}
+
+  getAdminClassBookingContext(eventId: string) {
+    return this.adminClassEnrollment.getAdminClassBookingContext(eventId);
+  }
+
+  listAdminBookableClassEvents() {
+    return this.adminClassEnrollment.listAdminBookableClassEvents();
+  }
+
+  createAdminClassCashEnrollment(
+    adminUserId: string,
+    dto: CreateAdminClassEnrollmentDto,
+  ) {
+    return this.adminClassEnrollment.createAdminClassCashEnrollment(
+      adminUserId,
+      dto,
+    );
+  }
+
+  createAdminClassCheckoutSession(
+    adminUserId: string,
+    dto: CreateAdminClassEnrollmentDto,
+  ) {
+    return this.adminClassEnrollment.createAdminClassCheckoutSession(
+      adminUserId,
+      dto,
+    );
+  }
+
+  resolveClassPayCheckoutClientSecret(token: string) {
+    return this.adminClassEnrollment.resolveClassPayCheckoutClientSecret(token);
+  }
 
   async getPublicBySlug(slug: string) {
     const event = await this.findPublicUpcomingBySlug(slug);
@@ -2648,4 +2686,5 @@ export class UpcomingEventsService {
       });
     }
   }
+
 }
