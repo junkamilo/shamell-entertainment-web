@@ -418,6 +418,9 @@ export class VenueReservationsService {
       customerName: dto.customerName.trim(),
       customerEmail: dto.customerEmail.trim().toLowerCase(),
       customerPhone: dto.customerPhone?.trim() || null,
+      boxOfficeDetails: dto.boxOfficeDetails
+        ? (dto.boxOfficeDetails as Prisma.InputJsonValue)
+        : undefined,
       paidAt: now,
       createdByAdminId: adminUserId,
     });
@@ -1480,6 +1483,9 @@ export class VenueReservationsService {
           customerName: args.dto.customerName.trim(),
           customerEmail: args.dto.customerEmail.trim().toLowerCase(),
           customerPhone: args.dto.customerPhone?.trim() || null,
+          boxOfficeDetails: args.dto.boxOfficeDetails
+            ? (args.dto.boxOfficeDetails as Prisma.InputJsonValue)
+            : undefined,
           expiresAt: args.expiresAt,
         },
       });

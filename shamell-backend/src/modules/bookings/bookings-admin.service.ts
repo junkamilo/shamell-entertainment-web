@@ -10,6 +10,8 @@ import {
   BookingSource,
   BookingStatus,
   ContactRequestStatus,
+  EventPublicSection,
+  EventTypeCatalogChannel,
   Prisma,
 } from '@prisma/client';
 import { buildPaginationMeta } from '../../common/pagination/pagination.util';
@@ -313,7 +315,7 @@ export class BookingsAdminService {
     return { date: dateISO, occupied };
   }
 
-  private async validateCatalogRefs(dto: {
+  async assertBookingCatalogRefs(dto: {
     serviceId: string;
     eventTypeId?: string | null;
     occasionTypeId?: string | null;
@@ -323,11 +325,18 @@ export class BookingsAdminService {
       where: { id: dto.serviceId },
     });
     if (!service) throw new BadRequestException('Invalid serviceId.');
+
     if (dto.eventTypeId) {
       const row = await this.prisma.eventType.findUnique({
         where: { id: dto.eventTypeId },
+        select: { id: true, catalogChannel: true },
       });
       if (!row) throw new BadRequestException('Invalid eventTypeId.');
+      if (row.catalogChannel !== EventTypeCatalogChannel.BOOKING) {
+        throw new BadRequestException(
+          'This event belongs to ON COMING EVENTS and cannot be used for bookings.',
+        );
+      }
     }
     if (dto.occasionTypeId) {
       const row = await this.prisma.occasionType.findUnique({
@@ -336,8 +345,14 @@ export class BookingsAdminService {
       if (!row) throw new BadRequestException('Invalid occasionTypeId.');
     }
     if (dto.eventId) {
-      const ev = await this.prisma.event.findUnique({
+      const ev = await this.prisma.event.findFirst({
         where: { id: dto.eventId },
+        select: {
+          id: true,
+          eventTypeId: true,
+          publicSection: true,
+          eventType: { select: { catalogChannel: true } },
+        },
       });
       if (!ev) throw new BadRequestException('Invalid eventId.');
       if (dto.eventTypeId && ev.eventTypeId !== dto.eventTypeId) {
@@ -345,12 +360,20 @@ export class BookingsAdminService {
           'eventId does not belong to eventTypeId.',
         );
       }
+      if (
+        ev.publicSection !== EventPublicSection.GENERAL ||
+        ev.eventType.catalogChannel !== EventTypeCatalogChannel.BOOKING
+      ) {
+        throw new BadRequestException(
+          'This event belongs to ON COMING EVENTS and cannot be used for bookings.',
+        );
+      }
     }
   }
 
   async createAdminBooking(adminUserId: string, dto: CreateAdminBookingDto) {
     this.validateGuestVsUser(dto);
-    await this.validateCatalogRefs(dto);
+    await this.assertBookingCatalogRefs(dto);
 
     if (dto.userId) {
       const u = await this.prisma.user.findUnique({
@@ -599,7 +622,7 @@ export class BookingsAdminService {
       }),
     ]);
     return {
-      items,
+      items: items.map((item) => this.withCatalogMismatchFlag(item)),
       meta: buildPaginationMeta({ page, perPage, totalItems }),
     };
   }
@@ -630,7 +653,20 @@ export class BookingsAdminService {
       include: adminListInclude,
     });
     if (!row) throw new NotFoundException('Booking not found.');
-    return row;
+    return this.withCatalogMismatchFlag(row);
+  }
+
+  /** Read-only diagnostic: historical booking referencing a hub type. Does not mutate the row. */
+  private withCatalogMismatchFlag<
+    T extends {
+      eventType?: { catalogChannel?: EventTypeCatalogChannel } | null;
+    },
+  >(row: T): T & { catalogMismatch: boolean } {
+    return {
+      ...row,
+      catalogMismatch:
+        row.eventType?.catalogChannel === EventTypeCatalogChannel.UPCOMING_HUB,
+    };
   }
 
   async updateAdmin(id: string, dto: UpdateAdminBookingDto) {
@@ -651,7 +687,7 @@ export class BookingsAdminService {
       dto.occasionTypeId !== undefined ||
       dto.eventId !== undefined
     ) {
-      await this.validateCatalogRefs({
+      await this.assertBookingCatalogRefs({
         serviceId,
         eventTypeId,
         occasionTypeId,

@@ -3,7 +3,11 @@ import { cn } from "@/lib/utils";
 /** Native About hero video ratio (1080×1920). */
 export const ABOUT_HERO_VIDEO_ASPECT = 9 / 16;
 
-/** Max height caps per breakpoint (height-first on mobile; width-first + max-h on desktop). */
+/**
+ * Max height caps per breakpoint.
+ * Card width = min(100%, maxHeight × 9/16) so the frame stays exactly 9:16
+ * inside the column — no black pillarboxing from a too-wide box.
+ */
 export const ABOUT_HERO_VIDEO_MAX_HEIGHT = {
   base: "min(65dvh, 600px)",
   sm: "min(68dvh, 640px)",
@@ -21,21 +25,35 @@ type AboutHeroVideoCardOpts = {
   variant?: "public" | "preview";
 };
 
-/** Responsive 9:16 card — height-capped on mobile; column width + max-h on desktop. */
+/**
+ * Responsive 9:16 card.
+ * Size by width capped to both the column and (maxHeight × 9/16), then
+ * height follows aspect-ratio. Never use `w-full` + independent `max-h`
+ * (that widens the box past 9:16 and creates black side bars with
+ * object-contain).
+ */
 export function aboutHeroVideoCardClassName(opts?: AboutHeroVideoCardOpts) {
   const { className, variant = "public" } = opts ?? {};
   return cn(
     ABOUT_HERO_CARD_BASE,
-    "mx-auto aspect-9/16 w-auto max-w-full",
+    "mx-auto aspect-9/16 h-auto max-w-full",
     variant === "public"
       ? [
-          "h-[min(65dvh,600px)]",
-          "sm:h-[min(68dvh,640px)]",
-          "lg:mx-0 lg:h-auto lg:w-full lg:max-h-[min(75dvh,700px)]",
+          "w-[min(100%,calc(min(65dvh,600px)*9/16))]",
+          "max-h-[min(65dvh,600px)]",
+          "sm:w-[min(100%,calc(min(68dvh,640px)*9/16))]",
+          "sm:max-h-[min(68dvh,640px)]",
+          "lg:mx-0 lg:w-[min(100%,calc(min(75dvh,700px)*9/16))]",
+          "lg:max-h-[min(75dvh,700px)]",
+          "xl:w-[min(100%,calc(min(78dvh,720px)*9/16))]",
           "xl:max-h-[min(78dvh,720px)]",
+          "2xl:w-[min(100%,calc(min(80dvh,740px)*9/16))]",
           "2xl:max-h-[min(80dvh,740px)]",
         ]
-      : "h-[min(52dvh,480px)]",
+      : [
+          "w-[min(100%,calc(min(52dvh,480px)*9/16))]",
+          "max-h-[min(52dvh,480px)]",
+        ],
     className,
   );
 }
@@ -45,12 +63,18 @@ export function aboutHeroImageCardClassName(className?: string) {
   return cn(ABOUT_HERO_CARD_BASE, "aspect-3/4 w-full", className);
 }
 
-/** Inner flex frame that centers media without cropping. */
+/**
+ * Inner frame — transparent so no black pillarboxing shows around a
+ * correctly sized 9:16 card. Admin previews may pass an explicit bg-*.
+ */
 export function aboutHeroMediaFrameClassName(className?: string) {
-  return cn("flex h-full w-full items-center justify-center bg-black", className);
+  return cn("relative flex h-full w-full items-center justify-center", className);
 }
 
-/** Video/poster fit — never crop the frame. */
+/**
+ * Video/poster fit — fill the 9:16 card without cropping.
+ * (Same aspect as the card ⇒ contain fills edge-to-edge.)
+ */
 export function aboutHeroMediaClassName(className?: string) {
-  return cn("max-h-full max-w-full object-contain object-center", className);
+  return cn("h-full w-full object-contain object-center", className);
 }

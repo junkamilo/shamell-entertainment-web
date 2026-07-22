@@ -45,8 +45,21 @@ export function validateBlueprintComplete(blueprint: ClassSectionBlueprint[]): s
   if (blueprint.length === 0) return "Add at least one section to the shared setup.";
   for (let i = 0; i < blueprint.length; i++) {
     const s = blueprint[i]!;
+    if (!s.label.trim()) {
+      return `Section ${i + 1}: the label is required.`;
+    }
     if (!s.startTime?.trim() || !s.endTime?.trim()) {
       return `Section ${i + 1}: set start and end times.`;
+    }
+    const capacityRaw = s.defaultCapacity.trim();
+    const capacity = Number.parseInt(capacityRaw, 10);
+    if (!capacityRaw || !Number.isInteger(capacity) || capacity < 1) {
+      return `Section ${i + 1}: capacity must be at least 1.`;
+    }
+    const priceRaw = s.defaultPrice.trim();
+    const price = Number.parseFloat(priceRaw);
+    if (!priceRaw || !Number.isFinite(price) || price < 0.5) {
+      return `Section ${i + 1}: set a class price of at least $0.50.`;
     }
   }
   return validateBlueprintOverlapMessage(blueprint);
@@ -58,7 +71,7 @@ function blueprintRowEqual(a: ClassSectionBlueprint, b: ClassSectionBlueprint): 
     a.startTime === b.startTime &&
     a.endTime === b.endTime &&
     a.sortOrder === b.sortOrder &&
-    a.defaultCapacity === b.defaultCapacity &&
+    a.defaultCapacity.trim() === b.defaultCapacity.trim() &&
     a.defaultPrice.trim() === b.defaultPrice.trim()
   );
 }
@@ -99,11 +112,11 @@ export function inferBlueprintFromActiveDays(
 export function defaultBlueprint(): ClassSectionBlueprint[] {
   return [
     {
-      label: "Section 1",
+      label: "",
       startTime: "10:00",
       endTime: "12:00",
       sortOrder: 0,
-      defaultCapacity: 20,
+      defaultCapacity: "",
       defaultPrice: "",
     },
   ];

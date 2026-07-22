@@ -14,6 +14,7 @@ import {
   ReservationEventScheduleMode,
   UpcomingClassEnrollmentStatus,
   UpcomingExperienceType,
+  VenueReservationPaymentChannel,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MailService } from '../mail/mail.service';
@@ -301,11 +302,14 @@ export class AdminClassEnrollmentService {
           amount: resolved.session.price,
           currency: resolved.session.currency,
           status: UpcomingClassEnrollmentStatus.PAID,
+          paymentChannel: VenueReservationPaymentChannel.CASH,
           paymentMethodType: 'cash',
           paidAt: new Date(),
           customerName: customer.customerName,
           customerEmail: customer.customerEmail,
           customerPhone: customer.customerPhone,
+          createdByAdminId: adminUserId,
+          boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
         },
         include: {
           session: {
@@ -344,6 +348,7 @@ export class AdminClassEnrollmentService {
       resolvedItems: resolved.resolved,
       checkoutFlow: resolved.checkoutFlow,
       adminUserId,
+      boxOfficeDetails: dto.boxOfficeDetails,
     });
 
     return {
@@ -410,11 +415,14 @@ export class AdminClassEnrollmentService {
           amount: session.price,
           currency: session.currency,
           status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+          paymentChannel: VenueReservationPaymentChannel.STRIPE,
           stripeCheckoutSessionId: checkout.id,
           payTokenHash,
           customerName: customer.customerName,
           customerEmail: customer.customerEmail,
           customerPhone: customer.customerPhone,
+          createdByAdminId: adminUserId,
+          boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
           expiresAt,
         },
       });
@@ -492,12 +500,15 @@ export class AdminClassEnrollmentService {
           amount: resolved.totalAmount,
           currency: 'usd',
           status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+          paymentChannel: VenueReservationPaymentChannel.STRIPE,
           stripeCheckoutSessionId: checkout.id,
           payTokenHash,
           customerName: customer.customerName,
           customerEmail: customer.customerEmail,
           customerPhone: customer.customerPhone,
           selections: resolved.selections,
+          createdByAdminId: adminUserId,
+          boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
           expiresAt,
         },
       });
@@ -509,9 +520,11 @@ export class AdminClassEnrollmentService {
           amount: row.session.price,
           currency: row.session.currency,
           status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+          paymentChannel: VenueReservationPaymentChannel.STRIPE,
           customerName: customer.customerName,
           customerEmail: customer.customerEmail,
           customerPhone: customer.customerPhone,
+          createdByAdminId: adminUserId,
           expiresAt,
         },
       });
@@ -692,6 +705,13 @@ export class AdminClassEnrollmentService {
       customerEmail: dto.customerEmail.trim().toLowerCase(),
       customerPhone: dto.customerPhone?.trim() || null,
     };
+  }
+
+  private toBoxOfficeJson(
+    value: Record<string, unknown> | undefined,
+  ): Prisma.InputJsonValue | undefined {
+    if (!value) return undefined;
+    return value as Prisma.InputJsonValue;
   }
 
   private hashClassPayToken(rawToken: string): string {
@@ -923,6 +943,7 @@ export class AdminClassEnrollmentService {
     }>;
     checkoutFlow: string;
     adminUserId: string;
+    boxOfficeDetails?: Record<string, unknown>;
   }) {
     const now = new Date();
     const packageEnrollment =
@@ -932,12 +953,15 @@ export class AdminClassEnrollmentService {
           amount: args.amount,
           currency: 'usd',
           status: UpcomingClassEnrollmentStatus.PAID,
+          paymentChannel: VenueReservationPaymentChannel.CASH,
           paymentMethodType: 'cash',
           paidAt: now,
           customerName: args.customer.customerName,
           customerEmail: args.customer.customerEmail,
           customerPhone: args.customer.customerPhone,
           selections: args.selections,
+          createdByAdminId: args.adminUserId,
+          boxOfficeDetails: this.toBoxOfficeJson(args.boxOfficeDetails),
         },
         include: this.packageEnrollmentInclude(),
       });
@@ -949,11 +973,13 @@ export class AdminClassEnrollmentService {
           amount: row.session.price,
           currency: row.session.currency,
           status: UpcomingClassEnrollmentStatus.PAID,
+          paymentChannel: VenueReservationPaymentChannel.CASH,
           paymentMethodType: 'cash',
           paidAt: now,
           customerName: args.customer.customerName,
           customerEmail: args.customer.customerEmail,
           customerPhone: args.customer.customerPhone,
+          createdByAdminId: args.adminUserId,
         },
         include: {
           session: {

@@ -66,10 +66,13 @@ export function OnComingEventHubCard({
   event,
   onNavigateStart,
   mobileCarousel,
+  priorityHero = false,
 }: {
   event: OnComingEventHubCardItem;
   onNavigateStart?: () => void;
   mobileCarousel?: boolean;
+  /** Eager-load the hero image (first home card). */
+  priorityHero?: boolean;
 }) {
   const purchaseMode = event.purchaseMode ?? (
     event.experienceType === "VENUE_SEATING"
@@ -130,6 +133,7 @@ export function OnComingEventHubCard({
           videoUrl={heroIsVideo ? event.heroImageUrl : null}
           title={event.eventTypeName}
           aspectClassName="aspect-[3/4]"
+          priority={priorityHero}
         />
         {soldOut ? (
           <div

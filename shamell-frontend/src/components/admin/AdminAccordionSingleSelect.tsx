@@ -133,8 +133,8 @@ export default function AdminAccordionSingleSelect({
               transition: { duration: 0.16, ease: [0.4, 0, 1, 1] },
             }}
             className={cn(
-              "shamell-glass-menu absolute left-0 right-0 top-[calc(100%+6px)] z-120 max-h-72 origin-top overflow-y-auto rounded-xl",
-              "shamell-scrollbar shadow-lg shadow-black/20",
+              "shamell-glass-menu absolute left-0 right-0 top-[calc(100%+6px)] z-120 max-h-72 origin-top overflow-x-hidden overflow-y-auto rounded-xl",
+              "shamell-scrollbar [scrollbar-gutter:auto] shadow-lg shadow-black/20",
             )}
           >
             {rows.map((row) => {
@@ -150,7 +150,7 @@ export default function AdminAccordionSingleSelect({
                   id={optId}
                   onClick={() => pick(row.id)}
                   className={cn(
-                    "flex w-full items-center gap-3 border-b border-gold/8 px-4 py-3 text-left transition-colors last:border-b-0",
+                    "flex w-full min-w-full box-border items-center gap-3 border-b border-gold/8 px-4 py-3 text-left transition-colors last:border-b-0",
                     "hover:bg-gold/7",
                     isSel && "bg-gold/9",
                   )}

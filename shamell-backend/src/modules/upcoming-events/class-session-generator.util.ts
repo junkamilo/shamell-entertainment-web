@@ -45,7 +45,7 @@ type SectionRow = {
   endTime: string;
   sortOrder: number;
   defaultCapacity: number;
-  defaultPrice: Prisma.Decimal | null;
+  defaultPrice: Prisma.Decimal;
 };
 
 async function loadActiveClassSections(
@@ -151,7 +151,7 @@ async function regenerateClassSessionsInClient(
 ): Promise<RegenerateClassSessionsResult> {
   const event = await prisma.event.findUnique({
     where: { id: eventId },
-    select: { id: true, price: true },
+    select: { id: true },
   });
   if (!event) return { upserted: 0, deactivated: 0 };
 
@@ -196,7 +196,6 @@ async function regenerateClassSessionsInClient(
   const startIso = effectiveIso > todayIso ? effectiveIso : todayIso;
   const endIso = addDaysIso(startIso, GENERATION_WEEKS * 7);
 
-  const basePrice = event.price != null ? Number(event.price) : 0;
   const generatedKeys = new Set<string>();
   let upserted = 0;
 
@@ -224,8 +223,7 @@ async function regenerateClassSessionsInClient(
       const endsAt = utcInstantForWallClock(cursor, endMins, tz);
       if (endsAt <= startsAt) continue;
 
-      const price =
-        live.defaultPrice != null ? Number(live.defaultPrice) : basePrice;
+      const price = Number(live.defaultPrice);
 
       const key = `${live.id}:${startsAt.toISOString()}`;
       generatedKeys.add(key);

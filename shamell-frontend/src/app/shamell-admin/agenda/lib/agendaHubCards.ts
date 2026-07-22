@@ -1,5 +1,6 @@
 import {
   AGENDAR_PATH,
+  AGENDA_BOX_OFFICE_PATH,
   AGENDA_DISPONIBILIDAD_PATH,
   AGENDA_MI_AGENDA_PATH,
   AGENDA_PAYMENT_HISTORY_PATH,
@@ -15,6 +16,14 @@ export const AGENDA_HUB_CARDS: AgendaHubCard[] = [
     subtitle:
       "New booking by phone or in person: service, event type, date, and client.",
     iconSrc: AGENDA_HUB_ICON.book,
+    fire: false,
+  },
+  {
+    href: AGENDA_BOX_OFFICE_PATH,
+    title: "Box office",
+    subtitle:
+      "ON COMING seats, tables, and classes — walk-in or phone, cash or Stripe.",
+    iconSrc: AGENDA_HUB_ICON.boxOffice,
     fire: false,
   },
   {

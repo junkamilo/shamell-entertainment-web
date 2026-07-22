@@ -8,5 +8,6 @@ import { EventsService } from './events.service';
   imports: [GalleryModule, PrismaModule],
   controllers: [EventsController],
   providers: [EventsService],
+  exports: [EventsService],
 })
 export class EventsModule {}

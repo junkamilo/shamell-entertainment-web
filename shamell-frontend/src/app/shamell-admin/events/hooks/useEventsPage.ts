@@ -73,6 +73,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
   const [pendingDelete, setPendingDelete] = useState<AdminEvent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewEvent, setViewEvent] = useState<AdminEvent | null>(null);
+  const [validationAlert, setValidationAlert] = useState<string | null>(null);
 
   const seedEventTypes = useCallback((types: EventsEventTypeOption[]) => {
     setEventTypeId((current) => {
@@ -241,7 +242,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
 
       const validationError = form.getValidationError();
       if (validationError) {
-        toast({ variant: "destructive", title: "Check the form", description: validationError });
+        setValidationAlert(validationError);
         return;
       }
 
@@ -465,6 +466,8 @@ export function useEventsPage(options?: UseEventsPageOptions) {
     isDeleting,
     viewEvent,
     setViewEvent,
+    validationAlert,
+    closeValidationAlert: () => setValidationAlert(null),
     openCreateModal,
     closeModal,
     onSubmit,

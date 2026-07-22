@@ -23,7 +23,10 @@ export async function fetchAgendaCatalogMaps({
 
   const requests: Promise<Response>[] = [
     fetch(`${base}/api/v1/services/admin`, { headers, cache: "no-store" }),
-    fetch(`${base}/api/v1/events/types/admin`, { headers, cache: "no-store" }),
+    fetch(`${base}/api/v1/events/types/admin?publicSection=GENERAL`, {
+      headers,
+      cache: "no-store",
+    }),
   ];
 
   if (includeOccasions) {

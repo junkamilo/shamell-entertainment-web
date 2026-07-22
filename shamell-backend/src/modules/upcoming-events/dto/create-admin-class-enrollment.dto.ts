@@ -4,6 +4,7 @@ import {
   IsArray,
   IsEmail,
   IsIn,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -55,4 +56,9 @@ export class CreateAdminClassEnrollmentDto {
   @IsString()
   @MaxLength(40)
   customerPhone?: string;
+
+  /** Box Office form snapshot; optional so Book Class keeps working without it. */
+  @IsOptional()
+  @IsObject()
+  boxOfficeDetails?: Record<string, unknown>;
 }

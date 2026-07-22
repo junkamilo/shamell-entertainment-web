@@ -164,6 +164,13 @@ export default function EventsPageContent({ state }: Props) {
         title={blockedWarning.title}
         description={blockedWarning.description}
       />
+
+      <AdminBlockedActionModal
+        isOpen={state.validationAlert != null}
+        onClose={state.closeValidationAlert}
+        title="Missing required fields"
+        description={state.validationAlert ?? ""}
+      />
     </div>
   );
 }

@@ -118,6 +118,15 @@ export class BookingsInquiryService {
     const occasionTypeId = trimUuidField(detailsAligned.occasionTypeId);
     const eventId = trimUuidField(detailsAligned.eventId);
 
+    if (eventTypeId || eventId) {
+      await this.admin.assertBookingCatalogRefs({
+        serviceId,
+        eventTypeId,
+        occasionTypeId,
+        eventId,
+      });
+    }
+
     let guestCount: number | null = null;
     if (
       detailsAligned.guestCount !== undefined &&

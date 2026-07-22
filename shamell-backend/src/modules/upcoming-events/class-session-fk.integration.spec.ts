@@ -55,6 +55,8 @@ const run = process.env.CLASS_SESSION_INTEGRATION === '1';
               endTime: '12:00',
               sortOrder: 0,
               defaultCapacity: 20,
+              label: 'Section A',
+              defaultPrice: 50,
             },
             {
               weekday: 3,
@@ -62,6 +64,8 @@ const run = process.env.CLASS_SESSION_INTEGRATION === '1';
               endTime: '12:00',
               sortOrder: 0,
               defaultCapacity: 20,
+              label: 'Section B',
+              defaultPrice: 50,
             },
           ],
         },
@@ -70,7 +74,10 @@ const run = process.env.CLASS_SESSION_INTEGRATION === '1';
     templateId = template.id;
 
     const eventType = await prisma.eventType.create({
-      data: { name: `integration-et-${suffix}` },
+      data: {
+        name: `integration-et-${suffix}`,
+        catalogChannel: 'UPCOMING_HUB',
+      },
     });
     eventTypeId = eventType.id;
     const event = await prisma.event.create({
@@ -78,6 +85,7 @@ const run = process.env.CLASS_SESSION_INTEGRATION === '1';
         eventTypeId: eventType.id,
         description: 'integration test event',
         items: [],
+        publicSection: 'UPCOMING_EVENTS',
         experienceType: 'CLASSES',
       },
     });

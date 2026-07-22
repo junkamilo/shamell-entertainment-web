@@ -28,13 +28,12 @@ export function scheduleFormToTemplateBody(
     recurringEndTime: schedule.recurringEndTime,
     classSections: schedule.classSections.map((s) => ({
       weekday: s.weekday,
-      label: s.label.trim() || undefined,
+      label: s.label.trim(),
       startTime: s.startTime,
       endTime: s.endTime,
       sortOrder: s.sortOrder,
-      defaultCapacity: s.defaultCapacity,
-      defaultPrice:
-        s.defaultPrice.trim() === "" ? undefined : Number.parseFloat(s.defaultPrice),
+      defaultCapacity: Number.parseInt(s.defaultCapacity, 10),
+      defaultPrice: Number.parseFloat(s.defaultPrice),
     })),
   };
 }

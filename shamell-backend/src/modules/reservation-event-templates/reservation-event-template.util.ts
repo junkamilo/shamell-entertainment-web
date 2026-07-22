@@ -23,6 +23,17 @@ export type ClassSectionInput = {
   isActive: boolean;
 };
 
+/** Section that passed validation: label and price are guaranteed present. */
+export type ValidatedClassSection = Omit<
+  ClassSectionInput,
+  'label' | 'defaultPrice'
+> & {
+  label: string;
+  defaultPrice: number;
+};
+
+const MIN_CLASS_SECTION_PRICE = 0.5;
+
 export type ValidatedTemplatePayload = {
   name: string;
   timezone: string;
@@ -36,7 +47,7 @@ export type ValidatedTemplatePayload = {
   recurringStartTime: string | null;
   recurringEndTime: string | null;
   weekdays: WeekdayInput[];
-  classSections: ClassSectionInput[];
+  classSections: ValidatedClassSection[];
 };
 
 const WEEKDAY_LABELS_UTIL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -44,7 +55,7 @@ const WEEKDAY_LABELS_UTIL = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export function validateClassSectionsForWeekdays(
   weekdays: WeekdayInput[],
   sections: ClassSectionInput[],
-): ClassSectionInput[] {
+): ValidatedClassSection[] {
   const activeWeekdays = new Set(
     weekdays.filter((w) => w.isActive).map((w) => w.weekday),
   );
@@ -52,52 +63,61 @@ export function validateClassSectionsForWeekdays(
     .filter((s) => s.isActive !== false)
     .map((s, idx) => ({
       weekday: s.weekday,
-      label: s.label?.trim() || null,
+      label: s.label?.trim() ?? '',
       startTime: s.startTime.trim(),
       endTime: s.endTime.trim(),
       sortOrder: s.sortOrder ?? idx,
-      defaultCapacity: s.defaultCapacity >= 1 ? s.defaultCapacity : 20,
+      defaultCapacity: s.defaultCapacity,
       defaultPrice: s.defaultPrice,
       isActive: s.isActive !== false,
     }));
 
   for (const wd of activeWeekdays) {
-    const daySections = normalized.filter(
-      (s) => s.weekday === wd && s.isActive,
-    );
+    const dayLabel = WEEKDAY_LABELS_UTIL[wd] ?? `Day ${wd}`;
+    const daySections = normalized
+      .filter((s) => s.weekday === wd && s.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
     if (daySections.length === 0) {
-      const label = WEEKDAY_LABELS_UTIL[wd] ?? String(wd);
       throw new BadRequestException(
-        `${label} is active but has no class sections. Add at least one section or deactivate the day.`,
+        `${dayLabel} is active but has no class sections. Add at least one section or deactivate the day.`,
       );
     }
+    daySections.forEach((s, idx) => {
+      const where = `${dayLabel} — section ${idx + 1}`;
+      if (!s.label) {
+        throw new BadRequestException(`${where}: label is required.`);
+      }
+      if (!s.startTime || !s.endTime) {
+        throw new BadRequestException(
+          `${where}: start and end times are required.`,
+        );
+      }
+      if (!Number.isInteger(s.defaultCapacity) || s.defaultCapacity < 1) {
+        throw new BadRequestException(
+          `${where}: capacity must be at least 1.`,
+        );
+      }
+      if (
+        s.defaultPrice == null ||
+        !Number.isFinite(s.defaultPrice) ||
+        s.defaultPrice < MIN_CLASS_SECTION_PRICE
+      ) {
+        throw new BadRequestException(
+          `${where}: a class price of at least $${MIN_CLASS_SECTION_PRICE.toFixed(2)} is required.`,
+        );
+      }
+    });
     const overlap = validateSectionsNoOverlapMessage(
       daySections.map((s) => ({ startTime: s.startTime, endTime: s.endTime })),
-      WEEKDAY_LABELS_UTIL[wd] ?? `Day ${wd}`,
+      dayLabel,
     );
     if (overlap) throw new BadRequestException(overlap);
   }
 
-  return normalized.filter((s) => activeWeekdays.has(s.weekday) && s.isActive);
-}
-
-function sectionsFromLegacyRecurring(
-  weekdays: WeekdayInput[],
-  recurringStartTime: string,
-  recurringEndTime: string,
-): ClassSectionInput[] {
-  return weekdays
-    .filter((w) => w.isActive)
-    .map((w) => ({
-      weekday: w.weekday,
-      label: 'Section 1',
-      startTime: recurringStartTime,
-      endTime: recurringEndTime,
-      sortOrder: 0,
-      defaultCapacity: 20,
-      defaultPrice: null,
-      isActive: true,
-    }));
+  return normalized.filter(
+    (s): s is ValidatedClassSection =>
+      activeWeekdays.has(s.weekday) && s.isActive && s.defaultPrice != null,
+  );
 }
 
 export function parseHHMM(
@@ -295,46 +315,25 @@ export function validateTemplatePayload(input: {
 
   validateWeekdaysActive(input.weekdays);
 
-  let classSections: ClassSectionInput[];
-  if (input.classSections && input.classSections.length > 0) {
-    classSections = validateClassSectionsForWeekdays(
-      input.weekdays,
-      input.classSections.map((s) => ({
-        weekday: s.weekday,
-        label: s.label ?? null,
-        startTime: s.startTime,
-        endTime: s.endTime,
-        sortOrder: s.sortOrder ?? 0,
-        defaultCapacity: s.defaultCapacity ?? 20,
-        defaultPrice: s.defaultPrice ?? null,
-        isActive: s.isActive !== false,
-      })),
-    );
-  } else {
-    if (!input.recurringStartTime || !input.recurringEndTime) {
-      throw new BadRequestException(
-        'classSections or recurringStartTime/recurringEndTime are required for recurring schedules.',
-      );
-    }
-    const recurringStartTime = input.recurringStartTime.trim();
-    const recurringEndTime = input.recurringEndTime.trim();
-    const startMins =
-      parseHHMM(recurringStartTime, 'recurringStartTime').h * 60 +
-      parseHHMM(recurringStartTime, 'recurringStartTime').m;
-    const endMins =
-      parseHHMM(recurringEndTime, 'recurringEndTime').h * 60 +
-      parseHHMM(recurringEndTime, 'recurringEndTime').m;
-    if (endMins <= startMins) {
-      throw new BadRequestException(
-        'recurringEndTime must be after recurringStartTime.',
-      );
-    }
-    classSections = sectionsFromLegacyRecurring(
-      input.weekdays,
-      recurringStartTime,
-      recurringEndTime,
+  if (!input.classSections || input.classSections.length === 0) {
+    throw new BadRequestException(
+      'classSections (with label, times, capacity, and price) are required for recurring schedules.',
     );
   }
+
+  const classSections = validateClassSectionsForWeekdays(
+    input.weekdays,
+    input.classSections.map((s) => ({
+      weekday: s.weekday,
+      label: s.label ?? null,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      sortOrder: s.sortOrder ?? 0,
+      defaultCapacity: s.defaultCapacity ?? 20,
+      defaultPrice: s.defaultPrice ?? null,
+      isActive: s.isActive !== false,
+    })),
+  );
 
   const first = classSections[0];
   const recurringStartTime = first.startTime;

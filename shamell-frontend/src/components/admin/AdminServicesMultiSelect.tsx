@@ -105,8 +105,8 @@ export default function AdminServicesMultiSelect({
           aria-label={ariaLabel}
           aria-multiselectable="true"
           className={cn(
-            "shamell-glass-menu absolute left-0 right-0 top-[calc(100%+6px)] z-[120] max-h-[min(18rem,calc(55vh-6rem))] overflow-y-auto rounded-xl",
-            "shamell-scrollbar",
+            "shamell-glass-menu absolute left-0 right-0 top-[calc(100%+6px)] z-[120] max-h-[min(18rem,calc(55vh-6rem))] overflow-x-hidden overflow-y-auto rounded-xl",
+            "shamell-scrollbar [scrollbar-gutter:auto]",
           )}
         >
           {options.map((opt) => {
@@ -119,7 +119,7 @@ export default function AdminServicesMultiSelect({
                 aria-selected={selected}
                 onClick={() => toggle(opt.id)}
                 className={cn(
-                  "flex w-full items-center gap-3 border-b border-gold/8 px-4 py-3 text-left transition-colors last:border-b-0",
+                  "flex w-full min-w-full box-border items-center gap-3 border-b border-gold/8 px-4 py-3 text-left transition-colors last:border-b-0",
                   "hover:bg-gold/7",
                   selected && "bg-gold/12",
                 )}

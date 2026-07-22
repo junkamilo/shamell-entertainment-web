@@ -41,6 +41,39 @@ function defaultExperienceModeForSection(
   return publicSection === "UPCOMING_EVENTS" ? "FIXED_EVENT" : "NORMAL";
 }
 
+const SECTION_WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Every class section must have label, start/end times, capacity and its own price. */
+function classSectionRequiredFieldsError(
+  section: {
+    label: string;
+    startTime: string;
+    endTime: string;
+    defaultCapacity: string;
+    defaultPrice: string;
+  },
+  weekday: number,
+  index: number,
+): string | null {
+  const where = `${SECTION_WEEKDAY_LABELS[weekday] ?? `Day ${weekday}`} — Section ${index + 1}`;
+  if (!section.label.trim()) return `${where}: the label is required.`;
+  if (!section.startTime.trim()) return `${where}: the start time is required.`;
+  if (!section.endTime.trim()) return `${where}: the end time is required.`;
+  const capacityRaw = section.defaultCapacity.trim();
+  if (!capacityRaw) return `${where}: capacity is required.`;
+  const capacity = Number.parseInt(capacityRaw, 10);
+  if (!Number.isInteger(capacity) || capacity < 1) {
+    return `${where}: capacity must be at least 1.`;
+  }
+  const priceRaw = section.defaultPrice.trim();
+  if (!priceRaw) return `${where}: the class price is required.`;
+  const price = Number.parseFloat(priceRaw);
+  if (!Number.isFinite(price) || price < 0.5) {
+    return `${where}: the class price must be at least $0.50.`;
+  }
+  return null;
+}
+
 function experienceFieldsForMode(
   mode: UpcomingExperienceMode,
   enableVenueSeating: boolean,
@@ -215,12 +248,15 @@ export function useEventsForm({
       }
       const activeDays = schedule.weekdays.filter((w) => w.isActive).map((w) => w.weekday);
       for (const wd of activeDays) {
-        const daySections = schedule.classSections.filter((s) => s.weekday === wd);
+        const daySections = schedule.classSections
+          .filter((s) => s.weekday === wd)
+          .sort((a, b) => a.sortOrder - b.sortOrder);
         if (daySections.length === 0) {
           return "Each active weekday needs at least one class section.";
         }
-        for (const s of daySections) {
-          if (!s.startTime || !s.endTime) return "Complete all section start/end times.";
+        for (const [index, s] of daySections.entries()) {
+          const sectionError = classSectionRequiredFieldsError(s, wd, index);
+          if (sectionError) return sectionError;
         }
       }
       if (!priceResult.ok || priceResult.value == null) {

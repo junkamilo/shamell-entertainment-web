@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminPaymentsService } from '../admin-payments/admin-payments.service';
 import { ContactInboxService } from '../contact/contact-inbox.service';
+import { bookingEligibleEventTypesWhere } from '../events/booking-inquiry-catalog.util';
 import type { AgendaHubBadgesQueryDto } from './dto/agenda-hub-badges-query.dto';
 
 @Injectable()
@@ -33,7 +34,7 @@ export class AgendaService {
 
   /**
    * Aggregated catalog for admin Agendar (event tab).
-   * Replaces three separate HTTP calls from the frontend.
+   * Event types are GENERAL / booking-eligible only — ON COMING hub types are excluded.
    */
   async getAgendarCatalog() {
     const [services, eventTypes, occasions] = await Promise.all([
@@ -46,7 +47,7 @@ export class AgendaService {
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.eventType.findMany({
-        where: { isActive: true },
+        where: bookingEligibleEventTypesWhere(),
         select: { id: true, name: true },
         orderBy: { name: 'asc' },
       }),

@@ -17,6 +17,8 @@ export type CardMediaProps = {
   alt?: string;
   className?: string;
   sizes?: string;
+  /** Image/poster loading hint. */
+  loading?: "lazy" | "eager";
 };
 
 function joinSrcSet(parts: Array<string | null>): string | undefined {
@@ -40,6 +42,7 @@ export default function CardMedia({
   alt = "",
   className,
   sizes = defaultSizes,
+  loading = "lazy",
 }: CardMediaProps) {
   const { ref, inView } = useInView<HTMLDivElement>({ rootMargin: "200px" });
   const [hovered, setHovered] = useState(false);
@@ -54,7 +57,7 @@ export default function CardMedia({
         <img
           src={src}
           alt={alt}
-          loading="lazy"
+          loading={loading}
           decoding="async"
           className="h-full w-full object-cover object-[center_28%]"
         />
@@ -85,7 +88,7 @@ export default function CardMedia({
           ])}
           sizes={sizes}
           alt={alt}
-          loading="lazy"
+          loading={loading}
           decoding="async"
           className={cn(
             "absolute inset-0 h-full w-full object-cover object-[center_28%] transition-opacity duration-300",

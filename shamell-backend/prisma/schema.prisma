@@ -65,6 +65,12 @@ enum EventPublicSection {
   UPCOMING_EVENTS
 }
 
+/** Separates booking-catalog event types from ON COMING hub free-named types. */
+enum EventTypeCatalogChannel {
+  BOOKING
+  UPCOMING_HUB
+}
+
 enum UpcomingExperienceType {
   CLASSES
   VENUE_SEATING
@@ -182,12 +188,14 @@ model ServiceType {
 model Event {
   id              String                  @id @default(uuid())
   eventType       EventType               @relation(fields: [eventTypeId], references: [id])
+  /// Must match EventType.catalogChannel (GENERAL↔BOOKING, UPCOMING_EVENTS↔UPCOMING_HUB). Enforced by DB trigger trg_events_catalog_channel_match.
   eventTypeId     String                  @unique
   description     String                  @db.Text
   items           String[]
   price           Decimal?                @db.Decimal(12, 2)
   isActive        Boolean                 @default(true)
   showOnHome      Boolean                 @default(true)
+  /// Immutable after create via API. Paired with EventType.catalogChannel (see DB trigger).
   publicSection   EventPublicSection      @default(GENERAL)
   slug            String?                 @unique
   experienceType  UpcomingExperienceType?
@@ -232,17 +240,19 @@ model EventTypeOccasion {
 }
 
 model EventType {
-  id                 String              @id @default(uuid())
-  name               String              @unique
+  id                 String                  @id @default(uuid())
+  name               String
+  catalogChannel     EventTypeCatalogChannel @default(BOOKING)
   contactInquiryCode String?
-  isActive           Boolean             @default(true)
+  isActive           Boolean                 @default(true)
   events             Event[]
   occasionLinks      EventTypeOccasion[]
   galleryPhotos      GalleryPhoto[]
   bookings           Booking[]
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
 
+  @@unique([name, catalogChannel])
   @@map("event_types")
 }
 
@@ -549,12 +559,12 @@ model ReservationEventClassSection {
   templateId      String
   template        ReservationEventTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   weekday         Int
-  label           String?
+  label           String
   startTime       String
   endTime         String
   sortOrder       Int                      @default(0)
   defaultCapacity Int                      @default(20)
-  defaultPrice    Decimal?                 @db.Decimal(12, 2)
+  defaultPrice    Decimal                  @db.Decimal(12, 2)
   isActive        Boolean                  @default(true)
   sessions        UpcomingClassSession[]
   createdAt       DateTime                 @default(now())
@@ -637,6 +647,7 @@ model UpcomingClassEnrollment {
   status                  UpcomingClassEnrollmentStatus @default(PENDING_PAYMENT)
   amount                  Decimal                       @db.Decimal(12, 2)
   currency                String                        @default("usd")
+  paymentChannel          VenueReservationPaymentChannel @default(STRIPE)
   /// Null when enrollment is part of a class package (checkout id lives on package row).
   stripeCheckoutSessionId String?                       @unique
   stripePaymentIntentId   String?
@@ -647,6 +658,9 @@ model UpcomingClassEnrollment {
   customerName            String
   customerEmail           String
   customerPhone           String?
+  /// Snapshot of Box Office form payload (admin); null for public/legacy rows.
+  boxOfficeDetails        Json?
+  createdByAdminId        String?
   paidAt                  DateTime?
   expiresAt               DateTime?
   customerEmailSentAt     DateTime?
@@ -665,6 +679,7 @@ model UpcomingClassPackageEnrollment {
   status                  UpcomingClassEnrollmentStatus @default(PENDING_PAYMENT)
   amount                  Decimal                       @db.Decimal(12, 2)
   currency                String                        @default("usd")
+  paymentChannel          VenueReservationPaymentChannel @default(STRIPE)
   stripeCheckoutSessionId String?                       @unique
   stripePaymentIntentId   String?
   paymentMethodType       String?
@@ -676,6 +691,9 @@ model UpcomingClassPackageEnrollment {
   customerPhone           String?
   /// Snapshot of purchased sessions (bundle same-day or multi-day package).
   selections              Json
+  /// Snapshot of Box Office form payload (admin); null for public/legacy rows.
+  boxOfficeDetails        Json?
+  createdByAdminId        String?
   paidAt                  DateTime?
   expiresAt               DateTime?
   customerEmailSentAt     DateTime?
@@ -706,7 +724,8 @@ model UpcomingFixedEventEnrollment {
   status                  UpcomingClassEnrollmentStatus @default(PENDING_PAYMENT)
   amount                  Decimal                       @db.Decimal(12, 2)
   currency                String                        @default("usd")
-  stripeCheckoutSessionId String                        @unique
+  paymentChannel          VenueReservationPaymentChannel @default(STRIPE)
+  stripeCheckoutSessionId String?                       @unique
   stripePaymentIntentId   String?
   paymentMethodType       String?
   paymentMethodBrand      String?
@@ -714,6 +733,9 @@ model UpcomingFixedEventEnrollment {
   customerName            String
   customerEmail           String
   customerPhone           String?
+  /// Snapshot of Box Office form payload (admin); null for public Stripe checkouts.
+  boxOfficeDetails        Json?
+  createdByAdminId        String?
   paidAt                  DateTime?
   expiresAt               DateTime?
   ticketNumber            Int?
@@ -828,6 +850,8 @@ model VenueSeatReservation {
   customerName            String
   customerEmail           String
   customerPhone           String?
+  /// Snapshot of Box Office form payload (admin); null for public/legacy rows.
+  boxOfficeDetails        Json?
   paidAt                  DateTime?
   expiresAt               DateTime?
   customerEmailSentAt     DateTime?

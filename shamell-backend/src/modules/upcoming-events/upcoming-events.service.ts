@@ -910,7 +910,16 @@ export class UpcomingEventsService {
     };
   }
 
-  async getFixedEventSessionStatus(sessionId: string) {
+  async getFixedEventSessionStatus(sessionId: string): Promise<{
+    stripeStatus: string | null;
+    enrollment: {
+      status: UpcomingClassEnrollmentStatus;
+      customerEmail: string | null;
+      eventName: string;
+      eventSlug: string | null;
+      ticketNumber?: number;
+    };
+  }> {
     const enrollment =
       await this.prisma.upcomingFixedEventEnrollment.findUnique({
         where: { stripeCheckoutSessionId: sessionId },
@@ -948,7 +957,7 @@ export class UpcomingEventsService {
     const current = refreshed ?? enrollment;
 
     return {
-      stripeStatus: stripeSession.status,
+      stripeStatus: stripeSession.status ?? null,
       enrollment: {
         status: current.status,
         customerEmail: maskEmail(current.customerEmail),

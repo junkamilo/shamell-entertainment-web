@@ -75,7 +75,7 @@ function classSectionsFromTemplate(
       startTime: s.startTime,
       endTime: s.endTime,
       sortOrder: s.sortOrder,
-      defaultCapacity: s.defaultCapacity,
+      defaultCapacity: String(s.defaultCapacity),
       defaultPrice: s.defaultPrice != null ? String(s.defaultPrice) : "",
     }));
   }
@@ -85,11 +85,11 @@ function classSectionsFromTemplate(
     .filter((w) => w.isActive)
     .map((w) => ({
       weekday: w.weekday,
-      label: "Section 1",
+      label: "",
       startTime: start,
       endTime: end,
       sortOrder: 0,
-      defaultCapacity: 20,
+      defaultCapacity: "",
       defaultPrice: "",
     }));
 }
@@ -381,11 +381,11 @@ export function ReservationEventScheduleSections({
                     ...nextSections,
                     {
                       weekday: wd,
-                      label: "Section 1",
+                      label: "",
                       startTime: value.recurringStartTime || "10:00",
                       endTime: value.recurringEndTime || "12:00",
                       sortOrder: 0,
-                      defaultCapacity: 20,
+                      defaultCapacity: "",
                       defaultPrice: "",
                     },
                   ];

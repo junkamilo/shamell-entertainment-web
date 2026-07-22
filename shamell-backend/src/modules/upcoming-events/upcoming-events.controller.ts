@@ -26,14 +26,17 @@ import { CreateClassPackageCheckoutDto } from './dto/create-class-package-checko
 import { CreateFixedEventCheckoutDto } from './dto/create-fixed-event-checkout.dto';
 import { UpsertClassSessionDto } from './dto/upsert-class-session.dto';
 import { UpsertVenueConfigDto } from './dto/upsert-venue-config.dto';
+import { CreateAdminFixedEventEnrollmentDto } from './dto/create-admin-fixed-event-enrollment.dto';
 import { UpcomingEventsService } from './upcoming-events.service';
 import { AdminClassEnrollmentService } from './admin-class-enrollment.service';
+import { AdminFixedEventEnrollmentService } from './admin-fixed-event-enrollment.service';
 
 @Controller()
 export class UpcomingEventsController {
   constructor(
     private readonly upcomingEventsService: UpcomingEventsService,
     private readonly adminClassEnrollment: AdminClassEnrollmentService,
+    private readonly adminFixedEventEnrollment: AdminFixedEventEnrollmentService,
   ) {}
 
   @Get('class-enrollments/session-status')
@@ -102,7 +105,18 @@ export class UpcomingEventsController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  getFixedEventSessionStatus(@Query('session_id') sessionId: string) {
+  getFixedEventSessionStatus(
+    @Query('session_id') sessionId: string,
+  ): Promise<{
+    stripeStatus: string | null;
+    enrollment: {
+      status: string;
+      customerEmail: string | null;
+      eventName: string;
+      eventSlug: string | null;
+      ticketNumber?: number;
+    };
+  }> {
     if (!sessionId?.trim()) {
       throw new BadRequestException('session_id is required.');
     }
@@ -123,6 +137,38 @@ export class UpcomingEventsController {
   @UseGuards(AdminJwtGuard)
   listAdminBookableClassEvents() {
     return this.adminClassEnrollment.listAdminBookableClassEvents();
+  }
+
+  @Get('upcoming-events/admin/box-office/fixed-events')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  listBoxOfficeFixedEvents() {
+    return this.adminFixedEventEnrollment.listBoxOfficeFixedEvents();
+  }
+
+  @Post('upcoming-events/admin/fixed-event-enrollments/cash')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  createAdminFixedEventCash(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreateAdminFixedEventEnrollmentDto,
+  ) {
+    return this.adminFixedEventEnrollment.createAdminCash(admin.id, dto);
+  }
+
+  @Post('upcoming-events/admin/fixed-event-enrollments/checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  createAdminFixedEventCheckoutSession(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreateAdminFixedEventEnrollmentDto,
+  ) {
+    return this.adminFixedEventEnrollment.createAdminCheckoutSession(
+      admin.id,
+      dto,
+    );
   }
 
   @Get('upcoming-events/admin/events/:eventId/class-booking-context')

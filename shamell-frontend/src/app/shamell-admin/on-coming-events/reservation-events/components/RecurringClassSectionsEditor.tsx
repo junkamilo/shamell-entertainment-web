@@ -47,11 +47,11 @@ export function RecurringClassSectionsEditor({
       ...day,
       {
         weekday,
-        label: `Section ${day.length + 1}`,
+        label: "",
         startTime: "10:00",
         endTime: "12:00",
         sortOrder: nextSort,
-        defaultCapacity: 20,
+        defaultCapacity: "",
         defaultPrice: "",
       },
     ]);
@@ -61,7 +61,7 @@ export function RecurringClassSectionsEditor({
     const day = sectionsForDay(weekday).filter((s) => s.sortOrder !== sortOrder);
     updateDay(
       weekday,
-      day.map((s, i) => ({ ...s, sortOrder: i, label: s.label || `Section ${i + 1}` })),
+      day.map((s, i) => ({ ...s, sortOrder: i })),
     );
   };
 

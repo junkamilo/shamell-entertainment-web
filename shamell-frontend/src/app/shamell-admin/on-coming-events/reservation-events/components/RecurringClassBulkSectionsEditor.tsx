@@ -5,6 +5,7 @@ import { Plus } from "lucide-react";
 import AdminModal from "@/components/admin/AdminModal";
 import {
   applyBlueprintToWeekdays,
+  validateBlueprintComplete,
   type ClassSectionBlueprint,
 } from "../lib/recurringClassSectionsBulk.util";
 import type { ClassSectionFormRow } from "../types/reservationEventTemplate.types";
@@ -65,11 +66,11 @@ export function RecurringClassBulkSectionsEditor({
     onBlueprintChange([
       ...blueprint,
       {
-        label: `Section ${blueprint.length + 1}`,
+        label: "",
         startTime: "10:00",
         endTime: "12:00",
         sortOrder: nextSort,
-        defaultCapacity: 20,
+        defaultCapacity: "",
         defaultPrice: "",
       },
     ]);
@@ -78,9 +79,11 @@ export function RecurringClassBulkSectionsEditor({
   const removeSection = (sortOrder: number) => {
     const next = blueprint
       .filter((s) => s.sortOrder !== sortOrder)
-      .map((s, i) => ({ ...s, sortOrder: i, label: s.label || `Section ${i + 1}` }));
+      .map((s, i) => ({ ...s, sortOrder: i }));
     onBlueprintChange(next);
   };
+
+  const blueprintIncomplete = validateBlueprintComplete(blueprint) != null;
 
   const runApply = (mode: "fill_empty" | "replace_all") => {
     const result = applyBlueprintToWeekdays(sections, activeWeekdays, blueprint, mode);
@@ -115,7 +118,7 @@ export function RecurringClassBulkSectionsEditor({
     <div className="rounded-lg border border-gold/25 bg-gold/5 p-3">
       <div className="mb-2">
         <h4 className="font-brand text-[10px] tracking-[0.14em] text-gold">
-          SHARED SETUP (2+ DAYS)
+          SHARED SETUP ({dayLabels.toUpperCase()})
         </h4>
       </div>
 
@@ -155,7 +158,7 @@ export function RecurringClassBulkSectionsEditor({
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <button
           type="button"
-          disabled={disabled || emptyActiveDays.length === 0}
+          disabled={disabled || blueprintIncomplete || emptyActiveDays.length === 0}
           onClick={() => runApply("fill_empty")}
           className="rounded-lg border border-gold/35 bg-gold/10 px-3 py-2 font-brand text-[10px] tracking-[0.12em] text-gold uppercase hover:bg-gold/15 disabled:opacity-50"
         >
@@ -163,13 +166,19 @@ export function RecurringClassBulkSectionsEditor({
         </button>
         <button
           type="button"
-          disabled={disabled}
+          disabled={disabled || blueprintIncomplete}
           onClick={() => setOverwriteModalOpen(true)}
           className="rounded-lg border border-white/15 px-3 py-2 text-[10px] text-foreground/65 hover:border-gold/30 hover:text-gold disabled:opacity-50"
         >
           Apply to all active days (overwrite)
         </button>
       </div>
+      {blueprintIncomplete ? (
+        <p className="mt-2 text-[11px] text-foreground/55">
+          Fill label, times, capacity, and price on every template section to enable the
+          apply buttons.
+        </p>
+      ) : null}
 
       <AdminModal
         title="Overwrite all active days?"

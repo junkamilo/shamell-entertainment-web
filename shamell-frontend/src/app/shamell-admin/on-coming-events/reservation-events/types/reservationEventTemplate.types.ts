@@ -11,7 +11,7 @@ export type ClassSectionFormRow = {
   startTime: string;
   endTime: string;
   sortOrder: number;
-  defaultCapacity: number;
+  defaultCapacity: string;
   defaultPrice: string;
 };
 

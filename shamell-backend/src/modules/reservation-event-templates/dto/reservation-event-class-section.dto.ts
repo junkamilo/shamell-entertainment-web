@@ -18,10 +18,10 @@ export class ReservationEventClassSectionDto {
   @Max(6)
   weekday!: number;
 
-  @IsOptional()
   @IsString()
+  @MinLength(1)
   @MaxLength(80)
-  label?: string;
+  label!: string;
 
   @IsString()
   @MinLength(4)
@@ -39,17 +39,15 @@ export class ReservationEventClassSectionDto {
   @Min(0)
   sortOrder?: number;
 
-  @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  defaultCapacity?: number;
+  defaultCapacity!: number;
 
-  @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
-  defaultPrice?: number;
+  @Min(0.5)
+  defaultPrice!: number;
 
   @IsOptional()
   @IsBoolean()

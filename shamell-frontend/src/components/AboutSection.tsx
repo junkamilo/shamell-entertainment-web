@@ -328,7 +328,7 @@ const AboutSection = ({ initialAbout }: AboutSectionProps) => {
                   ? aboutHeroVideoCardClassName({
                       className: cn(
                         heroIsVideoReady
-                          ? "bg-black"
+                          ? "bg-transparent"
                           : "bg-[radial-gradient(ellipse_at_center,rgba(32,28,24,1)_0%,#060606_70%)]",
                         isLoading && !initialAbout && "animate-pulse",
                       ),

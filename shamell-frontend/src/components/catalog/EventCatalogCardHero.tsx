@@ -18,6 +18,8 @@ type EventCatalogCardHeroProps = {
   className?: string;
   /** Tailwind aspect class for the media frame (default portrait catalog ratio). */
   aspectClassName?: string;
+  /** Eager-load hero media (e.g. first home card). */
+  priority?: boolean;
 };
 
 /**
@@ -34,6 +36,7 @@ export function EventCatalogCardHero({
   title,
   className,
   aspectClassName = "aspect-[3/4] @[300px]:aspect-4/5",
+  priority = false,
 }: EventCatalogCardHeroProps) {
   const isActiveSlide = useCatalogSlideActive();
   const resolvedType: "IMAGE" | "VIDEO" =
@@ -62,6 +65,7 @@ export function EventCatalogCardHero({
               isActive={isActiveSlide}
               alt={title}
               className="absolute inset-0"
+              loading={priority ? "eager" : "lazy"}
             />
 
             {/* Bottom vignette only — avoids crushing faces at the top */}

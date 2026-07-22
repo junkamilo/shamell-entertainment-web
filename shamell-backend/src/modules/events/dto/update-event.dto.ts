@@ -86,6 +86,7 @@ export class UpdateEventDto {
     return String(value).trim().toUpperCase();
   })
   @IsEnum(EventPublicSection)
+  /** Ignored when equal to current; rejected by service when different (immutable after create). */
   publicSection?: EventPublicSection;
 
   @IsOptional()

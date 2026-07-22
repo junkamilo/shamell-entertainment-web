@@ -14,6 +14,10 @@ export function mapEventTypeFromApi(row: Record<string, unknown>): EventTypeItem
     id: String(row.id),
     name: String(row.name),
     isActive: Boolean(row.isActive),
+    catalogChannel:
+      row.catalogChannel === "BOOKING" || row.catalogChannel === "UPCOMING_HUB"
+        ? row.catalogChannel
+        : undefined,
     createdAt: typeof row.createdAt === "string" ? row.createdAt : undefined,
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : undefined,
     eventCount: typeof row.eventCount === "number" ? row.eventCount : 0,

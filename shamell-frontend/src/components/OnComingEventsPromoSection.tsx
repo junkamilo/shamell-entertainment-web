@@ -9,34 +9,58 @@ import {
 import RevealOnView from "@/components/shared/RevealOnView";
 import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
-import { useInViewLoad } from "@/hooks/use-in-view-load";
 import type { OnComingEventsPromo } from "@/lib/onComingSettings";
 import { mapPublicUpcomingHubEvents } from "@/lib/mapPublicUpcomingHubEvents";
 import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/onComingEventsRoutes";
 
 type OnComingEventsPromoSectionProps = {
   initialSettings?: OnComingEventsPromo | null;
+  initialEvents?: OnComingEventHubCardItem[];
 };
 
 export default function OnComingEventsPromoSection({
   initialSettings,
+  initialEvents,
 }: OnComingEventsPromoSectionProps = {}) {
   const { clientEnabled, promo, isLoading: settingsLoading } =
     useOnComingEventsSettings(initialSettings);
-  const { ref, inView } = useInViewLoad<HTMLElement>();
   const apiBaseUrl = useMemo(
     () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
     [],
   );
-  const [events, setEvents] = useState<OnComingEventHubCardItem[]>([]);
-  const [eventsLoading, setEventsLoading] = useState(true);
+  const seededEvents = initialEvents ?? [];
+  const hasSeed = Array.isArray(initialEvents);
+  const [events, setEvents] = useState<OnComingEventHubCardItem[]>(seededEvents);
+  const [eventsLoading, setEventsLoading] = useState(!hasSeed);
 
   useEffect(() => {
     if (!clientEnabled) {
+      setEvents([]);
       setEventsLoading(false);
       return;
     }
-    if (!inView) return;
+
+    // SSR already provided events — keep them; refresh quietly in the background.
+    if (hasSeed) {
+      let cancelled = false;
+      const refresh = () => {
+        fetch(`${apiBaseUrl}/api/v1/events?publicSection=UPCOMING_EVENTS`)
+          .then((response) => (response.ok ? response.json() : []))
+          .then((data: unknown) => {
+            if (!cancelled) setEvents(mapPublicUpcomingHubEvents(data));
+          })
+          .catch(() => {
+            /* keep seeded events */
+          });
+      };
+
+      const onFocus = () => refresh();
+      window.addEventListener("focus", onFocus);
+      return () => {
+        cancelled = true;
+        window.removeEventListener("focus", onFocus);
+      };
+    }
 
     let cancelled = false;
     setEventsLoading(true);
@@ -56,7 +80,7 @@ export default function OnComingEventsPromoSection({
     return () => {
       cancelled = true;
     };
-  }, [apiBaseUrl, clientEnabled, inView]);
+  }, [apiBaseUrl, clientEnabled, hasSeed]);
 
   if (settingsLoading || !clientEnabled) return null;
 
@@ -67,11 +91,7 @@ export default function OnComingEventsPromoSection({
   const loading = eventsLoading;
 
   return (
-    <section
-      ref={ref}
-      id="on-coming-events"
-      className="bg-transparent px-4 py-20 md:py-24"
-    >
+    <section id="on-coming-events" className="bg-transparent px-4 py-20 md:py-24">
       <div className="mx-auto max-w-6xl">
         <RevealOnView className="relative mb-10 text-center md:mb-12" delay={40}>
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -104,10 +124,14 @@ export default function OnComingEventsPromoSection({
         ) : null}
 
         {!loading && events.length > 0 ? (
-          <RevealOnView delay={80} amount={0.12}>
+          <RevealOnView delay={0} amount={0.12}>
             <CatalogCardCarousel ariaLabel="On coming events">
-              {events.map((event) => (
-                <OnComingEventHubCard key={event.slug} event={event} />
+              {events.map((event, index) => (
+                <OnComingEventHubCard
+                  key={event.slug}
+                  event={event}
+                  priorityHero={index === 0}
+                />
               ))}
             </CatalogCardCarousel>
             <div className="mt-10 flex justify-center">

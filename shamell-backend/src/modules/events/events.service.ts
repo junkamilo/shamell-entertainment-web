@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   EventPublicSection,
+  EventTypeCatalogChannel,
   EventTypeOccasionUsage,
   GalleryMediaType,
   ReservationEventScheduleMode,
@@ -21,18 +22,12 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { GalleryService } from '../gallery/gallery.service';
 import { resolveUpcomingPurchaseContext } from '../upcoming-events/upcoming-purchase-mode.util';
+import { fixedEventStartsAtIso } from '../upcoming-events/upcoming-fixed-ticket.util';
 import {
-  fixedEventStartsAtIso,
-  fixedTicketPublicStats,
-} from '../upcoming-events/upcoming-fixed-ticket.util';
-import { venueTablePublicStats } from '../upcoming-events/upcoming-venue-table.util';
-import {
-  eventDateForReservations,
-  resolveReservationWindow,
-} from '../venue-layout-settings/reservation-sales-window.util';
-import {
+  adminEventTypesWhereForSection,
   bookingInquiryCatalogEventWhere,
-  eventTypeIdsExcludedFromBookingInquiry,
+  catalogChannelForPublicSection,
+  eventsWhereForPublicSection,
 } from './booking-inquiry-catalog.util';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateEventTypeDto } from './dto/create-event-type.dto';
@@ -115,15 +110,21 @@ export class EventsService {
   private async resolveEventTypeIdForWrite(dto: {
     eventTypeId?: string;
     eventTypeName?: string;
+    catalogChannel: EventTypeCatalogChannel;
   }): Promise<string> {
     if (dto.eventTypeId) {
       const eventType = await this.prisma.eventType.findUnique({
         where: { id: dto.eventTypeId },
-        select: { id: true, isActive: true },
+        select: { id: true, isActive: true, catalogChannel: true },
       });
       if (!eventType) throw new NotFoundException('Event type not found.');
       if (!eventType.isActive)
         throw new BadRequestException('Event type is inactive.');
+      if (eventType.catalogChannel !== dto.catalogChannel) {
+        throw new BadRequestException(
+          'Event type belongs to a different catalog channel.',
+        );
+      }
       return eventType.id;
     }
 
@@ -135,7 +136,10 @@ export class EventsService {
     }
 
     const existingType = await this.prisma.eventType.findFirst({
-      where: { name: { equals: name, mode: 'insensitive' } },
+      where: {
+        name: { equals: name, mode: 'insensitive' },
+        catalogChannel: dto.catalogChannel,
+      },
       select: { id: true, isActive: true },
     });
     if (existingType) {
@@ -158,15 +162,19 @@ export class EventsService {
     }
 
     const createdType = await this.prisma.eventType.create({
-      data: { name },
+      data: { name, catalogChannel: dto.catalogChannel },
       select: { id: true },
     });
     return createdType.id;
   }
 
   async createEvent(dto: CreateEventDto) {
-    const eventTypeId = await this.resolveEventTypeIdForWrite(dto);
     const publicSection = dto.publicSection ?? EventPublicSection.GENERAL;
+    const catalogChannel = catalogChannelForPublicSection(publicSection);
+    const eventTypeId = await this.resolveEventTypeIdForWrite({
+      ...dto,
+      catalogChannel,
+    });
     const isUpcoming = publicSection === EventPublicSection.UPCOMING_EVENTS;
     const eventType = await this.prisma.eventType.findUnique({
       where: { id: eventTypeId },
@@ -231,11 +239,18 @@ export class EventsService {
 
   /** Home catalog: active events marked visible on home. */
   async getPublicEvents(query?: ListEventsQueryDto) {
+    if (query?.publicSection === EventPublicSection.UPCOMING_EVENTS) {
+      return this.getPublicUpcomingHubEvents();
+    }
+
+    const publicSection =
+      query?.publicSection ?? EventPublicSection.GENERAL;
+
     const events = await this.prisma.event.findMany({
       where: {
         isActive: true,
         showOnHome: true,
-        ...(query?.publicSection ? { publicSection: query.publicSection } : {}),
+        ...eventsWhereForPublicSection(publicSection),
       },
       include: {
         eventType: true,
@@ -247,11 +262,33 @@ export class EventsService {
       },
       orderBy: { createdAt: 'asc' },
     });
+    return events.map((item) => this.mapEvent(item));
+  }
+
+  /**
+   * Lightweight upcoming hub cards (Home + /on-coming-events list).
+   * Hero-only media; purchase context without per-event floor/reservation N+1.
+   */
+  async getPublicUpcomingHubEvents() {
+    const events = await this.prisma.event.findMany({
+      where: {
+        isActive: true,
+        showOnHome: true,
+        ...eventsWhereForPublicSection(EventPublicSection.UPCOMING_EVENTS),
+      },
+      include: {
+        eventType: true,
+        galleryPhotos: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+          take: 1,
+          select: { imageUrl: true, mediaType: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
     const mapped = events.map((item) => this.mapEvent(item));
-    if (query?.publicSection !== EventPublicSection.UPCOMING_EVENTS) {
-      return mapped;
-    }
-    return this.enrichUpcomingPublicEvents(mapped);
+    return this.enrichUpcomingHubEventsLight(mapped);
   }
 
   /** Contact / booking inquiry wizard: general catalog only (excludes ON COMING upcoming hub). */
@@ -286,17 +323,14 @@ export class EventsService {
       .map((item) => this.mapContactLine(item));
 
     const coveredTypeIds = fromEvents.map((l) => l.eventTypeId);
-    const excludedFromHub = await eventTypeIdsExcludedFromBookingInquiry(
-      this.prisma,
-    );
-    const excludeTypeIds = [
-      ...new Set([...coveredTypeIds, ...excludedFromHub]),
-    ];
     const orphanTypes = await this.prisma.eventType.findMany({
       where: {
         isActive: true,
+        catalogChannel: EventTypeCatalogChannel.BOOKING,
         occasionLinks: { some: { occasionType: { isActive: true } } },
-        ...(excludeTypeIds.length > 0 ? { id: { notIn: excludeTypeIds } } : {}),
+        ...(coveredTypeIds.length > 0
+          ? { id: { notIn: coveredTypeIds } }
+          : {}),
       },
       include: {
         occasionLinks: {
@@ -354,10 +388,10 @@ export class EventsService {
   }
 
   async getAdminEvents(query?: ListEventsQueryDto) {
+    const publicSection =
+      query?.publicSection ?? EventPublicSection.GENERAL;
     const events = await this.prisma.event.findMany({
-      where: {
-        ...(query?.publicSection ? { publicSection: query.publicSection } : {}),
-      },
+      where: eventsWhereForPublicSection(publicSection),
       include: {
         eventType: true,
         galleryPhotos: {
@@ -400,24 +434,39 @@ export class EventsService {
   async updateEvent(id: string, dto: UpdateEventDto) {
     const existing = await this.prisma.event.findUnique({
       where: { id },
-      select: { id: true, eventTypeId: true },
+      select: { id: true, eventTypeId: true, publicSection: true },
     });
     if (!existing) throw new NotFoundException('Event not found.');
+
+    if (
+      dto.publicSection !== undefined &&
+      dto.publicSection !== existing.publicSection
+    ) {
+      throw new BadRequestException(
+        'publicSection cannot be changed after create; create the event in the correct admin surface.',
+      );
+    }
 
     if (dto.isActive === false) {
       await this.ensureEventCanBeDisabled(id);
     }
 
+    const catalogChannel = catalogChannelForPublicSection(
+      existing.publicSection,
+    );
+
     let nextEventTypeId: string | undefined;
     if (dto.eventTypeId) {
       nextEventTypeId = await this.resolveEventTypeIdForWrite({
         eventTypeId: dto.eventTypeId,
+        catalogChannel,
       });
     } else if (dto.eventTypeName?.trim()) {
       const name = dto.eventTypeName.trim();
       const duplicate = await this.prisma.eventType.findFirst({
         where: {
           name: { equals: name, mode: 'insensitive' },
+          catalogChannel,
           NOT: { id: existing.eventTypeId },
         },
         select: { id: true },
@@ -452,9 +501,6 @@ export class EventsService {
           ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
           ...(dto.showOnHome !== undefined
             ? { showOnHome: dto.showOnHome }
-            : {}),
-          ...(dto.publicSection !== undefined
-            ? { publicSection: dto.publicSection }
             : {}),
           ...(dto.slug !== undefined ? { slug: dto.slug.trim() || null } : {}),
           ...(dto.experienceType !== undefined
@@ -541,6 +587,7 @@ export class EventsService {
       const created = await this.prisma.eventType.create({
         data: {
           name: dto.name,
+          catalogChannel: EventTypeCatalogChannel.BOOKING,
           contactInquiryCode: dto.contactInquiryCode ?? null,
         },
       });
@@ -571,16 +618,19 @@ export class EventsService {
 
   async getPublicEventTypes() {
     const types = await this.prisma.eventType.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        catalogChannel: EventTypeCatalogChannel.BOOKING,
+      },
       orderBy: { createdAt: 'asc' },
     });
     return types.map((item) => this.mapEventType(item));
   }
 
   async getAdminEventTypes(query?: { publicSection?: EventPublicSection }) {
-    const section = query?.publicSection;
+    const section = query?.publicSection ?? EventPublicSection.GENERAL;
     const types = await this.prisma.eventType.findMany({
-      where: section ? this.adminEventTypesWhereForSection(section) : undefined,
+      where: adminEventTypesWhereForSection(section),
       orderBy: { createdAt: 'asc' },
       include: {
         occasionLinks: {
@@ -888,27 +938,6 @@ export class EventsService {
     }
   }
 
-  private adminEventTypesWhereForSection(section: EventPublicSection) {
-    if (section === EventPublicSection.UPCOMING_EVENTS) {
-      return {
-        events: { some: { publicSection: EventPublicSection.UPCOMING_EVENTS } },
-      };
-    }
-
-    return {
-      OR: [
-        { events: { some: { publicSection: EventPublicSection.GENERAL } } },
-        {
-          events: { none: {} },
-          OR: [
-            { occasionLinks: { some: {} } },
-            { contactInquiryCode: { not: null } },
-          ],
-        },
-      ],
-    };
-  }
-
   /** Removes event types auto-created for a single upcoming catalog entry. */
   private async deleteOrphanInlineEventType(eventTypeId: string) {
     const [eventCount, bookingCount, galleryCount, occasionCount] =
@@ -1123,7 +1152,11 @@ export class EventsService {
     };
   }
 
-  private async enrichUpcomingPublicEvents(
+  /**
+   * Hub/home enrichment: purchase mode + start time only.
+   * Inventory (tables/tickets) is left to detail/checkout pages.
+   */
+  private async enrichUpcomingHubEventsLight(
     events: ReturnType<typeof this.mapEvent>[],
   ) {
     if (events.length === 0) return [];
@@ -1136,9 +1169,9 @@ export class EventsService {
       )
       .map((event) => event.id);
 
-    const activeSessionCounts =
+    const [activeSessionCounts, configs] = await Promise.all([
       classEventIds.length > 0
-        ? await this.prisma.upcomingClassSession.groupBy({
+        ? this.prisma.upcomingClassSession.groupBy({
             by: ['eventId'],
             where: {
               eventId: { in: classEventIds },
@@ -1147,12 +1180,23 @@ export class EventsService {
             },
             _count: { _all: true },
           })
-        : [];
-
-    const configs = await this.prisma.upcomingVenueConfig.findMany({
-      where: { eventId: { in: eventIds } },
-      include: { reservationEventTemplate: true },
-    });
+        : Promise.resolve([] as Array<{ eventId: string; _count: { _all: number } }>),
+      this.prisma.upcomingVenueConfig.findMany({
+        where: { eventId: { in: eventIds } },
+        select: {
+          eventId: true,
+          clientEnabled: true,
+          fixedTicketCapacity: true,
+          reservationOpensAt: true,
+          reservationClosesAt: true,
+          reservationEventDate: true,
+          reservationTimezone: true,
+          reservationEventTemplate: {
+            select: { scheduleMode: true },
+          },
+        },
+      }),
+    ]);
 
     const configByEventId = new Map(
       configs.map((config) => [config.eventId, config] as const),
@@ -1163,103 +1207,66 @@ export class EventsService {
       ),
     );
 
-    return Promise.all(
-      events.map(async (event) => {
-        const hasActiveSessions =
-          (activeSessionsByEventId.get(event.id) ?? 0) > 0;
-        const config = configByEventId.get(event.id);
+    return events.map((event) => {
+      const hasActiveSessions =
+        (activeSessionsByEventId.get(event.id) ?? 0) > 0;
+      const config = configByEventId.get(event.id);
+      const templateScheduleMode =
+        config?.reservationEventTemplate?.scheduleMode ?? null;
+      const clientEnabled = config?.clientEnabled ?? false;
 
-        const templateScheduleMode =
-          config?.reservationEventTemplate?.scheduleMode ?? null;
-        const clientEnabled = config?.clientEnabled ?? false;
-        let ticketsRemaining: number | undefined;
-        let fixedTicketCapacity: number | null | undefined;
-        let ticketsSold: number | undefined;
-        let tablesRemaining: number | undefined;
-        let tableCapacity: number | undefined;
-        let tablesSold: number | undefined;
-        let eventStartsAt: string | null | undefined;
+      let eventStartsAt: string | null | undefined;
+      let fixedTicketCapacity: number | null | undefined;
 
-        if (
-          templateScheduleMode === ReservationEventScheduleMode.FIXED_EVENT &&
-          !clientEnabled &&
-          config?.fixedTicketCapacity != null &&
-          config.fixedTicketCapacity >= 1
-        ) {
-          fixedTicketCapacity = config.fixedTicketCapacity;
-          const stats = await fixedTicketPublicStats(
-            this.prisma,
-            event.id,
-            config.fixedTicketCapacity,
-          );
-          ticketsRemaining = stats.ticketsRemaining;
-          ticketsSold = stats.ticketsSold;
-          eventStartsAt = fixedEventStartsAtIso(config.reservationEventDate);
-        }
+      if (
+        templateScheduleMode === ReservationEventScheduleMode.FIXED_EVENT &&
+        !clientEnabled &&
+        config?.fixedTicketCapacity != null &&
+        config.fixedTicketCapacity >= 1
+      ) {
+        fixedTicketCapacity = config.fixedTicketCapacity;
+        eventStartsAt = fixedEventStartsAtIso(config.reservationEventDate);
+      }
 
-        if (
-          event.experienceType === UpcomingExperienceType.VENUE_SEATING &&
-          clientEnabled &&
-          config
-        ) {
-          eventStartsAt = fixedEventStartsAtIso(
-            config.reservationEventDate ?? config.reservationOpensAt,
-          );
-          const window = resolveReservationWindow({
-            reservationOpensAt: config.reservationOpensAt ?? null,
-            reservationClosesAt: config.reservationClosesAt ?? null,
-            reservationEventDate: config.reservationEventDate ?? null,
-          });
-          const eventDate = eventDateForReservations(window);
-          if (eventDate) {
-            const stats = await venueTablePublicStats(this.prisma, {
-              eventId: event.id,
-              eventDate,
-              floorLayoutId: config.floorLayoutId ?? null,
-            });
-            if (stats.tableCapacity >= 1) {
-              tableCapacity = stats.tableCapacity;
-              tablesRemaining = stats.tablesRemaining;
-              tablesSold = stats.tablesSold;
-            }
-          }
-        }
+      if (
+        event.experienceType === UpcomingExperienceType.VENUE_SEATING &&
+        clientEnabled &&
+        config
+      ) {
+        eventStartsAt = fixedEventStartsAtIso(
+          config.reservationEventDate ?? config.reservationOpensAt,
+        );
+      }
 
-        const purchaseCtx = resolveUpcomingPurchaseContext({
-          experienceType: event.experienceType ?? null,
-          price: event.price,
-          clientEnabled,
-          templateScheduleMode,
-          reservationOpensAt: config?.reservationOpensAt ?? null,
-          reservationClosesAt: config?.reservationClosesAt ?? null,
-          reservationEventDate: config?.reservationEventDate ?? null,
-          reservationTimezone: config?.reservationTimezone ?? null,
-          hasActiveSessions,
-          fixedTicketCapacity,
-          ticketsRemaining,
-        });
+      const purchaseCtx = resolveUpcomingPurchaseContext({
+        experienceType: event.experienceType ?? null,
+        price: event.price,
+        clientEnabled,
+        templateScheduleMode,
+        reservationOpensAt: config?.reservationOpensAt ?? null,
+        reservationClosesAt: config?.reservationClosesAt ?? null,
+        reservationEventDate: config?.reservationEventDate ?? null,
+        reservationTimezone: config?.reservationTimezone ?? null,
+        hasActiveSessions,
+        fixedTicketCapacity,
+      });
 
-        return {
-          ...event,
-          hasActiveSessions,
-          salesOpen: purchaseCtx.salesOpen,
-          purchaseMode: purchaseCtx.purchaseMode,
-          purchasable: purchaseCtx.purchasable,
-          ...(ticketsRemaining !== undefined ? { ticketsRemaining } : {}),
-          ...(fixedTicketCapacity != null ? { fixedTicketCapacity } : {}),
-          ...(ticketsSold !== undefined ? { ticketsSold } : {}),
-          ...(eventStartsAt != null ? { eventStartsAt } : {}),
-          ...(tableCapacity !== undefined ? { tableCapacity } : {}),
-          ...(tablesRemaining !== undefined ? { tablesRemaining } : {}),
-          ...(tablesSold !== undefined ? { tablesSold } : {}),
-        };
-      }),
-    );
+      return {
+        ...event,
+        hasActiveSessions,
+        salesOpen: purchaseCtx.salesOpen,
+        purchaseMode: purchaseCtx.purchaseMode,
+        purchasable: purchaseCtx.purchasable,
+        ...(fixedTicketCapacity != null ? { fixedTicketCapacity } : {}),
+        ...(eventStartsAt != null ? { eventStartsAt } : {}),
+      };
+    });
   }
 
   private mapEventType(item: {
     id: string;
     name: string;
+    catalogChannel?: EventTypeCatalogChannel;
     contactInquiryCode: string | null;
     isActive: boolean;
     createdAt: Date;
@@ -1268,6 +1275,9 @@ export class EventsService {
     return {
       id: item.id,
       name: item.name,
+      ...(item.catalogChannel != null
+        ? { catalogChannel: item.catalogChannel }
+        : {}),
       contactInquiryCode: item.contactInquiryCode,
       isActive: item.isActive,
       createdAt: item.createdAt,
@@ -1278,6 +1288,7 @@ export class EventsService {
   private mapEventTypeAdmin(item: {
     id: string;
     name: string;
+    catalogChannel?: EventTypeCatalogChannel;
     contactInquiryCode: string | null;
     isActive: boolean;
     createdAt: Date;

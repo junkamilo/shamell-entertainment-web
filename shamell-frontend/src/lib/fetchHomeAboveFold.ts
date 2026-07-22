@@ -17,6 +17,8 @@ import {
   normalizeOnComingSettings,
 } from "@/lib/onComingSettings";
 import type { OnComingEventsPromo } from "@/lib/onComingSettings";
+import { mapPublicUpcomingHubEvents } from "@/lib/mapPublicUpcomingHubEvents";
+import type { OnComingEventHubCardItem } from "@/app/on-coming-events/components/OnComingEventHubCard";
 
 const HOME_ABOVE_FOLD_REVALIDATE_SEC = 180;
 
@@ -25,6 +27,7 @@ export type HomeAboveFold = {
   headerPhotos: PublicHeaderPhoto[];
   headerText: HeaderTextContent;
   onComingSettings: OnComingEventsPromo;
+  upcomingEvents: OnComingEventHubCardItem[];
 };
 
 function apiBaseUrl(): string {
@@ -34,21 +37,34 @@ function apiBaseUrl(): string {
 /** Falls back to the individual SSR fetches if the aggregated endpoint fails. */
 async function legacyAboveFold(): Promise<HomeAboveFold> {
   const base = apiBaseUrl();
-  const [about, headerPhotos, headerText, onComingSettings] = await Promise.all([
-    fetchPublicAbout(),
-    fetchPublicHeaderMedia(),
-    fetch(`${base}/api/v1/header-text`, { next: { revalidate: 300 } })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => (d ? mapHeaderTextFromApi(d) : DEFAULT_HEADER_TEXT))
-      .catch(() => DEFAULT_HEADER_TEXT),
-    fetch(`${base}/api/v1/on-coming-events/settings`, {
-      next: { revalidate: 120 },
-    })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => normalizeOnComingSettings(d))
-      .catch(() => defaultOnComingSettings),
-  ]);
-  return { about, headerPhotos, headerText, onComingSettings };
+  const [about, headerPhotos, headerText, onComingSettings, upcomingEvents] =
+    await Promise.all([
+      fetchPublicAbout(),
+      fetchPublicHeaderMedia(),
+      fetch(`${base}/api/v1/header-text`, { next: { revalidate: 300 } })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => (d ? mapHeaderTextFromApi(d) : DEFAULT_HEADER_TEXT))
+        .catch(() => DEFAULT_HEADER_TEXT),
+      fetch(`${base}/api/v1/on-coming-events/settings`, {
+        next: { revalidate: 120 },
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => normalizeOnComingSettings(d))
+        .catch(() => defaultOnComingSettings),
+      fetch(`${base}/api/v1/events?publicSection=UPCOMING_EVENTS`, {
+        next: { revalidate: 120 },
+      })
+        .then((r) => (r.ok ? r.json() : []))
+        .then((d) => mapPublicUpcomingHubEvents(d))
+        .catch(() => [] as OnComingEventHubCardItem[]),
+    ]);
+  return {
+    about,
+    headerPhotos,
+    headerText,
+    onComingSettings,
+    upcomingEvents: onComingSettings.clientEnabled ? upcomingEvents : [],
+  };
 }
 
 export async function fetchHomeAboveFold(): Promise<HomeAboveFold> {
@@ -62,15 +78,21 @@ export async function fetchHomeAboveFold(): Promise<HomeAboveFold> {
       headerPhotos?: unknown;
       headerText?: unknown;
       onComingSettings?: unknown;
+      upcomingEvents?: unknown;
     } | null;
     if (!data) return legacyAboveFold();
+    const onComingSettings = normalizeOnComingSettings(data.onComingSettings);
+    const upcomingEvents = Array.isArray(data.upcomingEvents)
+      ? mapPublicUpcomingHubEvents(data.upcomingEvents)
+      : [];
     return {
       about: normalizeAboutPayload(data.about) ?? fallbackAboutContent,
       headerPhotos: normalizeHeaderPhotos(data.headerPhotos),
       headerText: data.headerText
         ? mapHeaderTextFromApi(data.headerText)
         : DEFAULT_HEADER_TEXT,
-      onComingSettings: normalizeOnComingSettings(data.onComingSettings),
+      onComingSettings,
+      upcomingEvents: onComingSettings.clientEnabled ? upcomingEvents : [],
     };
   } catch {
     return legacyAboveFold();

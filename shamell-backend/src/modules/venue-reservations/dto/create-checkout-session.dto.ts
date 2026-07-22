@@ -1,6 +1,7 @@
 import {
   IsEmail,
   IsIn,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
@@ -42,4 +43,9 @@ export class CreateCheckoutSessionDto {
   @IsString()
   @MaxLength(120)
   upcomingEventSlug?: string;
+
+  /** Box Office form snapshot; persisted as JSON on the reservation. */
+  @IsOptional()
+  @IsObject()
+  boxOfficeDetails?: Record<string, unknown>;
 }
