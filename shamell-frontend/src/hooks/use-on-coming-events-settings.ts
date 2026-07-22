@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { getPublicApiBaseUrl } from "@/app/contacto/lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import { ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT } from "@/lib/onComingEventsSettingsEvents";
 import {
   defaultOnComingSettings,

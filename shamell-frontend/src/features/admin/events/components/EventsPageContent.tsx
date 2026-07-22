@@ -1,4 +1,4 @@
-import { BlockedActionModal, useBlockedActionWarning } from "@/components/admin/overlays";
+﻿import { BlockedActionModal, useBlockedActionWarning } from "@/components/admin/overlays";
 import { ModuleHero } from "@/components/admin/layout";
 import type { useEventsPage } from "../hooks/useEventsPage";
 import type { AdminEvent } from "../types/events.types";

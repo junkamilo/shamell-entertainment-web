@@ -18,6 +18,11 @@ src/
 
 See `src/features/admin/ARCHITECTURE_SHIMS.md` for layer rules and the `upcoming-events` alias note.
 
+## Public marketing experiences
+
+Removed. Types of Events on the home page use **Inquire** → `/contacto` only (no `/experiences/[slug]` marketing pages).
+
+Service catalog on the home page remains `ExperiencesSection` + `ExperienceCard` (services API — unrelated naming).
 ## Admin feature module template
 
 Domain lives under `src/features/admin/<feature>/`. App Router entry is a thin reexport under `src/app/admin/(dashboard)/<feature>/` only — do **not** recreate `src/app/shamell-admin/`.
@@ -45,12 +50,22 @@ Canonical URLs are `/admin/…`. Legacy `/shamell-admin/…` is handled only by 
 - Do **not** use `process.env.NEXT_PUBLIC_BACKEND_URL` in components or hooks; keep env access in `lib/` / `services/`.
 - Legacy `*Auth.ts` files under features re-export `adminAuth` with feature-specific names — prefer `adminAuth` / `@/lib/admin/auth` for new code.
 
-### Public contact (`src/app/contacto/`)
+### Public contact (`src/app/contacto/` + `src/features/contacto/`)
 
-- Pure wizard/catalog logic: `lib/inquiry/` (`wizardTypes`, `wizardValidation`, `inquiryCodeUtils`, `inquiryDetailsBuilder`).
-- State: `hooks/useContactInquiryWizard`, `useContactInquiryCatalog`, `useContactInquiryAvailability`, composed by `useContactInquiryForm`.
-- UI phases: `components/contact-inquiry/ContactInquiryPhase*.tsx` + `ContactInquiryField.tsx`.
-- Public API base: `getPublicApiBaseUrl()` in `contacto/lib/apiBaseUrl.ts`.
+Same layering as admin, for the public inquiry hub:
+
+```text
+app/contacto/           → SOLO page.tsx + layout.tsx (thin)
+features/contacto/      → SOLO negocio (UI + hooks + services + types + lib/inquiry)
+lib/publicApiBaseUrl.ts → getPublicApiBaseUrl()
+lib/contactInquiryConstants.ts → deep-link helpers (shared)
+```
+
+- Thin route: `export { default } from "@/features/contacto"`.
+- Pure wizard/catalog logic: `features/contacto/lib/inquiry/`.
+- State: `useContactInquiryWizard`, `useContactInquiryCatalog`, `useContactInquiryAvailability`, composed by `useContactInquiryForm`.
+- UI phases: `features/contacto/components/contact-inquiry/ContactInquiryPhase*.tsx`.
+- Date/time pickers live in the feature; admin agenda/on-coming import `@/features/contacto/components/...`.
 
 ## Venue tables / seating (`venue-tables`)
 

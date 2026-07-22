@@ -1,8 +1,8 @@
 "use client";
 
 import { ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS } from "@/components/admin/overlays";
-import ContactDatePickerModal from "@/app/contacto/components/ContactDatePickerModal";
-import ContactTimePickerModal from "@/app/contacto/components/ContactTimePickerModal";
+import ContactDatePickerModal from "@/features/contacto/components/ContactDatePickerModal";
+import ContactTimePickerModal from "@/features/contacto/components/ContactTimePickerModal";
 export type ScheduleDateTarget = "salesStart" | "salesEnd" | "eventDay" | null;
 export type ScheduleTimeTarget = "eventStart" | "eventEnd" | "recurStart" | "recurEnd" | null;
 

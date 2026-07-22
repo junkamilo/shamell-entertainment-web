@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchOccupiedRanges } from "@/app/contacto/services/fetchOccupiedRanges";
+import { fetchOccupiedRanges } from "@/features/contacto/services/fetchOccupiedRanges";
 import type { OccupiedRange } from "../types/agendar.types";
 
 type UseAgendarOccupiedRangesOptions = {

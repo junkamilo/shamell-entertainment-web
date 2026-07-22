@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPublicApiBaseUrl } from "@/app/contacto/lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import {
   fallbackAboutContent,
   normalizeAboutPayload,

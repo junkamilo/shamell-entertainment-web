@@ -1,7 +1,7 @@
 "use client";
 
-import ContactDatePickerModal from "@/app/contacto/components/ContactDatePickerModal";
-import ContactTimePickerModal from "@/app/contacto/components/ContactTimePickerModal";
+import ContactDatePickerModal from "@/features/contacto/components/ContactDatePickerModal";
+import ContactTimePickerModal from "@/features/contacto/components/ContactTimePickerModal";
 
 /** Legacy singleton sales window (deprecated). */
 const ADMIN_SALES_DATE_MIN_ISO = "2000-01-01";

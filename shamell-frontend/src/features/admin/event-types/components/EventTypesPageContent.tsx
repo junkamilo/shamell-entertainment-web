@@ -80,6 +80,8 @@ export default function EventTypesPageContent({ state }: Props) {
         editingRow={form.editingRow}
         name={form.name}
         onNameChange={form.setName}
+        contactInquiryCode={form.contactInquiryCode}
+        onContactInquiryCodeChange={form.setContactInquiryCode}
         occasionCatalog={state.occasionCatalog}
         activeOccasionsCatalog={form.activeOccasionsCatalog}
         linkedOccasionIds={form.linkedOccasionIds}

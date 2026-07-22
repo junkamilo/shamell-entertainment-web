@@ -1,4 +1,4 @@
-import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 
 export type SubmitContactInquiryBody = {
   fullName: string;

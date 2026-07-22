@@ -1,4 +1,4 @@
-import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 
 export type OccupiedRange = { startMinutes: number; endMinutes: number };
 

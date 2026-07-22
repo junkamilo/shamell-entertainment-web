@@ -1,5 +1,5 @@
-import ContactDatePickerModal from "@/app/contacto/components/ContactDatePickerModal";
-import ContactTimePickerModal from "@/app/contacto/components/ContactTimePickerModal";
+import ContactDatePickerModal from "@/features/contacto/components/ContactDatePickerModal";
+import ContactTimePickerModal from "@/features/contacto/components/ContactTimePickerModal";
 import type { ClosureDatePickerTarget, TimePickerTarget } from "../types/disponibilidad.types";
 
 type Props = {

@@ -1,5 +1,6 @@
 import { Modal } from "@/components/admin/overlays";
 import { type FormEvent } from "react";
+import { ADMIN_INQUIRY_CODE_OPTIONS } from "@/lib/contactInquiryConstants";
 import type { OccasionCatalogItem } from "../types/eventTypes.types";
 
 type EditingRow = {
@@ -12,6 +13,8 @@ type Props = {
   editingRow: EditingRow | undefined;
   name: string;
   onNameChange: (value: string) => void;
+  contactInquiryCode: string;
+  onContactInquiryCodeChange: (value: string) => void;
   occasionCatalog: OccasionCatalogItem[];
   activeOccasionsCatalog: OccasionCatalogItem[];
   linkedOccasionIds: string[];
@@ -29,6 +32,8 @@ export default function EventTypesFormModal({
   editingRow,
   name,
   onNameChange,
+  contactInquiryCode,
+  onContactInquiryCodeChange,
   occasionCatalog,
   activeOccasionsCatalog,
   linkedOccasionIds,
@@ -56,6 +61,26 @@ export default function EventTypesFormModal({
             className="mt-2 h-12 w-full rounded-xl border border-gold/30 px-4 text-base text-foreground outline-none focus:border-gold"
             placeholder="e.g. Private weddings"
           />
+        </label>
+
+        <label className="block">
+          <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">
+            CONTACT INQUIRY CODE
+          </span>
+          <select
+            value={contactInquiryCode}
+            onChange={(event) => onContactInquiryCodeChange(event.target.value)}
+            className="mt-2 h-12 w-full rounded-xl border border-gold/30 bg-[#0b0f14] px-4 text-sm text-foreground outline-none focus:border-gold"
+          >
+            {ADMIN_INQUIRY_CODE_OPTIONS.map((opt) => (
+              <option key={opt.value || "none"} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-2 font-body text-xs text-foreground/50">
+            Used by Inquire on marketing pages and the contact wizard.
+          </p>
         </label>
 
         <div className="rounded-xl border border-gold/16 p-4">
@@ -97,7 +122,8 @@ export default function EventTypesFormModal({
               <ul className="mt-2 space-y-2">
                 {linkedOrphanIds.map((id) => {
                   const label =
-                    editingRow?.occasionAssignments?.find((a) => a.occasionTypeId === id)?.occasionName ?? id;
+                    editingRow?.occasionAssignments?.find((a) => a.occasionTypeId === id)?.occasionName ??
+                    id;
                   return (
                     <li key={id}>
                       <label className="flex cursor-pointer items-center gap-3 rounded-lg border border-amber-500/20 px-3 py-2 font-body text-sm text-foreground/80">
@@ -121,16 +147,17 @@ export default function EventTypesFormModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5"
+            disabled={isSubmitting}
+            className="rounded-xl border border-gold/30 px-5 py-3 text-sm tracking-[0.08em] text-foreground/80 transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={!canSubmit}
+            disabled={!canSubmit || isSubmitting}
             className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "Saving..." : editingId ? "Save changes" : "Create event type"}
+            {isSubmitting ? "Saving…" : editingId ? "Save changes" : "Create type"}
           </button>
         </div>
       </form>

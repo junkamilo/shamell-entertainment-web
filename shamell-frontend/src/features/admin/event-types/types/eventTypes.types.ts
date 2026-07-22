@@ -20,6 +20,7 @@ export type EventTypeItem = {
   name: string;
   isActive: boolean;
   catalogChannel?: EventTypeCatalogChannel;
+  contactInquiryCode?: string | null;
   createdAt?: string;
   updatedAt?: string;
   eventCount?: number;
@@ -36,6 +37,7 @@ export type EventTypeOccasionAssignmentPayload = {
 export type UpsertEventTypeBody = {
   name: string;
   occasions: EventTypeOccasionAssignmentPayload[];
+  contactInquiryCode?: string | null;
 };
 
 export type FilterTab = "all" | "active" | "inactive";

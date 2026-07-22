@@ -21,11 +21,13 @@ type UseEventTypesFormArgs = {
 
 export function useEventTypesForm({ types, occasionCatalog, isSubmitting }: UseEventTypesFormArgs) {
   const [name, setName] = useState("");
+  const [contactInquiryCode, setContactInquiryCode] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [linkedOccasionIds, setLinkedOccasionIds] = useState<string[]>([]);
 
   const resetForm = () => {
     setName("");
+    setContactInquiryCode("");
     setLinkedOccasionIds([]);
     setEditingId(null);
   };
@@ -39,6 +41,8 @@ export function useEventTypesForm({ types, occasionCatalog, isSubmitting }: UseE
   const editingRow = editingId ? types.find((item) => item.id === editingId) : undefined;
   const originalName = editingRow?.name.trim() ?? "";
   const nameChanged = !editingId || trimmedName !== originalName;
+  const originalCode = editingRow?.contactInquiryCode?.trim() ?? "";
+  const codeChanged = !editingId || contactInquiryCode !== originalCode;
 
   const activeOccasionsCatalog = useMemo(
     () => occasionCatalog.filter((c) => c.isActive),
@@ -65,7 +69,9 @@ export function useEventTypesForm({ types, occasionCatalog, isSubmitting }: UseE
     hadInactiveLinksOnly ||
     JSON.stringify(willSendOccasions) !== JSON.stringify(baselineOccasions) ||
     linkedOccasionIdsSignature(linkedOccasionIds) !== linkedOccasionIdsSignature(originalIdsFlat);
-  const hasChanges = editingId ? nameChanged || assignmentsChanged : trimmedName.length > 0;
+  const hasChanges = editingId
+    ? nameChanged || codeChanged || assignmentsChanged
+    : trimmedName.length > 0;
   const canSubmit = !isSubmitting && isNameValid && hasChanges;
 
   const linkedOrphanIds = useMemo(
@@ -96,18 +102,25 @@ export function useEventTypesForm({ types, occasionCatalog, isSubmitting }: UseE
   const startEdit = (item: EventTypeItem) => {
     setEditingId(item.id);
     setName(item.name);
+    setContactInquiryCode(item.contactInquiryCode?.trim() ?? "");
     setLinkedOccasionIds(flattenLinkedOccasionIdsFromAssignments(item.occasionAssignments));
   };
 
   const buildUpsertBody = () => {
     const idsForApi = linkedOccasionIds.filter((id) => activeOccasionIdSet.has(id));
     const occasions = packLinkedOccasionsForApi(idsForApi, occasionCatalog);
-    return { name: trimmedName, occasions };
+    return {
+      name: trimmedName,
+      occasions,
+      contactInquiryCode: contactInquiryCode.trim() ? contactInquiryCode.trim() : null,
+    };
   };
 
   return {
     name,
     setName,
+    contactInquiryCode,
+    setContactInquiryCode,
     editingId,
     editingRow,
     linkedOccasionIds,

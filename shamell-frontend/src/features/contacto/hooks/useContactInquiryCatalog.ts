@@ -8,7 +8,7 @@ import {
   type ServiceTypeCode,
 } from "@/lib/contactInquiryConstants";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
-import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import { inferInquiryCodeFromService } from "../lib/inquiry/inquiryCodeUtils";
 import { emptyWizard, phaseFlow } from "../lib/inquiry/wizardValidation";
 import type {

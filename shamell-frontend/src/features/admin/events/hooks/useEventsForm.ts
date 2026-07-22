@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { type Dispatch, type SetStateAction, useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -55,7 +55,7 @@ function classSectionRequiredFieldsError(
   weekday: number,
   index: number,
 ): string | null {
-  const where = `${SECTION_WEEKDAY_LABELS[weekday] ?? `Day ${weekday}`} — Section ${index + 1}`;
+  const where = `${SECTION_WEEKDAY_LABELS[weekday] ?? `Day ${weekday}`} ÔÇö Section ${index + 1}`;
   if (!section.label.trim()) return `${where}: the label is required.`;
   if (!section.startTime.trim()) return `${where}: the start time is required.`;
   if (!section.endTime.trim()) return `${where}: the end time is required.`;
@@ -238,7 +238,7 @@ export function useEventsForm({
         const capRaw = fixedTicketCapacityInput.trim();
         const cap = Number.parseInt(capRaw, 10);
         if (!capRaw || !Number.isFinite(cap) || cap < 1) {
-          return "Enter the number of tickets for sale (integer ≥ 1).";
+          return "Enter the number of tickets for sale (integer ÔëÑ 1).";
         }
       }
     }
@@ -281,7 +281,7 @@ export function useEventsForm({
   const getValidationError = () => {
     if (!hasValidType) {
       return freeEventNameMode
-        ? `Enter an event name (${EVENT_NAME_MIN_LENGTH}–${EVENT_NAME_MAX_LENGTH} characters).`
+        ? `Enter an event name (${EVENT_NAME_MIN_LENGTH}ÔÇô${EVENT_NAME_MAX_LENGTH} characters).`
         : "You must select an event type.";
     }
     if (!priceOk && !priceResult.ok) return priceResult.message;

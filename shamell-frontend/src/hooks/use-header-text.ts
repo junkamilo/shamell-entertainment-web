@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getPublicApiBaseUrl } from "@/app/contacto/lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import { mapHeaderTextFromApi } from "@/lib/headerTextStyleTokens";
 import { DEFAULT_HEADER_TEXT, type HeaderTextContent } from "@/lib/headerTextTypes";
 

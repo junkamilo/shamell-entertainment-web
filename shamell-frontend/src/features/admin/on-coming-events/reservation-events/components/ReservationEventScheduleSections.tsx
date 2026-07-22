@@ -16,7 +16,7 @@ import type {
   ReservationEventTemplate,
   ReservationEventWeekday,
 } from "../types/reservationEventTemplate.types";
-import ContactTimePickerModal from "@/app/contacto/components/ContactTimePickerModal";
+import ContactTimePickerModal from "@/features/contacto/components/ContactTimePickerModal";
 import { ReservationEventWeekdaySelector } from "./ReservationEventWeekdaySelector";
 import {
   ReservationEventSchedulePickers,

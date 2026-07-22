@@ -1,7 +1,7 @@
 "use client";
 
-import ContactDatePickerModal from "@/app/contacto/components/ContactDatePickerModal";
-import ContactTimePickerModal from "@/app/contacto/components/ContactTimePickerModal";
+import ContactDatePickerModal from "@/features/contacto/components/ContactDatePickerModal";
+import ContactTimePickerModal from "@/features/contacto/components/ContactTimePickerModal";
 import type { AgendarPickersProps } from "../types/agendarComponents.types";
 
 export function AgendarPickers({

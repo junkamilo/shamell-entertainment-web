@@ -18,6 +18,12 @@ export function mapEventTypeFromApi(row: Record<string, unknown>): EventTypeItem
       row.catalogChannel === "BOOKING" || row.catalogChannel === "UPCOMING_HUB"
         ? row.catalogChannel
         : undefined,
+    contactInquiryCode:
+      typeof row.contactInquiryCode === "string"
+        ? row.contactInquiryCode
+        : row.contactInquiryCode === null
+          ? null
+          : undefined,
     createdAt: typeof row.createdAt === "string" ? row.createdAt : undefined,
     updatedAt: typeof row.updatedAt === "string" ? row.updatedAt : undefined,
     eventCount: typeof row.eventCount === "number" ? row.eventCount : 0,

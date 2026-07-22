@@ -1,5 +1,5 @@
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
-import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 
 export type SubmitConciergeInquiryBody = {
   fullName: string;

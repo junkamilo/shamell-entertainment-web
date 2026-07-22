@@ -1,5 +1,5 @@
 import type { ContactLine } from "../lib/inquiry/wizardTypes";
-import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 
 export async function fetchPublicContactLines(): Promise<ContactLine[]> {
   const base = getPublicApiBaseUrl();
