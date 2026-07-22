@@ -1,7 +1,7 @@
-import { AGENDA_PETICIONES_PATH } from "@/app/shamell-admin/agenda/lib/agendaRoutes";
+import { buildInquiryDetailRows, type InquiryDetailRow } from "@/features/admin/inquiries";
+import { AGENDA_PETICIONES_PATH } from "@/features/admin/agenda/lib/agendaRoutes";
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
 import type { AdminBookingRow, CreateAdminBookingPayload } from "@/hooks/use-admin-bookings";
-import { buildInquiryDetailRows, type InquiryDetailRow } from "@/components/admin/InquiryDetailsReadable";
 import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
 import { hhmmToMinutes } from "@/lib/contactLogisticsUtils";
 import { utcInstantForWallClock } from "@/lib/bookingAvailability";
@@ -358,7 +358,7 @@ export function buildAgendarPrefillHref(row: ContactRequest, catalog?: AgendarPr
     }
   }
 
-  return `/shamell-admin/agenda/agendar?${sp.toString()}`;
+  return `/admin/agenda/agendar?${sp.toString()}`;
 }
 
 /**

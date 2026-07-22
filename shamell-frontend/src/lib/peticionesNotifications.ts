@@ -1,4 +1,4 @@
-import type { PeticionesLane } from "@/app/shamell-admin/agenda/peticiones/types/peticiones.types";
+import type { PeticionesLane } from "@/features/admin/agenda/peticiones/types/peticiones.types";
 
 export const PETICIONES_LAST_SEEN_AT_KEY = "peticiones.lastSeenAt";
 const BOOKINGS_LAST_SEEN_KEY = "peticiones.bookingsLastSeenAt";

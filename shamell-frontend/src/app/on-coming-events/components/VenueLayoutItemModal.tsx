@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
-import type { VenueTableConfig } from "@/app/shamell-admin/venue-tables/types/venueTables.types";
-import type { StandaloneChairConfig } from "@/app/shamell-admin/venue-tables/types/standaloneChairs.types";
+import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
+import type { StandaloneChairConfig } from "@/features/admin/venue-tables/types/standaloneChairs.types";
 import { resolveStandaloneChairUnitPrice } from "../lib/resolveStandaloneChairUnitPrice";
 import { formatPriceEn } from "@/lib/pricing";
 import { createVenueCheckoutSession } from "../services/createVenueCheckoutSession";

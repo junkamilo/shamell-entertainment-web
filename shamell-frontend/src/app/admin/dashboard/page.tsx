@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { SHAMELL_ADMIN_PATH } from "../shared/lib/adminRoutes";
+import { AGENDA_HUB_PATH } from "@/lib/admin/routes";
 
 export default function LegacyAdminDashboardRedirectPage() {
-  redirect(SHAMELL_ADMIN_PATH);
+  redirect(AGENDA_HUB_PATH);
 }

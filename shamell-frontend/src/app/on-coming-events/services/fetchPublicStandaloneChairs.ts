@@ -1,5 +1,5 @@
-import { mapStandaloneChairFromApi } from "@/app/shamell-admin/venue-tables/lib/mapStandaloneChairFromApi";
-import type { StandaloneChairConfig } from "@/app/shamell-admin/venue-tables/types/standaloneChairs.types";
+import { mapStandaloneChairFromApi } from "@/features/admin/venue-tables/lib/mapStandaloneChairFromApi";
+import type { StandaloneChairConfig } from "@/features/admin/venue-tables/types/standaloneChairs.types";
 import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
 
 export async function fetchPublicStandaloneChairs(): Promise<StandaloneChairConfig> {

@@ -11,9 +11,41 @@ const eslintConfig = defineConfig([
       "react-hooks/preserve-manual-memoization": "off",
     },
   },
-  // Override default ignores of eslint-config-next.
+  {
+    files: ["src/components/admin/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/**", "@/app/**"],
+              message:
+                "Admin design-system components must not import features or app routes (layer rule).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/features/admin/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/app/shamell-admin/**"],
+              message:
+                "Admin features must not import app/shamell-admin (use @/features or @/lib/admin/routes).",
+            },
+          ],
+        },
+      ],
+    },
+  },
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",

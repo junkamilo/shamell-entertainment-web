@@ -364,7 +364,7 @@ export default function SiteHeader() {
                   transition={{ duration: 0.2, ease: "easeOut" }}
                 >
                   <Link
-                    href="/shamell-admin"
+                    href="/admin"
                     className={cn(
                       "inline-flex min-h-9 items-center justify-center rounded-md border border-gold/40 bg-black/30 text-gold transition-all duration-300 sm:min-h-10",
                       "hover:border-gold/60 hover:bg-gold/10 hover:shadow-[0_0_20px_rgba(197,165,90,0.14)]",
@@ -429,7 +429,7 @@ export default function SiteHeader() {
               {showAdminEntry ? (
                 <div className="transition-transform duration-200 ease-out will-change-transform hover:scale-[1.02] active:scale-[0.98]">
                   <Link
-                    href="/shamell-admin"
+                    href="/admin"
                     className="flex min-h-9 min-w-24 items-center justify-center rounded-md border border-gold/40 bg-black/30 px-3 py-1.5 text-center text-gold"
                     aria-label="Admin"
                   >
@@ -507,7 +507,7 @@ export default function SiteHeader() {
                 {showAdminEntry ? (
                   <div>
                     <Link
-                      href="/shamell-admin"
+                      href="/admin"
                       onClick={() => setIsMenuOpen(false)}
                       className="mx-auto mt-4 flex min-h-12 w-full max-w-xs items-center justify-center gap-2 border border-gold/35 px-4 py-3 text-center font-brand text-xs tracking-[0.18em] text-gold transition-all hover:border-gold/55 hover:bg-gold/10"
                     >

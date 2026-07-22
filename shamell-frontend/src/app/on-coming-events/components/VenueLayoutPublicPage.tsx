@@ -18,8 +18,8 @@ import {
 } from "@/lib/upcomingEventPublicRoutes";
 import VenueSceneLegend from "@/components/venue-3d/VenueSceneLegend";
 import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
-import type { VenueTableConfig } from "@/app/shamell-admin/venue-tables/types/venueTables.types";
-import type { StandaloneChairConfig } from "@/app/shamell-admin/venue-tables/types/standaloneChairs.types";
+import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
+import type { StandaloneChairConfig } from "@/features/admin/venue-tables/types/standaloneChairs.types";
 import type { VenueFloorLayout } from "@/components/floor-layout/layoutTypes";
 import {
   getVenueLayoutPageCache,

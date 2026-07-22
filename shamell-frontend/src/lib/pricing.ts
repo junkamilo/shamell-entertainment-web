@@ -1,2 +1,2 @@
-export { formatPriceEn, parsePriceInput } from "@/app/admin/shared/lib/pricing";
-export type { ParsePriceResult } from "@/app/admin/shared/lib/pricing";
+export { formatPriceEn, parsePriceInput } from "@/lib/admin/pricing";
+export type { ParsePriceResult } from "@/lib/admin/pricing";

@@ -1,3 +1,9 @@
+import { isAdminStaffRole } from "@/lib/admin/permissions";
+import {
+  deriveAdminPermissions,
+  type AdminPermission,
+} from "@/lib/admin/permissions";
+
 export const ADMIN_ACCESS_TOKEN_KEY = "admin_access_token";
 export const ADMIN_USER_KEY = "admin_user";
 
@@ -24,5 +30,22 @@ export function isAdminLoggedIn(): boolean {
   if (typeof window === "undefined") return false;
   const token = localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY);
   const role = readAdminSessionRole();
-  return Boolean(token && role === "ADMIN");
+  return Boolean(token && isAdminStaffRole(role));
+}
+
+/** Normalize login user payload and ensure permissions[] is present. */
+export function persistAdminSessionUser(user: Record<string, unknown>) {
+  if (typeof window === "undefined") return;
+  const role = typeof user.role === "string" ? user.role : undefined;
+  const fromApi = Array.isArray(user.permissions)
+    ? (user.permissions.filter((p): p is string => typeof p === "string") as AdminPermission[])
+    : [];
+  const permissions = fromApi.length > 0 ? fromApi : deriveAdminPermissions(role);
+  localStorage.setItem(
+    ADMIN_USER_KEY,
+    JSON.stringify({
+      ...user,
+      permissions,
+    }),
+  );
 }

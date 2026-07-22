@@ -1,6 +1,6 @@
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
-import type { TableSize } from "@/app/shamell-admin/venue-tables/types/venueTables.types";
+import type { TableSize } from "@/features/admin/venue-tables/types/venueTables.types";
 
 const TECHNICAL_TABLE_NAME = /^(LARGE|MEDIUM|SMALL)-[a-f0-9]{8}$/i;
 const TECHNICAL_CHAIR_NAME = /^CHAIR-[a-f0-9]{8}$/i;

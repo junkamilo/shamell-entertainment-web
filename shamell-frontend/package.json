@@ -14,10 +14,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:agendar": "vitest run src/app/shamell-admin/agenda/agendar/tests/unit",
+    "test:agendar": "vitest run src/features/admin/agenda/agendar/tests/unit",
     "smoke:returns": "node scripts/smoke-return-routes.mjs",
-    "smoke:agendar": "node src/app/shamell-admin/agenda/agendar/tests/smoke/agendar-routes.smoke.mjs",
-    "test:e2e:agendar": "playwright test --config src/app/shamell-admin/agenda/agendar/tests/e2e/playwright.config.ts",
+    "smoke:agendar": "node src/features/admin/agenda/agendar/tests/smoke/agendar-routes.smoke.mjs",
+    "test:e2e:agendar": "playwright test --config src/features/admin/agenda/agendar/tests/e2e/playwright.config.ts",
     "playwright:install": "playwright install chromium"
   },
   "dependencies": {

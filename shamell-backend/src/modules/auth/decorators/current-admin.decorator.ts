@@ -4,7 +4,12 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 
-export type AdminJwtPayload = { id: string; email?: string; role?: string };
+export type AdminJwtPayload = {
+  id: string;
+  email?: string;
+  role?: string;
+  permissions?: string[];
+};
 
 export const CurrentAdmin = createParamDecorator(
   (_data: unknown, ctx: ExecutionContext): AdminJwtPayload => {

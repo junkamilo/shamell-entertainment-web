@@ -1,5 +1,5 @@
-import { mapVenueTablesListFromApi } from "@/app/shamell-admin/venue-tables/lib/mapVenueTableFromApi";
-import type { VenueTableConfig } from "@/app/shamell-admin/venue-tables/types/venueTables.types";
+import { mapVenueTablesListFromApi } from "@/features/admin/venue-tables/lib/mapVenueTableFromApi";
+import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
 import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
 
 export async function fetchPublicVenueTables(): Promise<VenueTableConfig[]> {

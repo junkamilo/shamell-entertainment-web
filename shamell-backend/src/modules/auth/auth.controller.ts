@@ -18,6 +18,10 @@ import { VerifyAdminInviteDto } from './dto/verify-admin-invite.dto';
 import { GoogleCredentialDto } from './dto/google-credential.dto';
 import { AdminJwtGuard } from '../../common/auth/admin-jwt.guard';
 import {
+  RequirePermissions,
+  RequirePermissionsGuard,
+} from '../../common/auth/require-permissions.guard';
+import {
   CurrentAdmin,
   type AdminJwtPayload,
 } from './decorators/current-admin.decorator';
@@ -79,7 +83,8 @@ export class AuthController {
 
   @Post('admin/invite')
   @HttpCode(HttpStatus.CREATED)
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminJwtGuard, RequirePermissionsGuard)
+  @RequirePermissions('admin.invite')
   inviteAdmin(
     @CurrentAdmin() admin: AdminJwtPayload,
     @Body() dto: InviteAdminDto,

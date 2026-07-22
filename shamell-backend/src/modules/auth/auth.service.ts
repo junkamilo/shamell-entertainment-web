@@ -19,6 +19,10 @@ import {
 } from '../mail/admin-invite.mail';
 import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
+import {
+  deriveAdminPermissions,
+  isAdminStaffRole,
+} from '../../common/auth/admin-permissions';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
@@ -45,6 +49,35 @@ export class AuthService {
       : null;
   }
 
+  private async signAdminAccessToken(user: {
+    id: string;
+    email: string;
+    role: string;
+  }) {
+    const permissions = deriveAdminPermissions(user.role);
+    return this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      permissions,
+    });
+  }
+
+  private adminLoginUserPayload(user: {
+    id: string;
+    fullName: string;
+    email: string;
+    role: string;
+  }) {
+    return {
+      id: user.id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      permissions: deriveAdminPermissions(user.role),
+    };
+  }
+
   async bootstrapAdmin(dto: BootstrapAdminDto, providedSecret?: string) {
     const expectedSecret = this.config
       .get<string>('BOOTSTRAP_ADMIN_SECRET')
@@ -59,7 +92,7 @@ export class AuthService {
     }
 
     const existingAdmin = await this.prisma.user.findFirst({
-      where: { role: 'ADMIN' },
+      where: { role: { in: ['ADMIN', 'SUPER_ADMIN'] } },
       select: { id: true },
     });
     if (existingAdmin) {
@@ -81,7 +114,7 @@ export class AuthService {
         email: dto.email.toLowerCase(),
         password: passwordHash,
         phone: dto.phone,
-        role: 'ADMIN',
+        role: 'SUPER_ADMIN',
       },
       select: {
         id: true,
@@ -95,7 +128,10 @@ export class AuthService {
 
     return {
       message: 'Admin account created successfully.',
-      user,
+      user: {
+        ...user,
+        permissions: deriveAdminPermissions(user.role),
+      },
     };
   }
 
@@ -117,7 +153,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (user.role !== 'ADMIN') {
+    if (!isAdminStaffRole(user.role)) {
       throw new ForbiddenException('Only admin accounts can sign in.');
     }
 
@@ -127,21 +163,12 @@ export class AuthService {
       }
     }
 
-    const accessToken = await this.jwtService.signAsync({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const accessToken = await this.signAdminAccessToken(user);
 
     return {
       message: 'Login successful',
       accessToken,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-      },
+      user: this.adminLoginUserPayload(user),
     };
   }
 
@@ -152,7 +179,7 @@ export class AuthService {
       where: { email },
     });
 
-    if (!user || user.role !== 'ADMIN') {
+    if (!user || !isAdminStaffRole(user.role)) {
       throw new UnauthorizedException(
         'No admin account for this Google email.',
       );
@@ -177,21 +204,12 @@ export class AuthService {
       });
     }
 
-    const accessToken = await this.jwtService.signAsync({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
+    const accessToken = await this.signAdminAccessToken(user);
 
     return {
       message: 'Login successful',
       accessToken,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-      },
+      user: this.adminLoginUserPayload(user),
     };
   }
 
@@ -204,7 +222,10 @@ export class AuthService {
       where: { id: inviterId },
       select: { id: true, role: true },
     });
-    if (!inviter || inviter.role !== 'ADMIN') {
+    if (
+      !inviter ||
+      !deriveAdminPermissions(inviter.role).includes('admin.invite')
+    ) {
       throw new ForbiddenException('Invalid inviter.');
     }
 

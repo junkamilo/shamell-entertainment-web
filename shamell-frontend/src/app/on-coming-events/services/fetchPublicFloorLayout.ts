@@ -1,4 +1,4 @@
-import { mapFloorLayoutFromApi } from "@/app/shamell-admin/on-coming-events/layout/lib/mapFloorLayoutFromApi";
+import { mapFloorLayoutFromApi } from "@/features/admin/on-coming-events/layout/lib/mapFloorLayoutFromApi";
 import type { VenueFloorLayout } from "@/components/floor-layout/layoutTypes";
 import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
 

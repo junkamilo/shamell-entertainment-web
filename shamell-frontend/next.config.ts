@@ -2,13 +2,23 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   experimental: {
-    optimizePackageImports: ["lucide-react", "motion/react"],
+    optimizePackageImports: ["lucide-react", "motion/react", "@/components/admin"],
   },
   async redirects() {
     return [
       {
-        source: "/shamell-admin/inquiries",
-        destination: "/shamell-admin/agenda/peticiones",
+        source: "/shamell-admin",
+        destination: "/admin",
+        permanent: true,
+      },
+      {
+        source: "/shamell-admin/:path*",
+        destination: "/admin/:path*",
+        permanent: true,
+      },
+      {
+        source: "/admin/inquiries",
+        destination: "/admin/agenda/peticiones",
         permanent: true,
       },
       {
@@ -22,23 +32,23 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/shamell-admin/venue-layout-promo",
-        destination: "/shamell-admin/on-coming-events",
+        source: "/admin/venue-layout-promo",
+        destination: "/admin/on-coming-events",
         permanent: true,
       },
       {
-        source: "/shamell-admin/venue-layout-promo/:path*",
-        destination: "/shamell-admin/on-coming-events/:path*",
+        source: "/admin/venue-layout-promo/:path*",
+        destination: "/admin/on-coming-events/:path*",
         permanent: true,
       },
       {
-        source: "/shamell-admin/floor-layout",
-        destination: "/shamell-admin/on-coming-events/layout",
+        source: "/admin/floor-layout",
+        destination: "/admin/on-coming-events/layout",
         permanent: true,
       },
       {
-        source: "/shamell-admin/floor-layout/:path*",
-        destination: "/shamell-admin/on-coming-events/layout/:path*",
+        source: "/admin/floor-layout/:path*",
+        destination: "/admin/on-coming-events/layout/:path*",
         permanent: true,
       },
       {
