@@ -28,9 +28,13 @@ export function peticionesSqlFragments() {
       OR LOWER(COALESCE(cr."subject", '')) LIKE '%concierge inquiry%'
     )
   `;
+  const isPrivateClassBooking = Prisma.sql`
+    (b."bookingDetails"->>'kind') = 'private_class'
+  `;
   return {
     isOrphanContact,
     isShadowedBookingInquiryContact,
     isConciergeContact,
+    isPrivateClassBooking,
   };
 }

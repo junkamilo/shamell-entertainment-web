@@ -1,8 +1,9 @@
 import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import type { PeticionesLane } from "../peticiones/types/peticiones.types";
 
 export type FetchPeticionesBadgeOptions = {
   since?: number;
-  lane?: "bookings" | "guidance";
+  lane?: PeticionesLane;
 };
 
 export async function fetchPeticionesBadge(

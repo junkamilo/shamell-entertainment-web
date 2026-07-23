@@ -19,7 +19,8 @@ const BADGE_POLL_MS = 45000;
 async function fetchInboxBadgeTotal(token: string): Promise<number> {
   const bookingsSince = readPeticionesLastSeenAt("bookings");
   const guidanceSince = readPeticionesLastSeenAt("guidance");
-  const [bookingsCount, guidanceCount] = await Promise.all([
+  const privateSince = readPeticionesLastSeenAt("private_classes");
+  const [bookingsCount, guidanceCount, privateCount] = await Promise.all([
     fetchPeticionesBadge(token, {
       lane: "bookings",
       since: bookingsSince > 0 ? bookingsSince : undefined,
@@ -28,19 +29,26 @@ async function fetchInboxBadgeTotal(token: string): Promise<number> {
       lane: "guidance",
       since: guidanceSince > 0 ? guidanceSince : undefined,
     }),
+    fetchPeticionesBadge(token, {
+      lane: "private_classes",
+      since: privateSince > 0 ? privateSince : undefined,
+    }),
   ]);
-  return bookingsCount + guidanceCount;
+  return bookingsCount + guidanceCount + privateCount;
 }
 
 async function loadHubBadges(token: string): Promise<AgendaHubBadges> {
   const bookingsSince = readPeticionesLastSeenAt("bookings");
   const guidanceSince = readPeticionesLastSeenAt("guidance");
+  const privateSince = readPeticionesLastSeenAt("private_classes");
   const paymentLastSeen = readPaymentHistoryLastSeenAt();
 
   try {
     return await fetchAgendaHubBadges(token, {
       peticionesBookingsSince: bookingsSince > 0 ? bookingsSince : undefined,
       peticionesGuidanceSince: guidanceSince > 0 ? guidanceSince : undefined,
+      peticionesPrivateClassesSince:
+        privateSince > 0 ? privateSince : undefined,
       paymentsSince: paymentLastSeen > 0 ? paymentLastSeen : undefined,
     });
   } catch {

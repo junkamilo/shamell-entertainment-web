@@ -18,7 +18,7 @@ import {
 } from "@/lib/onComingSettings";
 import type { OnComingEventsPromo } from "@/lib/onComingSettings";
 import { mapPublicUpcomingHubEvents } from "@/lib/mapPublicUpcomingHubEvents";
-import type { OnComingEventHubCardItem } from "@/app/on-coming-events/components/OnComingEventHubCard";
+import type { OnComingEventHubCardItem } from "@/features/on-coming-events/components/OnComingEventHubCard";
 
 const HOME_ABOVE_FOLD_REVALIDATE_SEC = 180;
 

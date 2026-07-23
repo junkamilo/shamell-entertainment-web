@@ -1,6 +1,7 @@
 import { type InquiryDetailRow } from "@/features/admin/inquiries";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
 import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
+import { isPrivateClassBookingDetails } from "./privateClassBookingDetails";
 
 function stringArrayField(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -27,6 +28,30 @@ export function buildAdminBookingDetailRows(
     const v = value?.trim();
     if (v) rows.push({ label, value: v });
   };
+
+  if (isPrivateClassBookingDetails(structuredDetails) && d) {
+    push(
+      "CLASS TYPE",
+      typeof d.classType === "string" ? d.classType : null,
+    );
+    push("LOCATION", booking.location);
+    const start =
+      typeof d.eventTimeStart === "string" ? d.eventTimeStart.trim() : "";
+    if (start) push("START TIME", start);
+    if (typeof d.paymentMethod === "string") {
+      push("PAYMENT", d.paymentMethod === "cash" ? "Cash" : "Stripe");
+    }
+    if (typeof d.amountUsd === "number" && Number.isFinite(d.amountUsd)) {
+      push(
+        "PRICE",
+        new Intl.NumberFormat("en-US", {
+          style: "currency",
+          currency: "USD",
+        }).format(d.amountUsd),
+      );
+    }
+    return rows;
+  }
 
   const eventType =
     (typeof d?.eventTypeLabel === "string" ? d.eventTypeLabel : "") ||

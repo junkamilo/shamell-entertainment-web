@@ -1,4 +1,4 @@
-import UpcomingClassesPublicPage from "../../components/UpcomingClassesPublicPage";
+import UpcomingClassesPublicPage from "@/features/on-coming-events/components/UpcomingClassesPublicPage";
 
 type Props = { params: Promise<{ slug: string }> };
 

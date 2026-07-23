@@ -9,10 +9,10 @@ import { AgendaCatalogSpinner } from "../../shared/components/AgendaCatalogSpinn
 import { AgendarBookModeTabs } from "./AgendarBookModeTabs";
 import { AgendarEventBookingPanel } from "./AgendarEventBookingPanel";
 
-const BookClassForm = dynamic(
+const PrivateClassForm = dynamic(
   () =>
-    import("../../book-class/components/BookClassForm").then((m) => ({
-      default: m.BookClassForm,
+    import("../../book-class/components/PrivateClassForm").then((m) => ({
+      default: m.PrivateClassForm,
     })),
   {
     ssr: false,
@@ -43,7 +43,7 @@ export function AgendarPageContent() {
 
       {bookMode === "class" ? (
         <div data-testid="agendar-class-panel">
-          <BookClassForm />
+          <PrivateClassForm />
         </div>
       ) : (
         <div data-testid="agendar-event-panel">

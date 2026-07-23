@@ -8,7 +8,7 @@ import {
   ClassPaymentConfirmationFallback,
   ClassPaymentConfirmationPanel,
   type ConfirmationStatus,
-} from "@/app/on-coming-events/components/ClassPaymentConfirmationPanel";
+} from "@/features/on-coming-events/components/ClassPaymentConfirmationPanel";
 import { formatPriceEn } from "@/lib/pricing";
 import { pollCheckoutStatus } from "@/lib/checkoutReturnPolling";
 import {

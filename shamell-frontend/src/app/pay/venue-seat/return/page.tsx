@@ -1,4 +1,4 @@
-import VenueSeatReturnClient from "@/app/on-coming-events/components/VenueSeatReturnClient";
+import VenueSeatReturnClient from "@/features/on-coming-events/components/VenueSeatReturnClient";
 
 export const dynamic = "force-dynamic";
 

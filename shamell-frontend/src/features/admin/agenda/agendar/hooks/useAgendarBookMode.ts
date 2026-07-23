@@ -14,6 +14,7 @@ export function useAgendarBookMode(isEditMode: boolean) {
   const setBookMode = useCallback(
     (mode: AgendarBookMode) => {
       const params = new URLSearchParams(searchParams.toString());
+      params.delete("classKind");
       if (mode === "class") {
         params.set("mode", "class");
       } else {

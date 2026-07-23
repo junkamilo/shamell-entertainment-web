@@ -3,11 +3,14 @@ import type { PeticionesLane } from "@/features/admin/agenda/peticiones/types/pe
 export const PETICIONES_LAST_SEEN_AT_KEY = "peticiones.lastSeenAt";
 const BOOKINGS_LAST_SEEN_KEY = "peticiones.bookingsLastSeenAt";
 const GUIDANCE_LAST_SEEN_KEY = "peticiones.guidanceLastSeenAt";
+const PRIVATE_CLASSES_LAST_SEEN_KEY = "peticiones.privateClassesLastSeenAt";
 
 export const PETICIONES_BADGE_REFRESH_EVENT = "shamell:peticiones-badge-refresh";
 
 function laneKey(lane: PeticionesLane): string {
-  return lane === "guidance" ? GUIDANCE_LAST_SEEN_KEY : BOOKINGS_LAST_SEEN_KEY;
+  if (lane === "guidance") return GUIDANCE_LAST_SEEN_KEY;
+  if (lane === "private_classes") return PRIVATE_CLASSES_LAST_SEEN_KEY;
+  return BOOKINGS_LAST_SEEN_KEY;
 }
 
 function migrateLegacyLastSeen(): void {
@@ -40,12 +43,13 @@ export function markPeticionesLaneSeenNow(lane: PeticionesLane): number {
   return now;
 }
 
-/** Marks both inbox lanes as seen (legacy helper). */
+/** Marks inbox lanes as seen (legacy helper). */
 export function markPeticionesSeenNow(): number {
   if (typeof window === "undefined") return 0;
   const now = Date.now();
   window.localStorage.setItem(BOOKINGS_LAST_SEEN_KEY, String(now));
   window.localStorage.setItem(GUIDANCE_LAST_SEEN_KEY, String(now));
+  window.localStorage.setItem(PRIVATE_CLASSES_LAST_SEEN_KEY, String(now));
   window.localStorage.setItem(PETICIONES_LAST_SEEN_AT_KEY, String(now));
   notifyPeticionesBadgeRefresh();
   return now;

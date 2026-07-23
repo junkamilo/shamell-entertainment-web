@@ -1,4 +1,4 @@
-import OnComingEventsHubPage from "@/components/on-coming-events/OnComingEventsHubPage";
+import OnComingEventsHubPage from "@/features/on-coming-events/components/OnComingEventsHubPage";
 
 export const metadata = {
   title: "On Coming Events — Shamell Entertainment",

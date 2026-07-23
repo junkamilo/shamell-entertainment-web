@@ -4,13 +4,13 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
-import { getPublicApiBaseUrl } from "@/app/on-coming-events/lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/features/on-coming-events/lib/apiBaseUrl";
 import {
   ClassPaymentConfirmationFallback,
   ClassPaymentConfirmationPanel,
   type ConfirmationStatus,
   type SessionTicket,
-} from "@/app/on-coming-events/components/ClassPaymentConfirmationPanel";
+} from "@/features/on-coming-events/components/ClassPaymentConfirmationPanel";
 
 type PurchaseKind = "day_bundle" | "package" | null;
 

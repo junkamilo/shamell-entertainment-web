@@ -1,4 +1,4 @@
-import FixedTicketReturnClient from "./FixedTicketReturnClient";
+import FixedTicketReturnClient from "@/features/on-coming-events/components/FixedTicketReturnClient";
 
 export const dynamic = "force-dynamic";
 

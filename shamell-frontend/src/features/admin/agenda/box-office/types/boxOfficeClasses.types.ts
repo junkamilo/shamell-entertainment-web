@@ -1,8 +1,8 @@
-import type { ClassSessionPublic } from "@/app/on-coming-events/services/fetchUpcomingClassSessions";
+import type { ClassSessionPublic } from "@/features/on-coming-events/services/fetchUpcomingClassSessions";
 import type {
   MonthPackageOffer,
   OnComingEventSchedule,
-} from "@/app/on-coming-events/services/fetchOnComingEventDetail";
+} from "@/features/on-coming-events/services/fetchOnComingEventDetail";
 import type { BoxOfficePaymentMethod } from "./boxOfficeFixed.types";
 
 export type BoxOfficeClassPurchaseKind =

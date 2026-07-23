@@ -24,6 +24,7 @@ import { AdminBookingQueryDto } from './dto/admin-booking-query.dto';
 import { AdminCalendarQueryDto } from './dto/admin-calendar-query.dto';
 import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
 import { CreateAdminBookingDto } from './dto/create-admin-booking.dto';
+import { CreatePrivateClassBookingDto } from './dto/create-private-class-booking.dto';
 import { SendBookingBalanceLinkDto } from './dto/send-booking-balance-link.dto';
 import { UpdateAdminBookingDto } from './dto/update-admin-booking.dto';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
@@ -52,6 +53,32 @@ export class BookingsController {
     @Body() dto: CreateAdminBookingDto,
   ) {
     return this.bookingsService.createAdminBooking(admin.id, dto);
+  }
+
+  @Post('admin/private-class/cash')
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create private class booking paid in cash (admin)' })
+  createPrivateClassCash(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreatePrivateClassBookingDto,
+  ) {
+    return this.bookingsService.createPrivateClassCash(admin.id, dto);
+  }
+
+  @Post('admin/private-class/checkout-session')
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Create private class booking and send Stripe payment link (admin)',
+  })
+  createPrivateClassCheckout(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreatePrivateClassBookingDto,
+  ) {
+    return this.bookingsService.createPrivateClassCheckoutSession(admin.id, dto);
   }
 
   @Get('admin')

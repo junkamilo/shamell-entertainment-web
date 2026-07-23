@@ -5,13 +5,13 @@ import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
 import {
   buildDaySectionOffers,
   sumSelectedOfferPrices,
-} from "@/app/on-coming-events/lib/buildDaySectionOffers";
+} from "@/features/on-coming-events/lib/buildDaySectionOffers";
 import {
   buildMonthPackagePreview,
   isMonthPackagePurchasable,
   listMonthSessions,
-} from "@/app/on-coming-events/lib/buildMonthPackagePreview";
-import { getNextOccurrence } from "@/app/on-coming-events/lib/buildScheduleMonthGrid";
+} from "@/features/on-coming-events/lib/buildMonthPackagePreview";
+import { getNextOccurrence } from "@/features/on-coming-events/lib/buildScheduleMonthGrid";
 import { toast } from "@/hooks/use-toast";
 import { toISOLocalDate } from "@/lib/contactLogisticsUtils";
 import {

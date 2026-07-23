@@ -1,4 +1,4 @@
-import type { OnComingEventHubCardItem } from "@/app/on-coming-events/components/OnComingEventHubCard";
+import type { OnComingEventHubCardItem } from "@/features/on-coming-events/components/OnComingEventHubCard";
 import { parseApiInt } from "@/lib/fixedTicketInventory";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
 

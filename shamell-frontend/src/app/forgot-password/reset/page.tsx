@@ -1,5 +1,3 @@
-import ResetPasswordPage from "../components/ResetPasswordPage";
+import { ResetPasswordPage } from "@/features/forgot-password";
 
-export default function ResetPasswordRoutePage() {
-  return <ResetPasswordPage />;
-}
+export default ResetPasswordPage;

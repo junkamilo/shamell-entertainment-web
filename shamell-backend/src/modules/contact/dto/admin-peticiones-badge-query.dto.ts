@@ -12,8 +12,11 @@ export class AdminPeticionesBadgeQueryDto {
   @Min(0)
   since?: number;
 
-  @ApiPropertyOptional({ enum: ['bookings', 'guidance'], default: 'bookings' })
+  @ApiPropertyOptional({
+    enum: ['bookings', 'guidance', 'private_classes'],
+    default: 'bookings',
+  })
   @IsOptional()
-  @IsIn(['bookings', 'guidance'])
-  lane?: 'bookings' | 'guidance';
+  @IsIn(['bookings', 'guidance', 'private_classes'])
+  lane?: 'bookings' | 'guidance' | 'private_classes';
 }

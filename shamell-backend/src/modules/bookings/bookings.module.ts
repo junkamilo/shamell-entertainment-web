@@ -5,6 +5,7 @@ import { StripeModule } from '../stripe/stripe.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsAdminService } from './bookings-admin.service';
 import { BookingsInquiryService } from './bookings-inquiry.service';
+import { BookingsPrivateClassService } from './bookings-private-class.service';
 import { BookingsQuoteService } from './bookings-quote.service';
 import { BookingsWebhookService } from './bookings-webhook.service';
 import { BookingsService } from './bookings.service';
@@ -16,6 +17,7 @@ import { BookingsService } from './bookings.service';
     BookingsAdminService,
     BookingsInquiryService,
     BookingsQuoteService,
+    BookingsPrivateClassService,
     BookingsWebhookService,
     BookingsService,
   ],

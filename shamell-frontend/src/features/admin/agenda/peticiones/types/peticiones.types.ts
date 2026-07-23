@@ -1,7 +1,7 @@
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
 
-export type PeticionesLane = "bookings" | "guidance";
+export type PeticionesLane = "bookings" | "guidance" | "private_classes";
 
 export type UnifiedPeticionRow =
   | {

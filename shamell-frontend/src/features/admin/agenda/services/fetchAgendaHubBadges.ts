@@ -5,6 +5,7 @@ import type { AgendaHubBadges } from "../types/agendaHub.types";
 export type FetchAgendaHubBadgesQuery = {
   peticionesBookingsSince?: number;
   peticionesGuidanceSince?: number;
+  peticionesPrivateClassesSince?: number;
   paymentsSince?: number;
 };
 
@@ -19,6 +20,15 @@ export async function fetchAgendaHubBadges(
   }
   if (query.peticionesGuidanceSince != null && query.peticionesGuidanceSince > 0) {
     sp.set("peticionesGuidanceSince", String(query.peticionesGuidanceSince));
+  }
+  if (
+    query.peticionesPrivateClassesSince != null &&
+    query.peticionesPrivateClassesSince > 0
+  ) {
+    sp.set(
+      "peticionesPrivateClassesSince",
+      String(query.peticionesPrivateClassesSince),
+    );
   }
   if (query.paymentsSince != null && query.paymentsSince > 0) {
     sp.set("paymentsSince", String(query.paymentsSince));

@@ -2,15 +2,15 @@
  * Manual QA checklist for Agendar pre-production.
  * Copy results into your PR or ticket when executing Fase 4.
  *
- * Automated verification (2026-06-30):
- * - npm run test:agendar — 36/36 passed
- * - npm test — 61/61 passed (includes legacy frontend specs)
+ * Automated verification:
+ * - npm run test:agendar — Vitest for agendar (co-located lib/hooks/components + services unit; e2e excluded)
+ * - npm test — full frontend Vitest suite
  * - npm run test:e2e:agendar — config OK; 7 skipped without E2E_ADMIN_* (run with server + creds)
  * - npm run smoke:agendar — requires npm run build && npm run start
  */
 export const AUTOMATED_VERIFICATION = {
-  unitAgendar: "36/36 passed",
-  unitAll: "61/61 passed",
+  unitAgendar: "vitest run src/features/admin/agenda/agendar (excl. e2e)",
+  unitAll: "npm test",
   e2e: "skipped without E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD",
   smoke: "run manually with frontend server on :3000",
 } as const;

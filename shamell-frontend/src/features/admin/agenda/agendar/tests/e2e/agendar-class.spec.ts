@@ -9,7 +9,7 @@ test.describe("Agendar — class tab", () => {
     );
   });
 
-  test("opens BOOK CLASS panel without event catalog fetches", async ({ page }) => {
+  test("opens BOOK PRIVATE CLASS panel without event catalog fetches", async ({ page }) => {
     const blockedPatterns = [
       "**/api/v1/agenda/agendar/catalog**",
       "**/api/v1/availability/public**",
@@ -31,7 +31,7 @@ test.describe("Agendar — class tab", () => {
     await expect(page.getByTestId("agendar-class-panel")).toBeVisible({ timeout: 20_000 });
   });
 
-  test("switches between BOOK and BOOK CLASS tabs", async ({ page }) => {
+  test("switches between BOOK and BOOK PRIVATE CLASS tabs", async ({ page }) => {
     await page.route("**/api/v1/agenda/agendar/catalog", async (route) => {
       await route.fulfill({
         status: 200,

@@ -4,7 +4,7 @@ import { AccordionSingleSelect } from "@/components/admin/inputs";
 import { useMemo } from "react";
 import {
   formatSeatAvailability,
-} from "@/app/on-coming-events/lib/buildDaySectionOffers";
+} from "@/features/on-coming-events/lib/buildDaySectionOffers";
 import { formatPriceEn } from "@/lib/pricing";
 import { cn } from "@/lib/utils";
 import {

@@ -22,6 +22,16 @@ export class AgendaHubBadgesQueryDto {
   peticionesGuidanceSince?: number;
 
   @ApiPropertyOptional({
+    description:
+      'Private classes lane inbox badge: count items created after this ms timestamp',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  peticionesPrivateClassesSince?: number;
+
+  @ApiPropertyOptional({
     description: 'Payment history badge: count terminal payments updated after this ms timestamp',
   })
   @IsOptional()

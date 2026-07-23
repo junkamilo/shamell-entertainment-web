@@ -14,20 +14,26 @@ export class AgendaService {
   ) {}
 
   async getHubBadges(query: AgendaHubBadgesQueryDto) {
-    const [bookingsLane, guidanceLane, payments] = await Promise.all([
-      this.contactInbox.countPeticionesBadge({
-        lane: 'bookings',
-        since: query.peticionesBookingsSince,
-      }),
-      this.contactInbox.countPeticionesBadge({
-        lane: 'guidance',
-        since: query.peticionesGuidanceSince,
-      }),
-      this.adminPayments.countBadgeSince(query.paymentsSince),
-    ]);
+    const [bookingsLane, guidanceLane, privateClassesLane, payments] =
+      await Promise.all([
+        this.contactInbox.countPeticionesBadge({
+          lane: 'bookings',
+          since: query.peticionesBookingsSince,
+        }),
+        this.contactInbox.countPeticionesBadge({
+          lane: 'guidance',
+          since: query.peticionesGuidanceSince,
+        }),
+        this.contactInbox.countPeticionesBadge({
+          lane: 'private_classes',
+          since: query.peticionesPrivateClassesSince,
+        }),
+        this.adminPayments.countBadgeSince(query.paymentsSince),
+      ]);
 
     return {
-      peticionesBadge: bookingsLane.count + guidanceLane.count,
+      peticionesBadge:
+        bookingsLane.count + guidanceLane.count + privateClassesLane.count,
       paymentHistoryBadge: payments.count,
     };
   }

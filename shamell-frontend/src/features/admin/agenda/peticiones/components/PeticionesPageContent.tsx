@@ -31,6 +31,7 @@ export default function PeticionesPageContent() {
         activeLane={page.activeLane}
         onLaneChange={page.onLaneChange}
         guidanceUnread={page.guidanceUnread}
+        privateClassesUnread={page.privateClassesUnread}
       />
 
       <PeticionesStatsBar
@@ -56,7 +57,9 @@ export default function PeticionesPageContent() {
             <p className="shamell-glass-surface rounded-xl py-12 text-center font-body text-sm text-foreground/50">
               {page.activeLane === "guidance"
                 ? "No concierge guidance requests in this inbox yet."
-                : "No bookings or open contact requests in this view yet."}
+                : page.activeLane === "private_classes"
+                  ? "No private class bookings in this view yet."
+                  : "No bookings or open contact requests in this view yet."}
             </p>
           ) : null}
 

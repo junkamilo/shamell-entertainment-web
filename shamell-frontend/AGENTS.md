@@ -30,10 +30,11 @@ Domain lives under `src/features/admin/<feature>/`. App Router entry is a thin r
 ```
 features/admin/<feature>/
 ├── types/                # feature-specific types
-├── lib/                  # pure helpers, route constants, display formatters
-├── services/             # fetch/mutate; use getAdminApiBaseUrl()
-├── hooks/                # use<Feature>Page composes list/form/catalog hooks
-├── components/           # *Page, *PageContent, modals, cards
+├── lib/                  # pure helpers (+ co-located *.spec.ts)
+├── services/             # fetch/mutate; use getAdminApiBaseUrl() (+ *.spec.ts)
+├── hooks/                # use<Feature>Page (+ selective *.spec.ts)
+├── components/           # *Page, modals (+ selective *.spec.tsx)
+├── test/                 # fixtures / MSW handlers / RTL utils / optional integration
 └── index.ts              # default export for the thin page
 
 app/admin/(dashboard)/<feature>/
@@ -42,6 +43,13 @@ app/admin/(dashboard)/<feature>/
 ```
 
 Canonical URLs are `/admin/…`. Legacy `/shamell-admin/…` is handled only by permanent redirects in `next.config.ts`.
+
+### Unit / Vitest convention
+
+- **Co-locate** specs next to the code: `foo.ts` → `foo.spec.ts` (or `.spec.tsx` for UI). Vitest `include` is `src/**/*.{spec.ts,spec.tsx}` — do **not** use `.test.ts` (invisible to the runner).
+- Feature `test/` is **infra only** (fixtures, MSW handlers, render helpers, optional `test/integration/`). Do not dump primary unit suites under `test/unit/`.
+- Global MSW/RTL setup: `src/test/setup.ts` + `src/test/server.ts`. `*.spec.tsx` runs in jsdom via `environmentMatchGlobs`.
+- Example suite: `src/features/admin/about` — `npx vitest run src/features/admin/about` (prefer local `node_modules/.bin/vitest`).
 
 ### Auth and API base (required)
 
@@ -66,6 +74,39 @@ lib/contactInquiryConstants.ts → deep-link helpers (shared)
 - State: `useContactInquiryWizard`, `useContactInquiryCatalog`, `useContactInquiryAvailability`, composed by `useContactInquiryForm`.
 - UI phases: `features/contacto/components/contact-inquiry/ContactInquiryPhase*.tsx`.
 - Date/time pickers live in the feature; admin agenda/on-coming import `@/features/contacto/components/...`.
+
+### Public gallery (`src/app/gallery/` + `src/features/gallery/`)
+
+Same layering for the public gallery page and home preview hooks:
+
+```text
+app/gallery/            → SOLO page.tsx + layout.tsx (thin)
+features/gallery/       → UI + hooks + services + types + lib
+lib/publicApiBaseUrl.ts → getPublicApiBaseUrl()
+lib/galleryData.ts, lib/galleryConstants.ts → shared fallbacks / constants
+```
+
+- Thin route: `export { default } from "@/features/gallery"`.
+- Home preview (`components/GallerySection`) imports hooks/types from `@/features/gallery`.
+- Admin gallery remains separate: `features/admin/gallery` (`/admin/gallery`).
+
+### Public forgot-password (`src/app/forgot-password/` + `src/features/forgot-password/`)
+
+```text
+app/forgot-password/           → SOLO page/layout (+ reset/) thin
+features/forgot-password/      → UI + hooks + actions + services + types + lib
+lib/publicApiBaseUrl.ts        → getPublicApiBaseUrl()
+```
+
+- Thin routes: `export { default } from "@/features/forgot-password"` and reset via `ResetPasswordPage`.
+- Route constants (`FORGOT_PASSWORD_PATH`, etc.) live in the feature; `AdminLoginForm` imports from `@/features/forgot-password`.
+
+### Agenda — private class (Book Class + Inbox)
+
+- **Form:** `/admin/agenda/agendar?mode=class` → tab **BOOK PRIVATE CLASS** beside **BOOK**. UI: `features/admin/agenda/book-class/PrivateClassForm` (no GROUP / BOOK CLASS sub-tabs).
+- **API:** `POST /api/v1/bookings/admin/private-class/cash` and `…/checkout-session`. Persists `bookings` with `bookingDetails.kind = "private_class"`. Stripe uses existing quote payment emails; cash sends private-class confirmation.
+- **Catalog:** seed ServiceType “Private Class” (`PRIVATE_CLASS`) or set `PRIVATE_CLASS_SERVICE_ID`.
+- **Inbox:** third lane `private_classes` on `/admin/agenda/peticiones` (`PeticionesLaneTabs`). Excluded from BOOKINGS & REQUESTS feed.
 
 ## Venue tables / seating (`venue-tables`)
 

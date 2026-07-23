@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   OnComingEventHubCard,
   type OnComingEventHubCardItem,
-} from "@/app/on-coming-events/components/OnComingEventHubCard";
+} from "@/features/on-coming-events/components/OnComingEventHubCard";
 import RevealOnView from "@/components/shared/RevealOnView";
 import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";

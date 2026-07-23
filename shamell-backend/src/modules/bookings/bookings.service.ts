@@ -5,6 +5,7 @@ import type { AdminBookingQueryDto } from './dto/admin-booking-query.dto';
 import type { AdminCalendarQueryDto } from './dto/admin-calendar-query.dto';
 import type { CreateAdminBookingDto } from './dto/create-admin-booking.dto';
 import type { UpdateAdminBookingDto } from './dto/update-admin-booking.dto';
+import type { CreatePrivateClassBookingDto } from './dto/create-private-class-booking.dto';
 import { CreateBookingQuoteDto } from './dto/create-booking-quote.dto';
 import { SendBookingBalanceLinkDto } from './dto/send-booking-balance-link.dto';
 import { BookingsAdminService } from './bookings-admin.service';
@@ -13,6 +14,7 @@ import type {
   CreateFromPublicBookingInquiryOptions,
   PublicBookingInquiryPrepared,
 } from './bookings-inquiry.service';
+import { BookingsPrivateClassService } from './bookings-private-class.service';
 import { BookingsQuoteService } from './bookings-quote.service';
 import { BookingsWebhookService } from './bookings-webhook.service';
 import type { BookingWithRelations } from './booking-includes';
@@ -30,6 +32,7 @@ export class BookingsService {
     private readonly inquiry: BookingsInquiryService,
     private readonly quote: BookingsQuoteService,
     private readonly webhook: BookingsWebhookService,
+    private readonly privateClass: BookingsPrivateClassService,
   ) {}
 
   getPublicOccupiedByDate(dateISO: string) {
@@ -38,6 +41,17 @@ export class BookingsService {
 
   createAdminBooking(adminUserId: string, dto: CreateAdminBookingDto) {
     return this.admin.createAdminBooking(adminUserId, dto);
+  }
+
+  createPrivateClassCash(adminUserId: string, dto: CreatePrivateClassBookingDto) {
+    return this.privateClass.createCash(adminUserId, dto);
+  }
+
+  createPrivateClassCheckoutSession(
+    adminUserId: string,
+    dto: CreatePrivateClassBookingDto,
+  ) {
+    return this.privateClass.createCheckoutSession(adminUserId, dto);
   }
 
   notifyBookingCreated(booking: BookingWithRelations): Promise<void> {

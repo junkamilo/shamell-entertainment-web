@@ -1,5 +1,1 @@
-import { GalleryPage } from "./components/GalleryPage";
-
-export default function Page() {
-  return <GalleryPage />;
-}
+export { default } from "@/features/gallery";

@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { formatPriceEn } from "@/lib/pricing";
 import { fieldLabelClass, submitButtonClass } from "../../shared/lib/agendaFormStyles";
-import { formatSeatAvailability } from "@/app/on-coming-events/lib/buildDaySectionOffers";
+import { formatSeatAvailability } from "@/features/on-coming-events/lib/buildDaySectionOffers";
 import { formatSectionTime, inputClass } from "../lib/bookClassDisplay";
 import { useBookClassPage } from "../hooks/useBookClassPage";
 import { AgendaCatalogSpinner } from "../../shared/components/AgendaCatalogSpinner";

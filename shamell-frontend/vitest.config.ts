@@ -5,8 +5,10 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
-    include: ["src/**/*.spec.ts"],
+    setupFiles: ["./src/test/setup.ts"],
+    include: ["src/**/*.{spec.ts,spec.tsx}"],
     exclude: ["**/tests/e2e/**", "node_modules/**"],
+    environmentMatchGlobs: [["**/*.spec.tsx", "jsdom"]],
   },
   resolve: {
     alias: {

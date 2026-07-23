@@ -27,7 +27,7 @@ export function AgendarBookModeTabs({ activeMode, onModeChange, showClassTab }: 
             : "rounded-full border border-gold/18 px-3 py-2 font-brand text-[10px] tracking-[0.14em] text-foreground/60 hover:border-gold/35 hover:text-gold sm:px-4 sm:py-1.5"
         }
       >
-        BOOK CLASS
+        BOOK PRIVATE CLASS
       </button>
     </div>
   );

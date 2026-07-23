@@ -1,4 +1,4 @@
-import type { DaySectionOffer } from "@/app/on-coming-events/lib/buildDaySectionOffers";
+import type { DaySectionOffer } from "@/features/on-coming-events/lib/buildDaySectionOffers";
 import type {
   BoxOfficeClassesDetailsPayload,
   BoxOfficeClassPurchaseKind,

@@ -1,4 +1,4 @@
-import VenueLayoutPublicPage from "../../components/VenueLayoutPublicPage";
+import VenueLayoutPublicPage from "@/features/on-coming-events/components/VenueLayoutPublicPage";
 
 type Props = { params: Promise<{ slug: string }> };
 

@@ -31,11 +31,15 @@ There is **no** `src/app/shamell-admin/` tree. Legacy bookmarks `/shamell-admin/
 ```text
 features/admin/<module>/
   components/ hooks/ services/ types/ lib/ index.ts
+  test/          # fixtures, MSW handlers, RTL utils (not primary unit suites)
+  *.spec.ts(x)   # co-located next to lib/services/hooks/components
 
 app/admin/(dashboard)/<module>/
   page.tsx    # thin reexport from @/features/admin/<module>
   layout.tsx  # metadata only
 ```
+
+Vitest: co-located `*.spec.ts` / `*.spec.tsx` only (see `vitest.config.ts`); shared setup under `src/test/`. Reference: `features/admin/about`.
 
 ### Alias: `upcoming-events`
 
@@ -73,6 +77,8 @@ Do **not** create `features/admin/upcoming-events`. That URL is a shim only:
 | `useAdminSession` + coarse RBAC + derived permissions | done |
 | `useServicesQuery` shared | done |
 | Icons Lucide facade | done |
+| Public gallery (`app/gallery` thin → `features/gallery`) | done |
+| Public forgot-password (`app/forgot-password` thin → `features/forgot-password`) | done |
 
 ---
 

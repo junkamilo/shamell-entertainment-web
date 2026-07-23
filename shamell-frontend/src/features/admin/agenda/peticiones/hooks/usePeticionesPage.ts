@@ -30,6 +30,7 @@ export function usePeticionesPage() {
 
   const inbox = usePeticionesInbox(true, { page, perPage, lane: activeLane });
   const guidanceUnread = usePeticionesLaneBadge("guidance");
+  const privateClassesUnread = usePeticionesLaneBadge("private_classes");
   const catalog = usePeticionesCatalogMaps();
 
   useEffect(() => {
@@ -39,6 +40,9 @@ export function usePeticionesPage() {
   useEffect(() => {
     if (activeLane === "guidance") {
       markPeticionesLaneSeenNow("guidance");
+    }
+    if (activeLane === "private_classes") {
+      markPeticionesLaneSeenNow("private_classes");
     }
   }, [activeLane]);
 
@@ -117,6 +121,7 @@ export function usePeticionesPage() {
     setPerPage,
     activeLane,
     guidanceUnread,
+    privateClassesUnread,
     onLaneChange,
     expandedId,
     setExpandedId,

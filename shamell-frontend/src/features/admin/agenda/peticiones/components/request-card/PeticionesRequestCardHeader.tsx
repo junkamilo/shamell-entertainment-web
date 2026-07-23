@@ -5,6 +5,7 @@ import { formatContactSubjectForAdmin } from "@/lib/adminContactDisplay";
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
 import { formatRequestDate } from "../../lib/peticionesConstants";
+import { privateClassTypeFromDetails } from "../../lib/privateClassBookingDetails";
 import PeticionesRequestCardPaymentBadge from "./PeticionesRequestCardPaymentBadge";
 import type { PaymentCardVisual } from "../../lib/peticionesPaymentCardState";
 
@@ -33,6 +34,8 @@ export default function PeticionesRequestCardHeader({
   isReserved,
   isCancelled,
 }: Props) {
+  const privateClassType = privateClassTypeFromDetails(booking?.bookingDetails);
+
   return (
     <button
       type="button"
@@ -60,7 +63,9 @@ export default function PeticionesRequestCardHeader({
           <p className="mt-1 line-clamp-2 font-body text-sm text-foreground/70 sm:text-base">
             {contact
               ? formatContactSubjectForAdmin(contact.subject)
-              : booking?.event?.name || "Admin booking"}
+              : privateClassType
+                ? `Private class — ${privateClassType}`
+                : booking?.event?.name || "Admin booking"}
           </p>
         )}
         <p className="mt-1 font-brand text-xs tracking-widest text-foreground/45 sm:text-sm">

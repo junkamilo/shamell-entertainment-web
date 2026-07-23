@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import RevealOnView from "@/components/shared/RevealOnView";
 import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
-import { useGalleryCategories } from "@/app/gallery/hooks/useGalleryCategories";
-import { useGalleryPhotos } from "@/app/gallery/hooks/useGalleryPhotos";
-import type { GalleryPhotoItem } from "@/app/gallery/types/gallery.types";
+import {
+  useGalleryCategories,
+  useGalleryPhotos,
+  type GalleryPhotoItem,
+} from "@/features/gallery";
 import { useInViewLoad } from "@/hooks/use-in-view-load";
 import { cn } from "@/lib/utils";
 

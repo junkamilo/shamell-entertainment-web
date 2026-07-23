@@ -7,12 +7,12 @@ import { toISOLocalDate } from "@/lib/contactLogisticsUtils";
 import {
   buildDaySectionOffers,
   sumSelectedOfferPrices,
-} from "@/app/on-coming-events/lib/buildDaySectionOffers";
+} from "@/features/on-coming-events/lib/buildDaySectionOffers";
 import {
   buildMonthPackagePreview,
   isMonthPackagePurchasable,
-} from "@/app/on-coming-events/lib/buildMonthPackagePreview";
-import { getNextOccurrence } from "@/app/on-coming-events/lib/buildScheduleMonthGrid";
+} from "@/features/on-coming-events/lib/buildMonthPackagePreview";
+import { getNextOccurrence } from "@/features/on-coming-events/lib/buildScheduleMonthGrid";
 import {
   createAdminClassCashEnrollment,
   createAdminClassCheckoutSession,
