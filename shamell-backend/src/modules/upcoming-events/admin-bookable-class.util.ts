@@ -85,13 +85,11 @@ export function templateSnapshotFromVenueConfig(
 }
 
 export function templateSnapshotFromPublicSchedule(
-  schedule:
-    | {
-        mode: string;
-        timezone: string;
-        days?: Array<{ sections: unknown[] }>;
-      }
-    | null,
+  schedule: {
+    mode: string;
+    timezone: string;
+    days?: Array<{ sections: unknown[] }>;
+  } | null,
 ): ClassEventTemplateSnapshot | null {
   if (!schedule || schedule.mode !== 'RECURRING_WEEKLY') return null;
 

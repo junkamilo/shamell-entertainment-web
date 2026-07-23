@@ -7,10 +7,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import {
-  type AdminPermission,
-  hasAdminPermission,
-} from './admin-permissions';
+import { type AdminPermission, hasAdminPermission } from './admin-permissions';
 
 export const REQUIRE_PERMISSIONS_KEY = 'requirePermissions';
 

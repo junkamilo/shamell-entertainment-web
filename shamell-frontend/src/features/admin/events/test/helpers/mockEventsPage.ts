@@ -27,7 +27,10 @@ export function createMockEventsPageState(
     (overrides.list as Record<string, unknown> | undefined) ?? {};
   const formOverride =
     (overrides.form as Record<string, unknown> | undefined) ?? {};
-  const { catalog: _c, list: _l, form: _f, ...rest } = overrides;
+  const rest = { ...overrides };
+  delete rest.catalog;
+  delete rest.list;
+  delete rest.form;
 
   return {
     embedded: false,

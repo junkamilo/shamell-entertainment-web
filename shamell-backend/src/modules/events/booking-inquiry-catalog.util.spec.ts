@@ -1,7 +1,4 @@
-import {
-  EventPublicSection,
-  EventTypeCatalogChannel,
-} from '@prisma/client';
+import { EventPublicSection, EventTypeCatalogChannel } from '@prisma/client';
 import {
   adminEventTypesWhereForSection,
   bookingEligibleEventTypesWhere,
@@ -26,9 +23,9 @@ describe('booking-inquiry-catalog.util', () => {
 
   describe('eventTypeWhereForChannel', () => {
     it('filters by catalogChannel', () => {
-      expect(
-        eventTypeWhereForChannel(EventTypeCatalogChannel.BOOKING),
-      ).toEqual({ catalogChannel: EventTypeCatalogChannel.BOOKING });
+      expect(eventTypeWhereForChannel(EventTypeCatalogChannel.BOOKING)).toEqual(
+        { catalogChannel: EventTypeCatalogChannel.BOOKING },
+      );
       expect(
         eventTypeWhereForChannel(EventTypeCatalogChannel.UPCOMING_HUB),
       ).toEqual({ catalogChannel: EventTypeCatalogChannel.UPCOMING_HUB });

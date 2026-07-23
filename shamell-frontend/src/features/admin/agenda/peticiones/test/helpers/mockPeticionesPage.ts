@@ -12,7 +12,10 @@ export function createMockPeticionesPageState(
   const catalogOverride =
     (overrides.catalog as Record<string, unknown> | undefined) ?? {};
 
-  const { inbox: _i, actions: _a, catalog: _c, ...rest } = overrides;
+  const rest = { ...overrides };
+  delete rest.inbox;
+  delete rest.actions;
+  delete rest.catalog;
 
   return {
     page: 1,

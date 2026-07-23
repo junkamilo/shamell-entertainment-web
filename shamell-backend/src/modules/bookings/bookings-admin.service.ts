@@ -452,7 +452,9 @@ export class BookingsAdminService {
           createdByAdminId: adminUserId,
           contactRequestId: dto.contactRequestId ?? null,
           userId: dto.userId ?? null,
-          guestFullName: dto.userId ? null : (dto.guestFullName?.trim() ?? null),
+          guestFullName: dto.userId
+            ? null
+            : (dto.guestFullName?.trim() ?? null),
           guestEmail: dto.userId
             ? null
             : (dto.guestEmail?.trim().toLowerCase() ?? null),
@@ -772,7 +774,9 @@ export class BookingsAdminService {
           ...(dto.location !== undefined
             ? { location: dto.location.trim() }
             : {}),
-          ...(dto.guestCount !== undefined ? { guestCount: dto.guestCount } : {}),
+          ...(dto.guestCount !== undefined
+            ? { guestCount: dto.guestCount }
+            : {}),
           ...(dto.notes !== undefined
             ? { notes: dto.notes?.trim() || null }
             : {}),

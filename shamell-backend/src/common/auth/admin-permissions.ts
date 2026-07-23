@@ -42,6 +42,8 @@ export function hasAdminPermission(
   required: AdminPermission | readonly AdminPermission[],
 ): boolean {
   if (!permissions?.length) return false;
-  const need = Array.isArray(required) ? required : [required];
+  const need: readonly AdminPermission[] = Array.isArray(required)
+    ? required
+    : [required];
   return need.every((p) => permissions.includes(p));
 }

@@ -93,9 +93,7 @@ export function validateClassSectionsForWeekdays(
         );
       }
       if (!Number.isInteger(s.defaultCapacity) || s.defaultCapacity < 1) {
-        throw new BadRequestException(
-          `${where}: capacity must be at least 1.`,
-        );
+        throw new BadRequestException(`${where}: capacity must be at least 1.`);
       }
       if (
         s.defaultPrice == null ||

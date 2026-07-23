@@ -373,37 +373,37 @@ export class AdminClassEnrollmentService {
     if (resolved.kind === 'session') {
       const session = resolved.session;
       const amountCents = Math.round(Number(session.price) * 100);
-      const checkout = await this.stripeService.client.checkout.sessions.create({
-        ...STRIPE_EMBEDDED_CHECKOUT_BASE,
-        mode: 'payment',
-        customer_email: customer.customerEmail,
-        ...stripeAutomaticTaxParams(),
-        payment_intent_data: {
-          receipt_email: customer.customerEmail,
-        },
-        line_items: [
-          {
-            quantity: 1,
-            price_data: {
-              currency: session.currency,
-              unit_amount: amountCents,
-              product_data: stripeTaxProductData({
-                name: `${eventName} — class`,
-                description: this.sessionLabel(session),
-              }),
-            },
+      const checkout = await this.stripeService.client.checkout.sessions.create(
+        {
+          ...STRIPE_EMBEDDED_CHECKOUT_BASE,
+          mode: 'payment',
+          customer_email: customer.customerEmail,
+          ...stripeAutomaticTaxParams(),
+          payment_intent_data: {
+            receipt_email: customer.customerEmail,
           },
-        ],
-        metadata: {
-          flow: 'class_session',
-          adminUserId,
-          paymentChannel: 'STRIPE',
+          line_items: [
+            {
+              quantity: 1,
+              price_data: {
+                currency: session.currency,
+                unit_amount: amountCents,
+                product_data: stripeTaxProductData({
+                  name: `${eventName} — class`,
+                  description: this.sessionLabel(session),
+                }),
+              },
+            },
+          ],
+          metadata: {
+            flow: 'class_session',
+            adminUserId,
+            paymentChannel: 'STRIPE',
+          },
+          return_url: returnUrl,
+          expires_at: Math.floor(expiresAt.getTime() / 1000),
         },
-        return_url: returnUrl,
-        expires_at: Math.floor(expiresAt.getTime() / 1000),
-      } as Parameters<
-        StripeService['client']['checkout']['sessions']['create']
-      >[0]);
+      );
 
       if (!checkout.client_secret) {
         throw new BadRequestException('Could not start checkout.');
@@ -485,9 +485,7 @@ export class AdminClassEnrollmentService {
       },
       return_url: returnUrl,
       expires_at: Math.floor(expiresAt.getTime() / 1000),
-    } as Parameters<
-      StripeService['client']['checkout']['sessions']['create']
-    >[0]);
+    });
 
     if (!checkout.client_secret) {
       throw new BadRequestException('Could not start checkout.');
@@ -576,9 +574,8 @@ export class AdminClassEnrollmentService {
       );
     }
 
-    const session = await this.stripeService.client.checkout.sessions.retrieve(
-      sessionId,
-    );
+    const session =
+      await this.stripeService.client.checkout.sessions.retrieve(sessionId);
 
     if (session.status === 'complete' && session.payment_status === 'paid') {
       throw new BadRequestException('This payment has already been completed.');
@@ -1011,7 +1008,10 @@ export class AdminClassEnrollmentService {
     if (emailPkg.items.length === 1) {
       sent = await this.sendClassConfirmation(emailPkg.items[0].enrollment);
     } else {
-      sent = await this.sendClassBundleConfirmation(emailPkg, args.checkoutFlow);
+      sent = await this.sendClassBundleConfirmation(
+        emailPkg,
+        args.checkoutFlow,
+      );
     }
     if (sent) {
       await this.prisma.upcomingClassPackageEnrollment.update({
@@ -1053,7 +1053,9 @@ export class AdminClassEnrollmentService {
   private async resolveAdminClassPurchase(dto: CreateAdminClassEnrollmentDto) {
     const event = await this.assertAdminUpcomingEvent(dto.upcomingEventId);
     if (event.experienceType !== UpcomingExperienceType.CLASSES) {
-      throw new BadRequestException('This event does not offer class sessions.');
+      throw new BadRequestException(
+        'This event does not offer class sessions.',
+      );
     }
 
     if (dto.purchaseKind === 'session') {
@@ -1096,7 +1098,9 @@ export class AdminClassEnrollmentService {
         include: { section: true },
       });
       if (rows.length !== uniqueIds.length) {
-        throw new NotFoundException('One or more class sessions were not found.');
+        throw new NotFoundException(
+          'One or more class sessions were not found.',
+        );
       }
 
       const now = new Date();

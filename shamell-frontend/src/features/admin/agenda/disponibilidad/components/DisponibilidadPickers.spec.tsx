@@ -1,12 +1,20 @@
 /** @vitest-environment jsdom */
 
+import type { ComponentProps } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
+type PickerStubProps = {
+  isOpen: boolean;
+  title: string;
+  onConfirm: (value: string) => void;
+  onClose: () => void;
+};
+
 vi.mock("@/features/contacto/components/ContactTimePickerModal", () => ({
-  default: ({ isOpen, title, onConfirm, onClose }: any) =>
+  default: ({ isOpen, title, onConfirm, onClose }: PickerStubProps) =>
     isOpen ? (
       <div data-testid="time-picker">
         <span>{title}</span>
@@ -17,7 +25,7 @@ vi.mock("@/features/contacto/components/ContactTimePickerModal", () => ({
 }));
 
 vi.mock("@/features/contacto/components/ContactDatePickerModal", () => ({
-  default: ({ isOpen, title, onConfirm, onClose }: any) =>
+  default: ({ isOpen, title, onConfirm, onClose }: PickerStubProps) =>
     isOpen ? (
       <div data-testid="date-picker">
         <span>{title}</span>
@@ -30,7 +38,7 @@ vi.mock("@/features/contacto/components/ContactDatePickerModal", () => ({
 import DisponibilidadPickers from "./DisponibilidadPickers";
 
 function baseProps(
-  overrides: Partial<React.ComponentProps<typeof DisponibilidadPickers>> = {},
+  overrides: Partial<ComponentProps<typeof DisponibilidadPickers>> = {},
 ) {
   return {
     timePickerTarget: null,

@@ -59,7 +59,9 @@ export class BookingsController {
   @UseGuards(AdminJwtGuard, ThrottlerGuard)
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Create private class booking paid in cash (admin)' })
+  @ApiOperation({
+    summary: 'Create private class booking paid in cash (admin)',
+  })
   createPrivateClassCash(
     @CurrentAdmin() admin: AdminJwtPayload,
     @Body() dto: CreatePrivateClassBookingDto,
@@ -72,13 +74,17 @@ export class BookingsController {
   @Throttle({ default: { limit: 30, ttl: 60000 } })
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Create private class booking and send Stripe payment link (admin)',
+    summary:
+      'Create private class booking and send Stripe payment link (admin)',
   })
   createPrivateClassCheckout(
     @CurrentAdmin() admin: AdminJwtPayload,
     @Body() dto: CreatePrivateClassBookingDto,
   ) {
-    return this.bookingsService.createPrivateClassCheckoutSession(admin.id, dto);
+    return this.bookingsService.createPrivateClassCheckoutSession(
+      admin.id,
+      dto,
+    );
   }
 
   @Get('admin')

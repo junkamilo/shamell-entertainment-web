@@ -14,10 +14,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 
-export type AdminClassPurchaseKind =
-  | 'session'
-  | 'day_bundle'
-  | 'month_package';
+export type AdminClassPurchaseKind = 'session' | 'day_bundle' | 'month_package';
 
 export class CreateAdminClassEnrollmentDto {
   @IsIn(['session', 'day_bundle', 'month_package'])
@@ -26,11 +23,15 @@ export class CreateAdminClassEnrollmentDto {
   @IsUUID('4')
   upcomingEventId!: string;
 
-  @ValidateIf((o: CreateAdminClassEnrollmentDto) => o.purchaseKind === 'session')
+  @ValidateIf(
+    (o: CreateAdminClassEnrollmentDto) => o.purchaseKind === 'session',
+  )
   @IsUUID('4')
   sessionId?: string;
 
-  @ValidateIf((o: CreateAdminClassEnrollmentDto) => o.purchaseKind === 'day_bundle')
+  @ValidateIf(
+    (o: CreateAdminClassEnrollmentDto) => o.purchaseKind === 'day_bundle',
+  )
   @IsArray()
   @ArrayMinSize(1)
   @ArrayMaxSize(10)

@@ -243,8 +243,7 @@ export class EventsService {
       return this.getPublicUpcomingHubEvents();
     }
 
-    const publicSection =
-      query?.publicSection ?? EventPublicSection.GENERAL;
+    const publicSection = query?.publicSection ?? EventPublicSection.GENERAL;
 
     const events = await this.prisma.event.findMany({
       where: {
@@ -328,9 +327,7 @@ export class EventsService {
         isActive: true,
         catalogChannel: EventTypeCatalogChannel.BOOKING,
         occasionLinks: { some: { occasionType: { isActive: true } } },
-        ...(coveredTypeIds.length > 0
-          ? { id: { notIn: coveredTypeIds } }
-          : {}),
+        ...(coveredTypeIds.length > 0 ? { id: { notIn: coveredTypeIds } } : {}),
       },
       include: {
         occasionLinks: {
@@ -388,8 +385,7 @@ export class EventsService {
   }
 
   async getAdminEvents(query?: ListEventsQueryDto) {
-    const publicSection =
-      query?.publicSection ?? EventPublicSection.GENERAL;
+    const publicSection = query?.publicSection ?? EventPublicSection.GENERAL;
     const events = await this.prisma.event.findMany({
       where: eventsWhereForPublicSection(publicSection),
       include: {
@@ -1180,7 +1176,9 @@ export class EventsService {
             },
             _count: { _all: true },
           })
-        : Promise.resolve([] as Array<{ eventId: string; _count: { _all: number } }>),
+        : Promise.resolve(
+            [] as Array<{ eventId: string; _count: { _all: number } }>,
+          ),
       this.prisma.upcomingVenueConfig.findMany({
         where: { eventId: { in: eventIds } },
         select: {

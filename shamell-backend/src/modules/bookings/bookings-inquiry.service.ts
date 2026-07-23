@@ -112,7 +112,8 @@ export class BookingsInquiryService {
     await this.availability.assertDateTimeAllowed(eventInstant);
     await this.admin.assertNoDuplicateSlot(eventInstant, detailsAligned);
 
-    const detailsEnriched = await this.admin.enrichBookingDetails(detailsAligned);
+    const detailsEnriched =
+      await this.admin.enrichBookingDetails(detailsAligned);
 
     const eventTypeId = trimUuidField(detailsAligned.eventTypeId);
     const occasionTypeId = trimUuidField(detailsAligned.occasionTypeId);

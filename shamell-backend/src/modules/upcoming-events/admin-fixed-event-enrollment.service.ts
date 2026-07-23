@@ -64,7 +64,9 @@ export class AdminFixedEventEnrollmentService {
               is: {
                 clientEnabled: false,
                 reservationEventTemplate: {
-                  is: { scheduleMode: ReservationEventScheduleMode.FIXED_EVENT },
+                  is: {
+                    scheduleMode: ReservationEventScheduleMode.FIXED_EVENT,
+                  },
                 },
               },
             },
@@ -257,7 +259,9 @@ export class AdminFixedEventEnrollmentService {
     const frontendUrl = this.stripeService.frontendUrl().replace(/\/$/, '');
     const slug = event.slug?.trim();
     if (!slug) {
-      throw new BadRequestException('Event slug is required for payment links.');
+      throw new BadRequestException(
+        'Event slug is required for payment links.',
+      );
     }
     const successUrl = `${frontendUrl}/on-coming-events/${encodeURIComponent(slug)}/return?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${frontendUrl}/shamell-admin/agenda/box-office`;

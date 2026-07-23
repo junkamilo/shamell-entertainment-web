@@ -29,7 +29,9 @@ describe('booking-services.util', () => {
 
       await syncBookingServices(tx as never, 'booking-1', ['a', 'b']);
 
-      expect(deleteMany).toHaveBeenCalledWith({ where: { bookingId: 'booking-1' } });
+      expect(deleteMany).toHaveBeenCalledWith({
+        where: { bookingId: 'booking-1' },
+      });
       expect(createMany).toHaveBeenCalledWith({
         data: [
           { bookingId: 'booking-1', serviceId: 'a', sortOrder: 0 },

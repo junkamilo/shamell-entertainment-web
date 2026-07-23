@@ -492,7 +492,9 @@ export class AdminPaymentsService {
   private venueStatusSql(status: AdminPaymentStatus | undefined): Prisma.Sql {
     if (!status) return Prisma.sql`TRUE`;
     const mapped =
-      status === 'PENDING' ? VenueSeatReservationStatus.PENDING_PAYMENT : status;
+      status === 'PENDING'
+        ? VenueSeatReservationStatus.PENDING_PAYMENT
+        : status;
     return Prisma.sql`vsr.status = ${mapped}::"VenueSeatReservationStatus"`;
   }
 
@@ -569,7 +571,10 @@ export class AdminPaymentsService {
       });
       for (const row of rows) {
         const flow = this.packagePaymentFlow(row);
-        rowByKey.set(`${flow}:${row.id}`, this.mapClassPackageEnrollment(row, flow));
+        rowByKey.set(
+          `${flow}:${row.id}`,
+          this.mapClassPackageEnrollment(row, flow),
+        );
       }
     }
 
@@ -598,7 +603,9 @@ export class AdminPaymentsService {
       !Array.isArray(row.selections)
         ? (row.selections as { kind?: string }).kind
         : undefined;
-    return kind === 'class_session_bundle' ? 'CLASS_DAY_BUNDLE' : 'CLASS_PACKAGE';
+    return kind === 'class_session_bundle'
+      ? 'CLASS_DAY_BUNDLE'
+      : 'CLASS_PACKAGE';
   }
 
   private mapClassPackageEnrollment(
@@ -618,9 +625,7 @@ export class AdminPaymentsService {
           })
         : {};
     const sessionCount =
-      pkg.items.length > 0
-        ? pkg.items.length
-        : (selections.sessionCount ?? 0);
+      pkg.items.length > 0 ? pkg.items.length : (selections.sessionCount ?? 0);
     const contextLabel =
       flow === 'CLASS_DAY_BUNDLE'
         ? `${event.eventType.name} — ${sessionCount} section(s) on ${selections.dateIso ?? 'selected day'}`

@@ -1,21 +1,13 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   BookingQuotePaymentModel,
   BookingSource,
   BookingStatus,
-  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AvailabilityService } from '../availability/availability.service';
-import {
-  parseHHMM,
-  utcInstantForWallClock,
-} from '../availability/booking-tz';
+import { parseHHMM, utcInstantForWallClock } from '../availability/booking-tz';
 import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
@@ -140,10 +132,7 @@ export class BookingsPrivateClassService {
     };
   }
 
-  private eventInstantFromDateAndTime(
-    dateISO: string,
-    hhmm: string,
-  ): Date {
+  private eventInstantFromDateAndTime(dateISO: string, hhmm: string): Date {
     const tz = this.availability.bookingTimeZone();
     const minutes = parseHHMM(hhmm, 'eventTimeStart');
     return utcInstantForWallClock(dateISO, minutes, tz);
@@ -177,7 +166,7 @@ export class BookingsPrivateClassService {
           totalAmount: amount,
           quoteTotalAmount: amount,
           quoteCurrency: 'usd',
-          bookingDetails: details as unknown as Prisma.InputJsonValue,
+          bookingDetails: details,
           source: BookingSource.ADMIN_PHONE,
           createdByAdminId: adminUserId,
           guestFullName: dto.customerName.trim(),

@@ -37,9 +37,7 @@ export async function hydratePeticionesPage(
     ...new Set(
       bookingRows
         .map((b) => b.contactRequestId)
-        .filter(
-          (id): id is string => typeof id === 'string' && id.length > 0,
-        ),
+        .filter((id): id is string => typeof id === 'string' && id.length > 0),
     ),
   ].filter((id) => !contactIds.includes(id));
 

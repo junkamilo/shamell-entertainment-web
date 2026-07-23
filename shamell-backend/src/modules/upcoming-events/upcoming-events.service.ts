@@ -2695,5 +2695,4 @@ export class UpcomingEventsService {
       });
     }
   }
-
 }

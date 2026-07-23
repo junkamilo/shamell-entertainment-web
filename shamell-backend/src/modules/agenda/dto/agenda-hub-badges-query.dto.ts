@@ -4,7 +4,8 @@ import { IsInt, IsOptional, Min } from 'class-validator';
 
 export class AgendaHubBadgesQueryDto {
   @ApiPropertyOptional({
-    description: 'Bookings lane inbox badge: count items created after this ms timestamp',
+    description:
+      'Bookings lane inbox badge: count items created after this ms timestamp',
   })
   @IsOptional()
   @Type(() => Number)
@@ -13,7 +14,8 @@ export class AgendaHubBadgesQueryDto {
   peticionesBookingsSince?: number;
 
   @ApiPropertyOptional({
-    description: 'Guidance lane inbox badge: count items created after this ms timestamp',
+    description:
+      'Guidance lane inbox badge: count items created after this ms timestamp',
   })
   @IsOptional()
   @Type(() => Number)
@@ -32,7 +34,8 @@ export class AgendaHubBadgesQueryDto {
   peticionesPrivateClassesSince?: number;
 
   @ApiPropertyOptional({
-    description: 'Payment history badge: count terminal payments updated after this ms timestamp',
+    description:
+      'Payment history badge: count terminal payments updated after this ms timestamp',
   })
   @IsOptional()
   @Type(() => Number)

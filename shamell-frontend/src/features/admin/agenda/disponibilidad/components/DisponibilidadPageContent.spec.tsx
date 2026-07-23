@@ -21,7 +21,13 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("./DisponibilidadPanelTabs", () => ({
-  default: ({ activePanel, onPanelChange }: any) => (
+  default: ({
+    activePanel,
+    onPanelChange,
+  }: {
+    activePanel: string;
+    onPanelChange: (panel: string) => void;
+  }) => (
     <div data-testid="disponibilidad-panel-tabs">
       <span>active:{activePanel}</span>
       <button onClick={() => onPanelChange("weekly")}>tab-weekly</button>

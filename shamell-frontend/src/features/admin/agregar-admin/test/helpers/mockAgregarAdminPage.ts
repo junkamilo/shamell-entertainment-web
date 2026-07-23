@@ -37,7 +37,8 @@ export function createMockAgregarAdminPageState(
 ) {
   const formOverride =
     (overrides.form as Record<string, unknown> | undefined) ?? {};
-  const { form: _f, ...rest } = overrides;
+  const rest = { ...overrides };
+  delete rest.form;
   return {
     form: createMockAgregarAdminFormState(formOverride),
     sendVerificationCode: vi.fn(async () => undefined),

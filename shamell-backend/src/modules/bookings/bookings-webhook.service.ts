@@ -14,9 +14,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { emailBrandingFromConfig } from '../mail/email-html-branding';
 import { MailService } from '../mail/mail.service';
 import { AdminPaymentNotifyService } from '../mail/admin-payment-notify.service';
-import {
-  assertCheckoutPaidAmounts,
-} from '../stripe/stripe-tax.util';
+import { assertCheckoutPaidAmounts } from '../stripe/stripe-tax.util';
 import { StripeService } from '../stripe/stripe.service';
 import { BookingsAdminService } from './bookings-admin.service';
 import { adminListInclude } from './booking-includes';

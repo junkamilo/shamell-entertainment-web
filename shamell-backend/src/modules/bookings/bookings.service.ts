@@ -43,7 +43,10 @@ export class BookingsService {
     return this.admin.createAdminBooking(adminUserId, dto);
   }
 
-  createPrivateClassCash(adminUserId: string, dto: CreatePrivateClassBookingDto) {
+  createPrivateClassCash(
+    adminUserId: string,
+    dto: CreatePrivateClassBookingDto,
+  ) {
     return this.privateClass.createCash(adminUserId, dto);
   }
 
@@ -63,7 +66,11 @@ export class BookingsService {
     enriched: SanitizedInquiryDetails,
     logContextId = 'pending',
   ): Promise<PublicBookingInquiryPrepared | null> {
-    return this.inquiry.preparePublicBookingInquiry(dto, enriched, logContextId);
+    return this.inquiry.preparePublicBookingInquiry(
+      dto,
+      enriched,
+      logContextId,
+    );
   }
 
   insertPublicBookingInquiry(

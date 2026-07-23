@@ -7,10 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  deriveAdminPermissions,
-  isAdminStaffRole,
-} from './admin-permissions';
+import { deriveAdminPermissions, isAdminStaffRole } from './admin-permissions';
 
 @Injectable()
 export class AdminJwtGuard implements CanActivate {

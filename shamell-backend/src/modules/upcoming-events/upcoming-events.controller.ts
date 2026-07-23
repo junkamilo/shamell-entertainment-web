@@ -105,9 +105,7 @@ export class UpcomingEventsController {
   @HttpCode(HttpStatus.OK)
   @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 30, ttl: 60000 } })
-  getFixedEventSessionStatus(
-    @Query('session_id') sessionId: string,
-  ): Promise<{
+  getFixedEventSessionStatus(@Query('session_id') sessionId: string): Promise<{
     stripeStatus: string | null;
     enrollment: {
       status: string;

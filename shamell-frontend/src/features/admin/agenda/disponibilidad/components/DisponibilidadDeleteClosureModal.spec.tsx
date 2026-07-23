@@ -1,12 +1,23 @@
 /** @vitest-environment jsdom */
 
+import type { ReactNode } from "react";
 import { describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
 vi.mock("@/components/admin/overlays", () => ({
-  Modal: ({ isOpen, title, children, onClose }: any) =>
+  Modal: ({
+    isOpen,
+    title,
+    children,
+    onClose,
+  }: {
+    isOpen: boolean;
+    title: string;
+    children: ReactNode;
+    onClose: () => void;
+  }) =>
     isOpen ? (
       <div role="dialog" aria-label={title}>
         {children}
