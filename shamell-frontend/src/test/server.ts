@@ -14,6 +14,18 @@ import { agregarAdminHandlers } from "@/features/admin/agregar-admin/test/mocks/
 import { authHandlers } from "@/features/admin/auth/test/mocks/handlers";
 import { eventTypesHandlers } from "@/features/admin/event-types/test/mocks/handlers";
 import { eventsHandlers } from "@/features/admin/events/test/mocks/handlers";
+import { galleryHandlers } from "@/features/admin/gallery/test/mocks/handlers";
+import { galleryCategoriesHandlers } from "@/features/admin/gallery-categories/test/mocks/handlers";
+import { headerMediaHandlers } from "@/features/admin/header-media/test/mocks/handlers";
+import { inquiriesHandlers } from "@/features/admin/inquiries/test/mocks/handlers";
+import { occasionTypesHandlers } from "@/features/admin/occasion-types/test/mocks/handlers";
+import { onComingEventsHandlers } from "@/features/admin/on-coming-events/test/mocks/handlers";
+import { serviceTypesHandlers } from "@/features/admin/service-types/test/mocks/handlers";
+import { shellHandlers } from "@/features/admin/shell/test/mocks/handlers";
+import { venueReservationsHandlers } from "@/features/admin/venue-reservations/test/mocks/handlers";
+import { venueTablesHandlers } from "@/features/admin/venue-tables/test/mocks/handlers";
+import { contactoHandlers } from "@/features/contacto/test/mocks/handlers";
+import { forgotPasswordHandlers } from "@/features/forgot-password/test/mocks/handlers";
 
 export const server = setupServer(
   ...aboutHandlers,
@@ -24,8 +36,20 @@ export const server = setupServer(
   ...miAgendaHandlers,
   ...paymentHistoryHandlers,
   ...servicesHandlers,
+  ...occasionTypesHandlers,
+  ...onComingEventsHandlers,
+  ...serviceTypesHandlers,
+  ...shellHandlers,
+  ...venueReservationsHandlers,
+  ...venueTablesHandlers,
+  ...contactoHandlers,
+  ...forgotPasswordHandlers,
   ...eventTypesHandlers,
   ...eventsHandlers,
+  ...galleryCategoriesHandlers,
+  ...galleryHandlers,
+  ...headerMediaHandlers,
+  ...inquiriesHandlers,
   ...peticionesHandlers,
   ...agendaSharedHandlers,
   ...stripeWebhooksHandlers,
