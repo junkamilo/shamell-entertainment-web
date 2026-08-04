@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
+import type { PublicWeeklySlot } from "@/lib/contacto/bookingAvailability";
 import { getDisponibilidadBearerToken } from "../lib/disponibilidadAuth";
 import { createAvailabilityClosure } from "../services/createAvailabilityClosure";
 import { deleteAvailabilityClosure } from "../services/deleteAvailabilityClosure";

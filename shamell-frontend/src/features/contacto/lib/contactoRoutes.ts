@@ -1,2 +1,1 @@
-/** Public contact / inquiry route. */
-export const CONTACTO_PATH = "/contacto";
+export { CONTACTO_PATH } from "@/lib/contacto/contactInquiryConstants";

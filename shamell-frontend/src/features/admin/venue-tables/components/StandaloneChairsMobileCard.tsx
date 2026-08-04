@@ -1,4 +1,4 @@
-import { TableTruncatedText, TableRowActions, adminTableIconBtnClass, adminTableIconBtnDangerClass } from "@/components/admin/data-display";
+import { TableTruncatedText, TableRowActions, tableIconBtnClass, tableIconBtnDangerClass } from "@/components/admin/data-display";
 import { Armchair, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatStandaloneChairShortId } from "../lib/mapStandaloneChairFromApi";
@@ -53,7 +53,7 @@ export default function StandaloneChairsMobileCard({ item, onEdit, onDelete }: P
         <button
           type="button"
           onClick={() => onEdit(item)}
-          className={adminTableIconBtnClass}
+          className={tableIconBtnClass}
           aria-label={`Edit price for ${item.displayLabel}`}
         >
           <Pencil className="h-4 w-4" strokeWidth={1.5} />
@@ -61,7 +61,7 @@ export default function StandaloneChairsMobileCard({ item, onEdit, onDelete }: P
         <button
           type="button"
           onClick={() => onDelete(item)}
-          className={adminTableIconBtnDangerClass}
+          className={tableIconBtnDangerClass}
           aria-label={`Delete ${item.displayLabel}`}
         >
           <Trash2 className="h-4 w-4" strokeWidth={1.5} />

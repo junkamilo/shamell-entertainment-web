@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
-import type { LayoutItemLabel } from "@/lib/venueSeatDisplayLabel";
+import type { LayoutItemLabel } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { layoutToWorld } from "./layoutCoords3d";
 import CatalogTableMesh from "./CatalogTableMesh";
 import InstancedBanquetChairs from "./chair/InstancedBanquetChairs";

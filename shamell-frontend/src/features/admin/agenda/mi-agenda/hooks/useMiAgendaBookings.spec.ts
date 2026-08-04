@@ -8,7 +8,7 @@ const patchBookingMock = vi.fn(async () => undefined);
 const fetchBookingsMock = vi.fn(async () => ({
   bookings: [{ id: "b1", eventDate: "2026-08-15T14:00:00.000Z" }],
 }));
-const enrichMock = vi.fn((_rows: unknown[], _tz: string) => [
+const enrichMock = vi.fn(() => [
   {
     id: "b1",
     dateIso: "2026-08-15",
@@ -17,7 +17,7 @@ const enrichMock = vi.fn((_rows: unknown[], _tz: string) => [
   },
 ]);
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

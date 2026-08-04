@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { toast } from "@/hooks/use-toast";
 import { createAdminReservationEventTemplate } from "../services/createAdminReservationEventTemplate";
 import { deleteAdminReservationEventTemplate } from "../services/deleteAdminReservationEventTemplate";

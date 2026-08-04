@@ -10,8 +10,8 @@ import {
   isFutureEventStart,
   ShamellCountdown,
 } from "@/components/shared/ShamellCountdown";
-import { formatCatalogPriceAmount } from "@/lib/formatCatalogPrice";
-import { onComingEventHubHref } from "@/lib/upcomingEventPublicRoutes";
+import { formatCatalogPriceAmount } from "@/lib/services/formatCatalogPrice";
+import { onComingEventHubHref } from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 import {
   fetchOnComingEventDetail,
   type OnComingEventDetail,

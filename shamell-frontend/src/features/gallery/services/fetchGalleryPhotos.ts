@@ -1,4 +1,4 @@
-import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import { mapGalleryPhotosFromApi } from "../lib/mapGalleryApi";
 import type { GalleryPhotoItem } from "../types/gallery.types";
 

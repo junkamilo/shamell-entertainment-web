@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 
 export const RESERVATION_EVENT_ADMIN_NETWORK_MESSAGE =
   "Could not reach the server. Confirm the backend is running and NEXT_PUBLIC_BACKEND_URL matches its port (default http://localhost:3001).";

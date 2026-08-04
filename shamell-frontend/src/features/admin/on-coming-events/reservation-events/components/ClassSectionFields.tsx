@@ -5,7 +5,7 @@ import { fieldLabelClass } from "@/features/admin/agenda/shared/lib/agendaFormSt
 
 /** Keeps paired grid fields aligned when one label wraps to two lines. */
 const pairedFieldLabelClass = `${fieldLabelClass} block min-h-11 leading-snug`;
-import { formatTimeDisplayUs } from "@/lib/contactLogisticsUtils";
+import { formatTimeDisplayUs } from "@/lib/contacto/contactLogisticsUtils";
 import type { ClassSectionBlueprint } from "../lib/recurringClassSectionsBulk.util";
 
 type Props = {

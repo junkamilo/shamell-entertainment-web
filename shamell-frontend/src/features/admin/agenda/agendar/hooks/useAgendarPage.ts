@@ -2,8 +2,8 @@
 
 import { type FormEvent, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { hhmmToMinutes } from "@/lib/contactLogisticsUtils";
-import { utcInstantForWallClock } from "@/lib/bookingAvailability";
+import { hhmmToMinutes } from "@/lib/contacto/contactLogisticsUtils";
+import { utcInstantForWallClock } from "@/lib/contacto/bookingAvailability";
 import { toast } from "@/hooks/use-toast";
 import { useAdminBookings } from "@/hooks/use-admin-bookings";
 import { useIsMobile } from "@/hooks/use-mobile";

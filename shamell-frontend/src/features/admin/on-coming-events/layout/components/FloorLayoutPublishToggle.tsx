@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { fetchAdminVenueLayoutSettings } from "@/features/admin/on-coming-events/services/fetchAdminVenueLayoutSettings";
 import { patchAdminVenueLayoutEnabled } from "@/features/admin/on-coming-events/services/patchAdminVenueLayoutEnabled";
-import { ON_COMING_EVENTS_ADMIN_PATH } from "@/lib/onComingEventsRoutes";
+import { ON_COMING_EVENTS_ADMIN_PATH } from "@/lib/on-coming-events/onComingEventsRoutes";
 import { toast } from "@/hooks/use-toast";
-import { notifyOnComingEventsSettingsChanged } from "@/lib/onComingEventsSettingsEvents";
+import { notifyOnComingEventsSettingsChanged } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
 
 export default function FloorLayoutPublishToggle() {
   const [clientEnabled, setClientEnabled] = useState(false);

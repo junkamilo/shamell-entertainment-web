@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { screen } from "@testing-library/react";
-import { DEFAULT_HEADER_TEXT } from "@/lib/headerTextTypes";
+import { DEFAULT_HEADER_TEXT } from "@/lib/header-media/headerTextTypes";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 import HeaderTextPreview from "./HeaderTextPreview";
 

@@ -22,6 +22,56 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/admin/invite-admin",
+        destination: "/admin/agregar-admin",
+        permanent: true,
+      },
+      {
+        source: "/admin/invite-admin/:path*",
+        destination: "/admin/agregar-admin/:path*",
+        permanent: true,
+      },
+      {
+        source: "/admin/upcoming-events",
+        destination: "/admin/on-coming-events",
+        permanent: true,
+      },
+      {
+        source: "/admin/upcoming-events/:path*",
+        destination: "/admin/on-coming-events/:path*",
+        permanent: true,
+      },
+      {
+        source: "/admin/dashboard",
+        destination: "/admin/agenda",
+        permanent: true,
+      },
+      {
+        source: "/admin/dashboard/:path*",
+        destination: "/admin/agenda/:path*",
+        permanent: true,
+      },
+      {
+        source: "/login",
+        destination: "/admin/login",
+        permanent: true,
+      },
+      {
+        source: "/registro",
+        destination: "/",
+        permanent: true,
+      },
+      {
+        source: "/upcoming-events",
+        destination: "/on-coming-events",
+        permanent: true,
+      },
+      {
+        source: "/upcoming-events/:path*",
+        destination: "/on-coming-events/:path*",
+        permanent: true,
+      },
+      {
         source: "/venue-layout",
         destination: "/on-coming-events",
         permanent: true,

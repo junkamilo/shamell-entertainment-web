@@ -1,6 +1,6 @@
 "use client";
 
-import { Table, TableTruncatedText, TableRowActions, adminTableIconBtnClass, adminTableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
+import { Table, TableTruncatedText, TableRowActions, tableIconBtnClass, tableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
 import { LayoutGrid, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatPriceEn } from "../lib/parseVenueTablePrice";
@@ -94,7 +94,7 @@ export default function VenueTablesTable({ items, onEdit, onDeactivate }: Props)
           <button
             type="button"
             onClick={() => onEdit(item)}
-            className={adminTableIconBtnClass}
+            className={tableIconBtnClass}
             aria-label={`Edit ${formatVenueTableDisplayLabel(item)}`}
           >
             <Pencil className="h-4 w-4" strokeWidth={1.5} />
@@ -102,7 +102,7 @@ export default function VenueTablesTable({ items, onEdit, onDeactivate }: Props)
           <button
             type="button"
             onClick={() => onDeactivate(item)}
-            className={adminTableIconBtnDangerClass}
+            className={tableIconBtnDangerClass}
             aria-label={`Deactivate ${formatVenueTableDisplayLabel(item)}`}
             title="Deactivate table"
           >

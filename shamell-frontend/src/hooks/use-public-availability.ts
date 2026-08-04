@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { PublicAvailabilityRules } from "@/lib/bookingAvailability";
+import type { PublicAvailabilityRules } from "@/lib/contacto/bookingAvailability";
 
 function apiBase() {
   return (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, "");

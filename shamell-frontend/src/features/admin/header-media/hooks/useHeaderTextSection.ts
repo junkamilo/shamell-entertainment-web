@@ -6,8 +6,8 @@ import {
   DEFAULT_HEADER_TEXT,
   type AdminHeaderTextRow,
   type HeaderTextContent,
-} from "@/lib/headerTextTypes";
-import { isValidHexColor } from "@/lib/headerTextStyleTokens";
+} from "@/lib/header-media/headerTextTypes";
+import { isValidHexColor } from "@/lib/header-media/headerTextStyleTokens";
 import { getHeaderMediaBearerToken } from "../lib/headerMediaAuth";
 import { fetchAdminHeaderText } from "../services/fetchAdminHeaderText";
 import { patchAdminHeaderText } from "../services/patchAdminHeaderText";

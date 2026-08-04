@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CONTACTO_PATH } from "@/lib/contacto/contactInquiryConstants";
 import bailarinaLogo from "@/public/01_bailarina.png";
 import { submitConciergeInquiry } from "../services/submitConciergeInquiry";
 import type { ConciergeFormData } from "../types/contacto.types";
@@ -15,7 +16,7 @@ import ContactDatePickerModal from "./ContactDatePickerModal";
 import InquirySubmitFeedbackLayer, {
   type InquirySubmitFeedbackPhase,
 } from "./InquirySubmitFeedbackLayer";
-import { formatDateDisplayUs } from "@/lib/contactLogisticsUtils";
+import { formatDateDisplayUs } from "@/lib/contacto/contactLogisticsUtils";
 
 const emptyConciergeForm: ConciergeFormData = {
   fullName: "",
@@ -121,7 +122,7 @@ export default function ConciergeInquiryForm() {
     <div className="relative w-full">
       <nav className="absolute left-0 top-0 z-10" aria-label="Inquiry navigation">
         <Link
-          href="/contacto"
+          href={CONTACTO_PATH}
           className="btn-outline-gold inline-flex max-w-[min(100%,20rem)] shrink-0 flex-wrap items-center gap-2 px-4 py-2 font-brand text-[10px] tracking-[0.16em] sm:max-w-none sm:px-5"
         >
           <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />

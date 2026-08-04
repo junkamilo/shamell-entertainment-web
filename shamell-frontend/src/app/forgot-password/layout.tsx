@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { shamellAdminSans } from "@/lib/shamellFonts";
+import { shamellAdminSans } from "@/lib/theme/shamellFonts";
 
 export const metadata: Metadata = {
   title: "Forgot password — Shamell Entertainment",

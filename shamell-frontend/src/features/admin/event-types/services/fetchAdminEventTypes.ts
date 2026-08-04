@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import { mapEventTypesFromApi } from "../lib/mapEventTypeFromApi";
 import type { EventTypeItem } from "../types/eventTypes.types";

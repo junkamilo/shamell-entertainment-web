@@ -6,7 +6,7 @@ import {
   expandBlockedDates,
   isoDateInTzNow,
   timeBoundsForDateISO,
-} from "@/lib/bookingAvailability";
+} from "@/lib/contacto/bookingAvailability";
 import { usePublicAvailability } from "@/hooks/use-public-availability";
 
 type UseAgendarAvailabilityOptions = {

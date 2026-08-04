@@ -16,7 +16,7 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: vi.fn(),
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => "test-token",
 }));
 

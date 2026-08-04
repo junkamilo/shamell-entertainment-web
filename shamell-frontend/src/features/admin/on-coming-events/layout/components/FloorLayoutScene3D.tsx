@@ -3,7 +3,7 @@
 import VenueScene3D, { type VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
 import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
 import { isSceneSelectId } from "@/components/venue-3d/floorSceneZonesDefaults";
-import type { LayoutItemLabel } from "@/lib/venueSeatDisplayLabel";
+import type { LayoutItemLabel } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import type { FloorSceneZones, PlacedLayoutItem } from "../types/floorLayout.types";
 import FloorLayoutEditorActions, { sceneSelectionLabel } from "./FloorLayoutEditorActions";
 import PlacedItemsLayer3d from "./PlacedItemsLayer3d";

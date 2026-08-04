@@ -1,5 +1,5 @@
-import { GALLERY_CATCHALL_SLUG } from "@/lib/galleryConstants";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { GALLERY_CATCHALL_SLUG } from "@/lib/gallery/galleryConstants";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import type {
   GalleryCategoryApiItem,
   GalleryPhotoApiItem,

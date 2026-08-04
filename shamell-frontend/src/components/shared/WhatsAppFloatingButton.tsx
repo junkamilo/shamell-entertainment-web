@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { isPaymentFlowRoute } from "@/lib/paymentFlowRoutes";
+import { isPaymentFlowRoute } from "@/lib/stripe/paymentFlowRoutes";
 import { cn } from "@/lib/utils";
 
 /** E.164 digits for wa.me (US +1 239 452-1062). Override with NEXT_PUBLIC_WHATSAPP_PHONE. */

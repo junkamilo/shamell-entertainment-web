@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapOccasionTypesFromApi } from "../lib/mapOccasionTypeFromApi";
 import { parseOccasionTypesError } from "../lib/occasionTypesErrors";
 import type { OccasionTypeItem } from "../types/occasionTypes.types";

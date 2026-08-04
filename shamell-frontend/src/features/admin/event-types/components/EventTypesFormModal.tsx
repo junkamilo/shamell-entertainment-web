@@ -1,6 +1,6 @@
 import { Modal } from "@/components/admin/overlays";
 import { type FormEvent } from "react";
-import { ADMIN_INQUIRY_CODE_OPTIONS } from "@/lib/contactInquiryConstants";
+import { ADMIN_INQUIRY_CODE_OPTIONS } from "@/lib/contacto/contactInquiryConstants";
 import type { OccasionCatalogItem } from "../types/eventTypes.types";
 
 type EditingRow = {

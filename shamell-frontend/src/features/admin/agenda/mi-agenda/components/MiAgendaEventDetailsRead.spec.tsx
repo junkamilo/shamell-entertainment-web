@@ -5,7 +5,7 @@ import { screen } from "@testing-library/react";
 import { makeEnrichedBooking } from "../test/fixtures/miAgenda.fixture";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
-vi.mock("@/lib/adminBookingDisplay", () => ({
+vi.mock("@/lib/agenda/adminBookingDisplay", () => ({
   bookingServiceDisplayLine: () => "Performance · package",
   bookingServiceChip: () => "BOOKING",
 }));

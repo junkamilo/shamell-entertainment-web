@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { GALLERY_CATCHALL_SLUG } from "@/lib/galleryConstants";
+import { GALLERY_CATCHALL_SLUG } from "@/lib/gallery/galleryConstants";
 import type { GalleryCategory, GalleryPhoto } from "../types/gallery.types";
 
 type Args = {

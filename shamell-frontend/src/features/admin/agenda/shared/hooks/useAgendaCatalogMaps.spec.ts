@@ -16,7 +16,7 @@ const parseServicesMock = vi.fn(() => ({
 const parseEventTypesMock = vi.fn(() => new Map([["et-1", "SHOW"]]));
 const parseContactLinesMock = vi.fn(() => new Map([["line-1", "PRIVATE_CLASS"]]));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

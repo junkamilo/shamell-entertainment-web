@@ -1,4 +1,4 @@
-import type { ContactCatalogKind, ServiceTypeCode } from "@/lib/contactInquiryConstants";
+import type { ContactCatalogKind, ServiceTypeCode } from "@/lib/contacto/contactInquiryConstants";
 
 export type CatalogSnapshot = {
   kind: ContactCatalogKind;

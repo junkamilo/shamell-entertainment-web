@@ -1,4 +1,4 @@
-import { parseISOLocal, toISOLocalDate } from "@/lib/contactLogisticsUtils";
+import { parseISOLocal, toISOLocalDate } from "@/lib/contacto/contactLogisticsUtils";
 
 export type ScheduleMonthCell = {
   iso: string;

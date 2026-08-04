@@ -1,6 +1,9 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { PayQuoteCheckoutClient } from "./components/PayQuoteCheckoutClient";
+import {
+  PAY_CHECKOUT_LOADING_LABEL,
+  PayQuoteCheckoutClient,
+} from "@/features/pay";
 
 type Props = {
   searchParams: Promise<{ token?: string }>;
@@ -18,7 +21,7 @@ export default async function PayQuotePage({ searchParams }: Props) {
       fallback={
         <main className="flex min-h-screen items-center justify-center bg-white px-4 py-16">
           <p className="font-brand text-xs tracking-[0.2em] text-foreground/60 uppercase">
-            Loading secure payment…
+            {PAY_CHECKOUT_LOADING_LABEL}
           </p>
         </main>
       }

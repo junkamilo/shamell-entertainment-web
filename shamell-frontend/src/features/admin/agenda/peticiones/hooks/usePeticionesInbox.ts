@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { DEFAULT_PAGINATION_META, type PaginationMeta } from "@/lib/pagination";
 import { fetchAdminPeticiones } from "../services/fetchAdminPeticiones";
 import type { AdminPeticionesQuery, UnifiedPeticionRow } from "../types/peticiones.types";

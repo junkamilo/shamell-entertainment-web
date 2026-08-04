@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
+import type { PublicWeeklySlot } from "@/lib/contacto/bookingAvailability";
 import { defaultWeekly } from "../lib/disponibilidadConstants";
 import type { AdminAvailabilitySnapshot } from "../types/disponibilidad.types";
 

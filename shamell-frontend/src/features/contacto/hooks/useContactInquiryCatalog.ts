@@ -5,18 +5,16 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   resolveServiceLineFromCatalog,
   type ContactCatalogKind,
-  type ServiceTypeCode,
-} from "@/lib/contactInquiryConstants";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+} from "@/lib/contacto/contactInquiryConstants";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import { inferInquiryCodeFromService } from "../lib/inquiry/inquiryCodeUtils";
-import { emptyWizard, phaseFlow } from "../lib/inquiry/wizardValidation";
+import { phaseFlow } from "../lib/inquiry/wizardValidation";
 import type {
   CatalogSnapshot,
   ContactLine,
   PublicServiceOption,
   ServiceSummarySnapshot,
-  WizardData,
 } from "../lib/inquiry/wizardTypes";
 import { fetchPublicContactLines } from "../services/fetchPublicContactLines";
 import type { WizardStateApi } from "./useContactInquiryWizard";
@@ -131,12 +129,16 @@ export function useContactInquiryCatalog({
     };
   }, [apiBaseUrl]);
 
+  const serviceOptionIdsKey = data.serviceOptionIds.join("|");
+
   useEffect(() => {
-    if (data.serviceOptionIds.length > 0 || !data.inquiryCode || serviceTypeOptions.length === 0) return;
+    if (data.serviceOptionIds.length > 0 || !data.inquiryCode || serviceTypeOptions.length === 0) {
+      return;
+    }
     const firstByCode = serviceTypeOptions.find((s) => s.inquiryCode === data.inquiryCode);
     if (!firstByCode) return;
     setData((prev) => ({ ...prev, serviceOptionIds: [firstByCode.id] }));
-  }, [data.serviceOptionIds.join("|"), data.inquiryCode, serviceTypeOptions, setData]);
+  }, [serviceOptionIdsKey, data.serviceOptionIds.length, data.inquiryCode, serviceTypeOptions, setData]);
 
   useEffect(() => {
     if (!initialEventId) skipServiceAppliedForEventIdRef.current = undefined;

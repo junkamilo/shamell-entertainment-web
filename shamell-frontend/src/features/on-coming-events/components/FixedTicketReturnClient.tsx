@@ -5,8 +5,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
-import { getPublicApiBaseUrl } from "../lib/apiBaseUrl";
-import { onComingEventDetailHref } from "@/lib/upcomingEventPublicRoutes";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
+import { onComingEventDetailHref } from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 import {
   ClassPaymentConfirmationFallback,
   ClassPaymentConfirmationPanel,

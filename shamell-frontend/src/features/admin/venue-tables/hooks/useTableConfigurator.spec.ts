@@ -1,11 +1,10 @@
 /** @vitest-environment jsdom */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
 import { makeVenueTable } from "../test/fixtures/venueTables.fixture";
-import { FIXTURE_TABLE_ID } from "../test/fixtures/uuids.fixture";
 
 const toastMock = vi.fn();
 const getTokenMock = vi.fn((): string | null => "token-1");
@@ -15,7 +14,7 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: (...args: unknown[]) => toastMock(...args),
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

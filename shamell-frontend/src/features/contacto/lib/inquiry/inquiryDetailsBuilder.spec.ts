@@ -6,7 +6,6 @@ import {
   FIXTURE_CONTACT_LINE_ID,
   FIXTURE_EVENT_TYPE_ID,
   FIXTURE_OCCASION_ID,
-  FIXTURE_SERVICE_ID,
 } from "../../test/fixtures/uuids.fixture";
 
 describe("inquiryDetailsBuilder", () => {

@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import type { AdminVenueAvailability } from "@/features/admin/on-coming-events/layout/services/fetchAdminVenueAvailability";
 
 export async function fetchBoxOfficeSeatAvailability(

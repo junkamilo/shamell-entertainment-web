@@ -4,7 +4,6 @@ import {
   serializePlacedLayoutItemForApi,
 } from "./serializeFloorLayoutForApi";
 import {
-  makeCatalogTableItem,
   makeFloorLayout,
   makeStandaloneChairItem,
 } from "../../test/fixtures/onComingEvents.fixture";

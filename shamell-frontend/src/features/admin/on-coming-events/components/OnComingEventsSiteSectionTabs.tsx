@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import type { OnComingEventsSiteTab } from "@/lib/onComingEventsRoutes";
+import type { OnComingEventsSiteTab } from "@/lib/on-coming-events/onComingEventsRoutes";
 import {
   ON_COMING_EVENTS_SITE_TAB_RESERVATION,
   ON_COMING_EVENTS_SITE_TAB_UPCOMING,
   onComingEventsSiteAdminHref,
-} from "@/lib/onComingEventsRoutes";
+} from "@/lib/on-coming-events/onComingEventsRoutes";
 
 type Props = {
   activeTab: OnComingEventsSiteTab;

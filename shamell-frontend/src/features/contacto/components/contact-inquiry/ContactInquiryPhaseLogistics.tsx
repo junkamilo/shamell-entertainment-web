@@ -1,7 +1,7 @@
 import {
   formatDateDisplayUs,
   formatTimeDisplayUs,
-} from "@/lib/contactLogisticsUtils";
+} from "@/lib/contacto/contactLogisticsUtils";
 import {
   LOGISTICS_ADDRESS_MAX,
   LOGISTICS_GUEST_MAX,
@@ -16,32 +16,11 @@ export default function ContactInquiryPhaseLogistics(props: ContactInquiryPhaseP
   if (props.currentPhase !== "logistics") return null;
   const {
     data,
-    setData,
-    setStepError,
-    contactLines,
-    selectedLine,
-    serviceTypeOptions,
-    selectContactLine,
-    setDetailModal,
-    toggleUuidList,
-    toggleAddon,
     update,
-    occasionSingleLabel,
     logisticsPickerTriggerClass,
     logisticsUsesBespokeDeadlineRule,
-    setOccasionPickerOpen,
     setDatePickerOpen,
     setTimePickerWhich,
-    catalogSnapshot,
-    catalogDismissed,
-    serviceSummary,
-    serviceSummaryLoading,
-    pricingPreviewEventLine,
-    pricingPreviewServiceLines,
-    pricingPreviewOccasionLines,
-    pricingGuidePreview,
-    reviewProjectLabels,
-    reviewRoleLabels,
   } = props;
   return (
       <div className="space-y-5">

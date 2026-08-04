@@ -1,14 +1,14 @@
 "use client";
 
 import { AccordionSingleSelect } from "@/components/admin/inputs";
-import type { HeaderFontToken } from "@/lib/headerTextTypes";
-import { HEADER_FONT_OPTIONS } from "@/lib/headerTextTypes";
+import type { HeaderFontToken } from "@/lib/header-media/headerTextTypes";
+import { HEADER_FONT_OPTIONS } from "@/lib/header-media/headerTextTypes";
 import {
   colorInputFromHex,
   hexFromColorInput,
   isValidHexColor,
   normalizeHexColor,
-} from "@/lib/headerTextStyleTokens";
+} from "@/lib/header-media/headerTextStyleTokens";
 import { cn } from "@/lib/utils";
 
 const FONT_SELECT_OPTIONS = HEADER_FONT_OPTIONS.map((option) => ({

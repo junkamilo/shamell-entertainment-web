@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/admin/session";
 import { DEFAULT_PAGINATION_META, type PaginatedResponse, type PaginationMeta } from "@/lib/pagination";
 
 export type ContactRequest = {

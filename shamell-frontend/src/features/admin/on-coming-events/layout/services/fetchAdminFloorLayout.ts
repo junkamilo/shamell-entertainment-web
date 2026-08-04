@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapFloorLayoutFromApi } from "../lib/mapFloorLayoutFromApi";
 import type { VenueFloorLayout } from "../types/floorLayout.types";
 

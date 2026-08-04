@@ -1,5 +1,5 @@
 import { CalendarDays, Clock3, MapPin, Package, UserRound } from "lucide-react";
-import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
+import { bookingServiceDisplayLine } from "@/lib/agenda/adminBookingDisplay";
 import { RANGE_LABEL } from "../lib/miAgendaConstants";
 import {
   displayName,

@@ -6,8 +6,8 @@ import { useId, useMemo, useState } from "react";
 import { CatalogExpandRow } from "@/components/catalog/CatalogExpandRow";
 import CardMedia from "@/components/media/CardMedia";
 import { useCatalogSlideActive } from "@/components/shared/catalog-slide-context";
-import type { Experience } from "@/lib/experiencesData";
-import { appendCatalogToContactHref, buildServiceInquireHref } from "@/lib/contactInquiryConstants";
+import type { Experience } from "@/lib/services/experiencesData";
+import { appendCatalogToContactHref, buildServiceInquireHref } from "@/lib/contacto/contactInquiryConstants";
 import { cn } from "@/lib/utils";
 
 type ExperienceCardProps = {

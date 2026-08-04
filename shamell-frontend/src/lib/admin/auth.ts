@@ -1,4 +1,4 @@
-import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/admin/session";
 
 export function getAdminBearerToken(): string | null {
   if (typeof window === "undefined") return null;

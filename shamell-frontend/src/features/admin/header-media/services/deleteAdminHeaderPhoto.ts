@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { parseHeaderMediaError } from "../lib/headerMediaErrors";
 
 export async function deleteAdminHeaderPhoto(token: string, id: string): Promise<void> {

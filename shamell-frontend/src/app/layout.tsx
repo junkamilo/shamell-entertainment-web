@@ -5,7 +5,7 @@ import {
   geistMono,
   geistSans,
   greatVibes,
-} from "@/lib/shamellFonts";
+} from "@/lib/theme/shamellFonts";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import PublicBackgroundGate from "@/components/shared/PublicBackgroundGate";

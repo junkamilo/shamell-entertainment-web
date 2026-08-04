@@ -6,8 +6,8 @@ import {
   fallbackAboutContent,
   normalizeAboutPayload,
   type AboutContentItem,
-} from "@/lib/aboutContent";
-import { preloadAboutHeroMedia } from "@/lib/aboutMediaPreload";
+} from "@/lib/about/aboutContent";
+import { preloadAboutHeroMedia } from "@/lib/hero/aboutMediaPreload";
 
 export type { AboutContentItem };
 
@@ -48,7 +48,7 @@ export function useAboutContent(initialAbout?: AboutContentItem | null) {
 
   useEffect(() => {
     return preloadAboutHeroMedia(about);
-  }, [about.videoDeliveryUrl, about.videoPosterUrl, about.heroMediaType, about.imageUrl]);
+  }, [about]);
 
   return { about, isLoading };
 }

@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import {
   PETICIONES_BADGE_REFRESH_EVENT,
   readPeticionesLastSeenAt,
-} from "@/lib/peticionesNotifications";
+} from "@/lib/agenda/peticionesNotifications";
 import type { PeticionesLane } from "../peticiones/types/peticiones.types";
 import { fetchPeticionesBadge } from "../services/fetchPeticionesBadge";
 

@@ -1,4 +1,4 @@
-import { getAdminBearerToken as readAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken as readAdminBearerToken } from "@/lib/admin/auth";
 import { toast } from "@/hooks/use-toast";
 
 /** About module: shows toast when session is missing (legacy behavior). */

@@ -15,7 +15,7 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: (...args: unknown[]) => toastMock(...args),
 }));
 
-vi.mock("@/lib/contactLogisticsUtils", () => ({
+vi.mock("@/lib/contacto/contactLogisticsUtils", () => ({
   hhmmToMinutes: (value: string) => {
     const [h, m] = value.split(":").map(Number);
     if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
@@ -23,7 +23,7 @@ vi.mock("@/lib/contactLogisticsUtils", () => ({
   },
 }));
 
-vi.mock("@/lib/bookingAvailability", () => ({
+vi.mock("@/lib/contacto/bookingAvailability", () => ({
   utcInstantForWallClock: () => new Date("2026-08-15T14:00:00.000Z"),
 }));
 

@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 import { ShamellBackButton } from "@/components/shared/ShamellBackButton";
-import { formatCatalogPriceAmount } from "@/lib/formatCatalogPrice";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { formatCatalogPriceAmount } from "@/lib/services/formatCatalogPrice";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 
 type Props = {
   title: string;

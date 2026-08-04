@@ -9,9 +9,9 @@ import {
 import RevealOnView from "@/components/shared/RevealOnView";
 import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
-import type { OnComingEventsPromo } from "@/lib/onComingSettings";
-import { mapPublicUpcomingHubEvents } from "@/lib/mapPublicUpcomingHubEvents";
-import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/onComingEventsRoutes";
+import type { OnComingEventsPromo } from "@/lib/on-coming-events/onComingSettings";
+import { mapPublicUpcomingHubEvents } from "@/lib/on-coming-events/mapPublicUpcomingHubEvents";
+import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/on-coming-events/onComingEventsRoutes";
 
 type OnComingEventsPromoSectionProps = {
   initialSettings?: OnComingEventsPromo | null;

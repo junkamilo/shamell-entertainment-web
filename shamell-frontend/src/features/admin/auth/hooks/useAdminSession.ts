@@ -11,7 +11,7 @@ import {
   ADMIN_SESSION_CHANGED_EVENT,
   ADMIN_USER_KEY,
   notifyAdminSessionChanged,
-} from "@/lib/adminSession";
+} from "@/lib/admin/session";
 
 export type AdminSessionUser = {
   id?: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { fetchAdminStandaloneChairs } from "../services/fetchAdminStandaloneChairs";
 import type { StandaloneChairInventoryItem } from "../types/standaloneChairs.types";
 

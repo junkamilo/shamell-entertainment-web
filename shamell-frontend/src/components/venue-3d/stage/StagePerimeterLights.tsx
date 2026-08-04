@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import type { InstancedMesh } from "three";
 import { Object3D } from "three";
 import { STAGE_COLORS, STAGE_MATERIAL } from "./stageMaterials";
@@ -32,30 +32,31 @@ function positionsAlongEdge(
   return out;
 }
 
+const LIGHT_Y = STAGE_TOP_Y + LIGHT_Y_OFFSET;
+const M = LIGHT_EDGE_MARGIN;
+
+const STAGE_PERIMETER_LIGHT_POSITIONS: [number, number, number][] = [
+  ...positionsAlongEdge(
+    [M, LIGHT_Y, STAGE_DEPTH + 0.04],
+    [STAGE_WIDTH - M, LIGHT_Y, STAGE_DEPTH + 0.04],
+    LIGHT_SPACING,
+  ),
+  ...positionsAlongEdge(
+    [0.04, LIGHT_Y, M],
+    [0.04, LIGHT_Y, STAGE_DEPTH - M],
+    LIGHT_SPACING,
+  ),
+  ...positionsAlongEdge(
+    [STAGE_WIDTH - 0.04, LIGHT_Y, M],
+    [STAGE_WIDTH - 0.04, LIGHT_Y, STAGE_DEPTH - M],
+    LIGHT_SPACING,
+  ),
+];
+
 export default function StagePerimeterLights() {
   const instancedRef = useRef<InstancedMesh>(null);
   const wireRef = useRef<InstancedMesh>(null);
-  const lightY = STAGE_TOP_Y + LIGHT_Y_OFFSET;
-  const m = LIGHT_EDGE_MARGIN;
-
-  const positions = useMemo(() => {
-    const front = positionsAlongEdge(
-      [m, lightY, STAGE_DEPTH + 0.04],
-      [STAGE_WIDTH - m, lightY, STAGE_DEPTH + 0.04],
-      LIGHT_SPACING,
-    );
-    const left = positionsAlongEdge(
-      [0.04, lightY, m],
-      [0.04, lightY, STAGE_DEPTH - m],
-      LIGHT_SPACING,
-    );
-    const right = positionsAlongEdge(
-      [STAGE_WIDTH - 0.04, lightY, m],
-      [STAGE_WIDTH - 0.04, lightY, STAGE_DEPTH - m],
-      LIGHT_SPACING,
-    );
-    return [...front, ...left, ...right];
-  }, [lightY]);
+  const positions = STAGE_PERIMETER_LIGHT_POSITIONS;
 
   useLayoutEffect(() => {
     const mesh = instancedRef.current;

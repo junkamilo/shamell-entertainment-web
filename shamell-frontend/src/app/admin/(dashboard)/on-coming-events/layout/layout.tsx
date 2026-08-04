@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/onComingEventsRoutes";
+import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/on-coming-events/onComingEventsRoutes";
 
 export const metadata: Metadata = {
   title: `${SEATING_LAYOUT_ADMIN_LABEL} — Shamell Admin`,

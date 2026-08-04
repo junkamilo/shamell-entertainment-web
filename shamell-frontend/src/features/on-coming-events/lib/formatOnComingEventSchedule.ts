@@ -1,4 +1,4 @@
-import { formatDateDisplayUs } from "@/lib/contactLogisticsUtils";
+import { formatDateDisplayUs } from "@/lib/contacto/contactLogisticsUtils";
 import type { OnComingEventSchedule } from "../services/fetchOnComingEventDetail";
 
 function formatTimeRange(start: string | null, end: string | null): string {

@@ -29,8 +29,9 @@ describe("isBookableClassContext", () => {
   });
 
   it("derives bookable when readiness is omitted and context is valid", () => {
-    const { readiness: _ignored, ...rest } = makeBookClassEventContext();
-    expect(isBookableClassContext(rest)).toBe(true);
+    const withoutReadiness = { ...makeBookClassEventContext() };
+    delete withoutReadiness.readiness;
+    expect(isBookableClassContext(withoutReadiness)).toBe(true);
   });
 });
 

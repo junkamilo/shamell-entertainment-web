@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { normalizeAdminAboutRow } from "../lib/aboutAdminUtils";
 import type { AdminAboutRow } from "../types/aboutAdmin.types";
 

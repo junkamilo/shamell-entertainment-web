@@ -1,6 +1,6 @@
-import { hhmmToMinutes } from "@/lib/contactLogisticsUtils";
+import { hhmmToMinutes } from "@/lib/contacto/contactLogisticsUtils";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
-import { bookingServiceChip } from "@/lib/adminBookingDisplay";
+import { bookingServiceChip } from "@/lib/agenda/adminBookingDisplay";
 import { isoFromTzDate, hhmmFromEventDate } from "./miAgendaDateUtils";
 import type { EnrichedBooking } from "../types/miAgenda.types";
 

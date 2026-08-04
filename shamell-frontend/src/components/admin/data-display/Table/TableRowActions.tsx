@@ -19,10 +19,3 @@ export const tableIconBtnDangerClass =
 
 export const tableIconBtnDisabledClass =
   "cursor-not-allowed rounded-lg border border-gold/10 p-2 text-foreground/30";
-
-/** @deprecated Prefer tableIconBtnClass */
-export const adminTableIconBtnClass = tableIconBtnClass;
-/** @deprecated Prefer tableIconBtnDangerClass */
-export const adminTableIconBtnDangerClass = tableIconBtnDangerClass;
-/** @deprecated Prefer tableIconBtnDisabledClass */
-export const adminTableIconBtnDisabledClass = tableIconBtnDisabledClass;

@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import type { ReservationEventTemplate } from "@/features/admin/on-coming-events/reservation-events/types/reservationEventTemplate.types";
 
 export type AdminVenueConfig = {

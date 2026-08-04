@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAdminContactRequests } from "@/hooks/use-admin-contact-requests";
 import { useAdminBookings } from "@/hooks/use-admin-bookings";
-import { markPeticionesLaneSeenNow } from "@/lib/peticionesNotifications";
+import { markPeticionesLaneSeenNow } from "@/lib/agenda/peticionesNotifications";
 import { usePeticionesLaneBadge } from "../../hooks/usePeticionesLaneBadge";
 import type {
   ConfirmDeleteState,

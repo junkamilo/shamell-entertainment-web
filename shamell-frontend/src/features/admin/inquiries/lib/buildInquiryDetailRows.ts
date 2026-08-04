@@ -1,4 +1,4 @@
-import { EXPERIENCE_ADDON_OPTIONS, SERVICE_TYPE_CODES, type ServiceTypeCode } from "@/lib/contactInquiryConstants";
+import { EXPERIENCE_ADDON_OPTIONS, SERVICE_TYPE_CODES, type ServiceTypeCode } from "@/lib/contacto/contactInquiryConstants";
 
 function titleCaseLoose(s: string): string {
   return s

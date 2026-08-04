@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { BOOK_CLASS_SETUP_PATH } from "./bookClassRoutes";
-import { ON_COMING_EVENTS_ADMIN_PATH } from "@/lib/onComingEventsRoutes";
+import { ON_COMING_EVENTS_ADMIN_PATH } from "@/lib/on-coming-events/onComingEventsRoutes";
 
 describe("bookClassRoutes", () => {
   it("re-exports the On Coming Events admin path for setup", () => {

@@ -3,8 +3,8 @@
 import { useCallback, useState } from "react";
 import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
 import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
-import { formatPriceEn } from "@/lib/pricing";
+import { getAdminBearerToken } from "@/lib/admin/auth";
+import { formatPriceEn } from "@/lib/admin/pricing";
 import { toast } from "@/hooks/use-toast";
 import { createAdminVenueCashReservation } from "../services/createAdminVenueCashReservation";
 import { createAdminVenueCheckoutSession } from "../services/createAdminVenueCheckoutSession";

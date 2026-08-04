@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { formatPriceEn } from "@/lib/pricing";
+import { formatPriceEn } from "@/lib/admin/pricing";
 import type {
   BoxOfficeSeatOption,
   BoxOfficeTableSize,

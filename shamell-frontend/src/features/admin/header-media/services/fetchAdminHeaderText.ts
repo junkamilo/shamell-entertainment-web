@@ -1,6 +1,6 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
-import { mapAdminHeaderTextFromApi } from "@/lib/headerTextStyleTokens";
-import type { AdminHeaderTextRow } from "@/lib/headerTextTypes";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
+import { mapAdminHeaderTextFromApi } from "@/lib/header-media/headerTextStyleTokens";
+import type { AdminHeaderTextRow } from "@/lib/header-media/headerTextTypes";
 
 export async function fetchAdminHeaderText(
   token: string,

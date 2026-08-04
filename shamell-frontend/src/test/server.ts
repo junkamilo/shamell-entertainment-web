@@ -26,8 +26,40 @@ import { venueReservationsHandlers } from "@/features/admin/venue-reservations/t
 import { venueTablesHandlers } from "@/features/admin/venue-tables/test/mocks/handlers";
 import { contactoHandlers } from "@/features/contacto/test/mocks/handlers";
 import { forgotPasswordHandlers } from "@/features/forgot-password/test/mocks/handlers";
+import { publicGalleryHandlers } from "@/features/gallery/test/mocks/handlers";
+import { publicOnComingEventsHandlers } from "@/features/on-coming-events/test/mocks/handlers";
+import { hooksHandlers } from "@/hooks/test/mocks/handlers";
+import { adminLibHandlers } from "@/lib/admin/test/mocks/handlers";
+import { stripeLibHandlers } from "@/lib/stripe/test/mocks/handlers";
+import { aboutLibHandlers } from "@/lib/about/test/mocks/handlers";
+import { agendaLibHandlers } from "@/lib/agenda/test/mocks/handlers";
+import { contactoLibHandlers } from "@/lib/contacto/test/mocks/handlers";
+import { galleryLibHandlers } from "@/lib/gallery/test/mocks/handlers";
+import { headerMediaLibHandlers } from "@/lib/header-media/test/mocks/handlers";
+import { heroLibHandlers } from "@/lib/hero/test/mocks/handlers";
+import { homeLibHandlers } from "@/lib/home/test/mocks/handlers";
+import { onComingEventsLibHandlers } from "@/lib/on-coming-events/test/mocks/handlers";
+import { servicesLibHandlers } from "@/lib/services/test/mocks/handlers";
+import { themeLibHandlers } from "@/lib/theme/test/mocks/handlers";
+import { sharedLibHandlers } from "@/lib/test/mocks/handlers";
+import { adminSharedLibHandlers } from "@/app/admin/shared/lib/test/mocks/handlers";
 
 export const server = setupServer(
+  ...homeLibHandlers,
+  ...heroLibHandlers,
+  ...headerMediaLibHandlers,
+  ...galleryLibHandlers,
+  ...contactoLibHandlers,
+  ...agendaLibHandlers,
+  ...aboutLibHandlers,
+  ...onComingEventsLibHandlers,
+  ...servicesLibHandlers,
+  ...themeLibHandlers,
+  ...sharedLibHandlers,
+  ...adminSharedLibHandlers,
+  ...stripeLibHandlers,
+  ...adminLibHandlers,
+  ...hooksHandlers,
   ...aboutHandlers,
   ...agendaHubHandlers,
   ...bookClassHandlers,
@@ -44,6 +76,8 @@ export const server = setupServer(
   ...venueTablesHandlers,
   ...contactoHandlers,
   ...forgotPasswordHandlers,
+  ...publicGalleryHandlers,
+  ...publicOnComingEventsHandlers,
   ...eventTypesHandlers,
   ...eventsHandlers,
   ...galleryCategoriesHandlers,

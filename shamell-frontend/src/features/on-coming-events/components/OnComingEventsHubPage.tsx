@@ -1,24 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import Footer from "@/components/Footer";
 import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
+import { fetchPublicUpcomingHubEvents } from "../services/fetchPublicUpcomingHubEvents";
 import { OnComingEventsHubHero } from "./OnComingEventsHubHero";
 import {
   OnComingEventHubCard,
   type OnComingEventHubCardItem,
 } from "./OnComingEventHubCard";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
-import { parseApiInt } from "@/lib/fixedTicketInventory";
 
 type HubEvent = OnComingEventHubCardItem;
 
 export default function OnComingEventsHubPage() {
-  const apiBaseUrl = useMemo(
-    () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
-    [],
-  );
   const [events, setEvents] = useState<HubEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
@@ -35,75 +30,9 @@ export default function OnComingEventsHubPage() {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
-    fetch(`${apiBaseUrl}/api/v1/events?publicSection=UPCOMING_EVENTS`)
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: unknown) => {
-        if (cancelled || !Array.isArray(data)) return;
-        const normalized = (data as Record<string, unknown>[])
-          .filter(
-            (item) =>
-              typeof item.id === "string" &&
-              typeof item.slug === "string" &&
-              item.slug.length > 0 &&
-              typeof item.eventTypeName === "string",
-          )
-          .map((item) => {
-            const heroUrl =
-              typeof item.heroImageUrl === "string" ? item.heroImageUrl : "";
-            const explicitMt =
-              item.heroMediaType != null && typeof item.heroMediaType === "string"
-                ? item.heroMediaType.toUpperCase()
-                : "";
-            const heroMediaType: "IMAGE" | "VIDEO" =
-              explicitMt === "VIDEO" || serviceCatalogMediaTypeFromUrl(heroUrl) === "VIDEO"
-                ? "VIDEO"
-                : "IMAGE";
-            const purchaseMode =
-              item.purchaseMode === "venue_seating" ||
-              item.purchaseMode === "classes" ||
-              item.purchaseMode === "fixed_ticket" ||
-              item.purchaseMode === "none"
-                ? item.purchaseMode
-                : item.experienceType === "VENUE_SEATING"
-                  ? "venue_seating"
-                  : item.experienceType === "CLASSES"
-                    ? "classes"
-                    : "none";
-            return {
-              slug: String(item.slug),
-              eventTypeName: String(item.eventTypeName),
-              heroImageUrl: heroUrl || null,
-              heroMediaType,
-              experienceType:
-                item.experienceType === "VENUE_SEATING" || item.experienceType === "CLASSES"
-                  ? item.experienceType
-                  : null,
-              purchaseMode,
-              purchasable: item.purchasable === true,
-              ...(parseApiInt(item.ticketsRemaining) !== undefined
-                ? { ticketsRemaining: parseApiInt(item.ticketsRemaining) }
-                : {}),
-              ...(parseApiInt(item.fixedTicketCapacity) !== undefined
-                ? { fixedTicketCapacity: parseApiInt(item.fixedTicketCapacity) }
-                : {}),
-              ...(parseApiInt(item.ticketsSold) !== undefined
-                ? { ticketsSold: parseApiInt(item.ticketsSold) }
-                : {}),
-              ...(parseApiInt(item.tableCapacity) !== undefined
-                ? { tableCapacity: parseApiInt(item.tableCapacity) }
-                : {}),
-              ...(parseApiInt(item.tablesRemaining) !== undefined
-                ? { tablesRemaining: parseApiInt(item.tablesRemaining) }
-                : {}),
-              ...(parseApiInt(item.tablesSold) !== undefined
-                ? { tablesSold: parseApiInt(item.tablesSold) }
-                : {}),
-              ...(typeof item.eventStartsAt === "string" && item.eventStartsAt
-                ? { eventStartsAt: item.eventStartsAt }
-                : {}),
-            } satisfies HubEvent;
-          });
-        setEvents(normalized);
+    void fetchPublicUpcomingHubEvents()
+      .then((normalized) => {
+        if (!cancelled) setEvents(normalized);
       })
       .catch(() => {
         if (!cancelled) setEvents([]);
@@ -114,7 +43,7 @@ export default function OnComingEventsHubPage() {
     return () => {
       cancelled = true;
     };
-  }, [apiBaseUrl]);
+  }, []);
 
   const showBusyOverlay = isLoading || leaving || navigatingToEvent;
   const busyTitle = isLoading

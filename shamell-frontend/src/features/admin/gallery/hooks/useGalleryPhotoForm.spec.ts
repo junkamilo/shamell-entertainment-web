@@ -2,7 +2,7 @@
 
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { GALLERY_CATCHALL_SLUG } from "@/lib/galleryConstants";
+import { GALLERY_CATCHALL_SLUG } from "@/lib/gallery/galleryConstants";
 import {
   makeGalleryCategory,
   makeGalleryPhoto,

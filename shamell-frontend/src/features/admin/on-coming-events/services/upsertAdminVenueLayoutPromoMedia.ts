@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { normalizeVenueLayoutSettings } from "../types/venueLayoutPromo.types";
 import type { VenueLayoutClientSettings } from "../types/venueLayoutPromo.types";
 

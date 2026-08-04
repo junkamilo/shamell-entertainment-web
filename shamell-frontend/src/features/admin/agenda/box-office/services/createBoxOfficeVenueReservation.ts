@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import type { BoxOfficeDetailsPayload } from "../types/boxOfficeFixed.types";
 
 export type BoxOfficeVenueReserveBody = {

@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { HERO_WAVE_MAX_BITE, heroWaveEdgeYNorm } from "@/lib/heroPearlWave";
+import { HERO_WAVE_MAX_BITE, heroWaveEdgeYNorm } from "@/lib/hero/heroPearlWave";
 
 type PearlDividerProps = {
   className?: string;

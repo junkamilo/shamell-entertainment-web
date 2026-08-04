@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 
 const resetPasswordActionMock = vi.fn();
-const searchParamsGetMock = vi.fn((_key: string) => "token-abc" as string | null);
+const searchParamsGetMock = vi.fn(() => "token-abc" as string | null);
 
 vi.mock("../actions/resetPasswordAction", () => ({
   resetPasswordAction: (...args: unknown[]) => resetPasswordActionMock(...args),

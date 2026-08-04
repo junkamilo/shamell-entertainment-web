@@ -69,8 +69,8 @@ vi.mock("./useAgendarFormState", () => ({
   useAgendarFormState: () => formState,
 }));
 
-vi.mock("@/lib/bookingAvailability", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/bookingAvailability")>();
+vi.mock("@/lib/contacto/bookingAvailability", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/contacto/bookingAvailability")>();
   return {
     ...actual,
     utcInstantForWallClock: vi.fn(() => new Date("2026-08-15T22:00:00.000Z")),

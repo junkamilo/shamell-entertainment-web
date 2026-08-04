@@ -5,7 +5,7 @@ import { screen } from "@testing-library/react";
 import {
   ON_COMING_EVENTS_SITE_TAB_RESERVATION,
   ON_COMING_EVENTS_SITE_TAB_UPCOMING,
-} from "@/lib/onComingEventsRoutes";
+} from "@/lib/on-coming-events/onComingEventsRoutes";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 import { OnComingEventsSiteSectionTabs } from "./OnComingEventsSiteSectionTabs";
 

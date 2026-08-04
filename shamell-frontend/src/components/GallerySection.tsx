@@ -10,6 +10,7 @@ import {
   useGalleryPhotos,
   type GalleryPhotoItem,
 } from "@/features/gallery";
+import { buildGalleryFilterHref } from "@/lib/gallery/galleryRoutes";
 import { useInViewLoad } from "@/hooks/use-in-view-load";
 import { cn } from "@/lib/utils";
 
@@ -178,7 +179,7 @@ const GallerySection = () => {
         </RevealStaggerGrid>
 
         <RevealOnView className="mt-12 flex justify-center" delay={120} amount={0.2}>
-          <Link href={`/gallery?filter=${filter}`} className="btn-outline-gold font-brand md:text-xs">
+          <Link href={buildGalleryFilterHref(filter)} className="btn-outline-gold font-brand md:text-xs">
             View more
           </Link>
         </RevealOnView>

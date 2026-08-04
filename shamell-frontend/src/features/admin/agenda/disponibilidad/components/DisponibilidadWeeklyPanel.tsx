@@ -1,7 +1,7 @@
 import { type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { motion } from "motion/react";
-import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
+import type { PublicWeeklySlot } from "@/lib/contacto/bookingAvailability";
 import type { AdminAvailabilitySnapshot, TimePickerTarget } from "../types/disponibilidad.types";
 import {
   disponibilidadActionButtonClass,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 
 export type MediaPreviewOpenOptions = {
   src: string;

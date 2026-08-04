@@ -4,15 +4,16 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useHeaderText } from "@/hooks/use-header-text";
-import { fontClassForToken } from "@/lib/headerTextStyleTokens";
-import type { HeaderTextContent } from "@/lib/headerTextTypes";
-import { buildHeroWaveClipPathD } from "@/lib/heroPearlWave";
+import { fontClassForToken } from "@/lib/header-media/headerTextStyleTokens";
+import type { HeaderTextContent } from "@/lib/header-media/headerTextTypes";
+import { buildHeroWaveClipPathD } from "@/lib/hero/heroPearlWave";
+import { CONTACTO_PATH } from "@/lib/contacto/contactInquiryConstants";
 import { cn } from "@/lib/utils";
 import HeroFallbackBackground from "./HeroFallbackBackground";
 import {
   normalizeHeaderPhotos,
   type PublicHeaderPhoto,
-} from "@/lib/fetchPublicHeaderMedia";
+} from "@/lib/header-media/fetchPublicHeaderMedia";
 
 const heroWaveClipPathId = "shamell-hero-wave-clip";
 const heroClipPath = `url(#${heroWaveClipPathId})`;
@@ -370,7 +371,7 @@ const HeroSection = ({
                       aria-hidden
                     />
                     <a
-                      href="/contacto"
+                      href={CONTACTO_PATH}
                       className="group relative inline-flex min-h-11 items-center justify-center gap-2 self-center border border-gold/55 px-8 py-2.5 font-brand text-xs font-semibold tracking-[0.22em] text-gold uppercase transition-all duration-300 hover:border-gold hover:bg-gold/8 hover:text-gold-light hover:shadow-[0_0_28px_rgba(197,165,90,0.2)] sm:min-h-12 sm:px-10 sm:tracking-[0.26em] md:tracking-[0.28em]"
                     >
                       <span

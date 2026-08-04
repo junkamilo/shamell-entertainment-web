@@ -8,7 +8,7 @@ import { FIXTURE_TABLE_ID } from "../test/fixtures/uuids.fixture";
 
 const getTokenMock = vi.fn((): string | null => "token-1");
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

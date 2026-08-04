@@ -5,7 +5,7 @@ import { EventCatalogCard, type EventCatalogItem } from "@/components/catalog/Ev
 import RevealOnView from "@/components/shared/RevealOnView";
 import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
 import { useInViewLoad } from "@/hooks/use-in-view-load";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 
 type EventsApiItem = {
   id?: string;

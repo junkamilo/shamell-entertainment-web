@@ -3,7 +3,7 @@ import { fetchAgendarBookingForEdit } from "./fetchAgendarBookingForEdit";
 import { makeAdminBookingRow } from "../tests/fixtures/bookingRow.fixture";
 import { FIXTURE_BOOKING_ID } from "../tests/fixtures/uuids.fixture";
 
-vi.mock("@/app/admin/shared/lib/adminApiBaseUrl", () => ({
+vi.mock("@/lib/admin/apiBaseUrl", () => ({
   getAdminApiBaseUrl: () => "http://test-api",
 }));
 

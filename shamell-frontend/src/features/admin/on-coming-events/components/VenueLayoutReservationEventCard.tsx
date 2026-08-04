@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import {
   fieldLabelClass,
   logisticsPickerTriggerClass,
@@ -9,7 +9,7 @@ import {
 import {
   formatDateDisplayUs,
   formatTimeDisplayUs,
-} from "@/lib/contactLogisticsUtils";
+} from "@/lib/contacto/contactLogisticsUtils";
 import { toast } from "@/hooks/use-toast";
 import {
   combineDateAndTime,

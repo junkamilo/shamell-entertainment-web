@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { galleryTabs as fallbackTabs } from "@/lib/galleryData";
+import { galleryTabs as fallbackTabs } from "@/lib/gallery/galleryData";
 import { fetchGalleryCategories } from "../services/fetchGalleryCategories";
 import type { GalleryTabItem } from "../types/gallery.types";
 

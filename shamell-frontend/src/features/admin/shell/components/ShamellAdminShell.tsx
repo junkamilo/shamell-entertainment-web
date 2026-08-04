@@ -8,7 +8,7 @@ import {
   ON_COMING_EVENTS_ADMIN_PATH,
   ON_COMING_EVENTS_SITE_TAB_RESERVATION,
   parseOnComingEventsSiteTab,
-} from "@/lib/onComingEventsRoutes";
+} from "@/lib/on-coming-events/onComingEventsRoutes";
 import {
   ShellCloseIcon,
   ShellExternalLinkIcon,
@@ -35,12 +35,12 @@ import {
   ADMIN_ACCESS_TOKEN_KEY,
   ADMIN_USER_KEY,
   notifyAdminSessionChanged,
-} from "@/lib/adminSession";
+} from "@/lib/admin/session";
 import {
   markVenueSeatReservationsModuleSeen,
   ON_COMING_EVENTS_BADGE_REFRESH_EVENT,
   readLastSeenPaidReservationAtMs,
-} from "@/lib/onComingEventsReservationsNotice";
+} from "@/lib/on-coming-events/onComingEventsReservationsNotice";
 
 function breadcrumbFromPath(pathname: string): string[] {
   const parts = pathname.split("/").filter(Boolean);

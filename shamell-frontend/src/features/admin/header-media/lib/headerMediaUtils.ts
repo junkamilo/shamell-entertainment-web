@@ -1,4 +1,4 @@
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import type { HeaderPhoto } from "../types/headerMedia.types";
 
 export function formatFileSize(bytes: number): string {

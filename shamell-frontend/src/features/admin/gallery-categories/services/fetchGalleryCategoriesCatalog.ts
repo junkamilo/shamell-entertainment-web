@@ -1,7 +1,6 @@
 import { fetchAdminGalleryCategories } from "@/features/admin/gallery/services/fetchAdminGalleryCategories";
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapGalleryPhotoPreviewsFromApi } from "@/features/admin/gallery/lib/mapGalleryPhotoPreviewsFromApi";
-import { parseGalleryError } from "@/features/admin/gallery/lib/galleryErrors";
 import type { GalleryCategory, GalleryCategoryPhotoPreview } from "../types/galleryCategories.types";
 
 export type GalleryCategoriesCatalog = {

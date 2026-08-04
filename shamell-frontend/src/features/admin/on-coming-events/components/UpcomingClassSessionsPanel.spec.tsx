@@ -12,7 +12,7 @@ vi.mock("@/features/admin/events/lib/eventsAuth", () => ({
   getEventsBearerToken: () => "events-token",
 }));
 
-vi.mock("@/app/admin/shared/lib/adminApiBaseUrl", () => ({
+vi.mock("@/lib/admin/apiBaseUrl", () => ({
   getAdminApiBaseUrl: () => "http://localhost:3001",
 }));
 

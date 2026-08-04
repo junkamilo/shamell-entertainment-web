@@ -1,1 +1,1 @@
-export { getAdminBearerToken as getHeaderMediaBearerToken } from "@/app/admin/shared/lib/adminAuth";
+export { getAdminBearerToken as getHeaderMediaBearerToken } from "@/lib/admin/auth";

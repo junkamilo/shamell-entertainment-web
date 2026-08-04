@@ -3,12 +3,11 @@
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
   canAdvanceFromPhase,
-  emptyWizard,
   getPhaseValidationError,
   phaseFlow,
 } from "../lib/inquiry/wizardValidation";
 import type { CatalogSnapshot, ContactLine, ExperienceAddon, Phase, WizardData } from "../lib/inquiry/wizardTypes";
-import type { ServiceTypeCode } from "@/lib/contactInquiryConstants";
+import type { ServiceTypeCode } from "@/lib/contacto/contactInquiryConstants";
 
 export type WizardStateApi = {
   data: WizardData;

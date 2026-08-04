@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const getAdminBearerTokenMock = vi.fn((): string | null => "tok");
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: (...args: unknown[]) => getAdminBearerTokenMock(...args),
 }));
 

@@ -27,11 +27,6 @@ const cases = [
     path: "/shamell-admin/agenda/agendar",
     expectStatus: (s) => s === 307 || s === 308,
   },
-  {
-    name: "legacy login redirect",
-    path: "/login",
-    expectStatus: (s) => s === 307 || s === 308,
-  },
 ];
 
 let failed = 0;

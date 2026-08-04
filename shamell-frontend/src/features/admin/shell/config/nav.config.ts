@@ -15,7 +15,7 @@ import {
   VENUE_RESERVATIONS_ADMIN_PATH,
   VENUE_TABLES_PATH,
 } from "@/lib/admin/routes";
-import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/onComingEventsRoutes";
+import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/on-coming-events/onComingEventsRoutes";
 import {
   NavAboutIcon,
   NavAddAdminIcon,

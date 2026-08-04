@@ -1,4 +1,4 @@
-import { isValidInquiryCode, type InquiryEntrySource } from "@/lib/contactInquiryConstants";
+import { isValidInquiryCode, type InquiryEntrySource } from "@/lib/contacto/contactInquiryConstants";
 import { isGalaOrVip, readableInquiryCode } from "./inquiryCodeUtils";
 import { SERVICE_OPTION_UUID_RE, type CatalogSnapshot, type PublicServiceOption, type WizardData } from "./wizardTypes";
 

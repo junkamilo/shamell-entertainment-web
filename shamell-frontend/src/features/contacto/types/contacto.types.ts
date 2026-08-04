@@ -1,4 +1,4 @@
-import type { ContactCatalogKind, InquiryEntrySource, ServiceTypeCode } from "@/lib/contactInquiryConstants";
+import type { ContactCatalogKind, InquiryEntrySource, ServiceTypeCode } from "@/lib/contacto/contactInquiryConstants";
 
 export type { ContactLine } from "../lib/inquiry/wizardTypes";
 

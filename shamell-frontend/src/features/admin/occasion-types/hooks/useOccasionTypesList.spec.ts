@@ -3,7 +3,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { FIXTURE_OCCASION_TYPE_ID } from "../test/fixtures/uuids.fixture";
-import { makeOccasionTypesApiPayload } from "../test/fixtures/occasionTypes.fixture";
 import { occasionTypesListHandler } from "../test/mocks/handlers";
 import { server } from "@/test/server";
 

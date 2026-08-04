@@ -15,7 +15,7 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: (...args: unknown[]) => toastMock(...args),
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 
@@ -23,7 +23,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPushMock }),
 }));
 
-vi.mock("@/lib/onComingEventsReservationsNotice", () => ({
+vi.mock("@/lib/on-coming-events/onComingEventsReservationsNotice", () => ({
   readLastSeenPaidReservationAtMs: () => 0,
   writeLastSeenPaidReservationAtMs: vi.fn(),
   notifyOnComingEventsBadgeRefresh: vi.fn(),

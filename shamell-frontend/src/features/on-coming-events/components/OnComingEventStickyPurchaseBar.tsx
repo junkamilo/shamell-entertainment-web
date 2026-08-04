@@ -5,7 +5,7 @@ import { ArrowRight, Ticket } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { onComingEventSeatsHref } from "@/lib/upcomingEventPublicRoutes";
+import { onComingEventSeatsHref } from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 import type { UpcomingPurchaseMode } from "../services/fetchOnComingEventDetail";
 
 /** Sit above WhatsApp FAB: bottom-6 (24px) + h-14 (56px) + gap */

@@ -2,12 +2,12 @@
 
 import Image from "next/image";
 import { FileText, Heart, Image as ImageIcon, Pencil } from "lucide-react";
-import { isAboutHeroVideoDisplay } from "@/lib/aboutHeroMedia";
+import { isAboutHeroVideoDisplay } from "@/lib/hero/aboutHeroMedia";
 import {
   aboutHeroMediaClassName,
   aboutHeroMediaFrameClassName,
   aboutHeroVideoCardClassName,
-} from "@/lib/aboutHeroLayout";
+} from "@/lib/hero/aboutHeroLayout";
 import { excerptBody, formatRelativeEn } from "../lib/aboutAdminUtils";
 import type { AdminAboutRow } from "../types/aboutAdmin.types";
 

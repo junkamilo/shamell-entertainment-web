@@ -1,1 +1,1 @@
-export { getAdminBearerToken as getServiceTypesBearerToken } from "@/app/admin/shared/lib/adminAuth";
+export { getAdminBearerToken as getServiceTypesBearerToken } from "@/lib/admin/auth";

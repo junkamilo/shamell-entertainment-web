@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { parseServicesError } from "../lib/servicesErrors";
 
 export async function deleteAdminService(token: string, id: string): Promise<void> {

@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import {
   buildDaySectionOffers,
   sumSelectedOfferPrices,
@@ -13,7 +13,7 @@ import {
 } from "@/features/on-coming-events/lib/buildMonthPackagePreview";
 import { getNextOccurrence } from "@/features/on-coming-events/lib/buildScheduleMonthGrid";
 import { toast } from "@/hooks/use-toast";
-import { toISOLocalDate } from "@/lib/contactLogisticsUtils";
+import { toISOLocalDate } from "@/lib/contacto/contactLogisticsUtils";
 import {
   getBookClassSetupIssues,
   isBookableClassContext,
@@ -121,7 +121,10 @@ export function useBoxOfficeClassesForm() {
   }, [eventId]);
 
   const schedule = context?.schedule ?? null;
-  const days = schedule?.mode === "RECURRING_WEEKLY" ? schedule.days : [];
+  const days = useMemo(
+    () => (schedule?.mode === "RECURRING_WEEKLY" ? schedule.days : []),
+    [schedule],
+  );
   const timezone =
     schedule?.mode === "RECURRING_WEEKLY"
       ? schedule.timezone
@@ -132,9 +135,10 @@ export function useBoxOfficeClassesForm() {
   const contextBookable = bookClassContext
     ? isBookableClassContext(bookClassContext)
     : false;
-  const setupIssues = bookClassContext
-    ? getBookClassSetupIssues(bookClassContext)
-    : [];
+  const setupIssues = useMemo(
+    () => (bookClassContext ? getBookClassSetupIssues(bookClassContext) : []),
+    [bookClassContext],
+  );
 
   useEffect(() => {
     if (hasMonthPackage && monthPackage?.currentMonthIso) {

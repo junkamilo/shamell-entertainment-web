@@ -24,7 +24,7 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: (...args: unknown[]) => toastMock(...args),
 }));
 
-vi.mock("@/lib/contactRequestBooking", () => ({
+vi.mock("@/lib/agenda/contactRequestBooking", () => ({
   buildContactInboxAgendarHref: (...args: unknown[]) => buildHrefMock(...args),
   buildAdminBookingPayloadFromContactRequest: (...args: unknown[]) =>
     buildPayloadMock(...args),

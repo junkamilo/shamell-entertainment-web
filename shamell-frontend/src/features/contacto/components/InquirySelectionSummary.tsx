@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCatalogPriceWithSuffix } from "@/lib/formatCatalogPrice";
+import { formatCatalogPriceWithSuffix } from "@/lib/services/formatCatalogPrice";
 
 export type InquiryPricingPreviewLine = { name: string; price: number | null };
 

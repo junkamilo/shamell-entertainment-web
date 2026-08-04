@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import { DEFAULT_PAGINATION_META, type PaginatedResponse, type PaginationMeta } from "@/lib/pagination";
 import type { AdminPeticionesQuery, UnifiedPeticionRow } from "../types/peticiones.types";

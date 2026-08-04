@@ -3,7 +3,7 @@
 import {
   formatDateDisplayUs,
   formatTimeDisplayUs,
-} from "@/lib/contactLogisticsUtils";
+} from "@/lib/contacto/contactLogisticsUtils";
 import { fieldLabelClass, logisticsPickerTriggerClass } from "../../shared/lib/agendaFormStyles";
 import type { AgendarLogisticsFieldsProps } from "../types/agendarComponents.types";
 

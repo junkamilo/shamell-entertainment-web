@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
 import { buildAdminBookingDetailRows } from "./buildAdminBookingDetailRows";
 
-vi.mock("@/lib/adminBookingDisplay", () => ({
+vi.mock("@/lib/agenda/adminBookingDisplay", () => ({
   bookingServiceDisplayLine: () => "Fallback service",
 }));
 

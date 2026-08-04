@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { toast } from "@/hooks/use-toast";
 import { DEFAULT_PAGINATION_META, type PaginationMeta } from "@/lib/pagination";
 import { cancelAdminVenueReservation } from "../services/cancelAdminVenueReservation";

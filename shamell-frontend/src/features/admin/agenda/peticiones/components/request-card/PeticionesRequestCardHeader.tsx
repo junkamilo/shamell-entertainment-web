@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Mail } from "lucide-react";
-import { formatContactSubjectForAdmin } from "@/lib/adminContactDisplay";
+import { formatContactSubjectForAdmin } from "@/lib/agenda/adminContactDisplay";
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
 import { formatRequestDate } from "../../lib/peticionesConstants";

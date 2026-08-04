@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import bailarinaLogo from "@/public/01_bailarina.png";
-import { ADMIN_LOGIN_PATH } from "@/app/admin/shared/lib/adminRoutes";
+import { ADMIN_LOGIN_PATH } from "@/lib/admin/routes";
 import { useResetPassword } from "../hooks/useResetPassword";
 import PasswordField from "./PasswordField";
 

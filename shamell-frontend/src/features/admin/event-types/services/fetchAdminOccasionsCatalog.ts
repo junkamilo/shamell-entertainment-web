@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import type { OccasionCatalogItem } from "../types/eventTypes.types";
 
 export async function fetchAdminOccasionsCatalog(token: string): Promise<OccasionCatalogItem[]> {

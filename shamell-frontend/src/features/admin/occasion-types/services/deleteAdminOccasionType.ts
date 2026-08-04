@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { parseOccasionTypesError } from "../lib/occasionTypesErrors";
 
 export async function deleteAdminOccasionType(token: string, id: string): Promise<void> {

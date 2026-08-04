@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 
 export type AdminCreateVenueReservationBody = {
   kind: "catalog_table" | "standalone_chair";

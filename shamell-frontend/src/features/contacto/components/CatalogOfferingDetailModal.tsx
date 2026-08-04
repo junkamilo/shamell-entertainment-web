@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatCatalogPriceWithSuffix } from "@/lib/formatCatalogPrice";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { formatCatalogPriceWithSuffix } from "@/lib/services/formatCatalogPrice";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 
 export type CatalogOfferingDetailPrimaryAction = {
   label: string;

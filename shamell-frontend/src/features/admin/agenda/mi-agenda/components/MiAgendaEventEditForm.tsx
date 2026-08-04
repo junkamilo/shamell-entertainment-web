@@ -1,6 +1,6 @@
 import { DateField } from "@/components/admin/inputs";
 import ShamellTime12hColumns from "@/components/ShamellTime12hColumns";
-import { formatTimeDisplayUs, hhmmToParts, partsToHHMM } from "@/lib/contactLogisticsUtils";
+import { formatTimeDisplayUs, hhmmToParts, partsToHHMM } from "@/lib/contacto/contactLogisticsUtils";
 
 type Props = {
   editDateIso: string;

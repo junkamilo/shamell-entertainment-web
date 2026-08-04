@@ -1,7 +1,7 @@
 "use client";
 
 import { ActiveToggleButton } from "@/components/admin/inputs";
-import { Table, TableTruncatedText, TableRowActions, adminTableIconBtnClass, adminTableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
+import { Table, TableTruncatedText, TableRowActions, tableIconBtnClass, tableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
 import { Calendar, Eye, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { displayEventHeading, pillClassForTypeName } from "../lib/eventsDisplay";
@@ -117,7 +117,7 @@ export default function EventsTable({ events, ...handlers }: Props) {
           <button
             type="button"
             onClick={() => handlers.onView(item)}
-            className={adminTableIconBtnClass}
+            className={tableIconBtnClass}
             aria-label="View event"
           >
             <Eye className="h-4 w-4" strokeWidth={1.5} />
@@ -125,7 +125,7 @@ export default function EventsTable({ events, ...handlers }: Props) {
           <button
             type="button"
             onClick={() => handlers.onEdit(item)}
-            className={adminTableIconBtnClass}
+            className={tableIconBtnClass}
             aria-label="Edit event"
           >
             <Pencil className="h-4 w-4" strokeWidth={1.5} />
@@ -133,7 +133,7 @@ export default function EventsTable({ events, ...handlers }: Props) {
           <button
             type="button"
             onClick={() => handlers.onDelete(item)}
-            className={adminTableIconBtnDangerClass}
+            className={tableIconBtnDangerClass}
             aria-label="Delete event permanently"
             title="Delete from catalog (cannot undo)"
           >

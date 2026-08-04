@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { HeaderMediaSectionTab } from "@/lib/headerTextTypes";
+import type { HeaderMediaSectionTab } from "@/lib/header-media/headerTextTypes";
 
 type Props = {
   activeTab: HeaderMediaSectionTab;

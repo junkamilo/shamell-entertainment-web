@@ -9,11 +9,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ADMIN_SESSION_CHANGED_EVENT,
   isAdminLoggedIn,
-} from "@/lib/adminSession";
+} from "@/lib/admin/session";
 import { cn } from "@/lib/utils";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
 import { useHeaderNavOverflow } from "@/hooks/use-header-nav-fits";
-import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/onComingEventsRoutes";
+import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/on-coming-events/onComingEventsRoutes";
+import { CONTACTO_PATH } from "@/lib/contacto/contactInquiryConstants";
+import { GALLERY_PATH } from "@/lib/gallery/galleryRoutes";
 import bailarinaLogo from "@/public/01_bailarina.png";
 import {
   buildHomeScrollSectionIds,
@@ -239,7 +241,7 @@ export default function SiteHeader() {
       return bySection?.href ?? "/#hero";
     }
 
-    if (pathname === "/gallery") return "/#gallery";
+    if (pathname === GALLERY_PATH) return "/#gallery";
 
     if (pathname.startsWith("/contacto")) return "/contacto";
 
@@ -397,7 +399,7 @@ export default function SiteHeader() {
                 transition={{ duration: 0.2, ease: "easeOut" }}
               >
                 <a
-                  href="/contacto"
+                  href={CONTACTO_PATH}
                   className={cn(
                     "relative inline-flex min-h-9 items-center justify-center overflow-hidden rounded-md border border-gold/55 bg-gold/8 px-3 py-2 font-brand text-xs font-semibold tracking-[0.16em] text-gold uppercase transition-all duration-300 sm:min-h-10 xl:px-5 xl:tracking-[0.2em]",
                     "before:pointer-events-none before:absolute before:inset-0 before:-translate-x-full before:bg-linear-to-r before:from-transparent before:via-white/10 before:to-transparent before:transition-transform before:duration-500",
@@ -498,7 +500,7 @@ export default function SiteHeader() {
                   </div>
                 ))}
                 <a
-                  href="/contacto"
+                  href={CONTACTO_PATH}
                   onClick={() => setIsMenuOpen(false)}
                   className="btn-outline-gold mx-auto mt-6 flex min-h-12 w-full max-w-xs items-center justify-center px-4 py-3 text-center font-brand tracking-[0.2em] transition-transform duration-200 ease-out will-change-transform hover:scale-[1.02] hover:shadow-[0_0_22px_rgba(197,165,90,0.18)] active:scale-[0.98]"
                 >

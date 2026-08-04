@@ -1,6 +1,6 @@
 "use client";
 
-import { Table, TableTruncatedText, TableRowActions, adminTableIconBtnClass, adminTableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
+import { Table, TableTruncatedText, TableRowActions, tableIconBtnClass, tableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
 import { Armchair, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatStandaloneChairShortId } from "../lib/mapStandaloneChairFromApi";
@@ -88,7 +88,7 @@ export default function StandaloneChairsTable({ chairs, onEdit, onDelete }: Prop
           <button
             type="button"
             onClick={() => onEdit(item)}
-            className={adminTableIconBtnClass}
+            className={tableIconBtnClass}
             aria-label={`Edit price for ${item.displayLabel}`}
           >
             <Pencil className="h-4 w-4" strokeWidth={1.5} />
@@ -96,7 +96,7 @@ export default function StandaloneChairsTable({ chairs, onEdit, onDelete }: Prop
           <button
             type="button"
             onClick={() => onDelete(item)}
-            className={adminTableIconBtnDangerClass}
+            className={tableIconBtnDangerClass}
             aria-label={`Delete ${item.displayLabel}`}
             title="Delete chair"
           >

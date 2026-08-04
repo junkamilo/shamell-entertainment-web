@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import type { CreateAdminBookingPayload } from "@/hooks/use-admin-bookings";
 import { useAdminBookings } from "@/hooks/use-admin-bookings";
 import { enrichBookings } from "../lib/miAgendaBookingUtils";

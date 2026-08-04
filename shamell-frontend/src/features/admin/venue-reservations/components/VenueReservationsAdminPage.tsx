@@ -7,7 +7,7 @@ import {
   TABLE_SIZE_LABELS,
   type VenueTableSize,
 } from "@/components/floor-layout/layoutTypes";
-import { formatPriceEn } from "@/lib/pricing";
+import { formatPriceEn } from "@/lib/admin/pricing";
 import { useAdminVenueReservationsPage } from "../hooks/useAdminVenueReservationsPage";
 
 const STATUS_FILTER_OPTIONS: AdminAccordionSingleOption[] = [

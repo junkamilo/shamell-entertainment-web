@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
-import { ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT } from "@/lib/onComingEventsSettingsEvents";
+import { ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
 import {
   defaultOnComingSettings,
   normalizeOnComingSettings,
   type OnComingEventsPromo,
-} from "@/lib/onComingSettings";
+} from "@/lib/on-coming-events/onComingSettings";
 
 export type { OnComingEventsPromo };
 

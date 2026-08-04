@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { FIXTURE_BOOKING_ID } from "../tests/fixtures/uuids.fixture";
 
 let params = new URLSearchParams();

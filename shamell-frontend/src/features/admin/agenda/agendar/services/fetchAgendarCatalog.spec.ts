@@ -6,7 +6,7 @@ import {
 } from "../tests/fixtures/catalog.fixture";
 import { FIXTURE_SERVICE_ID } from "../tests/fixtures/uuids.fixture";
 
-vi.mock("@/app/admin/shared/lib/adminApiBaseUrl", () => ({
+vi.mock("@/lib/admin/apiBaseUrl", () => ({
   getAdminApiBaseUrl: () => "http://test-api",
 }));
 

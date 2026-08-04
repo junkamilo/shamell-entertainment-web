@@ -8,7 +8,7 @@ import {
   ADMIN_ACCESS_TOKEN_KEY,
   notifyAdminSessionChanged,
   persistAdminSessionUser,
-} from "@/lib/adminSession";
+} from "@/lib/admin/session";
 
 export function useAdminLogin() {
   const router = useRouter();

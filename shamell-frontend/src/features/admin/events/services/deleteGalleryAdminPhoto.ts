@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 
 export async function deleteGalleryAdminPhoto(token: string, photoId: string): Promise<void> {

@@ -25,7 +25,7 @@ import {
   listMonthSessions,
 } from "../lib/buildMonthPackagePreview";
 import { getNextOccurrence } from "../lib/buildScheduleMonthGrid";
-import { parseISOLocal, toISOLocalDate } from "@/lib/contactLogisticsUtils";
+import { parseISOLocal, toISOLocalDate } from "@/lib/contacto/contactLogisticsUtils";
 
 function formatSectionTime(start: string, end: string) {
   const fmt = (hhmm: string) => {

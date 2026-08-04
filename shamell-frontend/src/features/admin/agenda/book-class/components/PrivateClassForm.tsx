@@ -2,7 +2,7 @@
 
 import ContactDatePickerModal from "@/features/contacto/components/ContactDatePickerModal";
 import ContactTimePickerModal from "@/features/contacto/components/ContactTimePickerModal";
-import { formatTimeDisplayUs } from "@/lib/contactLogisticsUtils";
+import { formatTimeDisplayUs } from "@/lib/contacto/contactLogisticsUtils";
 import { fieldLabelClass, submitButtonClass } from "../../shared/lib/agendaFormStyles";
 import { usePrivateClassForm } from "../hooks/usePrivateClassForm";
 import { inputClass } from "../lib/bookClassDisplay";

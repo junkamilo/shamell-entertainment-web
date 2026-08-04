@@ -2,7 +2,7 @@
 
 import { AccordionSingleSelect } from "@/components/admin/inputs";
 import { useMemo } from "react";
-import { formatPriceEn } from "@/lib/pricing";
+import { formatPriceEn } from "@/lib/admin/pricing";
 import {
   fieldLabelClass,
   submitButtonClass,

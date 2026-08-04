@@ -7,7 +7,7 @@ import type { CreateAdminBookingPayload } from "@/hooks/use-admin-bookings";
 import {
   buildAdminBookingPayloadFromContactRequest,
   buildContactInboxAgendarHref,
-} from "@/lib/contactRequestBooking";
+} from "@/lib/agenda/contactRequestBooking";
 import { toast } from "@/hooks/use-toast";
 import { contactIsConciergeInquiry } from "../lib/peticionesContactUtils";
 import type { UnifiedPeticionRow } from "../types/peticiones.types";

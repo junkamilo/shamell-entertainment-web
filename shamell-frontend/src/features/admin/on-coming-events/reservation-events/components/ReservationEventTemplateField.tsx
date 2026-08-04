@@ -4,7 +4,7 @@ import Link from "next/link";
 import {
   ON_COMING_EVENTS_SITE_TAB_RESERVATION,
   onComingEventsSiteAdminHref,
-} from "@/lib/onComingEventsRoutes";
+} from "@/lib/on-coming-events/onComingEventsRoutes";
 import type { ReservationEventTemplate } from "../types/reservationEventTemplate.types";
 
 type Props = {

@@ -2,7 +2,7 @@ import { Modal } from "@/components/admin/overlays";
 import { MediaPickControl } from "@/components/admin/media";
 import { type FormEvent } from "react";
 import { Image as ImageIcon } from "lucide-react";
-import { GALLERY_UPLOAD_MAX_FILES } from "@/lib/galleryConstants";
+import { GALLERY_UPLOAD_MAX_FILES } from "@/lib/gallery/galleryConstants";
 import { cn } from "@/lib/utils";
 import type { GalleryCategory } from "../types/gallery.types";
 

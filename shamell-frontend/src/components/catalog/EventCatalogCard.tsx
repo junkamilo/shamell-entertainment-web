@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { buildEventLineContactHref } from "@/lib/contactInquiryConstants";
-import { formatCatalogPriceAmount } from "@/lib/formatCatalogPrice";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { buildEventLineContactHref } from "@/lib/contacto/contactInquiryConstants";
+import { formatCatalogPriceAmount } from "@/lib/services/formatCatalogPrice";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import { EventCatalogCardExpandSections } from "@/components/catalog/EventCatalogCardExpandSections";
 import { EventCatalogCardHero } from "@/components/catalog/EventCatalogCardHero";
 

@@ -2,7 +2,7 @@
 
 import { BackButton, ModuleHero } from "@/components/admin/layout";
 import { Suspense } from "react";
-import { ON_COMING_EVENTS_ADMIN_PATH } from "@/lib/onComingEventsRoutes";
+import { ON_COMING_EVENTS_ADMIN_PATH } from "@/lib/on-coming-events/onComingEventsRoutes";
 import { AGENDA_HUB_PATH } from "../../lib/agendaRoutes";
 import { useBoxOfficeMode } from "../hooks/useBoxOfficeMode";
 import { BoxOfficeClassesPanel } from "./BoxOfficeClassesPanel";

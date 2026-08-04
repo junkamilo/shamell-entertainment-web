@@ -13,13 +13,13 @@ import { venueReservationsListHandler } from "../test/mocks/handlers";
 
 const toastMock = vi.fn();
 const getTokenMock = vi.fn((): string | null => "token-1");
-const searchParamsGetMock = vi.fn((_key: string) => null as string | null);
+const searchParamsGetMock = vi.fn(() => null as string | null);
 
 vi.mock("@/hooks/use-toast", () => ({
   toast: (...args: unknown[]) => toastMock(...args),
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

@@ -6,7 +6,7 @@ import { renderHook, waitFor } from "@testing-library/react";
 const getTokenMock = vi.fn((): string | null => "token-1");
 const fetchDetailMock = vi.fn(async () => ({ id: "pay-1", amount: 100 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

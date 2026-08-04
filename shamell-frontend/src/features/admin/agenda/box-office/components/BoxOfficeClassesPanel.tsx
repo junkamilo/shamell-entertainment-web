@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import {
   formatSeatAvailability,
 } from "@/features/on-coming-events/lib/buildDaySectionOffers";
-import { formatPriceEn } from "@/lib/pricing";
+import { formatPriceEn } from "@/lib/admin/pricing";
 import { cn } from "@/lib/utils";
 import {
   fieldLabelClass,

@@ -7,7 +7,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { headerLibraryItemIsVideo } from "../lib/headerMediaUtils";
 import type { HeaderPhoto } from "../types/headerMedia.types";
-import type { HeaderMediaSectionTab } from "@/lib/headerTextTypes";
+import type { HeaderMediaSectionTab } from "@/lib/header-media/headerTextTypes";
 import { useHeaderTextSection } from "../hooks/useHeaderTextSection";
 import type { useHeaderMediaPage } from "../hooks/useHeaderMediaPage";
 import HeaderMediaFocusEditor from "./HeaderMediaFocusEditor";

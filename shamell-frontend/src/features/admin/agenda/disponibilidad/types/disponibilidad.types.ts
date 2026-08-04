@@ -1,4 +1,4 @@
-import type { PublicClosure, PublicWeeklySlot } from "@/lib/bookingAvailability";
+import type { PublicClosure, PublicWeeklySlot } from "@/lib/contacto/bookingAvailability";
 
 export type AdminAvailabilitySnapshot = {
   timeZone: string;

@@ -1,3 +1,1 @@
-import { ResetPasswordPage } from "@/features/forgot-password";
-
-export default ResetPasswordPage;
+export { ResetPasswordPage as default } from "@/features/forgot-password";

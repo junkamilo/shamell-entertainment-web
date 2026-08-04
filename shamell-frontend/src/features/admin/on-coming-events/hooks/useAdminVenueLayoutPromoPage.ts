@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { toast } from "@/hooks/use-toast";
-import { notifyOnComingEventsSettingsChanged } from "@/lib/onComingEventsSettingsEvents";
+import { notifyOnComingEventsSettingsChanged } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
 import { fetchAdminVenueLayoutSettings } from "../services/fetchAdminVenueLayoutSettings";
 import { patchAdminVenueLayoutEnabled } from "../services/patchAdminVenueLayoutEnabled";
 import { patchAdminVenueLayoutSettings } from "../services/patchAdminVenueLayoutSettings";

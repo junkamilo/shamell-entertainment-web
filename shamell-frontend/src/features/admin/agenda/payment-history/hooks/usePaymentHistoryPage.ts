@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
-import { markPaymentHistorySeenNow } from "@/lib/paymentHistoryNotifications";
+import { getAdminBearerToken } from "@/lib/admin/auth";
+import { markPaymentHistorySeenNow } from "@/lib/agenda/paymentHistoryNotifications";
 import { fetchAdminPayments } from "../services/fetchAdminPayments";
 import type {
   AdminPaymentFlow,

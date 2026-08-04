@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
-import { readPaymentHistoryLastSeenAt } from "@/lib/paymentHistoryNotifications";
+import { getAdminBearerToken } from "@/lib/admin/auth";
+import { readPaymentHistoryLastSeenAt } from "@/lib/agenda/paymentHistoryNotifications";
 import {
   PETICIONES_BADGE_REFRESH_EVENT,
   readPeticionesLastSeenAt,
-} from "@/lib/peticionesNotifications";
+} from "@/lib/agenda/peticionesNotifications";
 import { fetchAgendaHubBadges } from "../services/fetchAgendaHubBadges";
 import { fetchPaymentHistoryBadge } from "../payment-history/services/fetchAdminPayments";
 import { fetchPeticionesBadge } from "../services/fetchPeticionesBadge";

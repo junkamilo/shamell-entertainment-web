@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PAGINATION_PER_PAGE_OPTIONS, type PaginationMeta } from "@/lib/pagination";
+import { normalizeTotalPages, visiblePageNumbers } from "./paginationPages";
 
 export type PaginationProps = {
   meta: PaginationMeta;
@@ -21,7 +22,8 @@ function rangeEnd(meta: PaginationMeta): number {
 }
 
 export function Pagination({ meta, onPageChange, onPerPageChange, className }: PaginationProps) {
-  const pages = Array.from({ length: meta.totalPages }, (_, i) => i + 1);
+  const totalPages = normalizeTotalPages(meta.totalPages);
+  const pages = visiblePageNumbers(meta.page, totalPages);
 
   return (
     <div
@@ -66,7 +68,7 @@ export function Pagination({ meta, onPageChange, onPerPageChange, className }: P
           </button>
 
           <div className="flex shrink-0 items-center gap-1">
-            {pages.slice(Math.max(meta.page - 3, 0), Math.max(meta.page - 3, 0) + 5).map((p) => (
+            {pages.map((p) => (
               <button
                 key={p}
                 type="button"
@@ -85,7 +87,7 @@ export function Pagination({ meta, onPageChange, onPerPageChange, className }: P
           <button
             type="button"
             disabled={!meta.hasNext}
-            onClick={() => onPageChange(Math.min(meta.totalPages, meta.page + 1))}
+            onClick={() => onPageChange(Math.min(Math.max(totalPages, 1), meta.page + 1))}
             aria-label="Next page"
             className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-gold/25 text-gold disabled:opacity-40"
           >

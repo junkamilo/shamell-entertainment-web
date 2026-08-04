@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { getEventsBearerToken } from "@/features/admin/events/lib/eventsAuth";
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 
 type SessionRow = {

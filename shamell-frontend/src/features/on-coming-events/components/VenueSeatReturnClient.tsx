@@ -14,11 +14,11 @@ import {
   fetchVenueSessionStatus,
   type VenueSessionStatus,
 } from "../services/fetchVenueSessionStatus";
-import { formatCatalogPriceWithSuffix } from "@/lib/formatCatalogPrice";
+import { formatCatalogPriceWithSuffix } from "@/lib/services/formatCatalogPrice";
 import {
   onComingEventDetailHref,
   onComingEventSeatsHref,
-} from "@/lib/upcomingEventPublicRoutes";
+} from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_ATTEMPTS = 8;

@@ -1,5 +1,5 @@
 import { Video } from "lucide-react";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import { cn } from "@/lib/utils";
 
 type Props = {

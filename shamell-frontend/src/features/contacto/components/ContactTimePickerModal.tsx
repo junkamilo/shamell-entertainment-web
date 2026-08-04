@@ -14,7 +14,7 @@ import {
   hhmmToParts,
   partsToHHMM,
   snapToNearestSelectableParts,
-} from "@/lib/contactLogisticsUtils";
+} from "@/lib/contacto/contactLogisticsUtils";
 
 type Props = {
   isOpen: boolean;

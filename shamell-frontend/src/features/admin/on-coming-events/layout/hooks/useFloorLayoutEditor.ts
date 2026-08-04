@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import type { VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
 import { totalChairs } from "../lib/floorLayoutStats";
@@ -14,7 +14,7 @@ import { fetchAdminStandaloneChairs } from "@/features/admin/venue-tables/servic
 import { fetchAdminVenueTables } from "@/features/admin/venue-tables/services/fetchAdminVenueTables";
 import type { StandaloneChairInventoryItem } from "@/features/admin/venue-tables/types/standaloneChairs.types";
 import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
-import { buildLayoutItemLabelMap } from "@/lib/venueSeatDisplayLabel";
+import { buildLayoutItemLabelMap } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { fetchAdminVenueReservations } from "@/features/admin/venue-reservations/services/fetchAdminVenueReservations";
 import { fetchAdminVenueAvailability } from "../services/fetchAdminVenueAvailability";
 import { VENUE_RESERVATIONS_ADMIN_PATH } from "@/features/admin/venue-reservations/lib/venueReservationsRoutes";
@@ -22,7 +22,7 @@ import {
   notifyOnComingEventsBadgeRefresh,
   readLastSeenPaidReservationAtMs,
   writeLastSeenPaidReservationAtMs,
-} from "@/lib/onComingEventsReservationsNotice";
+} from "@/lib/on-coming-events/onComingEventsReservationsNotice";
 import { carpetZoneFromStage } from "@/components/venue-3d/stage/stageConstants";
 import {
   DEFAULT_FLOOR_SCENE_ZONES,
@@ -544,7 +544,7 @@ export function useFloorLayoutEditor() {
     } finally {
       setSaving(false);
     }
-  }, [items, layoutMeta, sceneZones]);
+  }, [items, layoutMeta, sceneZones, applyLayout]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

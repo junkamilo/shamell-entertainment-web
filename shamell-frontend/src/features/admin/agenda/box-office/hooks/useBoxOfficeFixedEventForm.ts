@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { fetchAdminFloorLayout } from "@/features/admin/on-coming-events/layout/services/fetchAdminFloorLayout";
 import { fetchAdminStandaloneChairs } from "@/features/admin/venue-tables/services/fetchAdminStandaloneChairs";
 import { fetchAdminVenueTables } from "@/features/admin/venue-tables/services/fetchAdminVenueTables";
 import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
 import { toast } from "@/hooks/use-toast";
-import { buildLayoutItemLabelMap } from "@/lib/venueSeatDisplayLabel";
+import { buildLayoutItemLabelMap } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { buildBoxOfficeDetails } from "../lib/buildBoxOfficeDetails";
 import {
   createBoxOfficeFixedTicketCash,

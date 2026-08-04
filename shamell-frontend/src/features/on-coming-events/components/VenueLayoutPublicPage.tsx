@@ -11,11 +11,12 @@ import {
   isFutureEventStart,
   ShamellCountdown,
 } from "@/components/shared/ShamellCountdown";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import {
   onComingEventDetailHref,
   onComingEventHubHref,
-} from "@/lib/upcomingEventPublicRoutes";
+} from "@/lib/on-coming-events/upcomingEventPublicRoutes";
+import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import VenueSceneLegend from "@/components/venue-3d/VenueSceneLegend";
 import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
 import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
@@ -27,8 +28,8 @@ import {
   setVenueLayoutPageCache,
   type VenueLayoutPageCacheEntry,
 } from "../lib/venueLayoutPageCache";
-import { buildReservedLayoutItemIdSet } from "@/lib/venueLayoutReservedIds";
-import { buildLayoutItemLabelMap } from "@/lib/venueSeatDisplayLabel";
+import { buildReservedLayoutItemIdSet } from "@/lib/on-coming-events/venueLayoutReservedIds";
+import { buildLayoutItemLabelMap } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { placedSummaryFromItems } from "../lib/placedSummaryFromItems";
 import { buildStandaloneChairPriceMap } from "../lib/resolveStandaloneChairUnitPrice";
 import { fetchPublicFloorLayout } from "../services/fetchPublicFloorLayout";
@@ -335,10 +336,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
 
       const run = (async () => {
         try {
-          const apiBase = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(
-            /\/$/,
-            "",
-          );
+          const apiBase = getPublicApiBaseUrl();
 
           let nextClientEnabled = true;
           let nextEventLabel: string | null = null;

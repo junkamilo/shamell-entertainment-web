@@ -1,4 +1,4 @@
-import { GALLERY_CATCHALL_SLUG } from "@/lib/galleryConstants";
+import { GALLERY_CATCHALL_SLUG } from "@/lib/gallery/galleryConstants";
 import type { GalleryCategory } from "../types/gallery.types";
 
 export function sortActiveCategories(categories: GalleryCategory[]): GalleryCategory[] {

@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapVenueTableFromApi } from "../lib/mapVenueTableFromApi";
 import type {
   VenueTableConfig,

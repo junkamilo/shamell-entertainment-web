@@ -5,7 +5,7 @@ import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import Footer from "@/components/Footer";
 import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
-import { onComingEventHubHref } from "@/lib/upcomingEventPublicRoutes";
+import { onComingEventHubHref } from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 import {
   createClassCheckoutSession,
   type CreateClassCheckoutBody,

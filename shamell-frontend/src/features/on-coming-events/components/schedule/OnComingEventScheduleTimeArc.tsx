@@ -4,7 +4,7 @@ import { type ReactNode } from "react";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScheduleTimeGauge } from "./ScheduleTimeGauge";
-import { formatDateDisplayUs } from "@/lib/contactLogisticsUtils";
+import { formatDateDisplayUs } from "@/lib/contacto/contactLogisticsUtils";
 import type { ScheduleViewModel } from "../../lib/parseScheduleViewModel";
 
 function formatMinutesRange(start: number, end: number): string {

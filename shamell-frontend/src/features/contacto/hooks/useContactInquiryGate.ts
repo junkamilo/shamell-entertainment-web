@@ -8,7 +8,7 @@ import {
   parseContactCatalogParams,
   parseInquiryEntrySource,
   type InquiryEntrySource,
-} from "@/lib/contactInquiryConstants";
+} from "@/lib/contacto/contactInquiryConstants";
 import type { ContactInquiryFormProps } from "../types/contacto.types";
 
 export type ContactInquiryGateView = "concierge_form" | "concierge_gate" | "booking_form";

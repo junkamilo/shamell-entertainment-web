@@ -9,7 +9,7 @@ import {
   ON_COMING_EVENTS_SITE_TAB_UPCOMING,
   parseOnComingEventsSiteTab,
   type OnComingEventsSiteTab,
-} from "@/lib/onComingEventsRoutes";
+} from "@/lib/on-coming-events/onComingEventsRoutes";
 import { useAdminVenueLayoutPromoPage } from "../hooks/useAdminVenueLayoutPromoPage";
 import { OnComingEventsSiteSectionTabs } from "./OnComingEventsSiteSectionTabs";
 import { VenueLayoutReservationTabPanel } from "./VenueLayoutReservationTabPanel";

@@ -6,7 +6,7 @@ const getAdminAuthHeadersMock = vi.fn((): HeadersInit => ({
   Authorization: "Bearer tok",
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: (...args: unknown[]) => getAdminBearerTokenMock(...args),
   getAdminAuthHeaders: (...args: unknown[]) => getAdminAuthHeadersMock(...args),
 }));

@@ -33,6 +33,11 @@ const cases = [
     expectStatus: (s) => s === 200,
   },
   {
+    name: "class pay return",
+    path: "/pay/class/return?session_id=test",
+    expectStatus: (s) => s === 200,
+  },
+  {
     name: "venue seat pay return",
     path: "/pay/venue-seat/return?session_id=test",
     expectStatus: (s) => s === 200,

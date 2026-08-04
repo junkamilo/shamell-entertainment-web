@@ -6,9 +6,9 @@ import GallerySection from "@/components/GallerySection";
 import HeroSection from "@/components/HeroSection";
 import SiteHeader from "@/components/SiteHeader";
 import ServicesSection from "@/components/ServicesSection";
-import { fetchHomeAboveFold } from "@/lib/fetchHomeAboveFold";
-import { aboutHeroPreloadUrls } from "@/lib/aboutMediaPreload";
-import { heroLcpPreload } from "@/lib/heroMediaPreload";
+import { fetchHomeAboveFold } from "@/lib/home/fetchHomeAboveFold";
+import { aboutHeroPreloadUrls } from "@/lib/hero/aboutMediaPreload";
+import { heroLcpPreload } from "@/lib/hero/heroMediaPreload";
 import { preload } from "react-dom";
 
 /** Home: `#services` / `#experiences` blocks; then `#about` before `#gallery` (matches header nav). */

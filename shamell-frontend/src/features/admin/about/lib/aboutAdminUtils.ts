@@ -1,4 +1,4 @@
-import { isAboutHeroVideoDisplay } from "@/lib/aboutHeroMedia";
+import { isAboutHeroVideoDisplay } from "@/lib/hero/aboutHeroMedia";
 import type { AboutAdminStats, AdminAboutRow } from "../types/aboutAdmin.types";
 
 export function excerptBody(text: string, max = 220): string {

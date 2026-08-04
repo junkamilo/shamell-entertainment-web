@@ -31,6 +31,7 @@ export function MultiSelect({
   error,
 }: MultiSelectProps) {
   const listId = useId();
+  const errorId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const isDisabled = disabled || isLoading;
@@ -84,7 +85,7 @@ export function MultiSelect({
         aria-haspopup="listbox"
         aria-controls={listId}
         aria-label={ariaLabel}
-        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? errorId : undefined}
         onClick={() => !isDisabled && setOpen((v) => !v)}
         className={cn(
           "shamell-glass-trigger flex w-full min-h-[52px] items-center justify-between gap-3 rounded-xl px-4 py-3 text-left",
@@ -106,7 +107,7 @@ export function MultiSelect({
       </button>
 
       {error ? (
-        <p className="mt-1.5 font-body text-sm text-red-300/90" role="alert">
+        <p id={errorId} className="mt-1.5 font-body text-sm text-red-300/90" role="alert">
           {error}
         </p>
       ) : null}

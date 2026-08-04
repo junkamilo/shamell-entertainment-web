@@ -6,7 +6,7 @@ import {
   buildContactInboxAgendarHref,
   contactClientCommentFromRequest,
   structuredDetailsForPeticionRow,
-} from "@/lib/contactRequestBooking";
+} from "@/lib/agenda/contactRequestBooking";
 import type { ContactRequest } from "@/hooks/use-admin-contact-requests";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
 import { cn } from "@/lib/utils";

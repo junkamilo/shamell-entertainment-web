@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
-import { mapHeaderTextFromApi } from "@/lib/headerTextStyleTokens";
-import { DEFAULT_HEADER_TEXT, type HeaderTextContent } from "@/lib/headerTextTypes";
+import { mapHeaderTextFromApi } from "@/lib/header-media/headerTextStyleTokens";
+import { DEFAULT_HEADER_TEXT, type HeaderTextContent } from "@/lib/header-media/headerTextTypes";
 
 export function useHeaderText(initialContent?: HeaderTextContent | null) {
   const [content, setContent] = useState<HeaderTextContent>(

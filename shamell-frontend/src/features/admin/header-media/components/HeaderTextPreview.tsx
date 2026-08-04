@@ -1,7 +1,7 @@
 "use client";
 
-import { fontClassForToken } from "@/lib/headerTextStyleTokens";
-import type { HeaderTextContent } from "@/lib/headerTextTypes";
+import { fontClassForToken } from "@/lib/header-media/headerTextStyleTokens";
+import type { HeaderTextContent } from "@/lib/header-media/headerTextTypes";
 import { cn } from "@/lib/utils";
 
 type Props = {

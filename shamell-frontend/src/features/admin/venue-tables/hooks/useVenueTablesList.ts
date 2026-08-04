@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import { fetchAdminVenueTables } from "../services/fetchAdminVenueTables";
 import type { VenueTableConfig } from "../types/venueTables.types";

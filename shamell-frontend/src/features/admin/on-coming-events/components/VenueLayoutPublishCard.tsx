@@ -5,7 +5,7 @@ import { ExternalLink, LayoutGrid } from "lucide-react";
 import {
   ON_COMING_EVENTS_LAYOUT_ADMIN_PATH,
   ON_COMING_EVENTS_PUBLIC_PATH,
-} from "@/lib/onComingEventsRoutes";
+} from "@/lib/on-coming-events/onComingEventsRoutes";
 
 type Props = {
   clientEnabled: boolean;

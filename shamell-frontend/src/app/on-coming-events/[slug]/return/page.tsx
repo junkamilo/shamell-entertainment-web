@@ -1,6 +1,11 @@
-import FixedTicketReturnClient from "@/features/on-coming-events/components/FixedTicketReturnClient";
+import type { Metadata } from "next";
+import { FixedTicketReturnClient } from "@/features/on-coming-events";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 type Props = { params: Promise<{ slug: string }> };
 

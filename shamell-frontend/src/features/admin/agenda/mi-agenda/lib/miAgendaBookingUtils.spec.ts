@@ -8,7 +8,7 @@ import {
   readBookingTime,
 } from "./miAgendaBookingUtils";
 
-vi.mock("@/lib/adminBookingDisplay", () => ({
+vi.mock("@/lib/agenda/adminBookingDisplay", () => ({
   bookingServiceChip: () => "Service chip",
 }));
 

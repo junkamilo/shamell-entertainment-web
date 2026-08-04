@@ -1,12 +1,12 @@
 import { motion } from "motion/react";
-import { formatTimeDisplayUs } from "@/lib/contactLogisticsUtils";
+import { formatTimeDisplayUs } from "@/lib/contacto/contactLogisticsUtils";
 import { WEEKDAY_LABEL } from "../lib/disponibilidadConstants";
 import {
   disponibilidadBodyTextClass,
   disponibilidadDayLabelClass,
   disponibilidadTimeTriggerClass,
 } from "../lib/disponibilidadStyles";
-import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
+import type { PublicWeeklySlot } from "@/lib/contacto/bookingAvailability";
 import type { TimePickerTarget } from "../types/disponibilidad.types";
 
 type Props = {

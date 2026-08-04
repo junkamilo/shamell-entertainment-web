@@ -9,7 +9,7 @@ vi.mock("@/hooks/use-public-availability", () => ({
   usePublicAvailability: (...args: unknown[]) => usePublicAvailabilityMock(...args),
 }));
 
-vi.mock("@/lib/bookingAvailability", () => ({
+vi.mock("@/lib/contacto/bookingAvailability", () => ({
   expandBlockedDates: vi.fn(() => new Set(["2026-08-01"])),
   expandBlockedDateReasonsMap: vi.fn(() => new Map([["2026-08-01", "Closed"]])),
   isoDateInTzNow: vi.fn(() => "2026-07-22"),
@@ -22,7 +22,7 @@ import {
   expandBlockedDates,
   expandBlockedDateReasonsMap,
   timeBoundsForDateISO,
-} from "@/lib/bookingAvailability";
+} from "@/lib/contacto/bookingAvailability";
 
 describe("useAgendarAvailability", () => {
   beforeEach(() => {

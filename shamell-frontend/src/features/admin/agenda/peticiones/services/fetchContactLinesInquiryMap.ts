@@ -1,4 +1,4 @@
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import {
   fetchAgendaCatalogMaps,
   parseContactLinesInquiryMap,

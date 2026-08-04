@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { fetchAdminPaymentDetail } from "../services/fetchAdminPaymentDetail";
 import type {
   AdminPaymentFlow,
@@ -26,6 +26,7 @@ export function usePaymentHistoryDetail(row: PaymentRowRef, isOpen: boolean) {
       return;
     }
 
+    const { flow, id } = row;
     const token = getAdminBearerToken();
     if (!token) {
       setDetailError("Not signed in.");
@@ -36,7 +37,7 @@ export function usePaymentHistoryDetail(row: PaymentRowRef, isOpen: boolean) {
     setIsLoadingDetail(true);
     setDetailError(null);
 
-    void fetchAdminPaymentDetail(token, row.flow, row.id)
+    void fetchAdminPaymentDetail(token, flow, id)
       .then((data) => {
         if (!cancelled) setDetail(data);
       })
@@ -54,7 +55,7 @@ export function usePaymentHistoryDetail(row: PaymentRowRef, isOpen: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, row?.flow, row?.id]);
+  }, [isOpen, row]);
 
   return { detail, isLoadingDetail, detailError };
 }

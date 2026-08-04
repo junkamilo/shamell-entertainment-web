@@ -1,4 +1,4 @@
-import { isValidInquiryCode, type ServiceTypeCode } from "@/lib/contactInquiryConstants";
+import { isValidInquiryCode, type ServiceTypeCode } from "@/lib/contacto/contactInquiryConstants";
 import type { PublicServiceOption } from "./wizardTypes";
 
 /** When multiple catalog services are selected, drive gala/VIP/bespoke rules from the strictest matching code. */

@@ -1,7 +1,7 @@
 "use client";
 
 import { type FormEvent, useCallback, useState } from "react";
-import { GALLERY_UPLOAD_MAX_FILES } from "@/lib/galleryConstants";
+import { GALLERY_UPLOAD_MAX_FILES } from "@/lib/gallery/galleryConstants";
 import { toast } from "@/hooks/use-toast";
 import { buildGalleryPhotoFormData } from "../lib/galleryFormUtils";
 import { getGalleryBearerToken } from "../lib/galleryAuth";

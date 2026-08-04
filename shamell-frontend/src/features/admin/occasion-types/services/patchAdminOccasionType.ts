@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { parseOccasionTypesError } from "../lib/occasionTypesErrors";
 import type { UpsertOccasionTypeBody } from "../types/occasionTypes.types";
 

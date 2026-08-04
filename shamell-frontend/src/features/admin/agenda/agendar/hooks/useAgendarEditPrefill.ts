@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { bookingTimeZone } from "@/features/admin/agenda/peticiones/lib/peticionesDateUtils";
 import { toast } from "@/hooks/use-toast";
 import { applyAgendarQueryPrefill } from "../lib/applyAgendarQueryPrefill";

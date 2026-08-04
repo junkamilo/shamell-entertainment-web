@@ -8,7 +8,7 @@ const markSeenMock = vi.fn();
 const confirmRemoveContact = vi.fn(async () => undefined);
 const confirmRemoveBooking = vi.fn(async () => undefined);
 
-vi.mock("@/lib/peticionesNotifications", () => ({
+vi.mock("@/lib/agenda/peticionesNotifications", () => ({
   markPeticionesLaneSeenNow: (...args: unknown[]) => markSeenMock(...args),
 }));
 

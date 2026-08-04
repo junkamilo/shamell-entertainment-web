@@ -9,7 +9,7 @@ import {
   parseISOLocal,
   startOfTodayLocal,
   toISOLocalDate,
-} from "@/lib/contactLogisticsUtils";
+} from "@/lib/contacto/contactLogisticsUtils";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -83,16 +83,15 @@ export default function ContactDatePickerModal({
     return startOfTodayLocal();
   }, [minSelectableIso]);
 
-  const today = useMemo(() => startOfTodayLocal(), [isOpen]);
-
-  const [viewYear, setViewYear] = useState(() => today.getFullYear());
-  const [viewMonth0, setViewMonth0] = useState(() => today.getMonth());
+  const [viewYear, setViewYear] = useState(() => startOfTodayLocal().getFullYear());
+  const [viewMonth0, setViewMonth0] = useState(() => startOfTodayLocal().getMonth());
   const [picked, setPicked] = useState<Date | null>(null);
   /** Tap-to-show tooltip on mobile for blocked-by-policy dates */
   const [openTooltipIso, setOpenTooltipIso] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
+    const today = startOfTodayLocal();
     const initial = value ? parseISOLocal(value) : null;
     const initialIso = initial ? toISOLocalDate(initial) : null;
     const initialBlocked = initialIso ? Boolean(blockedIsoDates?.has(initialIso)) : false;
@@ -110,7 +109,7 @@ export default function ContactDatePickerModal({
     setViewYear(viewAnchor.getFullYear());
     setViewMonth0(viewAnchor.getMonth());
     setOpenTooltipIso(null);
-  }, [isOpen, value, minDate, blockedIsoDates, today]);
+  }, [isOpen, value, minDate, blockedIsoDates]);
 
   useEffect(() => {
     if (!isOpen) setOpenTooltipIso(null);

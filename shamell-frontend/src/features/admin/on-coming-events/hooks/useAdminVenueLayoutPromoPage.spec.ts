@@ -15,11 +15,11 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: (...args: unknown[]) => toastMock(...args),
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 
-vi.mock("@/lib/onComingEventsSettingsEvents", () => ({
+vi.mock("@/lib/on-coming-events/onComingEventsSettingsEvents", () => ({
   notifyOnComingEventsSettingsChanged: () => notifySettingsChangedMock(),
 }));
 

@@ -16,7 +16,7 @@ src/
   lib/admin/           → auth, API base, route constants
 ```
 
-See `src/features/admin/ARCHITECTURE_SHIMS.md` for layer rules and the `upcoming-events` alias note.
+See `src/features/admin/ARCHITECTURE_SHIMS.md` for layer rules, the `upcoming-events` alias note, and the **data-display** DS contract (`Table` empty → null + `EmptyState`, variants, `tableIconBtnClass*`).
 
 ## Public marketing experiences
 
@@ -44,6 +44,8 @@ app/admin/(dashboard)/<feature>/
 
 Canonical URLs are `/admin/…`. Legacy `/shamell-admin/…` is handled only by permanent redirects in `next.config.ts`.
 
+Sign-in: canonical `/admin/login` is a thin page → `@/features/admin/auth`. Legacy `/login` redirects permanently to `/admin/login` in `next.config.ts` only (no `app/login` route).
+
 ### Unit / Vitest convention
 
 - **Co-locate** specs next to the code: `foo.ts` → `foo.spec.ts` (or `.spec.tsx` for UI). Vitest `include` is `src/**/*.{spec.ts,spec.tsx}` — do **not** use `.test.ts` (invisible to the runner).
@@ -53,10 +55,13 @@ Canonical URLs are `/admin/…`. Legacy `/shamell-admin/…` is handled only by 
 
 ### Auth and API base (required)
 
-- **Token / headers:** `getAdminBearerToken()` and `getAdminAuthHeaders()` from `@/lib/admin/auth` (or re-exports under `@/app/admin/shared/lib/adminAuth`).
+- **Token / headers:** `getAdminBearerToken()` and `getAdminAuthHeaders()` from `@/lib/admin/auth`.
 - **API origin:** `getAdminApiBaseUrl()` from `@/lib/admin/apiBaseUrl` (reads `NEXT_PUBLIC_BACKEND_URL`).
+- **Routes:** path constants from `@/lib/admin/routes`.
+- **Pricing helpers:** `@/lib/admin/pricing`.
 - Do **not** use `process.env.NEXT_PUBLIC_BACKEND_URL` in components or hooks; keep env access in `lib/` / `services/`.
-- Legacy `*Auth.ts` files under features re-export `adminAuth` with feature-specific names — prefer `adminAuth` / `@/lib/admin/auth` for new code.
+- Legacy feature `*Auth.ts` re-exports may wrap `@/lib/admin/auth` with feature-specific names — prefer `@/lib/admin/auth` for new code.
+- `@/app/admin/shared/lib/*` are **compat-only** re-exports of the modules above; do not use in new code.
 
 ### Public contact (`src/app/contacto/` + `src/features/contacto/`)
 
@@ -66,10 +71,11 @@ Same layering as admin, for the public inquiry hub:
 app/contacto/           → SOLO page.tsx + layout.tsx (thin)
 features/contacto/      → SOLO negocio (UI + hooks + services + types + lib/inquiry)
 lib/publicApiBaseUrl.ts → getPublicApiBaseUrl()
-lib/contactInquiryConstants.ts → deep-link helpers (shared)
+lib/contacto/contactInquiryConstants.ts → CONTACTO_PATH + deep-link helpers (shared)
 ```
 
 - Thin route: `export { default } from "@/features/contacto"`.
+- Canonical path: `CONTACTO_PATH` from `@/lib/contacto/contactInquiryConstants` (marketing shell + deep-links; feature re-exports via `lib/contactoRoutes`).
 - Pure wizard/catalog logic: `features/contacto/lib/inquiry/`.
 - State: `useContactInquiryWizard`, `useContactInquiryCatalog`, `useContactInquiryAvailability`, composed by `useContactInquiryForm`.
 - UI phases: `features/contacto/components/contact-inquiry/ContactInquiryPhase*.tsx`.
@@ -83,10 +89,11 @@ Same layering for the public gallery page and home preview hooks:
 app/gallery/            → SOLO page.tsx + layout.tsx (thin)
 features/gallery/       → UI + hooks + services + types + lib
 lib/publicApiBaseUrl.ts → getPublicApiBaseUrl()
-lib/galleryData.ts, lib/galleryConstants.ts → shared fallbacks / constants
+lib/gallery/            → galleryRoutes (GALLERY_PATH, buildGalleryFilterHref), galleryData, galleryConstants
 ```
 
 - Thin route: `export { default } from "@/features/gallery"`.
+- Public path: `GALLERY_PATH` / `buildGalleryFilterHref` in `@/lib/gallery/galleryRoutes` (feature re-exports; `SiteHeader` / `GallerySection` import from lib).
 - Home preview (`components/GallerySection`) imports hooks/types from `@/features/gallery`.
 - Admin gallery remains separate: `features/admin/gallery` (`/admin/gallery`).
 
@@ -122,20 +129,43 @@ lib/publicApiBaseUrl.ts        → getPublicApiBaseUrl()
 - **Palette inventory:** `GET /api/v1/floor-layout/admin/palette` — counts from Table seating (`tablesBySize`: Large/Medium/Small × unplaced) and standalone chairs (`availableQuantity` minus placed). Drag assigns next free catalog table of that size.
 - **Placed item kinds:** `catalog_table` (requires `venueTableConfigId`, `tableName`, `size`, `includedChairs`) | `standalone_chair`. Legacy kinds show a clear-items banner; save rejects old kinds.
 - **Layout types (shared):** `src/components/floor-layout/layoutTypes.ts`. Legacy SVG helpers (`FloorLayoutViewer`, `renderPlacedItem`, croquis PNG) remain in repo but are not used in the active admin/public flow.
-- **Public interactive:** `src/app/on-coming-events/` — route `/on-coming-events`, `VenueScene3D` in `mode="public-select"` (click table/chair → modal → Stripe **Embedded Checkout** in-modal). **Stripe return URLs (canonical):**
-  - Venue seats → `/on-coming-events/return?session_id=…&event_slug={slug}` (legacy `/on-coming-events/{slug}/seats/return` redirects here via `next.config.ts`)
+- **Public interactive:** `src/app/on-coming-events/` — thin pages/layouts only; business UI + Stripe return clients live in `src/features/on-coming-events/` (do **not** put fetch/polling in `app/`). Route `/on-coming-events`, `VenueScene3D` in `mode="public-select"` (click table/chair → modal → Stripe **Embedded Checkout** in-modal). Canon paths: `ON_COMING_EVENTS_PUBLIC_PATH` + href builders in `@/lib/on-coming-events/upcomingEventPublicRoutes` (hub/detail/classes/seats + return URLs). **Stripe return URLs (canonical):**
+  - Venue seats → `/on-coming-events/return?session_id=…&event_slug={slug}` (legacy `/on-coming-events/{slug}/seats/return` redirects here via `next.config.ts` only — no `seats/return` page)
   - Class session → `/on-coming-events/{slug}/classes/return?session_id=…`
   - Class bundle / month package → `/on-coming-events/{slug}/classes/package-return?session_id=…`
   - Fixed ticket → `/on-coming-events/{slug}/return?session_id=…`
   - Booking quote → `/pay/quote/return?session_id=…`
-  All return pages poll session status and show `ClassPaymentConfirmationPanel` (or equivalent) with Home — never a global 404. Smoke: `npm run smoke:returns` (server must be running). Layout: `GET /api/v1/floor-layout`. Reservations: `POST /api/v1/venue-reservations/checkout-session`, `GET …/availability`, `GET …/session-status`. Prices from server (`bundlePrice` / `unitPrice`).
+  All return pages poll session status and show `ClassPaymentConfirmationPanel` (or equivalent) with Home — never a global 404. Smoke: `npm run smoke:returns` (Stripe returns) and `npm run smoke:on-coming-events` (hub/detail/seats/classes + legacy redirects). Layout: `GET /api/v1/floor-layout`. Reservations: `POST /api/v1/venue-reservations/checkout-session`, `GET …/availability`, `GET …/session-status`. Prices from server (`bundlePrice` / `unitPrice`).
 - **Client publish + home promo:** `src/features/admin/on-coming-events/` — route `/admin/on-coming-events`. Toggle `clientEnabled`, promo, **reservation event date/label** (`reservationEventDate`, `reservationEventLabel`). When `clientEnabled`, home promo + header **ON COMING EVENTS**. Settings API: `GET/PATCH /api/v1/on-coming-events/settings` (legacy alias `/api/v1/venue-layout/…`).
 - **Seat reservations admin:** `src/features/admin/venue-reservations/` — route `/admin/venue-reservations`. List/cancel `GET/PATCH /api/v1/venue-reservations/admin`.
-- **Alias `/admin/upcoming-events`:** thin redirect to `/admin/on-coming-events` — do not create `features/admin/upcoming-events`.
+- **Alias `/admin/upcoming-events`:** permanent redirect in `next.config.ts` to `/admin/on-coming-events` — do not create `features/admin/upcoming-events`.
+- **Alias `/upcoming-events` (public):** permanent redirect in `next.config.ts` to `/on-coming-events` (no `app/upcoming-events` page). Legacy `/venue-layout` likewise redirects to `/on-coming-events`. Legacy `/registro` redirects permanently to `/` in `next.config.ts` only (no `app/registro` route).
 - **Stripe env (backend + frontend):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`. Webhook: `POST /api/v1/stripe/webhook` (raw body; `nest` bootstrap uses `rawBody: true`). Local test: `stripe listen --forward-to localhost:3001/api/v1/stripe/webhook`.
 - **API (admin layout):** `GET/PUT /api/v1/floor-layout/admin`, `GET /api/v1/floor-layout/admin/palette`.
 - **DB:** `venue_layout_client_settings` (publish + promo + reservation event fields), `venue_seat_reservations` (Stripe checkout / `PAID` via webhook).
 
+## Public pay links (`src/app/pay/` + `src/features/pay/`)
+
+Token checkout emails land on `/pay/{quote|class|venue-seat}?token=…` (Stripe Embedded Checkout full page). Returns:
+
+- Quote → `/pay/quote/return?session_id=…`
+- Class → `/pay/class/return?session_id=…` (reuses `ClassSessionReturnClient` from on-coming-events)
+- Venue seat → `/pay/venue-seat/return?session_id=…` (reuses `VenueSeatReturnClient`)
+
+```text
+app/pay/           → SOLO page/layout thin (token gate + re-exports)
+features/pay/      → PayTokenCheckoutClient wrappers, PayQuoteReturnClient, services
+lib/pay/payRoutes  → PAY_* paths + buildPay*Href(token)
+```
+
+- Thin pages import from `@/features/pay` (class/venue returns from `@/features/on-coming-events`).
+- Services use `getPublicApiBaseUrl()`.
+- Smoke: `npm run smoke:pay` (entries) and `npm run smoke:returns` (includes `/pay/class/return`).
+
+## Root App Router boundaries
+
+`error.tsx`, `global-error.tsx`, and `not-found.tsx` must live under `src/app/` (Next.js convention). Shared UI: `AppStatusScreen` + `publicErrorMessage` in `src/components/shared/`. `global-error` repeats font CSS variables from `@/lib/theme/shamellFonts` because it replaces the root layout.
+
 ## Verification
 
-After structural changes: `npm run build`, `npm run start`, then `npm run smoke:returns` (or manual smoke on the affected route).
+After structural changes: `npm run build`, `npm run start`, then `npm run smoke:home`, `npm run smoke:returns`, `npm run smoke:pay`, `npm run smoke:on-coming-events`, `npm run smoke:admin-routes` (includes legacy `/login` → `/admin/login` and canonical `/admin/login`), `npm run smoke:contacto`, `npm run smoke:forgot-password`, and/or `npm run smoke:gallery` (or manual smoke on the affected route).

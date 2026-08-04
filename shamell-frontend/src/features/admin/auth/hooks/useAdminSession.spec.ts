@@ -6,7 +6,7 @@ import {
   ADMIN_ACCESS_TOKEN_KEY,
   ADMIN_USER_KEY,
   notifyAdminSessionChanged,
-} from "@/lib/adminSession";
+} from "@/lib/admin/session";
 import {
   FIXTURE_ACCESS_TOKEN,
   FIXTURE_ADMIN_EMAIL,

@@ -2,8 +2,8 @@ import {
   hhmmToMinutes,
   parseISOLocal,
   startOfTodayLocal,
-} from "@/lib/contactLogisticsUtils";
-import { isValidInquiryCode, type ServiceTypeCode } from "@/lib/contactInquiryConstants";
+} from "@/lib/contacto/contactLogisticsUtils";
+import { isValidInquiryCode, type ServiceTypeCode } from "@/lib/contacto/contactInquiryConstants";
 import { isBespoke } from "./inquiryCodeUtils";
 import type { CatalogSnapshot, ContactLine, Phase, WizardData } from "./wizardTypes";
 

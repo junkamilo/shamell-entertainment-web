@@ -23,7 +23,6 @@ if (!s.includes("ContactInquiryPhaseService")) {
 
 const lines = s.split(/\r?\n/);
 const start = lines.findIndex((l) => l.includes('currentPhase === "service"'));
-const end = lines.findIndex((l, i) => i > start && l.includes('currentPhase === "contact" ? "Continue to review"'));
 // end should be before nav buttons - find closing of review phase
 let end2 = -1;
 for (let i = start; i < lines.length; i++) {

@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { toISOLocalDate } from "@/lib/contactLogisticsUtils";
+import { toISOLocalDate } from "@/lib/contacto/contactLogisticsUtils";
 import {
   buildScheduleMonthGrid,
   getNextOccurrence,

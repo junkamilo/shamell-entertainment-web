@@ -1,6 +1,6 @@
 import { type InquiryDetailRow } from "@/features/admin/inquiries";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
-import { bookingServiceDisplayLine } from "@/lib/adminBookingDisplay";
+import { bookingServiceDisplayLine } from "@/lib/agenda/adminBookingDisplay";
 import { isPrivateClassBookingDetails } from "./privateClassBookingDetails";
 
 function stringArrayField(raw: unknown): string[] {

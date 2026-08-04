@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import type { ServiceTypeItem } from "@/features/admin/service-types/types/serviceTypes.types";
-import { isVideoMediaFile, serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { isVideoMediaFile, serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import {
   DESCRIPTION_MAX_LENGTH,
   DESCRIPTION_MIN_LENGTH,

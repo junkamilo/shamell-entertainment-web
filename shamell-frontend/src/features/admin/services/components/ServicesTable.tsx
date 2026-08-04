@@ -1,7 +1,7 @@
 "use client";
 
 import { ActiveToggleButton } from "@/components/admin/inputs";
-import { Table, TableTruncatedText, TableRowActions, adminTableIconBtnClass, adminTableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
+import { Table, TableTruncatedText, TableRowActions, tableIconBtnClass, tableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
 import { Eye, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { displayServiceHeading, formatPriceEn, pillClassForTypeName } from "../lib/servicesDisplay";
@@ -119,7 +119,7 @@ export default function ServicesTable({ services, ...handlers }: Props) {
             <button
               type="button"
               onClick={() => handlers.onView(service)}
-              className={adminTableIconBtnClass}
+              className={tableIconBtnClass}
               aria-label="View service"
             >
               <Eye className="h-4 w-4" strokeWidth={1.5} />
@@ -127,7 +127,7 @@ export default function ServicesTable({ services, ...handlers }: Props) {
             <button
               type="button"
               onClick={() => handlers.onEdit(service)}
-              className={adminTableIconBtnClass}
+              className={tableIconBtnClass}
               aria-label="Edit service"
             >
               <Pencil className="h-4 w-4" strokeWidth={1.5} />
@@ -135,7 +135,7 @@ export default function ServicesTable({ services, ...handlers }: Props) {
             <button
               type="button"
               onClick={() => handlers.onDelete(service)}
-              className={adminTableIconBtnDangerClass}
+              className={tableIconBtnDangerClass}
               aria-label="Delete service permanently"
               title="Delete from catalog (irreversible)"
             >

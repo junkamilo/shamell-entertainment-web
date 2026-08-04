@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Mail } from "lucide-react";
 import PearlDivider from "@/components/PearlDivider";
 import bailarinaLogo from "@/public/01_bailarina.png";
+import { CONTACTO_PATH } from "@/lib/contacto/contactInquiryConstants";
 import { cn } from "@/lib/utils";
 
 const exploreLinks = [
@@ -120,7 +121,7 @@ export default function Footer({
                   Availability, technical rider, and proposals for your event.
                 </p>
                 <Link
-                  href="/contacto"
+                  href={CONTACTO_PATH}
                   className={cn(
                     "inline-flex min-h-11 items-center justify-center border border-gold/55 px-6 py-2.5 font-brand text-xs font-semibold tracking-[0.2em] text-gold uppercase transition-all duration-300 md:tracking-[0.22em]",
                     "hover:border-gold hover:bg-gold/8 hover:text-gold-light hover:shadow-[0_0_24px_rgba(197,165,90,0.15)]",
@@ -145,7 +146,7 @@ export default function Footer({
                     <InstagramGlyph />
                   </a>
                   <a
-                    href="/contacto"
+                    href={CONTACTO_PATH}
                     className={contactLinkClass}
                     aria-label="Send inquiry by email"
                   >

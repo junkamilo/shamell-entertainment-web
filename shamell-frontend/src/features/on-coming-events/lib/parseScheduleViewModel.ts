@@ -3,7 +3,7 @@ import {
   hhmmToMinutes,
   parseISOLocal,
   toISOLocalDate,
-} from "@/lib/contactLogisticsUtils";
+} from "@/lib/contacto/contactLogisticsUtils";
 import type { OnComingEventSchedule } from "../services/fetchOnComingEventDetail";
 
 export type TimeArcSegment = {

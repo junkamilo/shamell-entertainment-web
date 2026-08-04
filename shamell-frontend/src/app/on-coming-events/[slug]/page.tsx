@@ -1,4 +1,4 @@
-import OnComingEventDetailPage from "@/features/on-coming-events/components/OnComingEventDetailPage";
+import { OnComingEventDetailPage } from "@/features/on-coming-events";
 
 type Props = { params: Promise<{ slug: string }> };
 

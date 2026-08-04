@@ -1,5 +1,5 @@
-import { DEFAULT_HEADER_TEXT } from "@/lib/headerTextTypes";
-import type { AdminHeaderTextRow } from "@/lib/headerTextTypes";
+import { DEFAULT_HEADER_TEXT } from "@/lib/header-media/headerTextTypes";
+import type { AdminHeaderTextRow } from "@/lib/header-media/headerTextTypes";
 import type { HeaderPhoto } from "../../types/headerMedia.types";
 import {
   FIXTURE_HEADER_PHOTO_ID,

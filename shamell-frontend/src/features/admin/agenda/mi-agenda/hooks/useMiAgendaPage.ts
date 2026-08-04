@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { hhmmToMinutes } from "@/lib/contactLogisticsUtils";
+import { hhmmToMinutes } from "@/lib/contacto/contactLogisticsUtils";
 import { toast } from "@/hooks/use-toast";
-import { utcInstantForWallClock } from "@/lib/bookingAvailability";
+import { utcInstantForWallClock } from "@/lib/contacto/bookingAvailability";
 import { useMiAgendaBookings } from "./useMiAgendaBookings";
 import { useMiAgendaCalendar } from "./useMiAgendaCalendar";
 import { useMiAgendaEventEdit } from "./useMiAgendaEventEdit";

@@ -1,12 +1,12 @@
 "use client";
 
 import { ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS } from "@/components/admin/overlays";
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import {
   fieldLabelClass,
   logisticsPickerTriggerClass,
 } from "@/features/admin/agenda/shared/lib/agendaFormStyles";
-import { formatDateDisplayUs, formatTimeDisplayUs } from "@/lib/contactLogisticsUtils";
+import { formatDateDisplayUs, formatTimeDisplayUs } from "@/lib/contacto/contactLogisticsUtils";
 import {
   defaultReservationWeekdays,
   todayIsoDateInTimezone,
@@ -200,7 +200,17 @@ export function ReservationEventScheduleSections({
   const [bulkBlueprint, setBulkBlueprint] = useState<ClassSectionBlueprint[]>(defaultBlueprint);
   const prevActiveDayCountRef = useRef(0);
 
-  const activeWeekdayList = value.weekdays.filter((w) => w.isActive).map((w) => w.weekday);
+  const activeWeekdaysKey = value.weekdays
+    .filter((w) => w.isActive)
+    .map((w) => w.weekday)
+    .join(",");
+  const activeWeekdayList = useMemo(
+    () =>
+      activeWeekdaysKey.length === 0
+        ? []
+        : activeWeekdaysKey.split(",").map((part) => Number(part)),
+    [activeWeekdaysKey],
+  );
 
   useEffect(() => {
     const count = activeWeekdayList.length;
@@ -211,7 +221,7 @@ export function ReservationEventScheduleSections({
       );
     }
     prevActiveDayCountRef.current = count;
-  }, [activeWeekdayList.join(","), value.classSections]);
+  }, [activeWeekdayList, value.classSections]);
 
   const threeState = experienceMode !== undefined;
 

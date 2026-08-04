@@ -3,7 +3,7 @@
 import { useBlockedActionWarning } from "@/components/admin/overlays";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "@/hooks/use-toast";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import { parsePriceInput } from "../lib/parseVenueTablePrice";
 import {

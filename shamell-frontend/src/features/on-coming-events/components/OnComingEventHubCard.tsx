@@ -12,7 +12,7 @@ import {
 import {
   onComingEventDetailHref,
   onComingEventSeatsHref,
-} from "@/lib/upcomingEventPublicRoutes";
+} from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 import type { UpcomingPurchaseMode } from "../services/fetchOnComingEventDetail";
 
 export type OnComingEventHubCardItem = {

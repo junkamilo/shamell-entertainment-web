@@ -1,28 +1,11 @@
 "use client";
 
-import { ChevronDown, Eye, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import RevealFromDepth from "@/components/shared/RevealFromDepth";
 import bailarinaLogo from "@/public/01_bailarina.png";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import {
-  EXPERIENCE_ADDON_OPTIONS,
-  SERVICE_TYPE_CODES,
-  isValidInquiryCode,
-} from "@/lib/contactInquiryConstants";
-import {
-  formatDateDisplayUs,
-  formatTimeDisplayUs,
-} from "@/lib/contactLogisticsUtils";
-import { cn } from "@/lib/utils";
-import { formatCatalogPriceWithSuffix } from "@/lib/formatCatalogPrice";
-import {
-  isBespoke,
-  isGalaOrVip,
-  mergedInquiryCodeFromSelections,
-  readableInquiryCode,
-} from "../lib/inquiry/inquiryCodeUtils";
-import { lineDescriptionPreview } from "../lib/inquiry/inquiryDetailsBuilder";
+import { mergedInquiryCodeFromSelections } from "../lib/inquiry/inquiryCodeUtils";
 import { useContactInquiryForm } from "../hooks/useContactInquiryForm";
 import CatalogOfferingDetailModal from "./CatalogOfferingDetailModal";
 import ContactDatePickerModal from "./ContactDatePickerModal";
@@ -30,7 +13,6 @@ import ContactOccasionPickerModal from "./ContactOccasionPickerModal";
 import ContactTimePickerModal from "./ContactTimePickerModal";
 import InquirySelectionSummary from "./InquirySelectionSummary";
 import InquirySubmitFeedbackLayer from "./InquirySubmitFeedbackLayer";
-import ContactInquiryField from "./contact-inquiry/ContactInquiryField";
 import ContactInquiryPhaseContact from "./contact-inquiry/ContactInquiryPhaseContact";
 import ContactInquiryPhaseDetail from "./contact-inquiry/ContactInquiryPhaseDetail";
 import ContactInquiryPhaseExpectations from "./contact-inquiry/ContactInquiryPhaseExpectations";
@@ -118,7 +100,6 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
     blockedReasonByIso,
     startTimeClamp,
     minSelectableIso,
-    bookingTz,
     occupiedRanges,
   } = availability;
 

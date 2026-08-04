@@ -6,17 +6,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import portrait from "@/assets/gallery-2.jpg";
 import OrnamentDivider from "./OrnamentDivider";
 import RevealOnView from "@/components/shared/RevealOnView";
-import type { AboutContentItem } from "@/lib/aboutContent";
+import type { AboutContentItem } from "@/lib/about/aboutContent";
 import { useAboutContent } from "@/hooks/use-about-content";
-import { inferAboutHeroIsVideo } from "@/lib/aboutHeroMedia";
+import { inferAboutHeroIsVideo } from "@/lib/hero/aboutHeroMedia";
 import {
   aboutHeroImageCardClassName,
   aboutHeroMediaClassName,
   aboutHeroMediaFrameClassName,
   aboutHeroVideoCardClassName,
-} from "@/lib/aboutHeroLayout";
-import { prefetchAboutHeroVideo } from "@/lib/aboutMediaPreload";
-import { splitAboutParagraphs } from "@/lib/aboutParagraphs";
+} from "@/lib/hero/aboutHeroLayout";
+import { prefetchAboutHeroVideo } from "@/lib/hero/aboutMediaPreload";
+import { splitAboutParagraphs } from "@/lib/about/aboutParagraphs";
 import { cn } from "@/lib/utils";
 
 const VIDEO_LOAD_TIMEOUT_MS = 10_000;

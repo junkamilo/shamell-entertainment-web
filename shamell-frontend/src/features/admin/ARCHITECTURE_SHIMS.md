@@ -24,6 +24,17 @@ There is **no** `src/app/shamell-admin/` tree. Legacy bookmarks `/shamell-admin/
 1. `src/components/**` must not import `@/features/**` or `@/app/**`
 2. `src/features/admin/**` must not import `@/app/shamell-admin/**` (anti-regression; that folder must not be recreated)
 
+### Design system: `data-display`
+
+Import from `@/components/admin/data-display` (also re-exported via `@/components/admin`).
+
+- **List pattern:** feature mounts `Table` + `EmptyState` + `Pagination`. Pagination meta comes from `@/lib/pagination`.
+- **`Table`:** `rows.length === 0` → renders `null`; the feature must show `EmptyState`. Variants: `standalone` (default bordered card) | `embedded` (inside glass section, no outer border).
+- **Row icon buttons:** use `tableIconBtnClass` / `tableIconBtnDangerClass` / `tableIconBtnDisabledClass` only (no `adminTable*` aliases).
+- **Client vs server:** `Table`, `EmptyState`, and `Pagination` are `"use client"`. `DefinitionList` is server-safe (no client directive).
+
+Co-located Vitest: `npx vitest run src/components/admin/data-display`.
+
 ---
 
 ## Feature module template
@@ -43,11 +54,26 @@ Vitest: co-located `*.spec.ts` / `*.spec.tsx` only (see `vitest.config.ts`); sha
 
 ### Alias: `upcoming-events`
 
-Do **not** create `features/admin/upcoming-events`. That URL is a shim only:
+Do **not** create `features/admin/upcoming-events`. That URL is a legacy shim only:
 
-- Thin route: `app/admin/(dashboard)/upcoming-events/page.tsx` → redirects to `/admin/on-coming-events`
+- **Redirect:** `/admin/upcoming-events` → `/admin/on-coming-events` in `next.config.ts` (permanent)
 - Real UI: `features/admin/on-coming-events` (+ `features/admin/events` with `upcomingOnly`)
 - Constant: `UPCOMING_EVENTS_ADMIN_PATH` in `lib/admin/routes.ts` (legacy URL; do not expand into a feature)
+
+### Shared display: `inquiries`
+
+`features/admin/inquiries` is **shared UI/helpers** (detail rows, readable inquiry panel) used by peticiones, payment-history, and `lib/agenda`. There is **no** app route for it. URL `/admin/inquiries` redirects permanently to `/admin/agenda/peticiones` via `next.config.ts`.
+
+### Compat shims: `app/admin/shared/lib`
+
+Thin re-exports of `@/lib/admin/{auth,apiBaseUrl,routes,pricing}` for legacy imports. **Canon for new code is `@/lib/admin/*`.** Do not add new callers to `@/app/admin/shared/lib/*`.
+
+### Other legacy admin redirects (`next.config.ts`)
+
+- `/admin/invite-admin` → `/admin/agregar-admin`
+- `/admin/dashboard` → `/admin/agenda`
+- `/admin/inquiries` → `/admin/agenda/peticiones`
+- `/shamell-admin/*` → `/admin/*`
 
 ### RBAC (coarse roles + typed permissions)
 

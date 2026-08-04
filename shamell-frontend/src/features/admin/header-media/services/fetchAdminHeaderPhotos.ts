@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapHeaderPhotosFromApi } from "../lib/mapHeaderPhotoFromApi";
 import { parseHeaderMediaError } from "../lib/headerMediaErrors";
 import type { HeaderPhoto } from "../types/headerMedia.types";

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getAdminBearerToken } from "@/lib/admin/auth";
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapServicesFromApi } from "../lib/mapServiceFromApi";
 import { parseServicesError } from "../lib/servicesErrors";
 import type { AdminService } from "../types/services.types";

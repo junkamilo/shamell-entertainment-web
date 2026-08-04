@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/admin/session";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import {
   DEFAULT_PAGINATION_META,

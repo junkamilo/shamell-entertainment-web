@@ -11,9 +11,6 @@ export type TableColumn<T> = {
 /** Default max height for in-table body scroll (~6–7 rows visible). */
 export const TABLE_BODY_MAX_HEIGHT = "max-h-[26rem]";
 
-/** @deprecated Prefer TABLE_BODY_MAX_HEIGHT */
-export const ADMIN_TABLE_BODY_MAX_HEIGHT = TABLE_BODY_MAX_HEIGHT;
-
 export type TableProps<T> = {
   columns: TableColumn<T>[];
   rows: T[];

@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/serviceCatalogMedia";
+import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import { displayServiceHeading, formatPriceEn } from "../lib/servicesDisplay";
 import type { AdminService } from "../types/services.types";
 

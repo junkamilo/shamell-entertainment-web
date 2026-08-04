@@ -4,11 +4,6 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../../test/utils/renderWithProviders";
-import {
-  makeRecurringReservationEventTemplate,
-  makeReservationEventTemplate,
-} from "../../test/fixtures/onComingEvents.fixture";
-import { FIXTURE_TEMPLATE_ID } from "../../test/fixtures/uuids.fixture";
 
 const toastMock = vi.fn();
 const getTokenMock = vi.fn((): string | null => "token-1");
@@ -17,7 +12,7 @@ vi.mock("@/hooks/use-toast", () => ({
   toast: (...args: unknown[]) => toastMock(...args),
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

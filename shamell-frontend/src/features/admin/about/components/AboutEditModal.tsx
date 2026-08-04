@@ -4,7 +4,7 @@ import { Modal } from "@/components/admin/overlays";
 import { MediaPickControl } from "@/components/admin/media";
 import { type RefObject } from "react";
 import { Image as ImageIcon, Video } from "lucide-react";
-import { isAboutHeroVideoDisplay } from "@/lib/aboutHeroMedia";
+import { isAboutHeroVideoDisplay } from "@/lib/hero/aboutHeroMedia";
 import type { AdminAboutRow } from "../types/aboutAdmin.types";
 import { AboutHeroPreviewCard } from "./AboutHeroPreviewCard";
 

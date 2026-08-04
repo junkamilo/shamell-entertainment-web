@@ -1,5 +1,5 @@
 import { type AccordionOption as AdminAccordionSingleOption } from "@/components/admin/inputs";
-import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
+import type { PublicWeeklySlot } from "@/lib/contacto/bookingAvailability";
 
 export const WEEKDAY_LABEL = [
   "Sunday",

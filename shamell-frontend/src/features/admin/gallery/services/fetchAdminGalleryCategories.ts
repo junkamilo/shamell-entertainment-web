@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapGalleryCategoriesFromApi } from "../lib/mapGalleryCategoryFromApi";
 import { parseGalleryError } from "../lib/galleryErrors";
 import type { GalleryCategory } from "../types/gallery.types";

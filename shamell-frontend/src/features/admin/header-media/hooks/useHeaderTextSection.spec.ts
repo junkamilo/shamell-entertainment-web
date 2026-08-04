@@ -2,7 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { DEFAULT_HEADER_TEXT } from "@/lib/headerTextTypes";
+import { DEFAULT_HEADER_TEXT } from "@/lib/header-media/headerTextTypes";
 import { FIXTURE_HEADER_TEXT_ID } from "../test/fixtures/uuids.fixture";
 
 const toastMock = vi.fn();

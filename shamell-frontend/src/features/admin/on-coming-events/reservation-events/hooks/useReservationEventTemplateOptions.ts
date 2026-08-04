@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import type { UpcomingExperienceType } from "@/features/admin/events/types/events.types";
 import { toast } from "@/hooks/use-toast";
 import { fetchAdminReservationEventTemplates } from "../services/fetchAdminReservationEventTemplates";

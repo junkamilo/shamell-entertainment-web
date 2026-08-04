@@ -2,18 +2,18 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { PETICIONES_BADGE_REFRESH_EVENT } from "@/lib/peticionesNotifications";
+import { PETICIONES_BADGE_REFRESH_EVENT } from "@/lib/agenda/peticionesNotifications";
 
 const getTokenMock = vi.fn((): string | null => "token-1");
-const readLastSeenMock = vi.fn((_lane?: string) => 0);
+const readLastSeenMock = vi.fn(() => 0);
 const fetchBadgeMock = vi.fn(async () => 3);
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 
-vi.mock("@/lib/peticionesNotifications", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/peticionesNotifications")>();
+vi.mock("@/lib/agenda/peticionesNotifications", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/agenda/peticionesNotifications")>();
   return {
     ...actual,
     readPeticionesLastSeenAt: (...args: unknown[]) => readLastSeenMock(...args),

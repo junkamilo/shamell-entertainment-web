@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import type React from "react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { makeStandaloneChairItem } from "../test/fixtures/venueTables.fixture";

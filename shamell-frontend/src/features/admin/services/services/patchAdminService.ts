@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { parseServicesError } from "../lib/servicesErrors";
 
 export async function patchAdminService(token: string, id: string, body: FormData): Promise<void> {

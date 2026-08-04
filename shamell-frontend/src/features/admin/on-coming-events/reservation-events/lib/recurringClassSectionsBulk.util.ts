@@ -80,7 +80,14 @@ export function sectionsToBlueprint(daySections: ClassSectionFormRow[]): ClassSe
   return daySections
     .slice()
     .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map(({ weekday: _w, ...rest }) => rest);
+    .map((row) => ({
+      label: row.label,
+      startTime: row.startTime,
+      endTime: row.endTime,
+      sortOrder: row.sortOrder,
+      defaultCapacity: row.defaultCapacity,
+      defaultPrice: row.defaultPrice,
+    }));
 }
 
 export function sectionsMatchBlueprint(

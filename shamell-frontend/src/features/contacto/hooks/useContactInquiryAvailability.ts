@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import { hhmmToMinutes } from "@/lib/contactLogisticsUtils";
+import { hhmmToMinutes } from "@/lib/contacto/contactLogisticsUtils";
 import {
   expandBlockedDateReasonsMap,
   expandBlockedDates,
   isoDateInTzNow,
   timeBoundsForDateISO,
-} from "@/lib/bookingAvailability";
+} from "@/lib/contacto/bookingAvailability";
 import { usePublicAvailability } from "@/hooks/use-public-availability";
 import { fetchOccupiedRanges } from "../services/fetchOccupiedRanges";
 import type { WizardData } from "../lib/inquiry/wizardTypes";

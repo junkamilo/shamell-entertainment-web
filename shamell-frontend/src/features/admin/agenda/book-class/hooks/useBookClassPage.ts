@@ -1,9 +1,9 @@
 "use client";
 
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { getAdminBearerToken } from "@/app/admin/shared/lib/adminAuth";
+import { getAdminBearerToken } from "@/lib/admin/auth";
 import { toast } from "@/hooks/use-toast";
-import { toISOLocalDate } from "@/lib/contactLogisticsUtils";
+import { toISOLocalDate } from "@/lib/contacto/contactLogisticsUtils";
 import {
   buildDaySectionOffers,
   sumSelectedOfferPrices,
@@ -30,11 +30,15 @@ import { useBookClassFormState } from "./useBookClassFormState";
 
 export function useBookClassPage() {
   const form = useBookClassFormState();
+  const { setMonthIso } = form;
   const catalog = useBookClassCatalog(form.eventId);
   const [submitting, setSubmitting] = useState(false);
 
   const schedule = catalog.context?.schedule ?? null;
-  const days = schedule?.mode === "RECURRING_WEEKLY" ? schedule.days : [];
+  const days = useMemo(
+    () => (schedule?.mode === "RECURRING_WEEKLY" ? schedule.days : []),
+    [schedule],
+  );
   const timezone =
     schedule?.mode === "RECURRING_WEEKLY" ? schedule.timezone : "America/New_York";
   const monthPackage = catalog.context?.monthPackage ?? null;
@@ -76,9 +80,9 @@ export function useBookClassPage() {
 
   useEffect(() => {
     if (hasMonthPackage && monthPackage?.currentMonthIso) {
-      form.setMonthIso(monthPackage.currentMonthIso);
+      setMonthIso(monthPackage.currentMonthIso);
     }
-  }, [hasMonthPackage, monthPackage?.currentMonthIso, form.setMonthIso]);
+  }, [hasMonthPackage, monthPackage?.currentMonthIso, setMonthIso]);
 
   const displayTotal =
     form.bookingKind === "month"

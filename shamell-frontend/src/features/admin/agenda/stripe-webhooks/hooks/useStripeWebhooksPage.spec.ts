@@ -16,7 +16,7 @@ const fetchWebhooksMock = vi.fn(async () => ({
   },
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

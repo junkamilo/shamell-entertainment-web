@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import type { PeticionesLane } from "../peticiones/types/peticiones.types";
 
 export type FetchPeticionesBadgeOptions = {

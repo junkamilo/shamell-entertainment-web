@@ -10,7 +10,7 @@ const fetchInboxMock = vi.fn(async () => ({
   meta: { ...DEFAULT_PAGINATION_META, totalItems: 1 },
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 

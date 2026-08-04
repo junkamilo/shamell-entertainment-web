@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapServiceTypesFromApi } from "../lib/mapServiceTypeFromApi";
 import { parseServiceTypesError } from "../lib/serviceTypesErrors";
 import type { ServiceTypeItem } from "../types/serviceTypes.types";

@@ -4,7 +4,7 @@ import { server } from "@/test/server";
 import { fetchContactLinesInquiryMap } from "./fetchContactLinesInquiryMap";
 import { FIXTURE_CONTACT_LINE_ID } from "../test/fixtures/uuids.fixture";
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => null,
 }));
 

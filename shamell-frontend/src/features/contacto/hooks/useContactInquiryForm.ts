@@ -11,7 +11,7 @@ import { buildInquiryDetails } from "../lib/inquiry/inquiryDetailsBuilder";
 import { isBespoke, readableInquiryCode } from "../lib/inquiry/inquiryCodeUtils";
 import { emptyWizard, getPhaseValidationError } from "../lib/inquiry/wizardValidation";
 import type { ContactInquiryFormProps } from "../types/contacto.types";
-import { isValidInquiryCode, type ServiceTypeCode } from "@/lib/contactInquiryConstants";
+import { isValidInquiryCode, type ServiceTypeCode } from "@/lib/contacto/contactInquiryConstants";
 import { submitContactInquiry } from "../services/submitContactInquiry";
 import { useContactInquiryAvailability } from "./useContactInquiryAvailability";
 import { useContactInquiryCatalog } from "./useContactInquiryCatalog";

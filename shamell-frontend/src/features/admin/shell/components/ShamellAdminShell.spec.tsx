@@ -6,8 +6,8 @@ import userEvent from "@testing-library/user-event";
 import {
   ADMIN_ACCESS_TOKEN_KEY,
   ADMIN_USER_KEY,
-} from "@/lib/adminSession";
-import { AGENDA_HUB_PATH } from "@/lib/admin/routes";
+} from "@/lib/admin/session";
+import { AGENDA_HUB_PATH, ADMIN_LOGIN_PATH } from "@/lib/admin/routes";
 import {
   createMockAdminSession,
   createMockRouter,
@@ -15,7 +15,7 @@ import {
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
 const pathnameMock = vi.fn(() => AGENDA_HUB_PATH);
-const searchParamsGetMock = vi.fn((_key: string) => null as string | null);
+const searchParamsGetMock = vi.fn(() => null as string | null);
 const routerMock = createMockRouter();
 const sessionMock = vi.fn(() => createMockAdminSession());
 const fetchReservationsMock = vi.fn(async () => ({
@@ -141,7 +141,7 @@ describe("ShamellAdminShell", () => {
         <span>child</span>
       </ShamellAdminShell>,
     );
-    expect(routerMock.replace).toHaveBeenCalledWith("/admin/login");
+    expect(routerMock.replace).toHaveBeenCalledWith(ADMIN_LOGIN_PATH);
   });
 
   it("toggles sidebar collapse on desktop control", async () => {

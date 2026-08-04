@@ -3,10 +3,7 @@ import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
 import { fetchAdminReservationEventTemplates } from "./fetchAdminReservationEventTemplates";
 import { RESERVATION_EVENT_ADMIN_NETWORK_MESSAGE } from "./reservationEventTemplateAdminRequest";
-import {
-  makeRecurringReservationEventTemplate,
-  makeReservationEventTemplate,
-} from "../../test/fixtures/onComingEvents.fixture";
+import { makeRecurringReservationEventTemplate } from "../../test/fixtures/onComingEvents.fixture";
 import { FIXTURE_TEMPLATE_ID, FIXTURE_TEMPLATE_ID_2 } from "../../test/fixtures/uuids.fixture";
 
 const ROUTE = "*/api/v1/reservation-event-templates/admin";

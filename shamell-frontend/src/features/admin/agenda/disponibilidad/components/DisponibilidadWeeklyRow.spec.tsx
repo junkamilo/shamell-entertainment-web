@@ -5,7 +5,7 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 import DisponibilidadWeeklyRow from "./DisponibilidadWeeklyRow";
-import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
+import type { PublicWeeklySlot } from "@/lib/contacto/bookingAvailability";
 
 function makeRow(overrides: Partial<PublicWeeklySlot> = {}): PublicWeeklySlot {
   return { weekday: 1, isClosed: false, startTime: "09:00", endTime: "21:00", ...overrides };

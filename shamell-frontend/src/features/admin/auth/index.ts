@@ -1,4 +1,4 @@
-export { AdminLoginPage as LoginPage } from "./components/AdminLoginPage";
+export { AdminLoginPage as default, AdminLoginPage as LoginPage } from "./components/AdminLoginPage";
 export { AdminLoginForm } from "./components/AdminLoginForm";
 export { useAdminLogin } from "./hooks/useAdminLogin";
 export { useAdminSession } from "./hooks/useAdminSession";

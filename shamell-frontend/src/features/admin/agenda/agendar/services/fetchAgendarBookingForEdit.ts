@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import type { AdminBookingRow } from "@/hooks/use-admin-bookings";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 

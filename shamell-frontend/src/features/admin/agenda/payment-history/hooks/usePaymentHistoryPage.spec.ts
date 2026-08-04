@@ -17,11 +17,11 @@ const fetchPaymentsMock = vi.fn(async () => ({
   },
 }));
 
-vi.mock("@/app/admin/shared/lib/adminAuth", () => ({
+vi.mock("@/lib/admin/auth", () => ({
   getAdminBearerToken: () => getTokenMock(),
 }));
 
-vi.mock("@/lib/paymentHistoryNotifications", () => ({
+vi.mock("@/lib/agenda/paymentHistoryNotifications", () => ({
   markPaymentHistorySeenNow: () => markSeenMock(),
 }));
 

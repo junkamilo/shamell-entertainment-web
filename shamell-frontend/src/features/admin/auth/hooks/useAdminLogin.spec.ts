@@ -11,7 +11,7 @@ import {
   makeLoginActionFailure,
   makeLoginActionSuccess,
 } from "../test/fixtures/auth.fixture";
-import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/adminSession";
+import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/admin/session";
 
 const push = vi.fn();
 const loginAdminActionMock = vi.fn();
@@ -26,8 +26,8 @@ vi.mock("../actions/authActions", () => ({
   loginAdminAction: (...args: unknown[]) => loginAdminActionMock(...args),
 }));
 
-vi.mock("@/lib/adminSession", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/adminSession")>();
+vi.mock("@/lib/admin/session", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/admin/session")>();
   return {
     ...actual,
     notifyAdminSessionChanged: (...args: unknown[]) =>

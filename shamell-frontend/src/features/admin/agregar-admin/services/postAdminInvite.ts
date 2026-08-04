@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { parseAgregarAdminError } from "../lib/agregarAdminErrors";
 import { getAgregarAdminAuthHeaders } from "../lib/agregarAdminAuth";
 import type { AdminInvitePayload } from "../types/agregarAdmin.types";

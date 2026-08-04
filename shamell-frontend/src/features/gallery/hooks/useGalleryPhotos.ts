@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import {
   galleryItems as fallbackItems,
   type GalleryFilter,
-} from "@/lib/galleryData";
+} from "@/lib/gallery/galleryData";
 import { fetchGalleryPhotos } from "../services/fetchGalleryPhotos";
 import type { GalleryPhotoItem } from "../types/gallery.types";
 

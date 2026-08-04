@@ -1,6 +1,6 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
-import type { PublicWeeklySlot } from "@/lib/bookingAvailability";
+import type { PublicWeeklySlot } from "@/lib/contacto/bookingAvailability";
 import type { AdminAvailabilitySnapshot } from "../types/disponibilidad.types";
 import { getDisponibilidadAuthHeaders } from "../lib/disponibilidadAuth";
 

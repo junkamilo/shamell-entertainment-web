@@ -1,4 +1,4 @@
-import { getAdminApiBaseUrl } from "@/app/admin/shared/lib/adminApiBaseUrl";
+import { getAdminApiBaseUrl } from "@/lib/admin/apiBaseUrl";
 import { mapStandaloneChairFromApi } from "../lib/mapStandaloneChairFromApi";
 import type { StandaloneChairConfig } from "../types/standaloneChairs.types";
 

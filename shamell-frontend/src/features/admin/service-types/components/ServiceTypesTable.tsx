@@ -1,9 +1,8 @@
 "use client";
 
 import { ActiveToggleButton } from "@/components/admin/inputs";
-import { Table, TableTruncatedText, TableRowActions, adminTableIconBtnClass, adminTableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
+import { Table, TableTruncatedText, TableRowActions, tableIconBtnClass, tableIconBtnDangerClass, type TableColumn as AdminTableColumn } from "@/components/admin/data-display";
 import { Pencil, Trash2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { buildServiceTypeSubtitle } from "../lib/serviceTypesDisplay";
 import type { ServiceTypeItem } from "../types/serviceTypes.types";
 import ServiceTypeIcon from "./ServiceTypeIcon";
@@ -91,7 +90,7 @@ export default function ServiceTypesTable({ types, ...handlers }: Props) {
               <button
                 type="button"
                 onClick={() => handlers.onEdit(item)}
-                className={adminTableIconBtnClass}
+                className={tableIconBtnClass}
                 aria-label={`Edit ${item.name}`}
               >
                 <Pencil className="h-4 w-4" strokeWidth={1.5} />
@@ -99,7 +98,7 @@ export default function ServiceTypesTable({ types, ...handlers }: Props) {
               <button
                 type="button"
                 onClick={() => handlers.onDelete(item)}
-                className={adminTableIconBtnDangerClass}
+                className={tableIconBtnDangerClass}
                 aria-label={`Delete ${item.name}`}
                 title="Delete permanently"
               >
