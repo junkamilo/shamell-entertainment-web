@@ -31,7 +31,7 @@ vi.mock("@/components/Footer", () => ({
   default: () => <footer data-testid="site-footer" />,
 }));
 
-vi.mock("@/components/stripe/StripeCheckoutHost", () => ({
+vi.mock("@/components/stripe", () => ({
   StripeCheckoutHost: () => <div data-testid="stripe-checkout" />,
 }));
 
@@ -39,9 +39,13 @@ vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: () => true,
 }));
 
-vi.mock("@/components/shared/RevealOnView", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}));
+vi.mock("@/components/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/shared")>();
+  return {
+    ...actual,
+    RevealOnView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  };
+});
 
 import OnComingEventDetailPage from "./OnComingEventDetailPage";
 

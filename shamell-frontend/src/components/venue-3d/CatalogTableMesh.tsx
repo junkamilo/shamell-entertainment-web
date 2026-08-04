@@ -3,7 +3,7 @@
 import { memo, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import type { Group } from "three";
-import type { VenueTableSize } from "@/components/floor-layout/layoutTypes";
+import type { VenueTableSize } from "@/components/floor-layout";
 import VenueBanquetChairMesh from "./chair/VenueBanquetChairMesh";
 import { buildTableChairPlacements } from "./chair/catalogTableChairPlacements";
 import { getTableSharedGeometries } from "./chair/chairSharedGeometries";

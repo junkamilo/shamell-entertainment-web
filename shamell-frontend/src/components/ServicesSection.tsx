@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { EventCatalogCard, type EventCatalogItem } from "@/components/catalog/EventCatalogCard";
-import RevealOnView from "@/components/shared/RevealOnView";
-import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
+import { EventCatalogCard, type EventCatalogItem } from "@/components/catalog";
+import { RevealOnView, CatalogCardCarousel } from "@/components/shared";
 import { useInViewLoad } from "@/hooks/use-in-view-load";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 
@@ -12,7 +11,6 @@ type EventsApiItem = {
   eventTypeName?: string;
   description?: string;
   items?: string[];
-  contactInquiryCode?: string | null;
   price?: number | null;
   images?: string[];
   heroImageUrl?: string | null;
@@ -24,7 +22,6 @@ type EventsApiItem = {
 type ValidEventApiItem = Required<Pick<EventsApiItem, "id" | "eventTypeName" | "description" | "items">> &
   Pick<
     EventsApiItem,
-    | "contactInquiryCode"
     | "price"
     | "images"
     | "heroImageUrl"
@@ -98,7 +95,6 @@ const ServicesSection = () => {
               eventTypeName: item.eventTypeName,
               description: item.description,
               eventTypes: item.items,
-              contactInquiryCode: item.contactInquiryCode ?? null,
               price: Number.isFinite(priceParsed as number) ? (priceParsed as number) : null,
               heroImageUrl: heroUrl,
               heroMediaType,
@@ -160,8 +156,8 @@ const ServicesSection = () => {
         ) : null}
 
         <CatalogCardCarousel ariaLabel="Types of events">
-          {services.map((service, index) => (
-            <EventCatalogCard key={service.id} service={service} index={index} />
+          {services.map((item) => (
+            <EventCatalogCard key={item.id} item={item} />
           ))}
         </CatalogCardCarousel>
       </div>

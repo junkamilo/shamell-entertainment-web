@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { EventCatalogCardHero } from "@/components/catalog/EventCatalogCardHero";
-import { FixedTicketInventoryDisplay } from "@/components/shared/FixedTicketInventoryDisplay";
+import { EventCatalogCardHero } from "@/components/catalog";
 import {
+  FixedTicketInventoryDisplay,
   isFutureEventStart,
   ShamellCountdown,
-} from "@/components/shared/ShamellCountdown";
+} from "@/components/shared";
 import {
   onComingEventDetailHref,
   onComingEventSeatsHref,

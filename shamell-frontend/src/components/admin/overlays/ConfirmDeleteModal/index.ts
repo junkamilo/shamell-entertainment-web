@@ -7,7 +7,4 @@ export type {
   ConfirmDeleteModalProps,
   ConfirmDeleteMessageProps,
 } from "./ConfirmDeleteModal";
-export {
-  buildConfirmDeleteLabel,
-  truncateDeleteConfirmLabel,
-} from "./confirmDeleteLabel";
+export { buildConfirmDeleteLabel } from "./confirmDeleteLabel";

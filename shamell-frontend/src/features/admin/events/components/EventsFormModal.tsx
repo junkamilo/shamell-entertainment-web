@@ -1,7 +1,7 @@
-﻿import { Modal, ADMIN_BUSY_OVERLAY_Z_CLASS } from "@/components/admin/overlays";
+import { Modal, MODAL_LAYERS } from "@/components/admin/overlays";
 import { type Dispatch, type FormEvent, type SetStateAction } from "react";
 import { ChevronDown, Plus, X } from "lucide-react";
-import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
+import { ShamellBusyOverlay } from "@/components/shared";
 import {
   ReservationEventScheduleSections,
   type ScheduleFormState,
@@ -111,9 +111,9 @@ export default function EventsFormModal({
     <>
       <ShamellBusyOverlay
         active={isSubmitting}
-        title={submittingMessage ?? "Saving eventÔÇª"}
+        title={submittingMessage ?? "Saving event…"}
         description="Please wait while we save your event and catalog media."
-        overlayZClass={ADMIN_BUSY_OVERLAY_Z_CLASS}
+        overlayZClass={MODAL_LAYERS.busy}
       />
       <Modal
         title={
@@ -347,7 +347,7 @@ export default function EventsFormModal({
             disabled={!canSubmit || isSubmitting}
             className="rounded-xl border border-gold/35 bg-gold/15 px-5 py-3 font-brand text-sm tracking-[0.08em] text-gold transition hover:bg-gold/25 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isSubmitting ? "SavingÔÇª" : editingId ? "Save changes" : "Create event"}
+            {isSubmitting ? "Saving…" : editingId ? "Save changes" : "Create event"}
           </button>
         </div>
       </form>

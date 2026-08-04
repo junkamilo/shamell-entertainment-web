@@ -1,4 +1,4 @@
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
 import { buildChairInstancesFromItems } from "./chairInstanceBuilder";
 
 describe("buildChairInstancesFromItems", () => {

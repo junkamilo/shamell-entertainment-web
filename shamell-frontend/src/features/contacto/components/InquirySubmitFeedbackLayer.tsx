@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
-import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
+import { ShamellBusyOverlay } from "@/components/shared";
 
 export type InquirySubmitFeedbackPhase = "idle" | "sending" | "done";
 

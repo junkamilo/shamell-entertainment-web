@@ -2,7 +2,7 @@
 
 import { ModuleHero } from "@/components/admin/layout";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
 import { toast } from "@/hooks/use-toast";
 import { SEATING_LAYOUT_ADMIN_LABEL } from "@/lib/on-coming-events/onComingEventsRoutes";
 import { buildReservedLayoutItemIdSet } from "@/lib/on-coming-events/venueLayoutReservedIds";

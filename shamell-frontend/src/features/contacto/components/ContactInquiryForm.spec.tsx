@@ -24,8 +24,8 @@ vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: () => false,
 }));
 
-vi.mock("@/components/shared/RevealFromDepth", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock("@/components/shared", () => ({
+  RevealFromDepth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 vi.mock("./CatalogOfferingDetailModal", () => ({ default: () => null }));

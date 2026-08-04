@@ -35,6 +35,60 @@ Import from `@/components/admin/data-display` (also re-exported via `@/component
 
 Co-located Vitest: `npx vitest run src/components/admin/data-display`.
 
+### Design system: `inputs`
+
+Import from `@/components/admin/inputs` (also re-exported via `@/components/admin`).
+
+Primitives: `SearchInput`, `AccordionSingleSelect`, `MultiSelect`, `DateField`, `ActiveToggleButton` (all `"use client"`).
+
+- **MultiSelect:** does not allow clearing the last selected id (minimum one). Errors via `error` + `aria-describedby` / `role="alert"`.
+- **AccordionSingleSelect:** `showNoneOption` + `emptyDisplay`; `required` sets `aria-required`.
+- **ActiveToggleButton:** when `deactivateBlocked` and active, click (and hover delay) calls `onBlockedDeactivate` instead of toggle.
+- **DateField:** native `type="date"` (ISO `YYYY-MM-DD`); not the public Contact date picker.
+- **SearchInput:** `aria-label` defaults to `placeholder` (override with `ariaLabel`).
+
+Co-located Vitest: `npx vitest run src/components/admin/inputs`.
+
+### Design system: `layout`
+
+Import from `@/components/admin/layout` (also re-exported via `@/components/admin`).
+
+Primitives: `ModuleHero`, `BackButton` (both `"use client"`). Distinct from public `ShamellBackButton` in `components/shared`.
+
+- **ModuleHero:** eyebrow default `SHAMELL ADMIN`; `bordered` (default true → `admin-panel`); primary via `actionHref` or `onAction` with prefix `+` by default (`primaryPrefix={false}` removes it); secondary via `secondaryActionLabel` + `onSecondaryAction` with `Download` icon by default (`secondaryIcon={null}` removes it); `extraActions` slot before those buttons.
+- **BackButton:** `href` + `label` (display UPPERCASE); variants `default` | `subtle`.
+
+Co-located Vitest: `npx vitest run src/components/admin/layout`.
+
+### Design system: `media`
+
+Import from `@/components/admin/media` (also re-exported via `@/components/admin`).
+
+Trio (all `"use client"`):
+
+- **MediaUploadIconButton** — icon-only hidden file input; parent may `ref.click()` / reset `ref.value`.
+- **MediaPickControl** — icon trigger + status row (filename or multi count); wraps UploadIconButton.
+- **MediaPreviewModal** + **useMediaPreview** — fullscreen IMAGE/VIDEO preview (portal, Escape, backdrop); hook infers type from URL when `mediaType` omitted.
+
+Defaults: `accept="image/*,video/*"`; single vs `multiple`. Distinct from public gallery/Cloudinary services and from the `header-media` feature (which consumes this DS).
+
+Co-located Vitest: `npx vitest run src/components/admin/media`.
+
+### Design system: `overlays`
+
+Import from `@/components/admin/overlays` (also re-exported via `@/components/admin`).
+
+Primitives (all `"use client"` except `MODAL_LAYERS` / `buildConfirmDeleteLabel`):
+
+- **Modal** — generic form/dialog portal; Escape + backdrop close; sizes `default` | `narrow`; no focus-trap.
+- **ConfirmDeleteModal** + **ConfirmDeleteMessage** / **ConfirmDeleteHighlight** — delete confirmation; prefer Message for long titles.
+- **BlockedActionModal** + **useBlockedActionWarning** — blocked action warning (`alertdialog`); hook holds open title/description.
+- **MODAL_LAYERS** — stacking contract: `overlay` / `mediaPreview` / `nestedPicker` / `busy`. Always use these (no ad-hoc z-index). Media lightbox uses `mediaPreview`.
+
+Distinct from public Stripe / venue-3D overlays. Prefer `ConfirmDeleteModal` for deletes when adopting new feature UI.
+
+Co-located Vitest: `npx vitest run src/components/admin/overlays`.
+
 ---
 
 ## Feature module template

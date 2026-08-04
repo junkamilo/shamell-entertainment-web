@@ -5,7 +5,7 @@ import { screen } from "@testing-library/react";
 import { makeClassSession } from "../test/fixtures/onComingEvents.fixture";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
-vi.mock("@/components/stripe/StripeCheckoutHost", () => ({
+vi.mock("@/components/stripe", () => ({
   StripeCheckoutHost: ({ ariaLabel }: { ariaLabel?: string }) => (
     <div data-testid="stripe-checkout">{ariaLabel}</div>
   ),

@@ -3,7 +3,7 @@ import {
   STAGE_ZONE_POSITION,
   STAGE_ZONE_ROTATION_Y,
 } from "./stage/stageConstants";
-import type { FloorSceneZones } from "@/components/floor-layout/layoutTypes";
+import type { FloorSceneZones } from "@/components/floor-layout";
 
 const DEFAULT_STAGE = {
   x: STAGE_ZONE_POSITION[0],

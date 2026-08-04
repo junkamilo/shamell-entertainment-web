@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
+import { StripeCheckoutHost } from "@/components/stripe";
 import { MonthPackageIncludedSessions } from "./MonthPackageIncludedSessions";
 import { createClassBundleCheckoutSession } from "../services/createClassBundleCheckoutSession";
 import { createClassMonthPackageCheckoutSession } from "../services/createClassMonthPackageCheckoutSession";

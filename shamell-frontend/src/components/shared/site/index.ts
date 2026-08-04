@@ -1,0 +1,1 @@
+export { WhatsAppFloatingButton } from "./WhatsAppFloatingButton";

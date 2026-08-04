@@ -1,4 +1,4 @@
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
 
 export function placedSummaryFromItems(items: PlacedLayoutItem[]) {
   const summary = { large: 0, medium: 0, small: 0, chairs: 0 };

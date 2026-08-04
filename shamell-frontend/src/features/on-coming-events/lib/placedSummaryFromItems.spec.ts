@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
 import { placedSummaryFromItems } from "./placedSummaryFromItems";
 
 describe("placedSummaryFromItems", () => {

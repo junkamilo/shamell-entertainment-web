@@ -20,11 +20,15 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("@/components/catalog/EventCatalogCardHero", () => ({
-  EventCatalogCardHero: ({ title }: { title: string }) => (
-    <div data-testid="event-hero">{title}</div>
-  ),
-}));
+vi.mock("@/components/catalog", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/catalog")>();
+  return {
+    ...actual,
+    EventCatalogCardHero: ({ title }: { title: string }) => (
+      <div data-testid="event-hero">{title}</div>
+    ),
+  };
+});
 
 import { OnComingEventHubCard } from "./OnComingEventHubCard";
 

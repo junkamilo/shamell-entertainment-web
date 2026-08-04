@@ -1,8 +1,7 @@
 "use client";
 
-import ExperienceCard from "@/components/experiences/ExperienceCard";
-import RevealOnView from "@/components/shared/RevealOnView";
-import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
+import { ExperienceCard } from "@/components/experiences";
+import { RevealOnView, CatalogCardCarousel } from "@/components/shared";
 import { useExperiences } from "@/hooks/use-experiences";
 import { useInViewLoad } from "@/hooks/use-in-view-load";
 
@@ -39,8 +38,8 @@ const ExperiencesSection = () => {
           </p>
         ) : (
           <CatalogCardCarousel ariaLabel="Service catalog">
-            {experiences.map((experience, index) => (
-              <ExperienceCard key={experience.id} experience={experience} index={index} />
+            {experiences.map((experience) => (
+              <ExperienceCard key={experience.id} experience={experience} />
             ))}
           </CatalogCardCarousel>
         )}

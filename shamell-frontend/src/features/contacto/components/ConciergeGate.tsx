@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import RevealFromDepth from "@/components/shared/RevealFromDepth";
+import { RevealFromDepth } from "@/components/shared";
 import bailarinaLogo from "@/public/01_bailarina.png";
 
 const gateCards = [

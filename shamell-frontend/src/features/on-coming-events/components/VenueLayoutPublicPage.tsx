@@ -4,13 +4,13 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Footer from "@/components/Footer";
-import { FixedTicketInventoryDisplay } from "@/components/shared/FixedTicketInventoryDisplay";
-import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
-import ShamellAlertDialog from "@/components/shared/ShamellAlertDialog";
 import {
+  FixedTicketInventoryDisplay,
+  ShamellBusyOverlay,
+  ShamellAlertDialog,
   isFutureEventStart,
   ShamellCountdown,
-} from "@/components/shared/ShamellCountdown";
+} from "@/components/shared";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 import {
   onComingEventDetailHref,
@@ -21,7 +21,7 @@ import VenueSceneLegend from "@/components/venue-3d/VenueSceneLegend";
 import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
 import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
 import type { StandaloneChairConfig } from "@/features/admin/venue-tables/types/standaloneChairs.types";
-import type { VenueFloorLayout } from "@/components/floor-layout/layoutTypes";
+import type { VenueFloorLayout } from "@/components/floor-layout";
 import {
   getVenueLayoutPageCache,
   patchVenueLayoutPageAvailability,

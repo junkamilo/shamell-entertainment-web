@@ -5,7 +5,7 @@ import { Loader2, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import portrait from "@/assets/gallery-2.jpg";
 import OrnamentDivider from "./OrnamentDivider";
-import RevealOnView from "@/components/shared/RevealOnView";
+import { RevealOnView } from "@/components/shared";
 import type { AboutContentItem } from "@/lib/about/aboutContent";
 import { useAboutContent } from "@/hooks/use-about-content";
 import { inferAboutHeroIsVideo } from "@/lib/hero/aboutHeroMedia";

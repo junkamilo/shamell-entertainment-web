@@ -21,8 +21,8 @@ vi.mock("next/link", () => ({
   }) => <a href={href}>{children}</a>,
 }));
 
-vi.mock("@/components/shared/RevealFromDepth", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock("@/components/shared", () => ({
+  RevealFromDepth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 import ConciergeGate from "./ConciergeGate";

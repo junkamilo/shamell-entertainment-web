@@ -22,11 +22,11 @@ vi.mock("@/components/admin/overlays", () => ({
         {children}
       </div>
     ) : null,
-  ADMIN_BUSY_OVERLAY_Z_CLASS: "z-busy",
+  MODAL_LAYERS: { busy: "z-busy" },
 }));
 
-vi.mock("@/components/shared/ShamellBusyOverlay", () => ({
-  default: () => null,
+vi.mock("@/components/shared", () => ({
+  ShamellBusyOverlay: () => null,
 }));
 
 vi.mock(

@@ -3,13 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Footer from "@/components/Footer";
-import ShamellBusyOverlay from "@/components/shared/ShamellBusyOverlay";
-import { ShamellBackButton } from "@/components/shared/ShamellBackButton";
-import { FixedTicketInventoryDisplay } from "@/components/shared/FixedTicketInventoryDisplay";
 import {
+  ShamellBusyOverlay,
+  ShamellBackButton,
+  FixedTicketInventoryDisplay,
   isFutureEventStart,
   ShamellCountdown,
-} from "@/components/shared/ShamellCountdown";
+} from "@/components/shared";
 import { formatCatalogPriceAmount } from "@/lib/services/formatCatalogPrice";
 import { onComingEventHubHref } from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 import {

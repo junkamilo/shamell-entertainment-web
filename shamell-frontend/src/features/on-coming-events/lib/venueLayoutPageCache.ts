@@ -1,6 +1,6 @@
 import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
 import type { StandaloneChairConfig } from "@/features/admin/venue-tables/types/standaloneChairs.types";
-import type { VenueFloorLayout } from "@/components/floor-layout/layoutTypes";
+import type { VenueFloorLayout } from "@/components/floor-layout";
 import type { SalesClosedReason } from "../services/fetchVenueReservationAvailability";
 
 export type VenueLayoutPageCacheEntry = {

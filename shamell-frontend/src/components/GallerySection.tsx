@@ -3,8 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import RevealOnView from "@/components/shared/RevealOnView";
-import RevealStaggerGrid from "@/components/shared/RevealStaggerGrid";
+import { RevealOnView, RevealStaggerGrid } from "@/components/shared";
 import {
   useGalleryCategories,
   useGalleryPhotos,

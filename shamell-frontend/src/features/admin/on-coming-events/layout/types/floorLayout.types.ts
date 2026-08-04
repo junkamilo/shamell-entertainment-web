@@ -6,11 +6,11 @@ export type {
   VenueFloorLayout,
   FloorLayoutPalette,
   VenueTableSize,
-} from "@/components/floor-layout/layoutTypes";
+} from "@/components/floor-layout";
 
 export {
   LAYOUT_SHAPE_KINDS,
   DEFAULT_VIEW_BOX_WIDTH,
   DEFAULT_VIEW_BOX_HEIGHT,
   TABLE_SIZE_LABELS,
-} from "@/components/floor-layout/layoutTypes";
+} from "@/components/floor-layout";

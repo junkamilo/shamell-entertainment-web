@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
+import { StripeCheckoutHost } from "@/components/stripe";
 import {
   createFixedEventCheckoutSession,
   type CreateFixedEventCheckoutBody,

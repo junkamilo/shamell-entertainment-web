@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import type { FloorSceneZones } from "@/components/floor-layout/layoutTypes";
+import type { FloorSceneZones } from "@/components/floor-layout";
 import { useVenueSceneCanvas } from "@/components/venue-3d/VenueSceneCanvasContext";
 import { SCENE_STAGE_SELECT_ID } from "@/components/venue-3d/floorSceneZonesDefaults";
 import {

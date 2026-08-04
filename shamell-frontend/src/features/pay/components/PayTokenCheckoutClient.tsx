@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
+import { StripeCheckoutHost } from "@/components/stripe";
 import { PAY_CHECKOUT_LOADING_LABEL } from "../lib/payCopy";
 
 export type PayTokenCheckoutFetchResult =

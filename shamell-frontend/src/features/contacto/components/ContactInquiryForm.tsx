@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
-import RevealFromDepth from "@/components/shared/RevealFromDepth";
+import { RevealFromDepth } from "@/components/shared";
 import bailarinaLogo from "@/public/01_bailarina.png";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { mergedInquiryCodeFromSelections } from "../lib/inquiry/inquiryCodeUtils";

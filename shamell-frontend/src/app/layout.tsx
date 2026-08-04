@@ -8,8 +8,7 @@ import {
 } from "@/lib/theme/shamellFonts";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
-import PublicBackgroundGate from "@/components/shared/PublicBackgroundGate";
-import WhatsAppFloatingButton from "@/components/shared/WhatsAppFloatingButton";
+import { PublicBackgroundGate, WhatsAppFloatingButton } from "@/components/shared";
 
 export const metadata: Metadata = {
   title: "Shamell Entertainment — Performance & Events",

@@ -4,7 +4,7 @@ import "@/lib/threeR3fCompat";
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
 import { Environment, OrbitControls } from "@react-three/drei";
-import type { FloorSceneZones, PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { FloorSceneZones, PlacedLayoutItem } from "@/components/floor-layout";
 import type { LayoutItemLabel } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { FloorSceneZonesProvider } from "./FloorSceneZonesContext";
 import { mergeFloorSceneZones } from "./floorSceneZonesDefaults";

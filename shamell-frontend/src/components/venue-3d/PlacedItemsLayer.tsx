@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
 import type { LayoutItemLabel } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { layoutToWorld } from "./layoutCoords3d";
 import CatalogTableMesh from "./CatalogTableMesh";

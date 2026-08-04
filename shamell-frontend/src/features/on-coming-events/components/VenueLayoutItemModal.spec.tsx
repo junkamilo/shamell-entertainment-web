@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import { createVenueLayoutItemModalProps } from "../test/helpers/mockOnComingEventsPage";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
-vi.mock("@/components/stripe/StripeCheckoutHost", () => ({
+vi.mock("@/components/stripe", () => ({
   StripeCheckoutHost: () => <div data-testid="stripe-checkout" />,
 }));
 

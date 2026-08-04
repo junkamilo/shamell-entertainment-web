@@ -1,9 +1,10 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
+import { MODAL_LAYERS } from "./modalLayers";
 
 export type ModalProps = {
   title: string;
@@ -22,6 +23,7 @@ export function Modal({
   size = "default",
 }: ModalProps) {
   const [mounted, setMounted] = useState(false);
+  const titleId = useId();
 
   useEffect(() => {
     setMounted(true);
@@ -36,6 +38,15 @@ export function Modal({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [isOpen, onClose]);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -43,17 +54,18 @@ export function Modal({
       {isOpen ? (
         <motion.div
           key="admin-modal-root"
-          className="admin-theme fixed inset-0 z-200 flex items-center justify-center bg-shamell-night/80 px-4 py-6 backdrop-blur-sm"
+          className={`admin-theme fixed inset-0 flex items-center justify-center bg-shamell-night/80 px-4 py-6 backdrop-blur-sm ${MODAL_LAYERS.overlay}`}
           role="presentation"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          onClick={onClose}
         >
           <motion.div
             role="dialog"
             aria-modal="true"
-            aria-labelledby="admin-modal-title"
+            aria-labelledby={titleId}
             className={
               size === "narrow"
                 ? "flex max-h-[90vh] w-full max-w-xl flex-col overflow-hidden rounded-3xl border border-shamell-line-soft bg-shamell-surface-raised shadow-2xl"
@@ -76,7 +88,7 @@ export function Modal({
           >
             <div className="flex shrink-0 items-center justify-between border-b border-gold/15 bg-shamell-surface-deep px-6 py-5">
               <h2
-                id="admin-modal-title"
+                id={titleId}
                 className={
                   size === "narrow"
                     ? "admin-text-brand font-brand text-2xl leading-tight tracking-[0.08em] sm:text-3xl"

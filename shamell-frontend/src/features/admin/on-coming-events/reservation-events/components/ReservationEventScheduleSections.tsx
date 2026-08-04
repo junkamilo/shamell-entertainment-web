@@ -1,6 +1,6 @@
 "use client";
 
-import { ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS } from "@/components/admin/overlays";
+import { MODAL_LAYERS } from "@/components/admin/overlays";
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import {
   fieldLabelClass,
@@ -594,7 +594,7 @@ export function ReservationEventScheduleSections({
             });
             setSectionTimePick(null);
           }}
-          overlayZClass={ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS}
+          overlayZClass={MODAL_LAYERS.nestedPicker}
         />
       ) : null}
     </>

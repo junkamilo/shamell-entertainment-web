@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import bailarinaLogo from "@/public/01_bailarina.png";
-import { ShamellBackButton } from "@/components/shared/ShamellBackButton";
+import { ShamellBackButton } from "@/components/shared";
 
 type Props = {
   onBackNavigateStart?: () => void;

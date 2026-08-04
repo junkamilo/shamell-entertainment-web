@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
-import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
+import { TABLE_SIZE_LABELS } from "@/components/floor-layout";
 import { getAdminBearerToken } from "@/lib/admin/auth";
 import { formatPriceEn } from "@/lib/admin/pricing";
 import { toast } from "@/hooks/use-toast";

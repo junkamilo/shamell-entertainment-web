@@ -48,7 +48,7 @@ type Props = {
   onConfirmEndTime?: (hhmm: string) => void;
   onConfirmEventNightDate?: (iso: string) => void;
   onConfirmEventNightTime?: (hhmm: string) => void;
-  /** Use ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS when pickers open inside AdminModal (z-200). */
+  /** Use MODAL_LAYERS.nestedPicker when pickers open inside Modal (z-200). */
   overlayZClass?: string;
 };
 

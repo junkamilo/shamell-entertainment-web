@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import type { LucideIcon } from "lucide-react";
 import { Download } from "lucide-react";
 import Link from "next/link";
 
@@ -11,9 +12,13 @@ export type ModuleHeroProps = {
   actionLabel?: string;
   actionHref?: string;
   onAction?: () => void;
+  /** Prefix before primary label; `false` omits it. Default `+`. */
+  primaryPrefix?: string | false;
   /** Optional outline action (e.g. export) shown before the primary gold button */
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
+  /** Icon for secondary action; `null` omits icon. Default `Download`. */
+  secondaryIcon?: LucideIcon | null;
   /** Rendered before primary/secondary actions (e.g. section tabs) */
   extraActions?: ReactNode;
   bordered?: boolean;
@@ -32,14 +37,21 @@ export function ModuleHero({
   actionLabel,
   actionHref,
   onAction,
+  primaryPrefix = "+",
   secondaryActionLabel,
   onSecondaryAction,
+  secondaryIcon = Download,
   extraActions,
   bordered = true,
 }: ModuleHeroProps) {
   const hasSecondary = Boolean(secondaryActionLabel && onSecondaryAction);
   const hasPrimary = Boolean(actionLabel && (actionHref || onAction));
   const hasActions = Boolean(extraActions || hasSecondary || hasPrimary);
+  const SecondaryIcon = secondaryIcon;
+  const primaryLabel =
+    primaryPrefix === false
+      ? actionLabel
+      : `${primaryPrefix} ${actionLabel}`;
 
   return (
     <section
@@ -54,9 +66,9 @@ export function ModuleHero({
             {title}
           </h1>
           {subtitle ? (
-            <p className="mt-3 max-w-xl font-elegant text-xl leading-[1.65] text-foreground/92 sm:font-body sm:text-sm sm:leading-relaxed sm:text-foreground/55">
+            <div className="mt-3 max-w-xl font-elegant text-xl leading-[1.65] text-foreground/92 sm:font-body sm:text-sm sm:leading-relaxed sm:text-foreground/55">
               {subtitle}
-            </p>
+            </div>
           ) : null}
         </div>
 
@@ -69,18 +81,20 @@ export function ModuleHero({
             ) : null}
             {hasSecondary ? (
               <button type="button" onClick={onSecondaryAction} className={`${secondaryButtonClass} w-full sm:w-auto`}>
-                <Download className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
+                {SecondaryIcon ? (
+                  <SecondaryIcon className="h-4 w-4 shrink-0 opacity-90" strokeWidth={1.75} />
+                ) : null}
                 {secondaryActionLabel}
               </button>
             ) : null}
             {hasPrimary ? (
               actionHref ? (
                 <Link href={actionHref} className={`${actionButtonClass} w-full sm:w-auto`}>
-                  + {actionLabel}
+                  {primaryLabel}
                 </Link>
               ) : (
                 <button type="button" onClick={onAction} className={`${actionButtonClass} w-full sm:w-auto`}>
-                  + {actionLabel}
+                  {primaryLabel}
                 </button>
               )
             ) : null}

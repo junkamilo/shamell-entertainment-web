@@ -1,7 +1,6 @@
 "use client";
 
-import { AppStatusScreen } from "@/components/shared/AppStatusScreen";
-import { publicErrorMessage } from "@/components/shared/publicErrorMessage";
+import { AppStatusScreen, publicErrorMessage } from "@/components/shared";
 
 export default function Error({
   error,

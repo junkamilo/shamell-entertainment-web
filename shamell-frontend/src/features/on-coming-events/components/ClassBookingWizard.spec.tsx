@@ -5,7 +5,7 @@ import { screen } from "@testing-library/react";
 import { createMockClassBookingWizardProps } from "../test/helpers/mockOnComingEventsPage";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
-vi.mock("@/components/stripe/StripeCheckoutHost", () => ({
+vi.mock("@/components/stripe", () => ({
   StripeCheckoutHost: () => <div data-testid="stripe-checkout" />,
 }));
 

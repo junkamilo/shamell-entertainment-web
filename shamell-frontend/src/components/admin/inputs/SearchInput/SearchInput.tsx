@@ -7,6 +7,8 @@ export type SearchInputProps = {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  /** Accessible name; defaults to `placeholder`. */
+  ariaLabel?: string;
   className?: string;
 };
 
@@ -14,6 +16,7 @@ export function SearchInput({
   value,
   onChange,
   placeholder = "Search...",
+  ariaLabel,
   className = "",
 }: SearchInputProps) {
   return (
@@ -29,6 +32,7 @@ export function SearchInput({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        aria-label={ariaLabel ?? placeholder}
         autoComplete="off"
         data-shamell-admin-search
         type="text"

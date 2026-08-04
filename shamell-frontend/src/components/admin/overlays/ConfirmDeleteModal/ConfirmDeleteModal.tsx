@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { Modal } from "../Modal/Modal";
+import { Modal } from "../Modal";
 import { buildConfirmDeleteLabel } from "./confirmDeleteLabel";
 
 export type ConfirmDeleteModalProps = {

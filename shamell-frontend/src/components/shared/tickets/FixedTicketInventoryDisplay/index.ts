@@ -1,0 +1,1 @@
+export { FixedTicketInventoryDisplay } from "./FixedTicketInventoryDisplay";

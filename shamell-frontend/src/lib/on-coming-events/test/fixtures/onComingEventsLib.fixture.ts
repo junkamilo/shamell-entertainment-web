@@ -1,4 +1,4 @@
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
 import type { OnComingEventsPromo } from "../../onComingSettings";
 import type {
   ChairCatalogRow,

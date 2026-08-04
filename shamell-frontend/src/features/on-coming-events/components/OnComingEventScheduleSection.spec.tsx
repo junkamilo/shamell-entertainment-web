@@ -9,8 +9,8 @@ vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: () => false,
 }));
 
-vi.mock("@/components/shared/RevealOnView", () => ({
-  default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+vi.mock("@/components/shared", () => ({
+  RevealOnView: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 import { OnComingEventScheduleSection } from "./OnComingEventScheduleSection";

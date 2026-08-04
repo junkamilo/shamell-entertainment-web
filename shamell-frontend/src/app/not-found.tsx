@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { AppStatusScreen } from "@/components/shared/AppStatusScreen";
+import { AppStatusScreen } from "@/components/shared";
 
 export default function NotFound() {
   const pathname = usePathname();

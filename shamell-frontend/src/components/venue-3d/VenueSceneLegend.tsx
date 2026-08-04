@@ -1,8 +1,8 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { FloorLayoutPalette } from "@/components/floor-layout/layoutTypes";
-import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
+import type { FloorLayoutPalette } from "@/components/floor-layout";
+import { TABLE_SIZE_LABELS } from "@/components/floor-layout";
 
 type Props = {
   palette?: FloorLayoutPalette | null;

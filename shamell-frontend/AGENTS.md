@@ -16,13 +16,76 @@ src/
   lib/admin/           → auth, API base, route constants
 ```
 
-See `src/features/admin/ARCHITECTURE_SHIMS.md` for layer rules, the `upcoming-events` alias note, and the **data-display** DS contract (`Table` empty → null + `EmptyState`, variants, `tableIconBtnClass*`).
+See `src/features/admin/ARCHITECTURE_SHIMS.md` for layer rules, the `upcoming-events` alias note, the **data-display** DS contract (`Table` empty → null + `EmptyState`, variants, `tableIconBtnClass*`), the **inputs** DS contract (MultiSelect min-1, ActiveToggle blocked, DateField native date), the **layout** DS contract (`ModuleHero` / `BackButton`), the **media** DS contract (pick / upload / preview), and the **overlays** DS contract (`Modal` / `ConfirmDeleteModal` / `BlockedActionModal` / `MODAL_LAYERS`).
 
 ## Public marketing experiences
 
 Removed. Types of Events on the home page use **Inquire** → `/contacto` only (no `/experiences/[slug]` marketing pages).
 
-Service catalog on the home page remains `ExperiencesSection` + `ExperienceCard` (services API — unrelated naming).
+Live home **SERVICE CATALOG** UI: see **Public service catalog UI** below (folder name `experiences` is a legacy alias).
+
+## Public catalog UI (`components/catalog`)
+
+Public event-type catalog UI (not admin DS). Import from `@/components/catalog`.
+
+- **EventCatalogCard** — home TYPES OF EVENTS (`ServicesSection`); prop `item: EventCatalogItem`.
+- **EventCatalogCardHero** — portrait hero reused by hub cards (`OnComingEventHubCard`).
+- **EventCatalogCardExpandSections** — DESCRIPTION + EVENT TYPES panels (events only).
+- **CatalogExpandRow** — branded Expand/Collapse control; `ExperienceCard` reuses this row but still owns its own panels.
+
+Deps: `@/components/media` (`CardMedia`), `catalog-slide-context`, `formatCatalogPriceAmount`, contact href helpers (`buildEventLineContactHref`).
+
+Co-located Vitest: `npx vitest run src/components/catalog`.
+
+## Public service catalog UI (`components/experiences`)
+
+Home SERVICE CATALOG (`ExperiencesSection` + `ExperienceCard`). Folder name `experiences` is a legacy alias for the **services** API — not marketing `/experiences/[slug]` (removed).
+
+- Type `Experience` + `experiencesFallbackData`: `lib/services/experiencesData`.
+- Fetch/normalize: `hooks/use-experiences`.
+- Import: `@/components/experiences` (named `ExperienceCard`).
+- Reuses `CatalogExpandRow` only; does **not** use `EventCatalogCard*`.
+
+Co-located Vitest: `npx vitest run src/components/experiences`.
+
+## Public card media (`components/media`)
+
+`CardMedia` for catalog + experiences carousel heroes (IMAGE lazy `<img>`; VIDEO poster + gated `<video>` on in-view + hover/`isActive`).
+
+- Distinct from **`components/admin/media`** (pick / upload / preview).
+- Native `<img>` / `<video>` for CDN URLs; brand crop `object-[center_28%]`.
+- Import: `@/components/media`.
+
+Co-located Vitest: `npx vitest run src/components/media`.
+
+## Public shared UI (`components/shared`)
+
+Kitchen of cross-cutting **public** UI. Import from `@/components/shared` (named exports; root barrel).
+
+| Cluster | Contents |
+|---------|----------|
+| `status/` | `AppStatusScreen`, `publicErrorMessage` (error / not-found boundaries) |
+| `motion/` | `RevealOnView`, `RevealFromDepth`, `RevealStaggerGrid` |
+| `background/` | `AnimatedBackground`, `PublicBackgroundGate` |
+| `catalog-carousel/` | `CatalogCardCarousel`, slide context, layout helpers |
+| `shamell/` | Countdown (+ helpers), Busy overlay, Alert dialog, Back button |
+| `tickets/` | `FixedTicketInventoryDisplay` (hub / detail / venue reuse) |
+| `site/` | `WhatsAppFloatingButton` |
+
+**Boundaries:** admin `BackButton` ≠ `ShamellBackButton`; admin overlays ≠ `ShamellAlertDialog` / `ShamellBusyOverlay` (Busy is shared intentionally for public + some admin forms). Do not absorb admin DS here.
+
+Co-located Vitest: `npx vitest run src/components/shared`.
+
+## Public Stripe checkout UI (`components/stripe`)
+
+Shell for Stripe **Embedded Checkout** (`StripeCheckoutHost` with `layout="page"` | `"overlay"`). Import from `@/components/stripe`.
+
+- **Host** — page host or body portal dialog; composes `StripeEmbeddedCheckout` + `useStripeOverlayBodyLock`.
+- **Boundaries:** keys / branding / payment-flow routes / return polling stay in `lib/stripe`. Admin agenda `stripe-webhooks` is unrelated. CSS shell remains `styles/stripe-checkout.css` (global; `body:has` hide chrome).
+- Do **not** absorb this into `components/shared`.
+
+Co-located Vitest: `npx vitest run src/components/stripe`.
+
 ## Admin feature module template
 
 Domain lives under `src/features/admin/<feature>/`. App Router entry is a thin reexport under `src/app/admin/(dashboard)/<feature>/` only — do **not** recreate `src/app/shamell-admin/`.
@@ -128,7 +191,7 @@ lib/publicApiBaseUrl.ts        → getPublicApiBaseUrl()
 - **Admin editor (Seating layout):** `src/features/admin/on-coming-events/` — route `/admin/on-coming-events/layout`. `next/dynamic` (`ssr: false`). Palette drag via `@dnd-kit/core` + floor raycast (`floorLayoutRaycast.ts`); placed-item drag via `useItemPointerDrag3d` inside the Canvas.
 - **Palette inventory:** `GET /api/v1/floor-layout/admin/palette` — counts from Table seating (`tablesBySize`: Large/Medium/Small × unplaced) and standalone chairs (`availableQuantity` minus placed). Drag assigns next free catalog table of that size.
 - **Placed item kinds:** `catalog_table` (requires `venueTableConfigId`, `tableName`, `size`, `includedChairs`) | `standalone_chair`. Legacy kinds show a clear-items banner; save rejects old kinds.
-- **Layout types (shared):** `src/components/floor-layout/layoutTypes.ts`. Legacy SVG helpers (`FloorLayoutViewer`, `renderPlacedItem`, croquis PNG) remain in repo but are not used in the active admin/public flow.
+- **Layout types (shared):** `@/components/floor-layout` — canonical types + 2D `shapeConfig` for admin palette. Active UI is R3F (`venue-3d` + admin layout editor). Optional static asset `public/floor-layout/croquis-v1.svg` is not the active viewer.
 - **Public interactive:** `src/app/on-coming-events/` — thin pages/layouts only; business UI + Stripe return clients live in `src/features/on-coming-events/` (do **not** put fetch/polling in `app/`). Route `/on-coming-events`, `VenueScene3D` in `mode="public-select"` (click table/chair → modal → Stripe **Embedded Checkout** in-modal). Canon paths: `ON_COMING_EVENTS_PUBLIC_PATH` + href builders in `@/lib/on-coming-events/upcomingEventPublicRoutes` (hub/detail/classes/seats + return URLs). **Stripe return URLs (canonical):**
   - Venue seats → `/on-coming-events/return?session_id=…&event_slug={slug}` (legacy `/on-coming-events/{slug}/seats/return` redirects here via `next.config.ts` only — no `seats/return` page)
   - Class session → `/on-coming-events/{slug}/classes/return?session_id=…`
@@ -143,6 +206,16 @@ lib/publicApiBaseUrl.ts        → getPublicApiBaseUrl()
 - **Stripe env (backend + frontend):** `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`. Webhook: `POST /api/v1/stripe/webhook` (raw body; `nest` bootstrap uses `rawBody: true`). Local test: `stripe listen --forward-to localhost:3001/api/v1/stripe/webhook`.
 - **API (admin layout):** `GET/PUT /api/v1/floor-layout/admin`, `GET /api/v1/floor-layout/admin/palette`.
 - **DB:** `venue_layout_client_settings` (publish + promo + reservation event fields), `venue_seat_reservations` (Stripe checkout / `PAID` via webhook).
+
+## Shared floor layout contract (`components/floor-layout`)
+
+Shared layout contract (not admin DS, not public page UI). Import from `@/components/floor-layout`.
+
+- **Types / constants:** `PlacedLayoutItem`, `VenueFloorLayout`, `FloorLayoutPalette`, `FloorSceneZones`, `TABLE_SIZE_LABELS`, viewBox defaults, `isCatalogTableItem` / `isStandaloneChairItem`.
+- **`shapeConfig`:** 2D admin palette / drag-ghost visuals only (`tableVisualForSize`, `STANDALONE_CHAIR_VISUAL`) — not the R3F scene.
+- Consumers: admin layout editor, public seats, `venue-3d`, venue-reservations, box-office.
+
+Co-located Vitest: `npx vitest run src/components/floor-layout`.
 
 ## Public pay links (`src/app/pay/` + `src/features/pay/`)
 
@@ -164,7 +237,7 @@ lib/pay/payRoutes  → PAY_* paths + buildPay*Href(token)
 
 ## Root App Router boundaries
 
-`error.tsx`, `global-error.tsx`, and `not-found.tsx` must live under `src/app/` (Next.js convention). Shared UI: `AppStatusScreen` + `publicErrorMessage` in `src/components/shared/`. `global-error` repeats font CSS variables from `@/lib/theme/shamellFonts` because it replaces the root layout.
+`error.tsx`, `global-error.tsx`, and `not-found.tsx` must live under `src/app/` (Next.js convention). Shared UI: `AppStatusScreen` + `publicErrorMessage` via `@/components/shared` (`shared/status`). `global-error` repeats font CSS variables from `@/lib/theme/shamellFonts` because it replaces the root layout.
 
 ## Verification
 

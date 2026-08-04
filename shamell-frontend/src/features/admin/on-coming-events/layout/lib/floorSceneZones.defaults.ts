@@ -9,4 +9,4 @@ export {
 export type {
   FloorSceneZoneTransform,
   FloorSceneZones,
-} from "@/components/floor-layout/layoutTypes";
+} from "@/components/floor-layout";

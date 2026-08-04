@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ShamellBackButton } from "@/components/shared/ShamellBackButton";
+import { ShamellBackButton } from "@/components/shared";
 import { formatCatalogPriceAmount } from "@/lib/services/formatCatalogPrice";
 import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
 

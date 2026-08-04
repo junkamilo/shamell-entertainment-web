@@ -1,4 +1,4 @@
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
 
 /** Resolves the checkout/display price for a placed standalone chair. */
 export function resolveStandaloneChairUnitPrice(

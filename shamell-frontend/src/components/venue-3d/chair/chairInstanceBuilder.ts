@@ -1,4 +1,4 @@
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
 import { layoutToWorld } from "../layoutCoords3d";
 import { buildTableChairPlacements } from "./catalogTableChairPlacements";
 import { CHAIR_BACK, CHAIR_LEG, CHAIR_SEAT } from "./chairConstants";

@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import RevealOnView from "@/components/shared/RevealOnView";
+import { RevealOnView } from "@/components/shared";
 import type { OnComingEventSchedule } from "../services/fetchOnComingEventDetail";
 import { parseScheduleViewModel } from "../lib/parseScheduleViewModel";
 import { OnComingEventScheduleCalendar } from "./schedule/OnComingEventScheduleCalendar";

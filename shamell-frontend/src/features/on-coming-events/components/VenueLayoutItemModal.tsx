@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { PlacedLayoutItem } from "@/components/floor-layout/layoutTypes";
-import { TABLE_SIZE_LABELS } from "@/components/floor-layout/layoutTypes";
+import type { PlacedLayoutItem } from "@/components/floor-layout";
+import { TABLE_SIZE_LABELS } from "@/components/floor-layout";
 import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
 import type { StandaloneChairConfig } from "@/features/admin/venue-tables/types/standaloneChairs.types";
 import { resolveStandaloneChairUnitPrice } from "../lib/resolveStandaloneChairUnitPrice";
 import { formatPriceEn } from "@/lib/admin/pricing";
 import { createVenueCheckoutSession } from "../services/createVenueCheckoutSession";
-import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
+import { StripeCheckoutHost } from "@/components/stripe";
 
 type Props = {
   item: PlacedLayoutItem;

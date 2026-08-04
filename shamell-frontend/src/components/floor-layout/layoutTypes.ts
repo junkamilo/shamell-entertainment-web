@@ -27,6 +27,18 @@ export type PlacedLayoutItem =
       rotation: number;
     };
 
+export function isCatalogTableItem(
+  item: PlacedLayoutItem,
+): item is Extract<PlacedLayoutItem, { kind: "catalog_table" }> {
+  return item.kind === "catalog_table";
+}
+
+export function isStandaloneChairItem(
+  item: PlacedLayoutItem,
+): item is Extract<PlacedLayoutItem, { kind: "standalone_chair" }> {
+  return item.kind === "standalone_chair";
+}
+
 export type FloorSceneZoneTransform = {
   x: number;
   z: number;

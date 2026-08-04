@@ -1,6 +1,6 @@
 "use client";
 
-import { ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS } from "@/components/admin/overlays";
+import { MODAL_LAYERS } from "@/components/admin/overlays";
 import ContactDatePickerModal from "@/features/contacto/components/ContactDatePickerModal";
 import ContactTimePickerModal from "@/features/contacto/components/ContactTimePickerModal";
 export type ScheduleDateTarget = "salesStart" | "salesEnd" | "eventDay" | null;
@@ -49,7 +49,7 @@ export function ReservationEventSchedulePickers({
   onRecurStartTime,
   onRecurEndTime,
 }: Props) {
-  const z = ADMIN_NESTED_PICKER_OVERLAY_Z_CLASS;
+  const z = MODAL_LAYERS.nestedPicker;
   return (
     <>
       <ContactDatePickerModal

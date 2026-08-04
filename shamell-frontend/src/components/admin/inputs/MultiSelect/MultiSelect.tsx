@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useDismissOnOutsideOrEscape } from "../useDismissOnOutsideOrEscape";
 
 export type MultiSelectOption = { id: string; label: string };
 
@@ -48,23 +49,7 @@ export function MultiSelect({
   }, [value, labelById, emptyDisplay, isLoading]);
 
   const close = useCallback(() => setOpen(false), []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => {
-      const el = containerRef.current;
-      if (el && !el.contains(e.target as Node)) close();
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, close]);
+  useDismissOnOutsideOrEscape({ open, onClose: close, containerRef });
 
   const toggle = (id: string) => {
     if (isDisabled) return;

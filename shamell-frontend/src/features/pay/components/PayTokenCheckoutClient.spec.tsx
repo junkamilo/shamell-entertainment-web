@@ -19,7 +19,7 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("@/components/stripe/StripeCheckoutHost", () => ({
+vi.mock("@/components/stripe", () => ({
   StripeCheckoutHost: ({
     clientSecret,
     ariaLabel,

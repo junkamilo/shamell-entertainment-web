@@ -6,8 +6,7 @@ import {
   OnComingEventHubCard,
   type OnComingEventHubCardItem,
 } from "@/features/on-coming-events/components/OnComingEventHubCard";
-import RevealOnView from "@/components/shared/RevealOnView";
-import CatalogCardCarousel from "@/components/shared/CatalogCardCarousel";
+import { RevealOnView, CatalogCardCarousel } from "@/components/shared";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
 import type { OnComingEventsPromo } from "@/lib/on-coming-events/onComingSettings";
 import { mapPublicUpcomingHubEvents } from "@/lib/on-coming-events/mapPublicUpcomingHubEvents";

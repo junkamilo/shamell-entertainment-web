@@ -1,4 +1,4 @@
-import type { VenueTableSize } from "@/components/floor-layout/layoutTypes";
+import type { VenueTableSize } from "@/components/floor-layout";
 
 /** World floor footprint (Three.js X/Z); maps from layout viewBox. */
 export const WORLD_WIDTH = 24;

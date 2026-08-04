@@ -1,4 +1,4 @@
-import type { VenueTableSize } from "@/components/floor-layout/layoutTypes";
+import type { VenueTableSize } from "@/components/floor-layout";
 import { CHAIR_SEAT } from "./chairConstants";
 import { TABLE_WORLD } from "../venueSceneConstants";
 

@@ -1,5 +1,5 @@
 import { mapFloorLayoutFromApi } from "@/features/admin/on-coming-events/layout/lib/mapFloorLayoutFromApi";
-import type { VenueFloorLayout } from "@/components/floor-layout/layoutTypes";
+import type { VenueFloorLayout } from "@/components/floor-layout";
 import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 
 export async function fetchPublicFloorLayout(): Promise<VenueFloorLayout | null> {

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
-import { StripeCheckoutHost } from "@/components/stripe/StripeCheckoutHost";
+import { StripeCheckoutHost } from "@/components/stripe";
 import {
   createClassCheckoutSession,
   type CreateClassCheckoutBody,

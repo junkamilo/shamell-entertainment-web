@@ -6,7 +6,7 @@ import { Pagination } from "@/components/admin/data-display";
 import {
   TABLE_SIZE_LABELS,
   type VenueTableSize,
-} from "@/components/floor-layout/layoutTypes";
+} from "@/components/floor-layout";
 import { formatPriceEn } from "@/lib/admin/pricing";
 import { useAdminVenueReservationsPage } from "../hooks/useAdminVenueReservationsPage";
 

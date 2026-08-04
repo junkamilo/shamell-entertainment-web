@@ -12,6 +12,3 @@ export function buildConfirmDeleteLabel(
   const cut = lastSpace > Math.floor(maxLength * 0.55) ? slice.slice(0, lastSpace) : slice;
   return { display: `${cut.trim()}…`, full, truncated: true };
 }
-
-/** @deprecated Prefer buildConfirmDeleteLabel */
-export const truncateDeleteConfirmLabel = buildConfirmDeleteLabel;

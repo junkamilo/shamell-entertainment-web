@@ -28,7 +28,7 @@ vi.mock("@/components/Footer", () => ({
   default: () => <footer data-testid="site-footer" />,
 }));
 
-vi.mock("@/components/stripe/StripeCheckoutHost", () => ({
+vi.mock("@/components/stripe", () => ({
   StripeCheckoutHost: () => <div data-testid="stripe-checkout" />,
 }));
 
