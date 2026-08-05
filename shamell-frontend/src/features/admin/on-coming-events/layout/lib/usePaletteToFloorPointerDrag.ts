@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, type RefObject } from "react";
-import type { VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
+import type { VenueScene3DHandle } from "@/components/venue-3d";
 import type { PaletteDragKind } from "../hooks/useFloorLayoutEditor";
 import { pickFloorFromClient } from "./floorLayoutRaycast";
 

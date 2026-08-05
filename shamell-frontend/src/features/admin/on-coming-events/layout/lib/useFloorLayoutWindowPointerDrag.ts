@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useVenueSceneCanvas } from "@/components/venue-3d/VenueSceneCanvasContext";
+import { useVenueSceneCanvas } from "@/components/venue-3d";
 
 type DragCallbacks = {
   onMove: (clientX: number, clientY: number) => void;

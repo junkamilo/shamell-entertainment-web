@@ -1,7 +1,7 @@
 "use client";
 
 import { RotateCcw, RotateCw, Save, Trash2 } from "lucide-react";
-import { SCENE_STAGE_SELECT_ID } from "@/components/venue-3d/floorSceneZonesDefaults";
+import { SCENE_STAGE_SELECT_ID } from "@/components/venue-3d";
 
 type Props = {
   dirty: boolean;

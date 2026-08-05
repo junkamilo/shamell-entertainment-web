@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
-import { useVenueSceneCanvas } from "@/components/venue-3d/VenueSceneCanvasContext";
+import { useVenueSceneCanvas } from "@/components/venue-3d";
 import { pickFloorFromClient } from "./floorLayoutRaycast";
 import { useFloorLayoutWindowPointerDrag } from "./useFloorLayoutWindowPointerDrag";
 

@@ -1,4 +1,4 @@
-import { layoutToWorld } from "@/components/venue-3d/layoutCoords3d";
+import { layoutToWorld } from "@/components/venue-3d";
 
 /** Degrees for a banquet chair (front = +Z) to face the stage at world (stageX, stageZ). */
 export function facingStageRotationDegrees(

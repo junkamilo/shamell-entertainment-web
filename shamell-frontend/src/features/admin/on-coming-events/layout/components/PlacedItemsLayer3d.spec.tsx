@@ -5,8 +5,8 @@ import { screen } from "@testing-library/react";
 import { makeFloorLayout } from "../../test/fixtures/onComingEvents.fixture";
 import { renderWithProviders } from "../../test/utils/renderWithProviders";
 
-vi.mock("@/components/venue-3d/PlacedItemsLayer", () => ({
-  default: () => <div data-testid="placed-items-layer" />,
+vi.mock("@/components/venue-3d", () => ({
+  PlacedItemsLayer: () => <div data-testid="placed-items-layer" />,
 }));
 
 vi.mock("../lib/useItemPointerDrag3d", () => ({

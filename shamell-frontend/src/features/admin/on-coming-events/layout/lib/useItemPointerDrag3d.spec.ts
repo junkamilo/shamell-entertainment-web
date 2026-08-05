@@ -8,7 +8,7 @@ vi.mock("@react-three/fiber", () => ({
   useThree: () => ({ camera: {} }),
 }));
 
-vi.mock("@/components/venue-3d/VenueSceneCanvasContext", () => ({
+vi.mock("@/components/venue-3d", () => ({
   useVenueSceneCanvas: () => ({
     getCanvas: () => null,
     setOrbitEnabled: vi.fn(),

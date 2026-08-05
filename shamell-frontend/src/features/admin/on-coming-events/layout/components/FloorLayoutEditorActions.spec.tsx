@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { SCENE_STAGE_SELECT_ID } from "@/components/venue-3d/floorSceneZonesDefaults";
+import { SCENE_STAGE_SELECT_ID } from "@/components/venue-3d";
 import { renderWithProviders } from "../../test/utils/renderWithProviders";
 import FloorLayoutEditorActions, { sceneSelectionLabel } from "./FloorLayoutEditorActions";
 

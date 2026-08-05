@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
 import { getAdminBearerToken } from "@/lib/admin/auth";
 import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
-import type { VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
+import type { VenueScene3DHandle } from "@/components/venue-3d";
 import { totalChairs } from "../lib/floorLayoutStats";
 import { fetchAdminFloorLayout } from "../services/fetchAdminFloorLayout";
 import { fetchAdminFloorLayoutPalette } from "../services/fetchAdminFloorLayoutPalette";
@@ -23,7 +23,7 @@ import {
   readLastSeenPaidReservationAtMs,
   writeLastSeenPaidReservationAtMs,
 } from "@/lib/on-coming-events/onComingEventsReservationsNotice";
-import { carpetZoneFromStage } from "@/components/venue-3d/stage/stageConstants";
+import { carpetZoneFromStage } from "@/components/venue-3d";
 import {
   DEFAULT_FLOOR_SCENE_ZONES,
   isSceneSelectId,

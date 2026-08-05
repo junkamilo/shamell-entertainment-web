@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import type { PaletteDragKind } from "../hooks/useFloorLayoutEditor";
-import { CHAIR_SILHOUETTE_PATH } from "@/components/venue-3d/chair/chairSilhouettePath";
+import { CHAIR_SILHOUETTE_PATH } from "@/components/venue-3d";
 import { tableVisualForSize } from "../lib/floorLayoutShapes";
 import type { FloorLayoutPalette, VenueTableSize } from "../types/floorLayout.types";
 import { TABLE_SIZE_LABELS } from "../types/floorLayout.types";

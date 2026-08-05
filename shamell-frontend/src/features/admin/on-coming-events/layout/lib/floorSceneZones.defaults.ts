@@ -4,7 +4,7 @@ export {
   SCENE_STAGE_SELECT_ID,
   isSceneSelectId,
   mergeFloorSceneZones,
-} from "@/components/venue-3d/floorSceneZonesDefaults";
+} from "@/components/venue-3d";
 
 export type {
   FloorSceneZoneTransform,

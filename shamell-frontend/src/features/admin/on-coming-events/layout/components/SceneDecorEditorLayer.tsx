@@ -3,14 +3,14 @@
 import { useCallback } from "react";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import type { FloorSceneZones } from "@/components/floor-layout";
-import { useVenueSceneCanvas } from "@/components/venue-3d/VenueSceneCanvasContext";
-import { SCENE_STAGE_SELECT_ID } from "@/components/venue-3d/floorSceneZonesDefaults";
 import {
+  useVenueSceneCanvas,
+  SCENE_STAGE_SELECT_ID,
   STAGE_DEPTH,
   STAGE_WIDTH,
   STAIR_COUNT,
   STAIR_DEPTH,
-} from "@/components/venue-3d/stage/stageConstants";
+} from "@/components/venue-3d";
 import { pickWorldFromClient } from "../lib/floorLayoutRaycast";
 import { useFloorLayoutWindowPointerDrag } from "../lib/useFloorLayoutWindowPointerDrag";
 

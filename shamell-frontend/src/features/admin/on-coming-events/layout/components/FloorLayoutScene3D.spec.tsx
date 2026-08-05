@@ -5,17 +5,18 @@ import { screen } from "@testing-library/react";
 import { makeFloorLayout } from "../../test/fixtures/onComingEvents.fixture";
 import { renderWithProviders } from "../../test/utils/renderWithProviders";
 
-vi.mock("@/components/venue-3d/useVenueSceneLayout", () => ({
-  useVenueSceneLayout: () => ({
-    bucket: "desktop",
-    dpr: 1,
-    perfProfile: "balanced",
-  }),
-}));
-
-vi.mock("@/components/venue-3d/VenueScene3D", () => ({
-  default: () => <div data-testid="venue-scene-3d" />,
-}));
+vi.mock("@/components/venue-3d", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/venue-3d")>();
+  return {
+    ...actual,
+    useVenueSceneLayout: () => ({
+      bucket: "desktop",
+      dpr: 1,
+      perfProfile: "balanced",
+    }),
+    VenueScene3D: () => <div data-testid="venue-scene-3d" />,
+  };
+});
 
 vi.mock("./PlacedItemsLayer3d", () => ({
   default: () => <div data-testid="placed-items-layer" />,

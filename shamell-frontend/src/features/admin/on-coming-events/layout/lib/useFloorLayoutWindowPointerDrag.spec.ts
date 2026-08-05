@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "@testing-library/react";
 import { useFloorLayoutWindowPointerDrag } from "./useFloorLayoutWindowPointerDrag";
 
-vi.mock("@/components/venue-3d/VenueSceneCanvasContext", () => ({
+vi.mock("@/components/venue-3d", () => ({
   useVenueSceneCanvas: () => ({
     getCanvas: () => null,
     setOrbitEnabled: vi.fn(),

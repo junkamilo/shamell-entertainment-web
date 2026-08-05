@@ -187,7 +187,7 @@ lib/publicApiBaseUrl.ts        → getPublicApiBaseUrl()
 
 ## On Coming Events (`on-coming-events`)
 
-- **3D scene (R3F):** `src/components/venue-3d/` — `VenueScene3D`, primitive room (`VenueRoomPlaceholder`), modular stage (`venue-3d/stage/`: platform, marquee lights, stairs, palms, backdrop), `carpet/RedCarpetRunner`, `bench/VenueDancerBench`, `CatalogTableMesh` / `StandaloneChairMesh`, `layoutCoords3d`. Phase 2: GLB under `public/venue-3d/` (see `venue-3d/assets/README.md`).
+- **3D scene (R3F):** see **Venue 3D (`components/venue-3d`)**. Phase 2 GLB notes: `venue-3d/assets/README.md`.
 - **Admin editor (Seating layout):** `src/features/admin/on-coming-events/` — route `/admin/on-coming-events/layout`. `next/dynamic` (`ssr: false`). Palette drag via `@dnd-kit/core` + floor raycast (`floorLayoutRaycast.ts`); placed-item drag via `useItemPointerDrag3d` inside the Canvas.
 - **Palette inventory:** `GET /api/v1/floor-layout/admin/palette` — counts from Table seating (`tablesBySize`: Large/Medium/Small × unplaced) and standalone chairs (`availableQuantity` minus placed). Drag assigns next free catalog table of that size.
 - **Placed item kinds:** `catalog_table` (requires `venueTableConfigId`, `tableName`, `size`, `includedChairs`) | `standalone_chair`. Legacy kinds show a clear-items banner; save rejects old kinds.
@@ -216,6 +216,56 @@ Shared layout contract (not admin DS, not public page UI). Import from `@/compon
 - Consumers: admin layout editor, public seats, `venue-3d`, venue-reservations, box-office.
 
 Co-located Vitest: `npx vitest run src/components/floor-layout`.
+
+## Venue 3D (`components/venue-3d`)
+
+R3F render kitchen for the venue floor (admin editor + public seat select). Import from `@/components/venue-3d`.
+
+### Layout / types
+
+- **Persisted layout types** stay in `@/components/floor-layout` (`PlacedLayoutItem`, `FloorLayoutPalette`, `FloorSceneZones`) — do not duplicate.
+- **Venue-local props** live next to components and in cluster/root `types.ts` (`VenueScene3DProps`, `PlacedItemsLayerProps`, `VenueSceneLegendProps`, mesh props). Dual export: `export default` + `export { Name }` per UI folder.
+
+### Tree
+
+```text
+venue-3d/
+├── index.ts, types.ts
+├── layoutCoords3d.ts, venueSceneConstants.ts, venueScenePerformance.ts, …
+├── scene/          # VenueScene3D, FloorPickPlane, contexts
+├── items/          # PlacedItemsLayer, CatalogTableMesh, bubbles, lib/
+├── room/           # VenueRoomPlaceholder, VenueWoodFloor, VenueSceneLegend, lib/
+├── stage/          # VenueStage + Stage* folders, stageConstants, lib/
+├── chair/
+│   ├── VenueBanquetChairMesh/ (+ smoke)
+│   ├── InstancedBanquetChairs/ (+ smoke)
+│   └── lib/   # chairConstants, silhouette, placements, builder, geometries, resolveChairMaterialState (+ pure specs)
+
+├── carpet/RedCarpetRunner/   # smoke: RedCarpetRunner.spec.tsx
+└── bench/VenueDancerBench/   # organized; not mounted in room
+```
+
+- Modular stage composition: platform, stairs, backdrop/signage, perimeter + zone lights, palms via **`StageCornerPlants`** inside `VenueStage`.
+- **`VenueDancerBench`**: folderized optional décor — **not wired** into `VenueRoomPlaceholder` / `VenueStage` (avoid unrequested room visual change). Smoke: `bench/VenueDancerBench/VenueDancerBench.spec.tsx`.
+
+### Boundaries & frozen contracts
+
+- **`floor-layout`** = persisted layout types/data; **`venue-3d`** = 3D render only; admin drag/raycast stay in `features/admin/on-coming-events/layout`.
+- **Frozen (prod seats already sold):** do not tune without fixtures + product approval — `WORLD_WIDTH`/`WORLD_DEPTH`, `layoutToWorld`/`worldToLayout`, `TABLE_WORLD` + `buildTableChairPlacements`, layout kinds + `item.id` ↔ `reservedIds`.
+- `VenueScene3D` named export for `next/dynamic` (`.then(m => ({ default: m.VenueScene3D }))`).
+
+### QA tiers (no real WebGL)
+
+1. **Pure** — helpers/constants (Vitest node): coords, zones, chair placements/builder, materials, plank/palm/legend helpers, camera/perf.
+2. **Presentational** — RTL + mocks of `@react-three/fiber` / `@react-three/drei` (`Html` → `div`).
+3. **Host smoke** — `VenueScene3D` / `PlacedItemsLayer` with Canvas/children stubs.
+
+```bash
+npx vitest run src/components/venue-3d
+npx eslint src/components/venue-3d
+```
+
+Manual smoke: public seats with reserved items (grey / no checkout).
 
 ## Public pay links (`src/app/pay/` + `src/features/pay/`)
 

@@ -1,6 +1,6 @@
 "use client";
 
-import PlacedItemsLayer from "@/components/venue-3d/PlacedItemsLayer";
+import { PlacedItemsLayer } from "@/components/venue-3d";
 import type { LayoutItemLabel } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { useItemPointerDrag3d } from "../lib/useItemPointerDrag3d";
 import type { PlacedLayoutItem } from "../types/floorLayout.types";

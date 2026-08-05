@@ -1,8 +1,11 @@
 "use client";
 
-import VenueScene3D, { type VenueScene3DHandle } from "@/components/venue-3d/VenueScene3D";
-import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
-import { isSceneSelectId } from "@/components/venue-3d/floorSceneZonesDefaults";
+import {
+  VenueScene3D,
+  useVenueSceneLayout,
+  isSceneSelectId,
+  type VenueScene3DHandle,
+} from "@/components/venue-3d";
 import type { LayoutItemLabel } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import type { FloorSceneZones, PlacedLayoutItem } from "../types/floorLayout.types";
 import FloorLayoutEditorActions, { sceneSelectionLabel } from "./FloorLayoutEditorActions";

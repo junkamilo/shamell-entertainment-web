@@ -1,4 +1,4 @@
-import { mergeFloorSceneZones } from "@/components/venue-3d/floorSceneZonesDefaults";
+import { mergeFloorSceneZones } from "@/components/venue-3d";
 import type { PlacedLayoutItem, VenueFloorLayout, VenueTableSize } from "../types/floorLayout.types";
 import {
   DEFAULT_VIEW_BOX_HEIGHT,

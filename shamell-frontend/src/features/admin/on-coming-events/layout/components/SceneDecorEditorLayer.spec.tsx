@@ -7,12 +7,16 @@ vi.mock("@react-three/fiber", () => ({
   useThree: () => ({ camera: {} }),
 }));
 
-vi.mock("@/components/venue-3d/VenueSceneCanvasContext", () => ({
-  useVenueSceneCanvas: () => ({
-    getCanvas: () => null,
-    setOrbitEnabled: vi.fn(),
-  }),
-}));
+vi.mock("@/components/venue-3d", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/venue-3d")>();
+  return {
+    ...actual,
+    useVenueSceneCanvas: () => ({
+      getCanvas: () => null,
+      setOrbitEnabled: vi.fn(),
+    }),
+  };
+});
 
 vi.mock("../lib/useFloorLayoutWindowPointerDrag", () => ({
   useFloorLayoutWindowPointerDrag: () => ({

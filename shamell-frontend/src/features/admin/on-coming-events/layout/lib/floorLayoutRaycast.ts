@@ -1,6 +1,5 @@
 import * as THREE from "three";
-import { worldToLayout } from "@/components/venue-3d/layoutCoords3d";
-import { WORLD_DEPTH, WORLD_WIDTH } from "@/components/venue-3d/venueSceneConstants";
+import { worldToLayout, WORLD_DEPTH, WORLD_WIDTH } from "@/components/venue-3d";
 
 const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();

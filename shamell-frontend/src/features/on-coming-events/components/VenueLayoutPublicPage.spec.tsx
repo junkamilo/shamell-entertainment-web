@@ -31,21 +31,25 @@ vi.mock("@/components/Footer", () => ({
   default: () => <footer data-testid="site-footer" />,
 }));
 
-vi.mock("@/components/venue-3d/useVenueSceneLayout", () => ({
-  useVenueSceneLayout: () => ({
-    bucket: "phone",
-    perfProfile: "mobile",
-    viewportHeight: 480,
-    viewportMinHeight: 280,
-    isCoarsePointer: false,
-    isPhone: true,
-    isTablet: false,
-    isLaptop: false,
-    isTv: false,
-    dpr: 1,
-    chromeCss: "14rem",
-  }),
-}));
+vi.mock("@/components/venue-3d", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/venue-3d")>();
+  return {
+    ...actual,
+    useVenueSceneLayout: () => ({
+      bucket: "phone",
+      perfProfile: "mobile",
+      viewportHeight: 480,
+      viewportMinHeight: 280,
+      isCoarsePointer: false,
+      isPhone: true,
+      isTablet: false,
+      isLaptop: false,
+      isTv: false,
+      dpr: 1,
+      chromeCss: "14rem",
+    }),
+  };
+});
 
 vi.mock("@/hooks/use-has-mounted", () => ({
   useHasMounted: () => true,

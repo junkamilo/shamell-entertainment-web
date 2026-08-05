@@ -17,8 +17,10 @@ import {
   onComingEventHubHref,
 } from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
-import VenueSceneLegend from "@/components/venue-3d/VenueSceneLegend";
-import { useVenueSceneLayout } from "@/components/venue-3d/useVenueSceneLayout";
+import {
+  VenueSceneLegend,
+  useVenueSceneLayout,
+} from "@/components/venue-3d";
 import type { VenueTableConfig } from "@/features/admin/venue-tables/types/venueTables.types";
 import type { StandaloneChairConfig } from "@/features/admin/venue-tables/types/standaloneChairs.types";
 import type { VenueFloorLayout } from "@/components/floor-layout";
@@ -59,9 +61,12 @@ function VenueSceneLoadingPlaceholder() {
   );
 }
 
-const VenueScene3D = dynamic(() => import("@/components/venue-3d/VenueScene3D"), {
-  ssr: false,
-});
+const VenueScene3D = dynamic(
+  () => import("@/components/venue-3d").then((m) => ({ default: m.VenueScene3D })),
+  {
+    ssr: false,
+  },
+);
 
 type Props = { eventSlug?: string };
 
