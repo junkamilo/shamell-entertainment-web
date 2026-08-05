@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
-import { RevealFromDepth } from "@/components/shared";
+import { RevealFromDepth, ShamellBackButton } from "@/components/shared";
 import bailarinaLogo from "@/public/01_bailarina.png";
 
 const gateCards = [
@@ -25,7 +25,10 @@ const gateCards = [
 
 export default function ConciergeGate() {
   return (
-    <div className="mx-auto max-w-5xl pt-8 text-center sm:pt-10">
+    <div className="relative mx-auto max-w-5xl pt-8 text-center sm:pt-10">
+      <div className="absolute left-0 top-2 z-10 sm:top-4">
+        <ShamellBackButton fallbackHref="/" label="Back" hideLabelOnMobile />
+      </div>
       <RevealFromDepth delay={0}>
         <div className="mx-auto mb-8 flex h-20 w-20 items-center justify-center sm:h-24 sm:w-24">
           <Image

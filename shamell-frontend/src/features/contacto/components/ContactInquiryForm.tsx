@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
-import { RevealFromDepth } from "@/components/shared";
+import { RevealFromDepth, ShamellBackButton } from "@/components/shared";
 import bailarinaLogo from "@/public/01_bailarina.png";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { mergedInquiryCodeFromSelections } from "../lib/inquiry/inquiryCodeUtils";
@@ -27,8 +27,19 @@ import type { ContactInquiryPhaseProps } from "./contact-inquiry/contactInquiryP
 export type { ContactInquiryFormProps, ContactLine } from "../types/contacto.types";
 import type { ContactInquiryFormProps } from "../types/contacto.types";
 
+function contactInquiryHomeFallbackHref(
+  entrySource: ContactInquiryFormProps["entrySource"],
+  initialCatalog: ContactInquiryFormProps["initialCatalog"],
+): string {
+  if (initialCatalog?.kind === "event") return "/#experiences";
+  if (initialCatalog?.kind === "service" || entrySource === "home_service_card") {
+    return "/#services";
+  }
+  return "/";
+}
+
 export default function ContactInquiryForm(props: ContactInquiryFormProps) {
-  const { initialCatalog, hadServiceTypeInUrl } = props;
+  const { initialCatalog, hadServiceTypeInUrl, entrySource } = props;
   const isLg = useMediaQuery("(min-width: 1024px)");
   const {
     wizard,
@@ -105,7 +116,14 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
 
   return (
     <div className="w-full max-w-none text-left">
-      <header className="mb-10 px-0 pt-2 text-center sm:mb-12 sm:pt-4">
+      <header className="relative mb-10 px-0 pt-2 text-center sm:mb-12 sm:pt-4">
+        <div className="absolute left-0 top-2 z-10 sm:top-4">
+          <ShamellBackButton
+            href={contactInquiryHomeFallbackHref(entrySource, initialCatalog)}
+            label="Back"
+            hideLabelOnMobile
+          />
+        </div>
         <RevealFromDepth delay={0}>
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center sm:mb-8 sm:h-24 sm:w-24">
             <Image

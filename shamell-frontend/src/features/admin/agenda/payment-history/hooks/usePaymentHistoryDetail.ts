@@ -18,15 +18,17 @@ export function usePaymentHistoryDetail(row: PaymentRowRef, isOpen: boolean) {
   const [isLoadingDetail, setIsLoadingDetail] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
+  const flow = row?.flow;
+  const id = row?.id;
+
   useEffect(() => {
-    if (!isOpen || !row) {
+    if (!isOpen || flow == null || id == null) {
       setDetail(null);
       setDetailError(null);
       setIsLoadingDetail(false);
       return;
     }
 
-    const { flow, id } = row;
     const token = getAdminBearerToken();
     if (!token) {
       setDetailError("Not signed in.");
@@ -55,8 +57,7 @@ export function usePaymentHistoryDetail(row: PaymentRowRef, isOpen: boolean) {
     return () => {
       cancelled = true;
     };
-    // Depend on stable row fields — a new `{ flow, id }` object each render must not re-fetch.
-  }, [isOpen, row?.flow, row?.id]);
+  }, [isOpen, flow, id]);
 
   return { detail, isLoadingDetail, detailError };
 }

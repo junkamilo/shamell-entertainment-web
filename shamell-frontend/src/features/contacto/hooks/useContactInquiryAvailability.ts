@@ -30,7 +30,16 @@ export function useContactInquiryAvailability({
   >([]);
 
   const bookingTz = useMemo(() => process.env.NEXT_PUBLIC_BOOKING_TZ ?? "America/New_York", []);
-  const { rules: availabilityRules } = usePublicAvailability(true);
+  // Public wizard: one fetch (cached) — no focus/interval spam. Refresh when date picker opens.
+  const { rules: availabilityRules, reload: reloadAvailability } = usePublicAvailability(true, {
+    polling: false,
+  });
+
+  useEffect(() => {
+    if (!datePickerOpen) return;
+    reloadAvailability({ force: true, quiet: true });
+  }, [datePickerOpen, reloadAvailability]);
+
   const blockedIsoDates = useMemo(() => {
     if (!availabilityRules?.weekly) return new Set<string>();
     return expandBlockedDates(bookingTz, availabilityRules.weekly, availabilityRules.closures, 420);

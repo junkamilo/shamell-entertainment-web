@@ -8,14 +8,17 @@ import { renderWithProviders } from "../test/utils/renderWithProviders";
 
 vi.mock("motion/react", () => ({
   motion: {
-    button: ({
-      children,
-      whileTap: _whileTap,
-      ...props
-    }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-      children?: React.ReactNode;
-      whileTap?: unknown;
-    }) => <button {...props}>{children}</button>,
+    button: (
+      props: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+        children?: React.ReactNode;
+        whileTap?: unknown;
+      },
+    ) => {
+      const domProps = { ...props };
+      delete domProps.whileTap;
+      const { children, ...rest } = domProps;
+      return <button {...rest}>{children}</button>;
+    },
   },
 }));
 

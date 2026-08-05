@@ -26,6 +26,11 @@ vi.mock("@/hooks/use-media-query", () => ({
 
 vi.mock("@/components/shared", () => ({
   RevealFromDepth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ShamellBackButton: ({ label = "Back" }: { label?: string }) => (
+    <button type="button" aria-label={label}>
+      {label}
+    </button>
+  ),
 }));
 
 vi.mock("./CatalogOfferingDetailModal", () => ({ default: () => null }));
@@ -43,6 +48,7 @@ describe("ContactInquiryForm", () => {
     );
     renderWithProviders(<ContactInquiryForm entrySource="contact_page" />);
     expect(screen.getByRole("heading", { name: /booking/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: /^back$/i }).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("navigation", { name: "Form progress" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /1\. offering/i })).toBeInTheDocument();
   });

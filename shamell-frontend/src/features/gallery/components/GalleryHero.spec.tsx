@@ -19,7 +19,6 @@ vi.mock("next/link", () => ({
   }: {
     href: string;
     children: React.ReactNode;
-    className?: string;
   }) => (
     <a href={href} {...rest}>
       {children}
@@ -27,15 +26,34 @@ vi.mock("next/link", () => ({
   ),
 }));
 
+vi.mock("@/components/shared", () => ({
+  ShamellBackButton: ({
+    label = "Back",
+    href,
+  }: {
+    label?: string;
+    href?: string;
+  }) =>
+    href ? (
+      <a href={href} aria-label={label}>
+        {label}
+      </a>
+    ) : (
+      <button type="button" aria-label={label}>
+        {label}
+      </button>
+    ),
+}));
+
 import { GalleryHero } from "./GalleryHero";
 
 describe("GalleryHero", () => {
-  it("renders gallery title and back link", () => {
+  it("renders gallery title and back link to home gallery section", () => {
     renderWithProviders(<GalleryHero />);
     expect(
       screen.getByRole("heading", { name: "GALLERY" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /back/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /^back$/i })).toHaveAttribute(
       "href",
       "/#gallery",
     );

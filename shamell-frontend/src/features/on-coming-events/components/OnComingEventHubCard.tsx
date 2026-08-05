@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EventCatalogCardHero } from "@/components/catalog";
@@ -74,6 +75,7 @@ export function OnComingEventHubCard({
   /** Eager-load the hero image (first home card). */
   priorityHero?: boolean;
 }) {
+  const router = useRouter();
   const purchaseMode = event.purchaseMode ?? (
     event.experienceType === "VENUE_SEATING"
       ? "venue_seating"
@@ -100,6 +102,18 @@ export function OnComingEventHubCard({
     (isFixedTicket || isSeating) && isFutureEventStart(event.eventStartsAt);
   const heroIsVideo = event.heroMediaType === "VIDEO";
 
+  const handleCtaClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (soldOut) {
+      e.preventDefault();
+      return;
+    }
+    onNavigateStart?.();
+    // Soft-nav can be cancelled if the home promo remounts mid-click (settings
+    // refresh). Push explicitly so seats/detail always open from the hub CTA.
+    e.preventDefault();
+    router.push(href);
+  };
+
   return (
     <article
       className={cn(
@@ -117,12 +131,23 @@ export function OnComingEventHubCard({
         "motion-reduce:transition-colors",
       )}
     >
-      <div className="pointer-events-none absolute inset-0 z-20 rounded-2xl" aria-hidden>
-        <span className="absolute left-2.5 top-2.5 h-8 w-8 rounded-tl-[8px] border-l border-t border-gold/45" />
-        <span className="absolute right-2.5 top-2.5 h-8 w-8 rounded-tr-[8px] border-r border-t border-gold/45" />
-        <span className="absolute bottom-2.5 left-2.5 h-8 w-8 rounded-bl-[8px] border-b border-l border-gold/35" />
-        <span className="absolute bottom-2.5 right-2.5 h-8 w-8 rounded-br-[8px] border-b border-r border-gold/35" />
-      </div>
+      {/* Corner ornaments only — avoid a full-card overlay that can swallow taps */}
+      <span
+        className="pointer-events-none absolute left-2.5 top-2.5 z-20 h-8 w-8 rounded-tl-[8px] border-l border-t border-gold/45"
+        aria-hidden
+      />
+      <span
+        className="pointer-events-none absolute right-2.5 top-2.5 z-20 h-8 w-8 rounded-tr-[8px] border-r border-t border-gold/45"
+        aria-hidden
+      />
+      <span
+        className="pointer-events-none absolute bottom-2.5 left-2.5 z-20 h-8 w-8 rounded-bl-[8px] border-b border-l border-gold/35"
+        aria-hidden
+      />
+      <span
+        className="pointer-events-none absolute bottom-2.5 right-2.5 z-20 h-8 w-8 rounded-br-[8px] border-b border-r border-gold/35"
+        aria-hidden
+      />
 
       <div className="relative">
         <EventCatalogCardHero
@@ -185,11 +210,12 @@ export function OnComingEventHubCard({
 
         <Link
           href={href}
-          onClick={() => onNavigateStart?.()}
+          prefetch={!soldOut}
+          onClick={handleCtaClick}
           className={cn(
-            "relative mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 overflow-hidden border px-4 py-2.5 font-brand text-[10px] font-semibold tracking-[0.16em] uppercase",
+            "relative z-30 mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 overflow-hidden border px-4 py-2.5 font-brand text-[10px] font-semibold tracking-[0.16em] uppercase",
             soldOut
-              ? "pointer-events-auto cursor-default border-foreground/15 bg-black/30 text-foreground/40"
+              ? "cursor-default border-foreground/15 bg-black/30 text-foreground/40"
               : [
                   "border-gold/35 bg-black/40 text-gold",
                   "transition-all duration-300",

@@ -1,6 +1,7 @@
 import AboutSection from "@/components/home/AboutSection";
 import OnComingEventsPromoSection from "@/components/home/OnComingEventsPromoSection";
 import ExperiencesSection from "@/components/home/ExperiencesSection";
+import HomeSectionHashScroll from "@/components/home/HomeSectionHashScroll";
 import { Footer, SiteHeader } from "@/components/shared";
 import GallerySection from "@/components/home/GallerySection";
 import HeroSection from "@/components/home/HeroSection";
@@ -25,6 +26,7 @@ export default async function Home() {
 
   return (
     <main className="relative z-10 min-h-screen text-foreground">
+      <HomeSectionHashScroll />
       <SiteHeader />
       <HeroSection initialPhotos={headerPhotos} initialHeaderText={headerText} />
       <ExperiencesSection />

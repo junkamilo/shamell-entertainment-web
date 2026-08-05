@@ -34,32 +34,31 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
+const NEXT_LINK_ONLY_PROPS = new Set([
+  "prefetch",
+  "replace",
+  "scroll",
+  "shallow",
+  "locale",
+  "passHref",
+  "legacyBehavior",
+  "as",
+]);
+
 vi.mock("next/link", () => ({
-  default: ({
-    href,
-    children,
-    prefetch: _prefetch,
-    replace: _replace,
-    scroll: _scroll,
-    shallow: _shallow,
-    locale: _locale,
-    passHref: _passHref,
-    legacyBehavior: _legacyBehavior,
-    as: _as,
-    ...rest
-  }: {
+  default: (props: {
     href: string;
     children: React.ReactNode;
-    prefetch?: boolean;
-    replace?: boolean;
-    scroll?: boolean;
-    shallow?: boolean;
-    locale?: string | false;
-    passHref?: boolean;
-    legacyBehavior?: boolean;
-    as?: string;
     [key: string]: unknown;
-  }) => React.createElement("a", { href, ...rest }, children),
+  }) => {
+    const { href, children, ...rest } = props;
+    const domProps: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(rest)) {
+      if (NEXT_LINK_ONLY_PROPS.has(key)) continue;
+      domProps[key] = value;
+    }
+    return React.createElement("a", { href, ...domProps }, children);
+  },
 }));
 
 beforeAll(() => {

@@ -13,7 +13,7 @@ export function OnComingEventsHubHero({ onBackNavigateStart }: Props) {
     <header className="relative mb-10">
       <nav className="mb-6 md:mb-8" aria-label="Page navigation">
         <ShamellBackButton
-          href="/"
+          href="/#on-coming-events"
           label="Back"
           hideLabelOnMobile
           onNavigateStart={onBackNavigateStart}

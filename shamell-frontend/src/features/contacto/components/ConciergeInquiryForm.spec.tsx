@@ -9,7 +9,11 @@ const routerReplace = vi.hoisted(() => vi.fn());
 const submitConciergeInquiry = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: routerReplace }),
+  useRouter: () => ({
+    replace: routerReplace,
+    push: vi.fn(),
+    back: vi.fn(),
+  }),
 }));
 
 vi.mock("next/image", () => ({
@@ -19,14 +23,12 @@ vi.mock("next/image", () => ({
   ),
 }));
 
-vi.mock("next/link", () => ({
-  default: ({
-    children,
-    href,
-  }: {
-    children: React.ReactNode;
-    href: string;
-  }) => <a href={href}>{children}</a>,
+vi.mock("@/components/shared", () => ({
+  ShamellBackButton: ({ label = "Back" }: { label?: string }) => (
+    <button type="button" aria-label={label}>
+      {label}
+    </button>
+  ),
 }));
 
 vi.mock("../services/submitConciergeInquiry", () => ({
@@ -49,6 +51,8 @@ describe("ConciergeInquiryForm", () => {
     expect(
       screen.getByRole("heading", { name: /tell us your vision/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^back$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /back to inquiry options/i })).not.toBeInTheDocument();
   });
 
   it("validates required fields on submit", async () => {

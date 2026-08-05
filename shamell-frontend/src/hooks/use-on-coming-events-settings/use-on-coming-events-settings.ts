@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import { ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
 import {
@@ -14,46 +14,105 @@ export type { OnComingEventsPromo };
 /** @deprecated Use OnComingEventsPromo */
 export type VenueLayoutPromo = OnComingEventsPromo;
 
+const CACHE_TTL_MS = 60_000;
+let cachedPromo: OnComingEventsPromo | null = null;
+let cachedAt = 0;
+let inFlight: Promise<OnComingEventsPromo> | null = null;
+
+export function clearOnComingEventsSettingsCache(): void {
+  cachedPromo = null;
+  cachedAt = 0;
+  inFlight = null;
+}
+
+function readFreshCache(): OnComingEventsPromo | null {
+  if (!cachedPromo) return null;
+  if (Date.now() - cachedAt > CACHE_TTL_MS) return null;
+  return cachedPromo;
+}
+
+function writeCache(promo: OnComingEventsPromo): void {
+  cachedPromo = promo;
+  cachedAt = Date.now();
+}
+
+function seedCache(settings: OnComingEventsPromo): OnComingEventsPromo {
+  const normalized = normalizeOnComingSettings(settings);
+  writeCache(normalized);
+  return normalized;
+}
+
+async function fetchOnComingSettings(): Promise<OnComingEventsPromo> {
+  if (inFlight) return inFlight;
+
+  inFlight = (async () => {
+    const apiBaseUrl = getPublicApiBaseUrl();
+    const response = await fetch(`${apiBaseUrl}/api/v1/on-coming-events/settings`, {
+      cache: "no-store",
+    });
+    if (!response.ok) throw new Error("settings unavailable");
+    const promo = normalizeOnComingSettings(await response.json());
+    writeCache(promo);
+    return promo;
+  })().finally(() => {
+    inFlight = null;
+  });
+
+  return inFlight;
+}
+
+type LoadOptions = {
+  quiet?: boolean;
+  /** Bypass TTL cache (admin settings-changed, explicit reload). */
+  force?: boolean;
+};
+
 export function useOnComingEventsSettings(
   initialSettings?: OnComingEventsPromo | null,
 ) {
-  const [promo, setPromo] = useState<OnComingEventsPromo>(
-    initialSettings ?? defaultOnComingSettings,
-  );
-  const [isLoading, setIsLoading] = useState(!initialSettings);
-  const skipInitialLoad = useRef(Boolean(initialSettings));
+  const [promo, setPromo] = useState<OnComingEventsPromo>(() => {
+    if (initialSettings) return seedCache(initialSettings);
+    return readFreshCache() ?? defaultOnComingSettings;
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    if (initialSettings) return false;
+    return !readFreshCache();
+  });
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
+  const load = useCallback(async (opts?: LoadOptions) => {
+    if (typeof window === "undefined") return;
+
+    if (!opts?.force) {
+      const hit = readFreshCache();
+      if (hit) {
+        setPromo(hit);
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    if (!opts?.quiet) setIsLoading(true);
     try {
-      const apiBaseUrl = getPublicApiBaseUrl();
-      const response = await fetch(`${apiBaseUrl}/api/v1/on-coming-events/settings`, {
-        next: { revalidate: 120 },
-      });
-      if (!response.ok) throw new Error("settings unavailable");
-      setPromo(normalizeOnComingSettings(await response.json()));
+      const next = await fetchOnComingSettings();
+      setPromo(next);
     } catch {
-      setPromo(defaultOnComingSettings);
+      if (!opts?.quiet) {
+        setPromo(defaultOnComingSettings);
+        writeCache(defaultOnComingSettings);
+      }
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    // SSR already seeded the settings; skip the first client fetch.
-    if (skipInitialLoad.current) {
-      skipInitialLoad.current = false;
-    } else {
-      void load();
-    }
+    void load();
 
-    const onChanged = () => void load();
+    // Admin / same-tab updates only — avoid focus spam across SiteHeader + promo.
+    const onChanged = () => void load({ quiet: true, force: true });
     window.addEventListener(ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT, onChanged);
-    window.addEventListener("focus", onChanged);
-
     return () => {
       window.removeEventListener(ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT, onChanged);
-      window.removeEventListener("focus", onChanged);
     };
   }, [load]);
 

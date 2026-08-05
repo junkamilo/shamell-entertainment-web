@@ -3,11 +3,11 @@
 import type { FormEvent, HTMLAttributes } from "react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, ChevronDown, Loader2 } from "lucide-react";
+import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ShamellBackButton } from "@/components/shared";
 import { CONTACTO_PATH } from "@/lib/contacto/contactInquiryConstants";
 import bailarinaLogo from "@/public/01_bailarina.png";
 import { submitConciergeInquiry } from "../services/submitConciergeInquiry";
@@ -121,13 +121,11 @@ export default function ConciergeInquiryForm() {
   return (
     <div className="relative w-full">
       <nav className="absolute left-0 top-0 z-10" aria-label="Inquiry navigation">
-        <Link
-          href={CONTACTO_PATH}
-          className="btn-outline-gold inline-flex max-w-[min(100%,20rem)] shrink-0 flex-wrap items-center gap-2 px-4 py-2 font-brand text-[10px] tracking-[0.16em] sm:max-w-none sm:px-5"
-        >
-          <ArrowLeft className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          Back to inquiry options
-        </Link>
+        <ShamellBackButton
+          fallbackHref={CONTACTO_PATH}
+          label="Back"
+          hideLabelOnMobile
+        />
       </nav>
 
       <div className="mx-auto max-w-4xl text-left">

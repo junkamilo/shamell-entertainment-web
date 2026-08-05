@@ -23,6 +23,11 @@ vi.mock("next/link", () => ({
 
 vi.mock("@/components/shared", () => ({
   RevealFromDepth: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  ShamellBackButton: ({ label = "Back" }: { label?: string }) => (
+    <button type="button" aria-label={label}>
+      {label}
+    </button>
+  ),
 }));
 
 import ConciergeGate from "./ConciergeGate";
@@ -33,6 +38,7 @@ describe("ConciergeGate", () => {
     expect(
       screen.getByRole("heading", { name: /how clear is your vision/i }),
     ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^back$/i })).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /start booking inquiry/i }),
     ).toHaveAttribute("href", "/contacto?mode=booking");

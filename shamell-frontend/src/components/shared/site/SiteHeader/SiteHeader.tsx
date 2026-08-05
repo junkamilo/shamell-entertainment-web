@@ -20,6 +20,7 @@ import bailarinaLogo from "@/public/01_bailarina.png";
 import {
   buildHomeScrollSectionIds,
   buildSiteHeaderNavItems,
+  syncHomeSectionHash,
   type SiteHeaderNavItem,
 } from "../lib/site-header-nav";
 
@@ -196,9 +197,17 @@ export default function SiteHeader() {
   useEffect(() => {
     if (pathname !== "/") return;
 
-    const sync = () => {
-      setActiveSection(computeHomeActiveSectionId(homeScrollSectionIds));
-    };
+  // Throttle hash sync — replaceState on every scroll frame feels like scroll jank.
+  let hashSyncRaf = 0;
+  const sync = () => {
+    const next = computeHomeActiveSectionId(homeScrollSectionIds);
+    setActiveSection(next);
+    if (hashSyncRaf) return;
+    hashSyncRaf = window.requestAnimationFrame(() => {
+      hashSyncRaf = 0;
+      syncHomeSectionHash(next);
+    });
+  };
 
     sync();
     window.addEventListener("scroll", sync, { passive: true });
@@ -211,6 +220,7 @@ export default function SiteHeader() {
       window.removeEventListener("resize", sync);
       window.removeEventListener("hashchange", sync);
       window.clearTimeout(t);
+      if (hashSyncRaf) window.cancelAnimationFrame(hashSyncRaf);
     };
   }, [pathname, homeScrollSectionIds]);
 

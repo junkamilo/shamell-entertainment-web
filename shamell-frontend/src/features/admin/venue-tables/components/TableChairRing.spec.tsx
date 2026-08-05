@@ -16,16 +16,25 @@ type MotionPassthrough = {
   layout?: unknown;
 };
 
-function stripMotionProps<T extends MotionPassthrough>({
-  whileTap: _whileTap,
-  initial: _initial,
-  animate: _animate,
-  exit: _exit,
-  transition: _transition,
-  layout: _layout,
-  ...rest
-}: T) {
-  return rest;
+const MOTION_OMIT = new Set([
+  "whileTap",
+  "initial",
+  "animate",
+  "exit",
+  "transition",
+  "layout",
+]);
+
+function stripMotionProps<T extends MotionPassthrough>(props: T) {
+  const rest: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(props)) {
+    if (MOTION_OMIT.has(key)) continue;
+    rest[key] = value;
+  }
+  return rest as Omit<
+    T,
+    "whileTap" | "initial" | "animate" | "exit" | "transition" | "layout"
+  >;
 }
 
 vi.mock("motion/react", () => ({

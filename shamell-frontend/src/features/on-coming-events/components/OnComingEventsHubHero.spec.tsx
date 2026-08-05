@@ -21,7 +21,7 @@ describe("OnComingEventsHubHero", () => {
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back/i })).toHaveAttribute(
       "href",
-      "/",
+      "/#on-coming-events",
     );
   });
 });

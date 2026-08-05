@@ -75,20 +75,24 @@ vi.mock("motion/react", () => {
 });
 
 vi.mock("next/link", () => ({
-  default: ({
-    href,
-    children,
-    prefetch: _prefetch,
-    ...rest
-  }: {
+  default: (props: {
     href: string;
     children: React.ReactNode;
     prefetch?: boolean;
-  }) => (
-    <a href={href} {...rest}>
-      {children}
-    </a>
-  ),
+    [key: string]: unknown;
+  }) => {
+    const { href, children, ...rest } = props;
+    const domProps: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(rest)) {
+      if (key === "prefetch") continue;
+      domProps[key] = value;
+    }
+    return (
+      <a href={href} {...domProps}>
+        {children}
+      </a>
+    );
+  },
 }));
 
 vi.mock("next/dynamic", () => ({
