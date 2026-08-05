@@ -21,14 +21,14 @@ export {
   useFloorSceneZones,
 } from "./scene/FloorSceneZonesContext";
 
-export { useVenueSceneLayout } from "./useVenueSceneLayout";
-export type { VenueSceneLayoutVariant } from "./useVenueSceneLayout";
+export { useVenueSceneLayout } from "./lib/useVenueSceneLayout";
+export type { VenueSceneLayoutVariant } from "./lib/useVenueSceneLayout";
 
 export {
   layoutToWorld,
   worldToLayout,
   clientToLayout,
-} from "./layoutCoords3d";
+} from "./lib/layoutCoords3d";
 
 export {
   WORLD_WIDTH,
@@ -39,11 +39,11 @@ export {
   ASPECT_WIDE_MIN,
   CAMERA_PRESETS_BY_BUCKET,
   CAMERA_PRESET_ADMIN,
-} from "./venueSceneConstants";
+} from "./lib/venueSceneConstants";
 export type {
   VenueSceneLayoutBucket,
   VenueCameraPreset,
-} from "./venueSceneConstants";
+} from "./lib/venueSceneConstants";
 
 export {
   DEFAULT_FLOOR_SCENE_ZONES,
@@ -51,7 +51,7 @@ export {
   SCENE_CARPET_SELECT_ID,
   isSceneSelectId,
   mergeFloorSceneZones,
-} from "./floorSceneZonesDefaults";
+} from "./lib/floorSceneZonesDefaults";
 
 export { CHAIR_SILHOUETTE_PATH } from "./chair/lib/chairSilhouettePath";
 

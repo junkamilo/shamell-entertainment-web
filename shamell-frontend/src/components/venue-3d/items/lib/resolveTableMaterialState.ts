@@ -1,4 +1,4 @@
-import { VENUE_COLORS } from "../../venueSceneConstants";
+import { VENUE_COLORS } from "../../lib/venueSceneConstants";
 
 export type TableMaterialState = {
   topColor: string;

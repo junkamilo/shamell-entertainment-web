@@ -1,5 +1,5 @@
 import { DateField } from "@/components/admin/inputs";
-import ShamellTime12hColumns from "@/components/ShamellTime12hColumns";
+import { ShamellTime12hColumns } from "@/components/shared";
 import { formatTimeDisplayUs, hhmmToParts, partsToHHMM } from "@/lib/contacto/contactLogisticsUtils";
 
 type Props = {

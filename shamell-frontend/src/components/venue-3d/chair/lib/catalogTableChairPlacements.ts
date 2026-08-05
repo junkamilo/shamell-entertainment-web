@@ -1,6 +1,6 @@
 import type { VenueTableSize } from "@/components/floor-layout";
 import { CHAIR_SEAT } from "./chairConstants";
-import { TABLE_WORLD } from "../../venueSceneConstants";
+import { TABLE_WORLD } from "../../lib/venueSceneConstants";
 
 /** Clearance from table edge to chair seat (world meters). */
 export const CHAIR_TABLE_EDGE_GAP = 0.06;

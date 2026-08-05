@@ -1,8 +1,7 @@
 "use client";
 
 import { Suspense } from "react";
-import SiteHeader from "@/components/SiteHeader";
-import Footer from "@/components/Footer";
+import { Footer, SiteHeader } from "@/components/shared";
 import { GalleryPageContent } from "./GalleryPageContent";
 import { GalleryPageFallback } from "./GalleryPageFallback";
 

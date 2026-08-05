@@ -11,9 +11,13 @@ vi.mock("next/image", () => ({
   ),
 }));
 
-vi.mock("@/components/Footer", () => ({
-  default: () => <footer data-testid="site-footer" />,
-}));
+vi.mock("@/components/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/shared")>();
+  return {
+    ...actual,
+    Footer: () => <footer data-testid="site-footer" />,
+  };
+});
 
 import OnComingEventsHubPage from "./OnComingEventsHubPage";
 

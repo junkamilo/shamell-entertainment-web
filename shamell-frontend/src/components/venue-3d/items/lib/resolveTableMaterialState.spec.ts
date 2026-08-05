@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { VENUE_COLORS } from "../../venueSceneConstants";
+import { VENUE_COLORS } from "../../lib/venueSceneConstants";
 import {
   nextSpawnScale,
   resolveTableMaterialState,

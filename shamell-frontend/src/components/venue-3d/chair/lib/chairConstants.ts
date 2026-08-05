@@ -1,4 +1,4 @@
-import { VENUE_COLORS } from "../../venueSceneConstants";
+import { VENUE_COLORS } from "../../lib/venueSceneConstants";
 
 /** Local chair: front faces +Z, backrest toward -Z. */
 export const CHAIR_SEAT = {

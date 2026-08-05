@@ -42,7 +42,7 @@ Co-located Vitest: `npx vitest run src/components/catalog`.
 Home SERVICE CATALOG (`ExperiencesSection` + `ExperienceCard`). Folder name `experiences` is a legacy alias for the **services** API — not marketing `/experiences/[slug]` (removed).
 
 - Type `Experience` + `experiencesFallbackData`: `lib/services/experiencesData`.
-- Fetch/normalize: `hooks/use-experiences`.
+- Fetch/normalize: `hooks/use-experiences` (folder per hook: `hooks/<name>/<name>.ts` + `index.ts`).
 - Import: `@/components/experiences` (named `ExperienceCard`).
 - Reuses `CatalogExpandRow` only; does **not** use `EventCatalogCard*`.
 
@@ -68,13 +68,21 @@ Kitchen of cross-cutting **public** UI. Import from `@/components/shared` (named
 | `motion/` | `RevealOnView`, `RevealFromDepth`, `RevealStaggerGrid` |
 | `background/` | `AnimatedBackground`, `PublicBackgroundGate` |
 | `catalog-carousel/` | `CatalogCardCarousel`, slide context, layout helpers |
-| `shamell/` | Countdown (+ helpers), Busy overlay, Alert dialog, Back button |
+| `shamell/` | Countdown (+ helpers), Busy overlay, Alert dialog, Back button, `ShamellTime12hColumns` |
 | `tickets/` | `FixedTicketInventoryDisplay` (hub / detail / venue reuse) |
-| `site/` | `WhatsAppFloatingButton` |
+| `site/` | `SiteHeader`, `Footer`, `site-header-nav` helpers, `WhatsAppFloatingButton` |
+| `ornament/` | `PearlDivider`, `OrnamentDivider` |
 
-**Boundaries:** admin `BackButton` ≠ `ShamellBackButton`; admin overlays ≠ `ShamellAlertDialog` / `ShamellBusyOverlay` (Busy is shared intentionally for public + some admin forms). Do not absorb admin DS here.
+**Boundaries:** admin `BackButton` ≠ `ShamellBackButton`; admin overlays ≠ `ShamellAlertDialog` / `ShamellBusyOverlay` (Busy is shared intentionally for public + some admin forms). Do not absorb admin DS here. Home landing sections are **not** in `shared` — see **Home landing UI**.
 
 Co-located Vitest: `npx vitest run src/components/shared`.
+
+## Home landing UI (`components/home`)
+
+Sections used by `app/page.tsx` only. Import from `@/components/home` (or folder paths).
+
+- `HeroSection` (+ `HeroFallbackBackground`), `AboutSection`, `ExperiencesSection`, `ServicesSection`, `GallerySection` (preview; data via `features/gallery`), `OnComingEventsPromoSection` (preview; data via `features/on-coming-events`).
+- Site chrome (`SiteHeader` / `Footer`) comes from `@/components/shared`.
 
 ## Public Stripe checkout UI (`components/stripe`)
 
@@ -157,7 +165,7 @@ lib/gallery/            → galleryRoutes (GALLERY_PATH, buildGalleryFilterHref)
 
 - Thin route: `export { default } from "@/features/gallery"`.
 - Public path: `GALLERY_PATH` / `buildGalleryFilterHref` in `@/lib/gallery/galleryRoutes` (feature re-exports; `SiteHeader` / `GallerySection` import from lib).
-- Home preview (`components/GallerySection`) imports hooks/types from `@/features/gallery`.
+- Home preview (`components/home/GallerySection`) imports hooks/types from `@/features/gallery`.
 - Admin gallery remains separate: `features/admin/gallery` (`/admin/gallery`).
 
 ### Public forgot-password (`src/app/forgot-password/` + `src/features/forgot-password/`)
@@ -230,19 +238,18 @@ R3F render kitchen for the venue floor (admin editor + public seat select). Impo
 
 ```text
 venue-3d/
-├── index.ts, types.ts
-├── layoutCoords3d.ts, venueSceneConstants.ts, venueScenePerformance.ts, …
-├── scene/          # VenueScene3D, FloorPickPlane, contexts
-├── items/          # PlacedItemsLayer, CatalogTableMesh, bubbles, lib/
-├── room/           # VenueRoomPlaceholder, VenueWoodFloor, VenueSceneLegend, lib/
-├── stage/          # VenueStage + Stage* folders, stageConstants, lib/
+├── index.ts, types.ts          # public barrel only
+├── lib/                        # kernel: coords, constants, camera/perf, zones, useVenueSceneLayout (+ specs)
+├── scene/                      # VenueScene3D, FloorPickPlane, contexts
+├── items/                      # PlacedItemsLayer, CatalogTableMesh, bubbles, lib/
+├── room/                       # VenueRoomPlaceholder, VenueWoodFloor, VenueSceneLegend, lib/
+├── stage/                      # VenueStage + Stage* folders, stageConstants, lib/
 ├── chair/
 │   ├── VenueBanquetChairMesh/ (+ smoke)
 │   ├── InstancedBanquetChairs/ (+ smoke)
 │   └── lib/   # chairConstants, silhouette, placements, builder, geometries, resolveChairMaterialState (+ pure specs)
-
-├── carpet/RedCarpetRunner/   # smoke: RedCarpetRunner.spec.tsx
-└── bench/VenueDancerBench/   # organized; not mounted in room
+├── carpet/RedCarpetRunner/     # smoke: RedCarpetRunner.spec.tsx
+└── bench/VenueDancerBench/     # organized; not mounted in room
 ```
 
 - Modular stage composition: platform, stairs, backdrop/signage, perimeter + zone lights, palms via **`StageCornerPlants`** inside `VenueStage`.

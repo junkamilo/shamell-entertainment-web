@@ -20,13 +20,14 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("@/components/SiteHeader", () => ({
-  default: () => <header data-testid="site-header" />,
-}));
-
-vi.mock("@/components/Footer", () => ({
-  default: () => <footer data-testid="site-footer" />,
-}));
+vi.mock("@/components/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/shared")>();
+  return {
+    ...actual,
+    SiteHeader: () => <header data-testid="site-header" />,
+    Footer: () => <footer data-testid="site-footer" />,
+  };
+});
 
 vi.mock("@/components/stripe", () => ({
   StripeCheckoutHost: () => <div data-testid="stripe-checkout" />,

@@ -7,8 +7,8 @@ import type { VenueTableSize } from "@/components/floor-layout";
 import VenueBanquetChairMesh from "../../chair/VenueBanquetChairMesh";
 import { buildTableChairPlacements } from "../../chair/lib/catalogTableChairPlacements";
 import { getTableSharedGeometries } from "../../chair/lib/chairSharedGeometries";
-import type { VenuePerfProfile } from "../../venueScenePerformance";
-import { TABLE_WORLD, VENUE_COLORS } from "../../venueSceneConstants";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
+import { TABLE_WORLD, VENUE_COLORS } from "../../lib/venueSceneConstants";
 import {
   nextSpawnScale,
   resolveTableMaterialState,

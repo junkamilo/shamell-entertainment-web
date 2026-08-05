@@ -27,8 +27,9 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-vi.mock("@/components/Footer", () => ({
+vi.mock("@/components/shared/site/Footer", () => ({
   default: () => <footer data-testid="site-footer" />,
+  Footer: () => <footer data-testid="site-footer" />,
 }));
 
 vi.mock("@/components/stripe", () => ({

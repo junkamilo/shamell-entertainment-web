@@ -9,7 +9,7 @@ import {
   Quaternion,
   Vector3,
 } from "three";
-import type { VenuePerfProfile } from "../../venueScenePerformance";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
 import { CHAIR_COLORS, CHAIR_MATERIAL } from "../lib/chairConstants";
 import {
   CHAIR_BACK_CAP_OFFSET,

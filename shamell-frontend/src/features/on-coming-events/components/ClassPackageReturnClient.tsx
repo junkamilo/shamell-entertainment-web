@@ -2,8 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import SiteHeader from "@/components/SiteHeader";
-import Footer from "@/components/Footer";
+import { Footer, SiteHeader } from "@/components/shared";
 import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 import {
   ClassPaymentConfirmationFallback,

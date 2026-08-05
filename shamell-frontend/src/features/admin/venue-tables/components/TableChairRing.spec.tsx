@@ -6,16 +6,39 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
+type MotionPassthrough = {
+  children?: React.ReactNode;
+  whileTap?: unknown;
+  initial?: unknown;
+  animate?: unknown;
+  exit?: unknown;
+  transition?: unknown;
+  layout?: unknown;
+};
+
+function stripMotionProps<T extends MotionPassthrough>({
+  whileTap: _whileTap,
+  initial: _initial,
+  animate: _animate,
+  exit: _exit,
+  transition: _transition,
+  layout: _layout,
+  ...rest
+}: T) {
+  return rest;
+}
+
 vi.mock("motion/react", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   motion: {
-    button: ({
-      children,
-      ...props
-    }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-      children?: React.ReactNode;
-    }) => <button {...props}>{children}</button>,
-    rect: (props: React.SVGProps<SVGRectElement>) => <rect {...props} />,
+    button: (props: React.ButtonHTMLAttributes<HTMLButtonElement> & MotionPassthrough) => {
+      const { children, ...domProps } = stripMotionProps(props);
+      return <button {...domProps}>{children}</button>;
+    },
+    rect: (props: React.SVGProps<SVGRectElement> & MotionPassthrough) => {
+      const domProps = stripMotionProps(props);
+      return <rect {...domProps} />;
+    },
   },
 }));
 

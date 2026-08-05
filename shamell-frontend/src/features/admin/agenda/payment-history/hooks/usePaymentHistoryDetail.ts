@@ -55,7 +55,8 @@ export function usePaymentHistoryDetail(row: PaymentRowRef, isOpen: boolean) {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, row]);
+    // Depend on stable row fields — a new `{ flow, id }` object each render must not re-fetch.
+  }, [isOpen, row?.flow, row?.id]);
 
   return { detail, isLoadingDetail, detailError };
 }

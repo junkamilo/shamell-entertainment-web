@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import SiteHeader from "@/components/SiteHeader";
-import Footer from "@/components/Footer";
+import { Footer, SiteHeader } from "@/components/shared";
 import { StripeCheckoutHost } from "@/components/stripe";
 import { onComingEventHubHref } from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 import {

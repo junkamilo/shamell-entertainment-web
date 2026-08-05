@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ShamellTime12hColumns from "@/components/ShamellTime12hColumns";
+import { ShamellTime12hColumns } from "@/components/shared";
 import {
   format12hPeriodHint,
   formatMinutesAsTimeDisplayUs,

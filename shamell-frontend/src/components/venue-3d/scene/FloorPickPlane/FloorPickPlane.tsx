@@ -1,6 +1,6 @@
 "use client";
 
-import { WORLD_DEPTH, WORLD_WIDTH } from "../../venueSceneConstants";
+import { WORLD_DEPTH, WORLD_WIDTH } from "../../lib/venueSceneConstants";
 
 export type FloorPickPlaneProps = {
   onPointerMissed?: () => void;

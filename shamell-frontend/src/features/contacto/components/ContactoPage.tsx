@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import Footer from "@/components/Footer";
-import SiteHeader from "@/components/SiteHeader";
+import { Footer, SiteHeader } from "@/components/shared";
 import ContactInquiryGate from "./ContactInquiryGate";
 import ContactFormFallback from "./ContactFormFallback";
 

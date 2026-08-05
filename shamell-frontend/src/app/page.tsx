@@ -1,11 +1,10 @@
-import AboutSection from "@/components/AboutSection";
-import OnComingEventsPromoSection from "@/components/OnComingEventsPromoSection";
-import ExperiencesSection from "@/components/ExperiencesSection";
-import Footer from "@/components/Footer";
-import GallerySection from "@/components/GallerySection";
-import HeroSection from "@/components/HeroSection";
-import SiteHeader from "@/components/SiteHeader";
-import ServicesSection from "@/components/ServicesSection";
+import AboutSection from "@/components/home/AboutSection";
+import OnComingEventsPromoSection from "@/components/home/OnComingEventsPromoSection";
+import ExperiencesSection from "@/components/home/ExperiencesSection";
+import { Footer, SiteHeader } from "@/components/shared";
+import GallerySection from "@/components/home/GallerySection";
+import HeroSection from "@/components/home/HeroSection";
+import ServicesSection from "@/components/home/ServicesSection";
 import { fetchHomeAboveFold } from "@/lib/home/fetchHomeAboveFold";
 import { aboutHeroPreloadUrls } from "@/lib/hero/aboutMediaPreload";
 import { heroLcpPreload } from "@/lib/hero/heroMediaPreload";

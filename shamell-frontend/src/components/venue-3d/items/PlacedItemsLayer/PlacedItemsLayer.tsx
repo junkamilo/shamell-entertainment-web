@@ -3,15 +3,15 @@
 import { useMemo } from "react";
 import type { PlacedLayoutItem } from "@/components/floor-layout";
 import type { LayoutItemLabel } from "@/lib/on-coming-events/venueSeatDisplayLabel";
-import { layoutToWorld } from "../../layoutCoords3d";
+import { layoutToWorld } from "../../lib/layoutCoords3d";
 import CatalogTableMesh from "../CatalogTableMesh";
 import InstancedBanquetChairs from "../../chair/InstancedBanquetChairs";
 import { buildChairInstancesFromItems } from "../../chair/lib/chairInstanceBuilder";
 import ReservationSpeechBubble from "../ReservationSpeechBubble";
 import StandaloneChairMesh from "../StandaloneChairMesh";
 import VenueItemNumberBubble from "../VenueItemNumberBubble";
-import type { VenuePerfProfile } from "../../venueScenePerformance";
-import { shouldShowItemLabels } from "../../venueScenePerformance";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
+import { shouldShowItemLabels } from "../../lib/venueScenePerformance";
 import { itemLabelHeights } from "../itemLabelHeights";
 
 export type PlacedItemsLayerProps = {

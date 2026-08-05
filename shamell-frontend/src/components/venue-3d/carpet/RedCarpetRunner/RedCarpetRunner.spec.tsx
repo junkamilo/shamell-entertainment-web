@@ -14,7 +14,9 @@ import RedCarpetRunner from "./RedCarpetRunner";
 
 describe("RedCarpetRunner", () => {
   it("smoke mounts without throwing", () => {
-    expect(() => render(<RedCarpetRunner />)).not.toThrow();
+    const { container } = render(<RedCarpetRunner />);
+    expect(container.querySelector('[data-r3f="group"]')).toBeTruthy();
+    expect(container.querySelectorAll('[data-r3f="mesh"]').length).toBeGreaterThan(0);
   });
 
   it("mounts when stage zone is missing (fallback constants)", async () => {
@@ -26,7 +28,8 @@ describe("RedCarpetRunner", () => {
       }),
     }));
     const { default: Runner } = await import("./RedCarpetRunner");
-    expect(() => render(<Runner />)).not.toThrow();
+    const { container } = render(<Runner />);
+    expect(container.querySelector('[data-r3f="group"]')).toBeTruthy();
   });
 
   it("exports named and default from folder index", async () => {

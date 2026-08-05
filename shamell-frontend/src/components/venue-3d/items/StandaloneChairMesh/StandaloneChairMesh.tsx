@@ -2,7 +2,7 @@
 
 import { memo } from "react";
 import VenueBanquetChairMesh from "../../chair/VenueBanquetChairMesh";
-import type { VenuePerfProfile } from "../../venueScenePerformance";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
 
 export type StandaloneChairMeshProps = {
   selected?: boolean;

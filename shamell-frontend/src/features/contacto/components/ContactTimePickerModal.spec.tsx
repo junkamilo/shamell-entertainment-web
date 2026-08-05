@@ -5,9 +5,13 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
-vi.mock("@/components/ShamellTime12hColumns", () => ({
-  default: () => <div data-testid="time-columns" />,
-}));
+vi.mock("@/components/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/shared")>();
+  return {
+    ...actual,
+    ShamellTime12hColumns: () => <div data-testid="time-columns" />,
+  };
+});
 
 import ContactTimePickerModal from "./ContactTimePickerModal";
 

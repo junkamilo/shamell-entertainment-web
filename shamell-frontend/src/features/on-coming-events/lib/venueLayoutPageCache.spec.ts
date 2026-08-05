@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import type { VenueLayoutPageCacheEntry } from "./venueLayoutPageCache";
 import {
+  clearVenueLayoutPageCache,
   getVenueLayoutPageCache,
   patchVenueLayoutPageAvailability,
   setVenueLayoutPageCache,
@@ -45,10 +46,26 @@ function makeCacheEntry(
 }
 
 describe("venueLayoutPageCache", () => {
+  beforeEach(() => {
+    clearVenueLayoutPageCache();
+  });
+
   it("stores and retrieves cache by event slug", () => {
     const entry = makeCacheEntry();
     setVenueLayoutPageCache(FIXTURE_EVENT_SLUG, entry);
     expect(getVenueLayoutPageCache(FIXTURE_EVENT_SLUG)).toEqual(entry);
+  });
+
+  it("clears a slug entry or the whole map", () => {
+    setVenueLayoutPageCache(FIXTURE_EVENT_SLUG, makeCacheEntry());
+    setVenueLayoutPageCache(undefined, makeCacheEntry({ eventTitle: "Legacy" }));
+    clearVenueLayoutPageCache(FIXTURE_EVENT_SLUG);
+    expect(getVenueLayoutPageCache(FIXTURE_EVENT_SLUG)).toBeNull();
+    expect(getVenueLayoutPageCache()).toEqual(
+      expect.objectContaining({ eventTitle: "Legacy" }),
+    );
+    clearVenueLayoutPageCache();
+    expect(getVenueLayoutPageCache()).toBeNull();
   });
 
   it("uses legacy key when slug is omitted", () => {

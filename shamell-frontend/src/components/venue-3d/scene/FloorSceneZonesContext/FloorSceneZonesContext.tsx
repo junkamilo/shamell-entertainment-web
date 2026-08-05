@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from "react";
 import type { FloorSceneZones } from "@/components/floor-layout";
-import { DEFAULT_FLOOR_SCENE_ZONES } from "../../floorSceneZonesDefaults";
+import { DEFAULT_FLOOR_SCENE_ZONES } from "../../lib/floorSceneZonesDefaults";
 
 const FloorSceneZonesContext = createContext<FloorSceneZones>(DEFAULT_FLOOR_SCENE_ZONES);
 

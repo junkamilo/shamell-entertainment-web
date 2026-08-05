@@ -1,11 +1,11 @@
 "use client";
 
-import type { VenuePerfProfile } from "../../venueScenePerformance";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
 import RedCarpetRunner from "../../carpet/RedCarpetRunner";
 import VenueStage from "../../stage/VenueStage";
 import VenueWallSconces from "../VenueWallSconces";
 import VenueWoodFloor from "../VenueWoodFloor";
-import { VENUE_COLORS, WORLD_DEPTH, WORLD_WIDTH } from "../../venueSceneConstants";
+import { VENUE_COLORS, WORLD_DEPTH, WORLD_WIDTH } from "../../lib/venueSceneConstants";
 
 export type VenueRoomPlaceholderProps = {
   perfProfile?: VenuePerfProfile;

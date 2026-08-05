@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
 import { makeBookClassEventContext } from "../test/fixtures/bookClass.fixture";
@@ -111,7 +111,9 @@ describe("useBookClassCatalog", () => {
     const { result } = renderHook(() => useBookClassCatalog(FIXTURE_CLASS_EVENT_ID));
     await waitFor(() => expect(result.current.context?.event.name).toBe("First"));
 
-    result.current.reloadContext();
+    await act(async () => {
+      result.current.reloadContext();
+    });
     await waitFor(() => expect(result.current.context?.event.name).toBe("Second"));
     expect(calls).toBe(2);
   });

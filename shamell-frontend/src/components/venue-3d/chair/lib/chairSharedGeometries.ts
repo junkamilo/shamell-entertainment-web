@@ -3,7 +3,7 @@ import {
   CylinderGeometry,
   type BufferGeometry,
 } from "three";
-import type { VenuePerfProfile } from "../../venueScenePerformance";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
 import { CHAIR_BACK, CHAIR_LEG, CHAIR_SEAT } from "./chairConstants";
 
 export type ChairSharedGeometries = {

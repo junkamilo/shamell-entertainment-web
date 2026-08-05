@@ -42,6 +42,14 @@ export function setVenueLayoutPageCache(
   cache.set(eventSlug ?? LEGACY_KEY, entry);
 }
 
+export function clearVenueLayoutPageCache(eventSlug?: string): void {
+  if (eventSlug === undefined) {
+    cache.clear();
+    return;
+  }
+  cache.delete(eventSlug);
+}
+
 export function patchVenueLayoutPageAvailability(
   eventSlug: string | undefined,
   patch: Pick<

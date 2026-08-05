@@ -1,7 +1,7 @@
 "use client";
 
 import { useFloorSceneZones } from "../../scene/FloorSceneZonesContext";
-import { VENUE_COLORS } from "../../venueSceneConstants";
+import { VENUE_COLORS } from "../../lib/venueSceneConstants";
 import {
   CARPET_LENGTH,
   CARPET_WIDTH,

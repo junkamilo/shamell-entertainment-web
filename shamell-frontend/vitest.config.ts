@@ -11,8 +11,11 @@ export default defineConfig({
     environmentMatchGlobs: [["**/*.spec.tsx", "jsdom"]],
   },
   resolve: {
+    // Prevent Vite/Vitest from loading ESM+CJS copies of three (R3F + app imports).
+    dedupe: ["three"],
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      three: path.resolve(__dirname, "./node_modules/three"),
     },
   },
 });

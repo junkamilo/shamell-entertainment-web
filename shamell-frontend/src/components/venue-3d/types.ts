@@ -19,6 +19,6 @@ export type { VenueBanquetChairMeshProps } from "./chair/VenueBanquetChairMesh";
 export type { InstancedBanquetChairsProps } from "./chair/InstancedBanquetChairs";
 export type { StagePalmPlantProps } from "./stage/StagePalmPlant";
 
-export type { VenueSceneLayoutVariant } from "./useVenueSceneLayout";
-export type { VenueSceneLayoutBucket, VenueCameraPreset } from "./venueSceneConstants";
-export type { VenuePerfProfile } from "./venueScenePerformance";
+export type { VenueSceneLayoutVariant } from "./lib/useVenueSceneLayout";
+export type { VenueSceneLayoutBucket, VenueCameraPreset } from "./lib/venueSceneConstants";
+export type { VenuePerfProfile } from "./lib/venueScenePerformance";

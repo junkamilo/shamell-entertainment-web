@@ -14,12 +14,15 @@ vi.mock("next/link", () => ({
   default: ({
     href,
     children,
-    ...rest
+    className,
+    ..._rest
   }: {
     href: string;
     children: React.ReactNode;
+    className?: string;
+    prefetch?: boolean;
   }) => (
-    <a href={href} {...rest}>
+    <a href={href} className={className}>
       {children}
     </a>
   ),

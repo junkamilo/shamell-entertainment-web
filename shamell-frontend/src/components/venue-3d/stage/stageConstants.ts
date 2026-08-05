@@ -1,4 +1,4 @@
-import { WORLD_DEPTH, WORLD_WIDTH } from "../venueSceneConstants";
+import { WORLD_DEPTH, WORLD_WIDTH } from "../lib/venueSceneConstants";
 
 export const STAGE_ZONE_ROTATION_Y = (12 * Math.PI) / 180;
 

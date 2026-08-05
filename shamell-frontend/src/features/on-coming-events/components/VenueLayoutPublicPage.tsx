@@ -3,9 +3,9 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import Footer from "@/components/Footer";
 import {
   FixedTicketInventoryDisplay,
+  Footer,
   ShamellBusyOverlay,
   ShamellAlertDialog,
   isFutureEventStart,
@@ -165,6 +165,16 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
   const sceneContainerRef = useRef<HTMLDivElement>(null);
   const [sceneVisible, setSceneVisible] = useState(true);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(Boolean(cachedEntry));
+  const hasLoadedOnceRef = useRef(hasLoadedOnce);
+  const eventDateIsoRef = useRef(eventDateIso);
+
+  useEffect(() => {
+    hasLoadedOnceRef.current = hasLoadedOnce;
+  }, [hasLoadedOnce]);
+
+  useEffect(() => {
+    eventDateIsoRef.current = eventDateIso;
+  }, [eventDateIso]);
 
   const hydrateFromCache = useCallback((entry: VenueLayoutPageCacheEntry) => {
     const next = stateFromCache(entry);
@@ -184,6 +194,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     setTablesRemaining(next.tablesRemaining);
     setTablesSold(next.tablesSold);
     setEventDateIso(next.eventDateIso);
+    eventDateIsoRef.current = next.eventDateIso;
     setReservationsOpen(next.reservationsOpen);
     setSalesClosedReason(next.salesClosedReason);
     setReservedLayoutItemIds(next.reservedLayoutItemIds);
@@ -191,6 +202,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     setReservedSeatShortLabels(next.reservedSeatShortLabels);
     setPaidSeatHolders(next.paidSeatHolders);
     setHasLoadedOnce(true);
+    hasLoadedOnceRef.current = true;
   }, []);
 
   const placedSummary = useMemo(
@@ -295,6 +307,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
       setSalesClosedReason(availability.salesClosedReason);
       if (availability.eventDate) {
         setEventDateIso(availability.eventDate);
+        eventDateIsoRef.current = availability.eventDate;
       }
       if (eventDetail) {
         setEventStartsAt(eventDetail.eventStartsAt);
@@ -309,14 +322,14 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
         paidSeatHolders: availability.paidSeatHolders,
         reservationsOpen: availability.reservationsOpen,
         salesClosedReason: availability.salesClosedReason,
-        eventDateIso: availability.eventDate ?? eventDateIso,
+        eventDateIso: availability.eventDate ?? eventDateIsoRef.current,
         eventStartsAt: eventDetail?.eventStartsAt,
         tableCapacity: eventDetail?.tableCapacity,
         tablesRemaining: eventDetail?.tablesRemaining,
         tablesSold: eventDetail?.tablesSold,
       });
     },
-    [eventDateIso, eventSlug],
+    [eventSlug],
   );
 
   const load = useCallback(
@@ -333,7 +346,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
         return;
       }
 
-      const silent = options?.silent ?? hasLoadedOnce;
+      const silent = options?.silent ?? hasLoadedOnceRef.current;
       if (!silent) {
         setLoading(true);
       }
@@ -454,6 +467,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
             nextEventDateIso = availability.eventDate;
           }
           setEventDateIso(nextEventDateIso);
+          eventDateIsoRef.current = nextEventDateIso;
 
           if (eventDetail) {
             nextHeroImageUrl = eventDetail.heroImageUrl ?? null;
@@ -510,6 +524,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
           });
 
           setHasLoadedOnce(true);
+          hasLoadedOnceRef.current = true;
         } catch {
           if (!silent) {
             setError("Could not load floor plan.");
@@ -528,11 +543,11 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
         loadInFlight.delete(key);
       }
     },
-    [eventSlug, hasLoadedOnce, hydrateFromCache],
+    [eventSlug, hydrateFromCache],
   );
 
   const refreshAvailability = useCallback(async () => {
-    if (!hasLoadedOnce) return;
+    if (!hasLoadedOnceRef.current) return;
     try {
       const [availability, eventDetail] = await Promise.all([
         fetchVenueReservationAvailability(eventSlug),
@@ -542,11 +557,14 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     } catch {
       // Keep cached UI; availability refresh is best-effort.
     }
-  }, [applyAvailability, eventSlug, hasLoadedOnce]);
+  }, [applyAvailability, eventSlug]);
 
   useEffect(() => {
-    void load({ silent: Boolean(cachedEntry) });
-  }, [load, cachedEntry]);
+    const hasCache = Boolean(getVenueLayoutPageCache(eventSlug));
+    void load({ silent: hasCache });
+    // Mount / slug change only — do not re-run when `load` identity or cache object changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
+  }, [eventSlug]);
 
   useEffect(() => {
     const onVisibility = () => {

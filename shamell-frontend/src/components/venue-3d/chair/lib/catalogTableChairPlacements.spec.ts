@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TABLE_WORLD } from "../../venueSceneConstants";
+import { TABLE_WORLD } from "../../lib/venueSceneConstants";
 import { CHAIR_SEAT } from "./chairConstants";
 import {
   buildTableChairPlacements,

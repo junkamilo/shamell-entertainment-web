@@ -1,5 +1,5 @@
 import type { PlacedLayoutItem } from "@/components/floor-layout";
-import { layoutToWorld } from "../../layoutCoords3d";
+import { layoutToWorld } from "../../lib/layoutCoords3d";
 import { buildTableChairPlacements } from "./catalogTableChairPlacements";
 import { CHAIR_BACK, CHAIR_LEG, CHAIR_SEAT } from "./chairConstants";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";

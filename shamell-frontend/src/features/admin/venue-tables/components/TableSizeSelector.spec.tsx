@@ -10,9 +10,11 @@ vi.mock("motion/react", () => ({
   motion: {
     button: ({
       children,
+      whileTap: _whileTap,
       ...props
     }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
       children?: React.ReactNode;
+      whileTap?: unknown;
     }) => <button {...props}>{children}</button>,
   },
 }));

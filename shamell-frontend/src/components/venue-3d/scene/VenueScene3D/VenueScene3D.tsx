@@ -7,7 +7,7 @@ import { Environment, OrbitControls } from "@react-three/drei";
 import type { FloorSceneZones, PlacedLayoutItem } from "@/components/floor-layout";
 import type { LayoutItemLabel } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { FloorSceneZonesProvider } from "../FloorSceneZonesContext";
-import { mergeFloorSceneZones } from "../../floorSceneZonesDefaults";
+import { mergeFloorSceneZones } from "../../lib/floorSceneZonesDefaults";
 import {
   resolveAdminCameraPreset,
   resolveCameraPresetForAspect,
@@ -18,7 +18,7 @@ import {
   type VenueSceneLayoutBucket,
   WORLD_DEPTH,
   WORLD_WIDTH,
-} from "../../venueSceneConstants";
+} from "../../lib/venueSceneConstants";
 import type * as THREE from "three";
 import { Color, MOUSE, TOUCH } from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -29,7 +29,7 @@ import {
 import FloorPickPlane from "../FloorPickPlane";
 import PlacedItemsLayer from "../../items/PlacedItemsLayer";
 import VenueRoomPlaceholder from "../../room/VenueRoomPlaceholder";
-import type { VenuePerfProfile } from "../../venueScenePerformance";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
 
 export type VenueScene3DHandle = VenueSceneCanvasContextValue & {
   getCamera: () => THREE.Camera | null;

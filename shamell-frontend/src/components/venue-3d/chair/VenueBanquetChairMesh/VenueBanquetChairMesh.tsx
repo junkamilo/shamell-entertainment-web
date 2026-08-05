@@ -2,7 +2,7 @@
 
 import { memo, useMemo } from "react";
 import { RoundedBox } from "@react-three/drei";
-import type { VenuePerfProfile } from "../../venueScenePerformance";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
 import { CHAIR_BACK, CHAIR_LEG, CHAIR_MATERIAL, CHAIR_SEAT } from "../lib/chairConstants";
 import { getChairSharedGeometries } from "../lib/chairSharedGeometries";
 import { resolveChairMaterialState } from "../lib/resolveChairMaterialState";

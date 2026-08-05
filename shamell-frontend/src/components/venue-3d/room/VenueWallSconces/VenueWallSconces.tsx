@@ -1,8 +1,8 @@
 "use client";
 
-import type { VenuePerfProfile } from "../../venueScenePerformance";
+import type { VenuePerfProfile } from "../../lib/venueScenePerformance";
 import { STAGE_COLORS } from "../../stage/stageMaterials";
-import { WORLD_DEPTH, WORLD_WIDTH } from "../../venueSceneConstants";
+import { WORLD_DEPTH, WORLD_WIDTH } from "../../lib/venueSceneConstants";
 
 const SCONCE_HEIGHT = 2.2;
 

@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import Footer from "@/components/Footer";
 import {
+  Footer,
   ShamellBusyOverlay,
   ShamellBackButton,
   FixedTicketInventoryDisplay,

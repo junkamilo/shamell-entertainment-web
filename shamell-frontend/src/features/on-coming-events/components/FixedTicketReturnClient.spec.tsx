@@ -24,13 +24,14 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("session_id=cs_test_session"),
 }));
 
-vi.mock("@/components/SiteHeader", () => ({
-  default: () => <header data-testid="site-header" />,
-}));
-
-vi.mock("@/components/Footer", () => ({
-  default: () => <footer data-testid="site-footer" />,
-}));
+vi.mock("@/components/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/shared")>();
+  return {
+    ...actual,
+    SiteHeader: () => <header data-testid="site-header" />,
+    Footer: () => <footer data-testid="site-footer" />,
+  };
+});
 
 vi.mock("next/image", () => ({
   default: ({ alt = "" }: { alt?: string }) => (

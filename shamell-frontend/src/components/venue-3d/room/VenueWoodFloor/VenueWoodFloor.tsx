@@ -10,7 +10,7 @@ import {
   VENUE_COLORS,
   WORLD_DEPTH,
   WORLD_WIDTH,
-} from "../../venueSceneConstants";
+} from "../../lib/venueSceneConstants";
 
 function WoodFloorTextured() {
   const sourceTexture = useTexture(FLOOR_TEXTURE_PATH);
