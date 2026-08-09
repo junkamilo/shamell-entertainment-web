@@ -6,11 +6,12 @@ import { FloorLayoutModule } from '../floor-layout/floor-layout.module';
 import { MailModule } from '../mail/mail.module';
 import { StripeModule } from '../stripe/stripe.module';
 import { UpcomingEventsModule } from '../upcoming-events/upcoming-events.module';
-import { StripeWebhookController } from './stripe-webhook.controller';
-import { StripeWebhookDispatchService } from './stripe-webhook-dispatch.service';
-import { StripeWebhookRetryService } from './stripe-webhook-retry.service';
-import { VenueReservationsController } from './venue-reservations.controller';
-import { VenueReservationsService } from './venue-reservations.service';
+import { StripeWebhookController } from './controllers/stripe-webhook.controller';
+import { VenueReservationsController } from './controllers/venue-reservations.controller';
+import { StripeWebhookDispatchService } from './services/stripe-webhook-dispatch.service';
+import { StripeWebhookRetryService } from './services/stripe-webhook-retry.service';
+import { VenueReservationsRepository } from './services/venue-reservations.repository';
+import { VenueReservationsService } from './services/venue-reservations.service';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { VenueReservationsService } from './venue-reservations.service';
   ],
   controllers: [VenueReservationsController, StripeWebhookController],
   providers: [
+    VenueReservationsRepository,
     VenueReservationsService,
     StripeWebhookDispatchService,
     StripeWebhookRetryService,

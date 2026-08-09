@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
-import { ReservationEventTemplatesController } from './reservation-event-templates.controller';
-import { ReservationEventTemplatesService } from './reservation-event-templates.service';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { ReservationEventTemplatesController } from './controllers/reservation-event-templates.controller';
+import { ReservationEventTemplatesRepository } from './services/reservation-event-templates.repository';
+import { ReservationEventTemplatesService } from './services/reservation-event-templates.service';
 
 @Module({
+  imports: [PrismaModule],
   controllers: [ReservationEventTemplatesController],
-  providers: [ReservationEventTemplatesService],
+  providers: [
+    ReservationEventTemplatesRepository,
+    ReservationEventTemplatesService,
+  ],
   exports: [ReservationEventTemplatesService],
 })
 export class ReservationEventTemplatesModule {}

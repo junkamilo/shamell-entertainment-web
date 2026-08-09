@@ -1,0 +1,337 @@
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import {
+  CurrentAdmin,
+  type AdminJwtPayload,
+} from '../../auth/decorators/current-admin.decorator';
+import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { CreateClassCheckoutDto } from '../dto/create-class-checkout.dto';
+import { CreateAdminClassEnrollmentDto } from '../dto/create-admin-class-enrollment.dto';
+import { CreateClassBundleCheckoutDto } from '../dto/create-class-bundle-checkout.dto';
+import { CreateClassPackageCheckoutDto } from '../dto/create-class-package-checkout.dto';
+import { CreateFixedEventCheckoutDto } from '../dto/create-fixed-event-checkout.dto';
+import { UpsertClassSessionDto } from '../dto/upsert-class-session.dto';
+import { UpsertVenueConfigDto } from '../dto/upsert-venue-config.dto';
+import { CreateAdminFixedEventEnrollmentDto } from '../dto/create-admin-fixed-event-enrollment.dto';
+import { UpcomingEventsService } from '../services/upcoming-events.service';
+import { AdminClassEnrollmentService } from '../services/admin-class-enrollment.service';
+import { AdminFixedEventEnrollmentService } from '../services/admin-fixed-event-enrollment.service';
+
+@Controller()
+export class UpcomingEventsController {
+  constructor(
+    private readonly upcomingEventsService: UpcomingEventsService,
+    private readonly adminClassEnrollment: AdminClassEnrollmentService,
+    private readonly adminFixedEventEnrollment: AdminFixedEventEnrollmentService,
+  ) {}
+
+  @Get('class-enrollments/session-status')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  getClassSessionStatus(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.upcomingEventsService.getClassSessionStatus(sessionId.trim());
+  }
+
+  @Post('class-enrollments/reconcile')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  reconcileClassEnrollment(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.upcomingEventsService.reconcileClassFromStripeSession(
+      sessionId.trim(),
+    );
+  }
+
+  @Get('class-enrollments/public/pay/checkout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  resolveClassPayCheckout(@Query('token') token: string) {
+    if (!token?.trim()) {
+      throw new BadRequestException('token is required.');
+    }
+    return this.adminClassEnrollment
+      .resolveClassPayCheckoutClientSecret(token.trim())
+      .then((clientSecret) => ({ clientSecret }));
+  }
+
+  @Post('upcoming-events/admin/fixed-event-enrollments/reconcile')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  reconcileFixedTicketAdmin(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.upcomingEventsService.reconcileFixedTicketFromStripeSession(
+      sessionId.trim(),
+    );
+  }
+
+  @Post('fixed-event-enrollments/reconcile')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 15, ttl: 60000 } })
+  reconcileFixedTicket(@Query('session_id') sessionId: string) {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.upcomingEventsService.reconcileFixedTicketFromStripeSession(
+      sessionId.trim(),
+    );
+  }
+
+  @Get('fixed-event-enrollments/session-status')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  getFixedEventSessionStatus(@Query('session_id') sessionId: string): Promise<{
+    stripeStatus: string | null;
+    enrollment: {
+      status: string;
+      customerEmail: string | null;
+      eventName: string;
+      eventSlug: string | null;
+      ticketNumber?: number;
+    };
+  }> {
+    if (!sessionId?.trim()) {
+      throw new BadRequestException('session_id is required.');
+    }
+    return this.upcomingEventsService.getFixedEventSessionStatus(
+      sessionId.trim(),
+    );
+  }
+
+  @Get('upcoming-events/admin/events/:eventId/sessions')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  listAdminSessions(@Param('eventId', new ParseUUIDPipe()) eventId: string) {
+    return this.upcomingEventsService.listAdminSessions(eventId);
+  }
+
+  @Get('upcoming-events/admin/bookable-class-events')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  listAdminBookableClassEvents() {
+    return this.adminClassEnrollment.listAdminBookableClassEvents();
+  }
+
+  @Get('upcoming-events/admin/box-office/fixed-events')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  listBoxOfficeFixedEvents() {
+    return this.adminFixedEventEnrollment.listBoxOfficeFixedEvents();
+  }
+
+  @Post('upcoming-events/admin/fixed-event-enrollments/cash')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  createAdminFixedEventCash(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreateAdminFixedEventEnrollmentDto,
+  ) {
+    return this.adminFixedEventEnrollment.createAdminCash(admin.id, dto);
+  }
+
+  @Post('upcoming-events/admin/fixed-event-enrollments/checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  createAdminFixedEventCheckoutSession(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreateAdminFixedEventEnrollmentDto,
+  ) {
+    return this.adminFixedEventEnrollment.createAdminCheckoutSession(
+      admin.id,
+      dto,
+    );
+  }
+
+  @Get('upcoming-events/admin/events/:eventId/class-booking-context')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  getAdminClassBookingContext(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+  ) {
+    return this.adminClassEnrollment.getAdminClassBookingContext(eventId);
+  }
+
+  @Post('upcoming-events/admin/class-enrollments/checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  createAdminClassCheckoutSession(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreateAdminClassEnrollmentDto,
+  ) {
+    return this.adminClassEnrollment.createAdminClassCheckoutSession(
+      admin.id,
+      dto,
+    );
+  }
+
+  @Post('upcoming-events/admin/class-enrollments/cash')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  createAdminClassCashEnrollment(
+    @CurrentAdmin() admin: AdminJwtPayload,
+    @Body() dto: CreateAdminClassEnrollmentDto,
+  ) {
+    return this.adminClassEnrollment.createAdminClassCashEnrollment(
+      admin.id,
+      dto,
+    );
+  }
+
+  @Post('upcoming-events/admin/events/:eventId/sessions')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard)
+  createAdminSession(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Body() dto: UpsertClassSessionDto,
+  ) {
+    return this.upcomingEventsService.createAdminSession(eventId, dto);
+  }
+
+  @Patch('upcoming-events/admin/events/:eventId/sessions/:sessionId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  updateAdminSession(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Param('sessionId', new ParseUUIDPipe()) sessionId: string,
+    @Body() dto: UpsertClassSessionDto,
+  ) {
+    return this.upcomingEventsService.updateAdminSession(
+      eventId,
+      sessionId,
+      dto,
+    );
+  }
+
+  @Delete('upcoming-events/admin/events/:eventId/sessions/:sessionId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  deleteAdminSession(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Param('sessionId', new ParseUUIDPipe()) sessionId: string,
+  ) {
+    return this.upcomingEventsService.deleteAdminSession(eventId, sessionId);
+  }
+
+  @Get('upcoming-events/admin/events/:eventId/venue-config')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  getAdminVenueConfig(@Param('eventId', new ParseUUIDPipe()) eventId: string) {
+    return this.upcomingEventsService.getAdminVenueConfig(eventId);
+  }
+
+  @Patch('upcoming-events/admin/events/:eventId/venue-config')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  upsertAdminVenueConfig(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Body() dto: UpsertVenueConfigDto,
+  ) {
+    return this.upcomingEventsService.upsertAdminVenueConfig(eventId, dto);
+  }
+
+  @Get('upcoming-events/:slug')
+  @HttpCode(HttpStatus.OK)
+  getPublicBySlug(@Param('slug') slug: string) {
+    return this.upcomingEventsService.getPublicBySlug(slug);
+  }
+
+  @Get('upcoming-events/:slug/sessions')
+  @HttpCode(HttpStatus.OK)
+  listPublicSessions(@Param('slug') slug: string) {
+    return this.upcomingEventsService.listPublicSessions(slug);
+  }
+
+  @Get('upcoming-events/:slug/venue')
+  @HttpCode(HttpStatus.OK)
+  getPublicVenue(@Param('slug') slug: string) {
+    return this.upcomingEventsService.getPublicVenueBundle(slug);
+  }
+
+  @Get('upcoming-events/:slug/class-options')
+  @HttpCode(HttpStatus.OK)
+  getPublicClassOptions(@Param('slug') slug: string) {
+    return this.upcomingEventsService.getPublicClassOptions(slug);
+  }
+
+  @Post('upcoming-events/:slug/sessions/checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  createClassCheckout(
+    @Param('slug') slug: string,
+    @Body() dto: CreateClassCheckoutDto,
+  ) {
+    return this.upcomingEventsService.createClassCheckout(slug, dto);
+  }
+
+  @Post('upcoming-events/:slug/class-package/checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  createClassPackageCheckout(
+    @Param('slug') slug: string,
+    @Body() dto: CreateClassPackageCheckoutDto,
+  ) {
+    return this.upcomingEventsService.createClassPackageCheckout(slug, dto);
+  }
+
+  @Post('upcoming-events/:slug/sessions/bundle-checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  createClassBundleCheckout(
+    @Param('slug') slug: string,
+    @Body() dto: CreateClassBundleCheckoutDto,
+  ) {
+    return this.upcomingEventsService.createClassBundleCheckout(slug, dto);
+  }
+
+  @Post('upcoming-events/admin/events/:eventId/sessions/regenerate')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  regenerateAdminClassSessions(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+  ) {
+    return this.upcomingEventsService.regenerateAdminClassSessions(eventId);
+  }
+
+  @Post('upcoming-events/:slug/fixed-event/checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  createFixedEventCheckout(
+    @Param('slug') slug: string,
+    @Body() dto: CreateFixedEventCheckoutDto,
+  ) {
+    return this.upcomingEventsService.createFixedEventCheckout(slug, dto);
+  }
+}

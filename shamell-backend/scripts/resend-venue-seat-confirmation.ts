@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
-import { VenueReservationsService } from '../src/modules/venue-reservations/venue-reservations.service';
+import { VenueReservationsService } from '../src/modules/venue-reservations/services/venue-reservations.service';
 
 async function main(): Promise<void> {
   const args = process.argv.slice(2);

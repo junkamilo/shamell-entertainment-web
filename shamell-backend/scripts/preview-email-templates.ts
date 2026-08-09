@@ -7,26 +7,26 @@ import { join } from 'path';
 import {
   buildAdminCustomerActivityHtml,
   type AdminCustomerActivityKind,
-} from '../src/modules/mail/admin-customer-activity.mail';
-import { buildAdminInviteEmailHtml } from '../src/modules/mail/admin-invite.mail';
+} from '../src/modules/mail/templates/admin-customer-activity.mail';
+import { buildAdminInviteEmailHtml } from '../src/modules/mail/templates/admin-invite.mail';
 import {
   buildAdminPaymentOutcomeHtml,
   type AdminPaymentOutcome,
-} from '../src/modules/mail/admin-payment.mail';
+} from '../src/modules/mail/templates/admin-payment.mail';
 import {
   buildBookingBalanceLinkHtml,
   buildBookingDepositPaidHtml,
   buildBookingFullyPaidHtml,
   buildBookingQuoteHtml,
-} from '../src/modules/bookings/booking-quote.mail';
-import { buildBookingConfirmationHtml } from '../src/modules/bookings/booking-confirmation.mail';
-import { buildBookingInquiryAckHtml } from '../src/modules/contact/booking-inquiry-ack.mail';
-import { buildConciergeInquiryAckHtml } from '../src/modules/contact/concierge-inquiry-ack.mail';
-import { buildClassBundleConfirmationHtml } from '../src/modules/upcoming-events/class-bundle-confirmation.mail';
-import { buildClassEnrollmentConfirmationHtml } from '../src/modules/upcoming-events/class-enrollment-confirmation.mail';
-import { buildFixedTicketConfirmationHtml } from '../src/modules/upcoming-events/fixed-ticket-confirmation.mail';
-import { buildVenueReservationConfirmationHtml } from '../src/modules/venue-reservations/venue-reservation-confirmation.mail';
-import { buildVenueReservationPaymentRequestHtml } from '../src/modules/venue-reservations/venue-reservation-payment-request.mail';
+} from '../src/modules/bookings/mail/booking-quote.mail';
+import { buildBookingConfirmationHtml } from '../src/modules/bookings/mail/booking-confirmation.mail';
+import { buildBookingInquiryAckHtml } from '../src/modules/contact/mail/booking-inquiry-ack.mail';
+import { buildConciergeInquiryAckHtml } from '../src/modules/contact/mail/concierge-inquiry-ack.mail';
+import { buildClassBundleConfirmationHtml } from '../src/modules/upcoming-events/mail/class-bundle-confirmation.mail';
+import { buildClassEnrollmentConfirmationHtml } from '../src/modules/upcoming-events/mail/class-enrollment-confirmation.mail';
+import { buildFixedTicketConfirmationHtml } from '../src/modules/upcoming-events/mail/fixed-ticket-confirmation.mail';
+import { buildVenueReservationConfirmationHtml } from '../src/modules/venue-reservations/mail/venue-reservation-confirmation.mail';
+import { buildVenueReservationPaymentRequestHtml } from '../src/modules/venue-reservations/mail/venue-reservation-payment-request.mail';
 
 const OUT_DIR = join(process.cwd(), 'tmp', 'email-previews');
 const SITE = 'https://shamellentertainment.com';

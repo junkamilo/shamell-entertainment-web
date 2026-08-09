@@ -1,1 +1,0 @@
-export const STANDALONE_CHAIR_MAX_QUANTITY = 500;

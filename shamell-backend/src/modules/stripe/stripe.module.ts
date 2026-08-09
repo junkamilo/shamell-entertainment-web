@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { StripeWebhookAuditService } from './stripe-webhook-audit.service';
-import { StripeService } from './stripe.service';
+import { StripeWebhookAuditService } from './services/stripe-webhook-audit.service';
+import { StripeService } from './services/stripe.service';
 
 @Module({
   imports: [PrismaModule],

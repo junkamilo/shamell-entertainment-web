@@ -3,8 +3,8 @@ import { AboutModule } from '../about/about.module';
 import { EventsModule } from '../events/events.module';
 import { HeaderMediaModule } from '../header-media/header-media.module';
 import { VenueLayoutSettingsModule } from '../venue-layout-settings/venue-layout-settings.module';
-import { HomeController } from './home.controller';
-import { HomeService } from './home.service';
+import { HomeController } from './controllers/home.controller';
+import { HomeService } from './services/home.service';
 
 @Module({
   imports: [

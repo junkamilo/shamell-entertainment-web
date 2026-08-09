@@ -1,0 +1,32 @@
+import {
+  BadRequestException,
+  Controller,
+  Headers,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+} from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
+import { StripeWebhookDispatchService } from '../services/stripe-webhook-dispatch.service';
+
+@Controller('stripe')
+export class StripeWebhookController {
+  constructor(private readonly dispatch: StripeWebhookDispatchService) {}
+
+  @Post('webhook')
+  @HttpCode(HttpStatus.OK)
+  handleWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('stripe-signature') signature?: string,
+  ) {
+    const rawBody = req.rawBody;
+    if (!rawBody) {
+      throw new BadRequestException(
+        'Raw body is required for Stripe webhook verification.',
+      );
+    }
+    return this.dispatch.handle(rawBody, signature);
+  }
+}

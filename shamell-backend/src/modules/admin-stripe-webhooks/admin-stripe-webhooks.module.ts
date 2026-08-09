@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { AdminStripeWebhooksController } from './admin-stripe-webhooks.controller';
-import { AdminStripeWebhooksService } from './admin-stripe-webhooks.service';
+import { AdminStripeWebhooksController } from './controllers/admin-stripe-webhooks.controller';
+import { AdminStripeWebhooksRepository } from './services/admin-stripe-webhooks.repository';
+import { AdminStripeWebhooksService } from './services/admin-stripe-webhooks.service';
 
 @Module({
   controllers: [AdminStripeWebhooksController],
-  providers: [AdminStripeWebhooksService],
+  providers: [AdminStripeWebhooksRepository, AdminStripeWebhooksService],
 })
 export class AdminStripeWebhooksModule {}

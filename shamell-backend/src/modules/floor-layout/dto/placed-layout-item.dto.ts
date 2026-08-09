@@ -12,7 +12,7 @@ import {
 import {
   LAYOUT_SHAPE_KINDS,
   VENUE_TABLE_SIZES,
-} from '../floor-layout.defaults';
+} from '../constants/floor-layout.constants';
 
 export class PlacedLayoutItemDto {
   @IsString()

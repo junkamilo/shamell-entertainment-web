@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
-import { AdminCustomerActivityNotifyService } from './admin-customer-activity-notify.service';
-import { AdminPaymentNotifyService } from './admin-payment-notify.service';
-import { MailService } from './mail.service';
+import { AdminCustomerActivityNotifyService } from './services/admin-customer-activity-notify.service';
+import { AdminPaymentNotifyService } from './services/admin-payment-notify.service';
+import { MailService } from './services/mail.service';
 
 @Module({
   providers: [

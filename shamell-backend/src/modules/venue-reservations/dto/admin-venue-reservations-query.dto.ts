@@ -3,7 +3,7 @@ import { VenueSeatReservationStatus } from '@prisma/client';
 import {
   VENUE_RESERVATION_PAYMENT_CHANNELS,
   type VenueReservationPaymentChannel,
-} from '../venue-reservation-payment-channel.const';
+} from '../constants/venue-reservations.constants';
 import { Type } from 'class-transformer';
 import {
   IsDateString,
