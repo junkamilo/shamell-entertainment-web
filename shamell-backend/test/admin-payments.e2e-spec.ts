@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AdminPaymentsController } from '../src/modules/admin-payments/controllers/admin-payments.controller';
 import { AdminPaymentsService } from '../src/modules/admin-payments/services/admin-payments.service';
-import { AdminJwtGuard } from '../src/common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../src/common/auth/guards/admin-jwt.guard';
 
 describe('AdminPayments (e2e smoke)', () => {
   let app: INestApplication<App>;

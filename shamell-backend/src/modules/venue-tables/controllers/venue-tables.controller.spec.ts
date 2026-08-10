@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { createVenueTablesServiceMock } from '../__mocks__/venue-tables.service.mock';
 import { VenueTablesService } from '../services/venue-tables.service';
 import { VenueTablesController } from './venue-tables.controller';

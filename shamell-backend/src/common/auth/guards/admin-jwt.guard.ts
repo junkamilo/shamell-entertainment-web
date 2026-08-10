@@ -6,8 +6,16 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { PrismaService } from '../../prisma/prisma.service';
-import { deriveAdminPermissions, isAdminStaffRole } from './admin-permissions';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { patchRequestContext } from '../../http/context/request-context.als';
+import {
+  deriveAdminPermissions,
+  isAdminStaffRole,
+} from '../constants/admin-permissions.constants';
+import type {
+  AdminJwtPayload,
+  AdminRequestUser,
+} from '../types/admin-auth.types';
 
 @Injectable()
 export class AdminJwtGuard implements CanActivate {
@@ -34,12 +42,7 @@ export class AdminJwtGuard implements CanActivate {
     }
 
     const payload = await this.jwtService
-      .verifyAsync<{
-        sub?: string;
-        email?: string;
-        role?: string;
-        permissions?: string[];
-      }>(token)
+      .verifyAsync<AdminJwtPayload>(token)
       .catch(() => null);
     if (!payload?.sub) {
       throw new UnauthorizedException('Invalid or expired token.');
@@ -59,21 +62,13 @@ export class AdminJwtGuard implements CanActivate {
 
     const permissions = deriveAdminPermissions(user.role);
 
-    (
-      request as {
-        adminUser?: {
-          id: string;
-          email?: string;
-          role?: string;
-          permissions?: string[];
-        };
-      }
-    ).adminUser = {
+    (request as { adminUser?: AdminRequestUser }).adminUser = {
       id: user.id,
       email: user.email ?? payload.email,
       role: user.role,
       permissions,
     };
+    patchRequestContext({ adminUserId: user.id });
 
     return true;
   }

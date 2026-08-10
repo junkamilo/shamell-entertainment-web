@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { VenueLayoutSettingsController } from '../src/modules/venue-layout-settings/controllers/venue-layout-settings.controller';
 import { VenueLayoutSettingsService } from '../src/modules/venue-layout-settings/services/venue-layout-settings.service';
-import { AdminJwtGuard } from '../src/common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../src/common/auth/guards/admin-jwt.guard';
 
 describe('VenueLayoutSettings (e2e smoke)', () => {
   let app: INestApplication<App>;

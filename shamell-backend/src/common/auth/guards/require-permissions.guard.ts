@@ -7,19 +7,16 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { type AdminPermission, hasAdminPermission } from './admin-permissions';
+import {
+  type AdminPermission,
+  hasAdminPermission,
+} from '../constants/admin-permissions.constants';
+import type { AdminRequestUser } from '../types/admin-auth.types';
 
 export const REQUIRE_PERMISSIONS_KEY = 'requirePermissions';
 
 export const RequirePermissions = (...permissions: AdminPermission[]) =>
   SetMetadata(REQUIRE_PERMISSIONS_KEY, permissions);
-
-type AdminRequestUser = {
-  id: string;
-  email?: string;
-  role?: string;
-  permissions?: string[];
-};
 
 @Injectable()
 export class RequirePermissionsGuard implements CanActivate {

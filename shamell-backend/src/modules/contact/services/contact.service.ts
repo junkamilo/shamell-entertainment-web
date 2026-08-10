@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ContactRequest, ContactRequestStatus, Prisma } from '@prisma/client';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import { buildPaginationMeta } from '../../../common/pagination/pagination.util';
 import { AvailabilityService } from '../../availability/services/availability.service';
 import {
@@ -346,9 +347,10 @@ export class ContactService {
         );
       }
     } catch (err) {
-      this.logger.error(
-        `Concierge inquiry ack email unexpected error: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      logCaughtError(this.logger, err, {
+        op: 'mail.concierge_ack',
+        level: 'error',
+      });
     }
   }
 
@@ -409,9 +411,10 @@ export class ContactService {
         );
       }
     } catch (err) {
-      this.logger.error(
-        `Booking inquiry ack email unexpected error: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      logCaughtError(this.logger, err, {
+        op: 'mail.booking_inquiry_ack',
+        level: 'error',
+      });
     }
   }
 

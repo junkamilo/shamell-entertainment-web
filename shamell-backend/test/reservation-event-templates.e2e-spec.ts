@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AdminJwtGuard } from '../src/common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../src/common/auth/guards/admin-jwt.guard';
 import { ReservationEventTemplatesController } from '../src/modules/reservation-event-templates/controllers/reservation-event-templates.controller';
 import { ReservationEventTemplatesService } from '../src/modules/reservation-event-templates/services/reservation-event-templates.service';
 

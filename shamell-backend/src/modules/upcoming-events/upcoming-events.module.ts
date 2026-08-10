@@ -8,12 +8,22 @@ import { AdminClassEnrollmentService } from './services/admin-class-enrollment.s
 import { AdminFixedEventEnrollmentService } from './services/admin-fixed-event-enrollment.service';
 import { UpcomingEventsRepository } from './services/upcoming-events.repository';
 import { UpcomingEventsService } from './services/upcoming-events.service';
+import { UpcomingEventsPublicService } from './services/upcoming-events-public.service';
+import { UpcomingEventsCheckoutService } from './services/upcoming-events-checkout.service';
+import { UpcomingEventsWebhookService } from './services/upcoming-events-webhook.service';
+import { UpcomingEventsAdminSessionsService } from './services/upcoming-events-admin-sessions.service';
+import { UpcomingEventsVenueConfigService } from './services/upcoming-events-venue-config.service';
 
 @Module({
   imports: [ReservationEventTemplatesModule, StripeModule, MailModule],
   controllers: [UpcomingEventsController],
   providers: [
     UpcomingEventsRepository,
+    UpcomingEventsVenueConfigService,
+    UpcomingEventsPublicService,
+    UpcomingEventsCheckoutService,
+    UpcomingEventsWebhookService,
+    UpcomingEventsAdminSessionsService,
     UpcomingEventsService,
     AdminClassEnrollmentService,
     AdminFixedEventEnrollmentService,

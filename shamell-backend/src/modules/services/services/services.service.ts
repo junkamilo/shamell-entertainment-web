@@ -3,8 +3,10 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { softFailToNull } from '../../../common/http/utils/log-caught-error.util';
 import { CreateServiceDto } from '../dto/create-service.dto';
 import { CreateServiceTypeDto } from '../dto/create-service-type.dto';
 import { UpdateServiceDto } from '../dto/update-service.dto';
@@ -20,6 +22,8 @@ import { ServicesRepository } from './services.repository';
 
 @Injectable()
 export class ServicesService {
+  private readonly logger = new Logger(ServicesService.name);
+
   constructor(
     private readonly repository: ServicesRepository,
     private readonly media: ServicesMediaService,
@@ -143,7 +147,7 @@ export class ServicesService {
       } catch {
         await this.media
           .deleteImageFromCloudinaryByUrl(newImageUrl)
-          .catch(() => null);
+          .catch(softFailToNull(this.logger, 'cdn.cleanup'));
         throw new InternalServerErrorException(
           'Cannot replace previous media in Cloudinary.',
         );
@@ -153,7 +157,7 @@ export class ServicesService {
       if (existing.imageUrl) {
         await this.media
           .deleteImageFromCloudinaryByUrl(existing.imageUrl)
-          .catch(() => null);
+          .catch(softFailToNull(this.logger, 'cdn.cleanup'));
       }
       nextImageUrl = null;
     }
@@ -207,7 +211,7 @@ export class ServicesService {
     if (existing.imageUrl) {
       await this.media
         .deleteImageFromCloudinaryByUrl(existing.imageUrl)
-        .catch(() => null);
+        .catch(softFailToNull(this.logger, 'cdn.cleanup'));
     }
 
     await this.repository.deleteService(id);

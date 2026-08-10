@@ -73,3 +73,34 @@ export function makeCreateEventDto(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+export function makeOccasionTypeRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'occ-1',
+    name: 'Birthday',
+    isActive: true,
+    createdAt: NOW,
+    updatedAt: NOW,
+    _count: { bookings: 0, eventLinks: 0 },
+    ...overrides,
+  };
+}
+
+/** Venue config row shape for hub enrichment (`findHubVenueConfigs`). */
+export function makeHubVenueConfigStub(
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    eventId: 'evt-1',
+    clientEnabled: false,
+    fixedTicketCapacity: null as number | null,
+    reservationOpensAt: null as Date | null,
+    reservationClosesAt: null as Date | null,
+    reservationEventDate: null as Date | null,
+    reservationTimezone: 'America/New_York',
+    reservationEventTemplate: null as {
+      scheduleMode: string;
+    } | null,
+    ...overrides,
+  };
+}

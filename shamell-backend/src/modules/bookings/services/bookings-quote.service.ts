@@ -17,6 +17,7 @@ import {
   maskCustomerName,
   maskEmail,
 } from '../../../common/util/mask-pii.util';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import { emailBrandingFromConfig } from '../../mail/utils/email-html-branding';
 import { MailService } from '../../mail/services/mail.service';
 import { AdminCustomerActivityNotifyService } from '../../mail/services/admin-customer-activity-notify.service';
@@ -407,9 +408,11 @@ export class BookingsQuoteService {
           this.webhook.parseStripeCheckoutSession(stripeSession),
         );
       } catch (err) {
-        this.logger.warn(
-          `booking-reconcile-on-status-failed session=${sessionId} reason=${err instanceof Error ? err.message : String(err)}`,
-        );
+        logCaughtError(this.logger, err, {
+          op: 'booking.reconcile_on_status',
+          level: 'warn',
+          extra: { sessionId },
+        });
       }
     }
 

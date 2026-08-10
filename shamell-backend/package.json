@@ -24,6 +24,20 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:cov:upcoming": "jest modules/upcoming-events --coverage --runInBand --collectCoverageFrom=\"modules/upcoming-events/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:venue-reservations": "jest modules/venue-reservations --coverage --runInBand --collectCoverageFrom=\"modules/venue-reservations/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:bookings": "jest modules/bookings --coverage --runInBand --collectCoverageFrom=\"modules/bookings/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:auth": "jest modules/auth --coverage --runInBand --collectCoverageFrom=\"modules/auth/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:availability": "jest modules/availability --coverage --runInBand --collectCoverageFrom=\"modules/availability/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:events": "jest modules/events --coverage --runInBand --collectCoverageFrom=\"modules/events/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:contact": "jest modules/contact --coverage --runInBand --collectCoverageFrom=\"modules/contact/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:venue-tables": "jest modules/venue-tables --coverage --runInBand --collectCoverageFrom=\"modules/venue-tables/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:standalone-chairs": "jest modules/standalone-chairs --coverage --runInBand --collectCoverageFrom=\"modules/standalone-chairs/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:gallery": "jest modules/gallery --coverage --runInBand --collectCoverageFrom=\"modules/gallery/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:floor-layout": "jest modules/floor-layout --coverage --runInBand --collectCoverageFrom=\"modules/floor-layout/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:header-media": "jest modules/header-media --coverage --runInBand --collectCoverageFrom=\"modules/header-media/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:services": "jest modules/services --coverage --runInBand --collectCoverageFrom=\"modules/services/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
+    "test:cov:venue-layout-settings": "jest modules/venue-layout-settings --coverage --runInBand --collectCoverageFrom=\"modules/venue-layout-settings/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
     "resend:venue-confirmation": "ts-node -r tsconfig-paths/register scripts/resend-venue-seat-confirmation.ts"
   },
   "dependencies": {
@@ -92,7 +106,14 @@
       "^.+\\.(t|j)s$": "ts-jest"
     },
     "collectCoverageFrom": [
-      "**/*.(t|j)s"
+      "**/*.(t|j)s",
+      "!**/*.module.ts",
+      "!**/main.ts",
+      "!**/__mocks__/**",
+      "!**/*.dto.ts",
+      "!**/testing/**",
+      "!**/*.spec.ts",
+      "!**/*.integration.spec.ts"
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"

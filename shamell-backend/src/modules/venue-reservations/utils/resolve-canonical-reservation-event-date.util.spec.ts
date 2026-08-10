@@ -89,8 +89,52 @@ describe('resolve-canonical-reservation-event-date.util', () => {
     ).toThrow(BadRequestException);
   });
 
-  it('falls back to stored row date when config has no event night', async () => {
-    const stored = new Date('2026-08-15T22:00:00.000Z');
+  it('returns event night for checkout when reservationEventDate is set', () => {
+    const night = assertCanonicalEventNightForCheckout({
+      reservationOpensAt: salesOpen,
+      reservationClosesAt: salesClose,
+      reservationEventDate: eventNight,
+    });
+    expect(night).toEqual(eventNight);
+  });
+
+  it('rejects non-FIXED_EVENT checkout when event night is missing', () => {
+    expect(() =>
+      assertCanonicalEventNightForCheckout({
+        reservationOpensAt: null,
+        reservationClosesAt: null,
+        reservationEventDate: null,
+        reservationEventTemplate: {
+          name: 'Weekly',
+          timezone: 'America/New_York',
+          scheduleMode: ReservationEventScheduleMode.RECURRING_WEEKLY,
+          salesStartDate: null,
+          salesEndDate: null,
+          eventDate: null,
+          eventStartTime: null,
+          eventEndTime: null,
+          recurringEffectiveFrom: null,
+          recurringStartTime: null,
+          recurringEndTime: null,
+        },
+      }),
+    ).toThrow(BadRequestException);
+
+    try {
+      assertCanonicalEventNightForCheckout({
+        reservationOpensAt: null,
+        reservationClosesAt: null,
+        reservationEventDate: null,
+      });
+    } catch (err) {
+      expect(err).toBeInstanceOf(BadRequestException);
+      expect(String((err as BadRequestException).message)).toBe(
+        'Reservations are not configured.',
+      );
+    }
+  });
+
+  it('falls back to sales-open derived date when legacy has opens/closes', async () => {
     const prisma = {
       upcomingVenueConfig: {
         findUnique: () => Promise.resolve(null),
@@ -106,9 +150,53 @@ describe('resolve-canonical-reservation-event-date.util', () => {
     };
     const result = await resolveCanonicalReservationEventDate(prisma, {
       upcomingEventId: 'evt-1',
-      storedEventDate: stored,
+      storedEventDate: eventNight,
     });
     expect(result).toEqual(salesOpen);
+  });
+
+  it('falls back to storedEventDate when upcoming and legacy yield no night', async () => {
+    const stored = new Date('2026-08-15T22:00:00.000Z');
+    const prisma = {
+      upcomingVenueConfig: {
+        findUnique: () =>
+          Promise.resolve({
+            reservationOpensAt: null,
+            reservationClosesAt: null,
+            reservationEventDate: null,
+            reservationEventTemplate: null,
+          }),
+      },
+      venueLayoutClientSettings: {
+        findFirst: () =>
+          Promise.resolve({
+            reservationOpensAt: null,
+            reservationClosesAt: null,
+            reservationEventDate: null,
+          }),
+      },
+    };
+    const result = await resolveCanonicalReservationEventDate(prisma, {
+      upcomingEventId: 'evt-1',
+      storedEventDate: stored,
+    });
+    expect(result).toEqual(stored);
+  });
+
+  it('returns null when no canonical source and no storedEventDate', async () => {
+    const prisma = {
+      upcomingVenueConfig: {
+        findUnique: () => Promise.resolve(null),
+      },
+      venueLayoutClientSettings: {
+        findFirst: () => Promise.resolve(null),
+      },
+    };
+    const result = await resolveCanonicalReservationEventDate(prisma, {
+      upcomingEventId: null,
+      storedEventDate: null,
+    });
+    expect(result).toBeNull();
   });
 
   /**

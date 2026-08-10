@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { createAdminStripeWebhooksServiceMock } from '../__mocks__/admin-stripe-webhooks.service.mock';
 import {
   makeListQuery,

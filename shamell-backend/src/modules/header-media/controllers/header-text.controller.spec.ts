@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { DEFAULT_HEADER_TEXT } from '../constants/header-media.constants';
 import { createHeaderTextServiceMock } from '../__mocks__/header-text.service.mock';
 import { HeaderTextService } from '../services/header-text.service';

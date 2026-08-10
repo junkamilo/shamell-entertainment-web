@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, StripeWebhookProcessingStatus } from '@prisma/client';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import { PrismaService } from '../../../prisma/prisma.service';
 import type { StripeWebhookEventLite } from '../types/stripe-webhook.types';
 
@@ -100,9 +101,11 @@ export class StripeWebhookAuditService {
         },
       });
     } catch (updateErr) {
-      this.logger.warn(
-        `stripe-webhook-mark-failed-db-error eventId=${eventId} reason=${updateErr instanceof Error ? updateErr.message : String(updateErr)}`,
-      );
+      logCaughtError(this.logger, updateErr, {
+        op: 'stripe.webhook.mark_failed',
+        level: 'warn',
+        extra: { eventId },
+      });
     }
   }
 }

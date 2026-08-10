@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { createGalleryServiceMock } from '../../gallery/__mocks__/gallery.service.mock';
 import { GalleryService } from '../../gallery/services/gallery.service';
 import { makeEventRow } from '../__mocks__/events.fixtures';

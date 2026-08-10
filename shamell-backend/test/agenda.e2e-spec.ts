@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AgendaController } from '../src/modules/agenda/controllers/agenda.controller';
 import { AgendaService } from '../src/modules/agenda/services/agenda.service';
-import { AdminJwtGuard } from '../src/common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../src/common/auth/guards/admin-jwt.guard';
 
 describe('Agenda (e2e smoke)', () => {
   let app: INestApplication<App>;

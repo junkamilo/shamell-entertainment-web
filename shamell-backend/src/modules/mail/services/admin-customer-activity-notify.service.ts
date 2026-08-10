@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import {
   DEFAULT_APP_PUBLIC_NAME,
   ENV_APP_PUBLIC_NAME,
@@ -72,9 +73,11 @@ export class AdminCustomerActivityNotifyService {
         );
       }
     } catch (err) {
-      this.logger.error(
-        `admin-customer-activity-notify-failed kind=${input.kind} reason=${err instanceof Error ? err.message : String(err)}`,
-      );
+      logCaughtError(this.logger, err, {
+        op: 'mail.admin_customer_activity',
+        level: 'error',
+        extra: { kind: input.kind },
+      });
     }
   }
 }

@@ -2,9 +2,11 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { promises as fs } from 'fs';
 import { v2 as cloudinary } from 'cloudinary';
+import { softFailToNull } from '../../../common/http/utils/log-caught-error.util';
 import {
   ABOUT_CLOUDINARY_FOLDER,
   ABOUT_VIDEO_UPLOAD_EAGER,
@@ -17,6 +19,8 @@ import type {
 
 @Injectable()
 export class AboutMediaService {
+  private readonly logger = new Logger(AboutMediaService.name);
+
   constructor() {
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -91,7 +95,9 @@ export class AboutMediaService {
       };
     } finally {
       if (file.path) {
-        await fs.unlink(file.path).catch(() => null);
+        await fs
+          .unlink(file.path)
+          .catch(softFailToNull(this.logger, 'fs.unlink'));
       }
     }
   }

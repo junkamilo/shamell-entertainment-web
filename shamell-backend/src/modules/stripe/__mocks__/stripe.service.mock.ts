@@ -7,6 +7,7 @@ export function createStripeServiceMock() {
         sessions: {
           create: jest.fn(),
           retrieve: jest.fn(),
+          update: jest.fn(),
         },
       },
       webhooks: {

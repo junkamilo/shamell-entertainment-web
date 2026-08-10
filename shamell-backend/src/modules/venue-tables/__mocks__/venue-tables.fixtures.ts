@@ -21,3 +21,47 @@ export function makeVenueTableConfigRow(
     ...overrides,
   };
 }
+
+/** Valid catalog_table JSON item for parseLayoutItems. */
+export function makeCatalogTableLayoutItemJson(
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: 'layout-table-1',
+    kind: 'catalog_table',
+    venueTableConfigId: 'table-1',
+    tableName: 'LARGE-abcd1234',
+    size: 'LARGE',
+    includedChairs: 6,
+    x: 10,
+    y: 20,
+    rotation: 0,
+    ...overrides,
+  };
+}
+
+/** Valid standalone_chair JSON item for parseLayoutItems. */
+export function makeStandaloneChairLayoutItemJson(
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: 'layout-chair-1',
+    kind: 'standalone_chair',
+    venueStandaloneChairId: 'chair-1',
+    chairName: 'Chair A',
+    x: 5,
+    y: 8,
+    rotation: 45,
+    ...overrides,
+  };
+}
+
+/** Incomplete catalog_table (missing venueTableConfigId) — skipped by parser. */
+export function makeIncompleteCatalogTableLayoutItemJson(
+  overrides: Record<string, unknown> = {},
+) {
+  return makeCatalogTableLayoutItemJson({
+    venueTableConfigId: undefined,
+    ...overrides,
+  });
+}

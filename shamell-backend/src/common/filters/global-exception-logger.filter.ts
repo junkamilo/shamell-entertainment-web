@@ -1,11 +1,13 @@
-import {
-  ArgumentsHost,
-  Catch,
-  ExceptionFilter,
-  HttpException,
-  HttpStatus,
-  Logger,
-} from '@nestjs/common';
+import { ArgumentsHost, Catch, ExceptionFilter, Logger } from '@nestjs/common';
+import { REQUEST_ID_HEADER } from '../http/constants/http-headers.constants';
+import { getRequestContext } from '../http/context/request-context.als';
+import type {
+  ObservabilityHttpRequest,
+  ObservabilityHttpResponse,
+} from '../http/types/http-request.types';
+import { buildClientErrorBody } from './utils/build-client-error-body.util';
+import { buildExceptionLogPayload } from './utils/build-exception-log-payload.util';
+import { resolveExceptionMeta } from './utils/resolve-exception-meta.util';
 
 @Catch()
 export class GlobalExceptionLoggerFilter implements ExceptionFilter {
@@ -13,39 +15,36 @@ export class GlobalExceptionLoggerFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse<{
-      status: (code: number) => { json: (body: unknown) => void };
-    }>();
-    const request = ctx.getRequest<{ method?: string; url?: string }>();
+    const response = ctx.getResponse<ObservabilityHttpResponse>();
+    const request = ctx.getRequest<ObservabilityHttpRequest>();
+    const als = getRequestContext();
 
-    const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
-
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : exception instanceof Error
-          ? exception.message
-          : 'Internal server error';
-
-    if (status >= 500) {
-      this.logger.error(
-        `${request.method ?? '?'} ${request.url ?? '?'} status=${status}`,
-        exception instanceof Error ? exception.stack : String(exception),
-      );
+    if (!request.requestId && als?.requestId) {
+      request.requestId = als.requestId;
+    }
+    if (!request.routeContext && als?.routeContext) {
+      request.routeContext = als.routeContext;
     }
 
-    const body =
-      typeof message === 'object' && message !== null
-        ? message
-        : {
-            statusCode: status,
-            message:
-              typeof message === 'string' ? message : 'Internal server error',
-          };
+    const meta = resolveExceptionMeta(exception);
+    const body = buildClientErrorBody(exception, meta.status);
+    const payload = buildExceptionLogPayload(request, meta);
+    const json = JSON.stringify(payload);
 
-    response.status(status).json(body);
+    if (meta.status >= 500) {
+      this.logger.error(
+        json,
+        meta.stack ??
+          (exception instanceof Error ? undefined : String(exception)),
+      );
+    } else if (meta.status >= 400) {
+      this.logger.warn(json);
+    }
+
+    if (request.requestId && typeof response.setHeader === 'function') {
+      response.setHeader(REQUEST_ID_HEADER, request.requestId);
+    }
+
+    response.status(meta.status).json(body);
   }
 }

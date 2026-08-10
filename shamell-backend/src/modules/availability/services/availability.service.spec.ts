@@ -1,39 +1,36 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { AvailabilityClosureKind } from '@prisma/client';
-import { Test } from '@nestjs/testing';
-import { createAvailabilityRepositoryMock } from '../__mocks__/availability.repository.mock';
 import {
   makeClosureDto,
   makeClosurePrismaRow,
   makeWeeklyPrismaRow,
   makeWeeklySlotsDto,
 } from '../__mocks__/availability.fixtures';
-import { AvailabilityRepository } from './availability.repository';
-import { AvailabilityService } from './availability.service';
+import type { AvailabilityRepositoryMock } from '../__mocks__/availability.repository.mock';
+import { createAvailabilityServiceTestModule } from '../testing/availability-service.test-module';
+import type { AvailabilityService } from './availability.service';
 
 describe('AvailabilityService', () => {
   let service: AvailabilityService;
-  const repository = createAvailabilityRepositoryMock();
-  const config = {
-    get: jest.fn().mockReturnValue(undefined),
-  };
+  let repository: AvailabilityRepositoryMock;
+  let config: { get: jest.Mock };
 
   beforeEach(async () => {
-    jest.clearAllMocks();
-    config.get.mockReturnValue(undefined);
-    const moduleRef = await Test.createTestingModule({
-      providers: [
-        AvailabilityService,
-        { provide: AvailabilityRepository, useValue: repository },
-        { provide: ConfigService, useValue: config },
-      ],
-    }).compile();
-    service = moduleRef.get(AvailabilityService);
+    const harness = await createAvailabilityServiceTestModule();
+    service = harness.service;
+    repository = harness.repository;
+    config = harness.config;
   });
 
   it('bookingTimeZone defaults to America/New_York', () => {
     expect(service.bookingTimeZone()).toBe('America/New_York');
+  });
+
+  it('bookingTimeZone reads BOOKING_TZ from config', () => {
+    config.get.mockImplementation((key: string) =>
+      key === 'BOOKING_TZ' ? 'America/Los_Angeles' : undefined,
+    );
+    expect(service.bookingTimeZone()).toBe('America/Los_Angeles');
   });
 
   it('getPublicRules projects without ids', async () => {
@@ -60,6 +57,28 @@ describe('AvailabilityService', () => {
     expect(repository.upsertAllWeeklySlots).toHaveBeenCalled();
   });
 
+  it('putWeeklySlots invalid weekday set BadRequest', async () => {
+    await expect(
+      service.putWeeklySlots({
+        slots: [
+          {
+            weekday: 0,
+            isClosed: false,
+            startTime: '09:00',
+            endTime: '21:00',
+          },
+          {
+            weekday: 0,
+            isClosed: false,
+            startTime: '09:00',
+            endTime: '21:00',
+          },
+        ],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.upsertAllWeeklySlots).not.toHaveBeenCalled();
+  });
+
   it('createClosure SPECIFIC_DATE requires date', async () => {
     await expect(
       service.createClosure({
@@ -74,17 +93,125 @@ describe('AvailabilityService', () => {
     expect(repository.createClosure).toHaveBeenCalled();
   });
 
-  it('removeClosure maps missing to NotFound', async () => {
+  it('createClosure DATE_RANGE happy path', async () => {
+    const row = makeClosurePrismaRow({
+      kind: AvailabilityClosureKind.DATE_RANGE,
+      date: null,
+      startDate: new Date('2026-07-10T12:00:00.000Z'),
+      endDate: new Date('2026-07-20T12:00:00.000Z'),
+    });
+    repository.createClosure.mockResolvedValue(row);
+    const result = await service.createClosure(
+      makeClosureDto({
+        kind: AvailabilityClosureKind.DATE_RANGE,
+        date: undefined,
+        startDate: '2026-07-10',
+        endDate: '2026-07-20',
+      }),
+    );
+    expect(result).toEqual(row);
+    expect(repository.createClosure).toHaveBeenCalledTimes(1);
+    const [[payload]] = repository.createClosure.mock.calls as [
+      [
+        {
+          kind: AvailabilityClosureKind;
+          startDate: Date;
+          endDate: Date;
+        },
+      ],
+    ];
+    expect(payload.kind).toBe(AvailabilityClosureKind.DATE_RANGE);
+    expect(payload.startDate.toISOString()).toBe('2026-07-10T12:00:00.000Z');
+    expect(payload.endDate.toISOString()).toBe('2026-07-20T12:00:00.000Z');
+  });
+
+  it('createClosure DATE_RANGE end < start BadRequest', async () => {
+    await expect(
+      service.createClosure(
+        makeClosureDto({
+          kind: AvailabilityClosureKind.DATE_RANGE,
+          date: undefined,
+          startDate: '2026-07-20',
+          endDate: '2026-07-10',
+        }),
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.createClosure).not.toHaveBeenCalled();
+  });
+
+  it('createClosure RECURRING_WEEKDAY happy path', async () => {
+    const row = makeClosurePrismaRow({
+      kind: AvailabilityClosureKind.RECURRING_WEEKDAY,
+      date: null,
+      weekday: 3,
+    });
+    repository.createClosure.mockResolvedValue(row);
+    const result = await service.createClosure(
+      makeClosureDto({
+        kind: AvailabilityClosureKind.RECURRING_WEEKDAY,
+        date: undefined,
+        weekday: 3,
+      }),
+    );
+    expect(result).toEqual(row);
+    expect(repository.createClosure).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: AvailabilityClosureKind.RECURRING_WEEKDAY,
+        weekday: 3,
+      }),
+    );
+  });
+
+  it('createClosure RECURRING_WEEKDAY missing weekday BadRequest', async () => {
+    await expect(
+      service.createClosure({
+        kind: AvailabilityClosureKind.RECURRING_WEEKDAY,
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.createClosure).not.toHaveBeenCalled();
+  });
+
+  it('removeClosure NotFound when repository delete fails', async () => {
     repository.deleteClosure.mockRejectedValue(new Error('missing'));
     await expect(service.removeClosure('missing')).rejects.toBeInstanceOf(
       NotFoundException,
     );
   });
 
-  it('assertDateTimeAllowed rejects closed by closure', async () => {
+  it('removeClosure returns ok when delete succeeds', async () => {
+    repository.deleteClosure.mockResolvedValue(undefined);
+    await expect(service.removeClosure('c-1')).resolves.toEqual({ ok: true });
+  });
+
+  it('assertDateTimeAllowed rejects closed by SPECIFIC_DATE hit', async () => {
     repository.findBlockingClosure.mockResolvedValue({ id: 'c-1' });
     await expect(
       service.assertDateTimeAllowed(new Date('2026-07-15T16:00:00.000Z')),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('assertDateTimeAllowed rejects closed weekday slot', async () => {
+    repository.findBlockingClosure.mockResolvedValue(null);
+    repository.findWeeklySlotByWeekday.mockResolvedValue(
+      makeWeeklyPrismaRow({ isClosed: true }),
+    );
+    await expect(
+      service.assertDateTimeAllowed(new Date('2026-07-15T16:00:00.000Z')),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('assertDateTimeAllowed outside open window BadRequest', async () => {
+    repository.findBlockingClosure.mockResolvedValue(null);
+    repository.findWeeklySlotByWeekday.mockResolvedValue(
+      makeWeeklyPrismaRow({
+        isClosed: false,
+        startTime: '09:00',
+        endTime: '21:00',
+      }),
+    );
+    // 2026-07-15T10:00Z = 06:00 America/New_York — before 09:00
+    await expect(
+      service.assertDateTimeAllowed(new Date('2026-07-15T10:00:00.000Z')),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
@@ -96,13 +223,18 @@ describe('AvailabilityService', () => {
     ).resolves.toBeUndefined();
   });
 
-  it('assertDateTimeAllowed rejects closed weekly slot', async () => {
+  it('assertDateTimeAllowed allows time inside open window', async () => {
     repository.findBlockingClosure.mockResolvedValue(null);
     repository.findWeeklySlotByWeekday.mockResolvedValue(
-      makeWeeklyPrismaRow({ isClosed: true }),
+      makeWeeklyPrismaRow({
+        isClosed: false,
+        startTime: '09:00',
+        endTime: '21:00',
+      }),
     );
+    // 2026-07-15T16:00Z = 12:00 America/New_York
     await expect(
       service.assertDateTimeAllowed(new Date('2026-07-15T16:00:00.000Z')),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    ).resolves.toBeUndefined();
   });
 });

@@ -10,10 +10,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { OAuth2Client } from 'google-auth-library';
+import { softFailToNull } from '../../../common/http/utils/log-caught-error.util';
 import {
   deriveAdminPermissions,
   isAdminStaffRole,
-} from '../../../common/auth/admin-permissions';
+} from '../../../common/auth/constants/admin-permissions.constants';
 import {
   buildAdminInviteEmailHtml,
   buildAdminInviteEmailText,
@@ -248,7 +249,9 @@ export class AuthService {
     });
 
     if (!result.ok) {
-      await this.repository.deleteInviteById(invite.id).catch(() => null);
+      await this.repository
+        .deleteInviteById(invite.id)
+        .catch(softFailToNull(this.logger, 'auth.invite.cleanup'));
       const raw = result.errorText ?? '';
       const friendly = MailService.userFacingErrorMessage(
         raw,

@@ -1,18 +1,19 @@
-// src/main.ts
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { assertJwtSecretForProduction } from './common/config/jwt-secret.util';
-import { GlobalExceptionLoggerFilter } from './common/filters/global-exception-logger.filter';
+import { applyHttpObservability } from './common/http/apply-http-observability';
+import { registerProcessErrorHandlers } from './common/process/register-process-error-handlers';
 
 async function bootstrap() {
+  registerProcessErrorHandlers();
   assertJwtSecretForProduction();
 
   const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableShutdownHooks();
-  app.useGlobalFilters(new GlobalExceptionLoggerFilter());
+  applyHttpObservability(app);
 
   // Security
   app.use(helmet());
@@ -94,4 +95,16 @@ async function bootstrap() {
     }
   }
 }
-void bootstrap();
+
+void bootstrap().catch((err: unknown) => {
+  const logger = new Logger('Bootstrap');
+  logger.error(
+    JSON.stringify({
+      kind: 'bootstrapFailure',
+      exceptionName: err instanceof Error ? err.name : 'UnknownError',
+      message: err instanceof Error ? err.message : String(err),
+    }),
+    err instanceof Error ? err.stack : undefined,
+  );
+  process.exit(1);
+});

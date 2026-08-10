@@ -5,6 +5,7 @@ import {
   BookingSource,
   BookingStatus,
 } from '@prisma/client';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import { AvailabilityService } from '../../availability/services/availability.service';
 import {
   parseHHMM,
@@ -231,9 +232,11 @@ export class BookingsPrivateClassService {
         }),
       });
     } catch (err) {
-      this.logger.error(
-        `Private class ${booking.id}: cash confirmation email error: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      logCaughtError(this.logger, err, {
+        op: 'mail.private_class_cash_confirmation',
+        level: 'error',
+        extra: { bookingId: booking.id },
+      });
     }
   }
 }

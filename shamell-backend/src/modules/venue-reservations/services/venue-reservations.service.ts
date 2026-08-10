@@ -33,6 +33,7 @@ import {
   maskEmail,
 } from '../../../common/util/mask-pii.util';
 import { formatEventDateInZone } from '../../../common/util/event-date-in-zone.util';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import {
   evaluateSalesWindow,
   resolveReservationWindow,
@@ -524,9 +525,11 @@ export class VenueReservationsService {
           'return-page-reconcile',
         );
       } catch (err) {
-        this.logger.warn(
-          `venue-reconcile-on-status-failed session=${sessionId} reason=${err instanceof Error ? err.message : String(err)}`,
-        );
+        logCaughtError(this.logger, err, {
+          op: 'venue.reconcile_on_status',
+          level: 'warn',
+          extra: { sessionId },
+        });
       }
     }
 
@@ -1238,7 +1241,11 @@ export class VenueReservationsService {
   ): Promise<Date | null> {
     try {
       return await this.resolveCanonicalEventDateFromContext(ctx);
-    } catch {
+    } catch (err) {
+      logCaughtError(this.logger, err, {
+        op: 'venue.resolve_event_date_optional',
+        level: 'warn',
+      });
       return null;
     }
   }
@@ -1930,9 +1937,11 @@ export class VenueReservationsService {
       );
       return false;
     } catch (err) {
-      this.logger.error(
-        `reservation-paid-email-failed id=${row.id} reason=${err instanceof Error ? err.message : String(err)}`,
-      );
+      logCaughtError(this.logger, err, {
+        op: 'mail.reservation_paid',
+        level: 'error',
+        extra: { reservationId: row.id },
+      });
       return false;
     }
   }

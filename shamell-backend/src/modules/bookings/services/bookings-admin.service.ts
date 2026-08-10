@@ -13,6 +13,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { buildPaginationMeta } from '../../../common/pagination/pagination.util';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import { AvailabilityService } from '../../availability/services/availability.service';
 import { utcInstantForWallClock } from '../../availability/utils/booking-tz';
 import { sanitizeInquiryDetails } from '../../booking-inquiry/utils/contact-inquiry-details.util';
@@ -440,9 +441,11 @@ export class BookingsAdminService {
         });
       }
     } catch (err) {
-      this.logger.error(
-        `Booking ${booking.id}: confirmation email error: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      logCaughtError(this.logger, err, {
+        op: 'mail.booking_confirmation',
+        level: 'error',
+        extra: { bookingId: booking.id },
+      });
     }
   }
 

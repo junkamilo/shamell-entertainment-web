@@ -1,14 +1,22 @@
 /**
- * Integration: Bookings public occupied against a real database.
- * Run: BOOKINGS_INTEGRATION=1 npm test -- bookings.integration
+ * Integration: Bookings public occupied + slot conflict + quote total against a real database.
+ * Run: BOOKINGS_INTEGRATION=1 npm test -- bookings.integration --runInBand
  */
+import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BookingSource, BookingStatus, PrismaClient } from '@prisma/client';
+import {
+  BookingQuotePaymentModel,
+  BookingSource,
+  BookingStatus,
+  PrismaClient,
+} from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { BookingsRepository } from './services/bookings.repository';
 import { BookingsAdminService } from './services/bookings-admin.service';
+import { BookingsQuoteService } from './services/bookings-quote.service';
 import type { AvailabilityService } from '../availability/services/availability.service';
+import type { StripeService } from '../stripe/services/stripe.service';
 
 const run = process.env.BOOKINGS_INTEGRATION === '1';
 
@@ -18,7 +26,8 @@ const run = process.env.BOOKINGS_INTEGRATION === '1';
   let prisma: PrismaClient;
   let pool: Pool;
   let admin: BookingsAdminService;
-  let createdBookingId: string | null = null;
+  let quote: BookingsQuoteService;
+  const createdBookingIds: string[] = [];
   let serviceId: string | null = null;
 
   beforeAll(async () => {
@@ -67,13 +76,42 @@ const run = process.env.BOOKINGS_INTEGRATION === '1';
       paymentNotify as never,
       config,
     );
+
+    const stripe = {
+      frontendUrl: () => 'https://example.com',
+      client: {
+        checkout: {
+          sessions: {
+            create: () =>
+              Promise.resolve({
+                id: `cs_integration_${Date.now()}`,
+                client_secret: 'cs_integration_secret',
+              }),
+            retrieve: () => Promise.resolve({ status: 'open' }),
+          },
+        },
+      },
+    } as unknown as StripeService;
+
+    const webhook = {
+      markBookingPaymentPaid: () => Promise.resolve(undefined),
+      parseStripeCheckoutSession: (x: unknown) => x,
+    };
+
+    quote = new BookingsQuoteService(
+      repository,
+      mail as never,
+      notify as never,
+      config,
+      stripe,
+      admin,
+      webhook as never,
+    );
   });
 
   afterAll(async () => {
-    if (createdBookingId) {
-      await prisma.booking
-        .delete({ where: { id: createdBookingId } })
-        .catch(() => null);
+    for (const id of createdBookingIds) {
+      await prisma.booking.delete({ where: { id } }).catch(() => null);
     }
     await prisma.$disconnect();
     await pool.end();
@@ -98,7 +136,7 @@ const run = process.env.BOOKINGS_INTEGRATION === '1';
         },
       },
     });
-    createdBookingId = created.id;
+    createdBookingIds.push(created.id);
 
     const occupied = await admin.getPublicOccupiedByDate(dateISO);
     expect(occupied.date).toBe(dateISO);
@@ -107,5 +145,70 @@ const run = process.env.BOOKINGS_INTEGRATION === '1';
         (w) => w.startMinutes === 12 * 60 && w.endMinutes === 14 * 60,
       ),
     ).toBe(true);
+  });
+
+  it('createAdminBooking rejects overlapping slot on same day', async () => {
+    const dateISO = '2099-07-20';
+    const eventDate = new Date(`${dateISO}T16:00:00.000Z`);
+    const first = await admin.createAdminBooking('integration-admin', {
+      serviceId: serviceId!,
+      eventDate: eventDate.toISOString(),
+      location: 'Overlap Studio',
+      guestFullName: 'First Guest',
+      guestEmail: `overlap-first-${Date.now()}@example.com`,
+      guestPhone: '+15550002222',
+      bookingDetails: {
+        eventTimeStart: '10:00',
+        eventTimeEnd: '12:00',
+      },
+    });
+    createdBookingIds.push(first.id);
+
+    await expect(
+      admin.createAdminBooking('integration-admin', {
+        serviceId: serviceId!,
+        eventDate: eventDate.toISOString(),
+        location: 'Overlap Studio',
+        guestFullName: 'Second Guest',
+        guestEmail: `overlap-second-${Date.now()}@example.com`,
+        guestPhone: '+15550003333',
+        bookingDetails: {
+          eventTimeStart: '11:00',
+          eventTimeEnd: '13:00',
+        },
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('createBookingQuote FULL writes quoteTotalAmount in DB', async () => {
+    const dateISO = '2099-08-10';
+    const eventDate = new Date(`${dateISO}T16:00:00.000Z`);
+    const created = await admin.createAdminBooking('integration-admin', {
+      serviceId: serviceId!,
+      eventDate: eventDate.toISOString(),
+      location: 'Quote Studio',
+      guestFullName: 'Quote Guest',
+      guestEmail: `quote-${Date.now()}@example.com`,
+      guestPhone: '+15550004444',
+    });
+    createdBookingIds.push(created.id);
+
+    const result = await quote.createBookingQuote(
+      'integration-admin',
+      created.id,
+      {
+        paymentModel: BookingQuotePaymentModel.FULL,
+        totalAmount: 625,
+      },
+    );
+
+    expect(result.quoteId).toBeTruthy();
+    expect(result.paymentId).toBeTruthy();
+
+    const refreshed = await prisma.booking.findUniqueOrThrow({
+      where: { id: created.id },
+    });
+    expect(Number(refreshed.quoteTotalAmount)).toBe(625);
+    expect(refreshed.quoteModel).toBe(BookingQuotePaymentModel.FULL);
   });
 });

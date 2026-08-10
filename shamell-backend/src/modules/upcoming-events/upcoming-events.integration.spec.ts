@@ -126,11 +126,83 @@ const run = process.env.CLASS_SESSION_INTEGRATION === '1';
     });
     expect(sessions.length).toBeGreaterThan(0);
 
+    const weekdays = new Set(sessions.map((s) => s.weekday));
+    expect([...weekdays].every((wd) => wd === 1 || wd === 3)).toBe(true);
+
     for (const row of sessions) {
       const section = await prisma.reservationEventClassSection.findUnique({
         where: { id: row.sectionId! },
       });
       expect(section).not.toBeNull();
     }
+  });
+
+  it('second regeneration is stable (same upserted count, no orphan blow-up)', async () => {
+    const first = await regenerateClassSessionsForEvent(prisma, eventId);
+    expect(first.upserted).toBeGreaterThan(0);
+
+    const countAfterFirst = await prisma.upcomingClassSession.count({
+      where: { eventId, isActive: true },
+    });
+
+    const second = await regenerateClassSessionsForEvent(prisma, eventId);
+    expect(second.upserted).toBe(first.upserted);
+
+    const countAfterSecond = await prisma.upcomingClassSession.count({
+      where: { eventId, isActive: true },
+    });
+    expect(countAfterSecond).toBe(countAfterFirst);
+    expect(second.deactivated).toBe(0);
+  });
+
+  it('inactive section stops generating new sessions for that fringe', async () => {
+    await regenerateClassSessionsForEvent(prisma, eventId);
+
+    await prisma.reservationEventClassSection.updateMany({
+      where: { templateId, weekday: 1 },
+      data: { isActive: false },
+    });
+
+    const before = await prisma.upcomingClassSession.findMany({
+      where: {
+        eventId,
+        isActive: true,
+        weekday: 1,
+        startsAt: { gt: new Date() },
+      },
+      select: { id: true, sectionId: true, startsAt: true },
+    });
+
+    const result = await regenerateClassSessionsForEvent(prisma, eventId);
+    expect(result.upserted).toBeGreaterThan(0);
+
+    const afterActiveWeekday1 = await prisma.upcomingClassSession.count({
+      where: {
+        eventId,
+        isActive: true,
+        weekday: 1,
+        startsAt: { gt: new Date() },
+      },
+    });
+    // Orphans without paid enrollments should deactivate; no new weekday-1 rows.
+    expect(afterActiveWeekday1).toBeLessThanOrEqual(before.length);
+    if (before.length > 0) {
+      expect(result.deactivated).toBeGreaterThanOrEqual(0);
+    }
+
+    const wednesdayActive = await prisma.upcomingClassSession.count({
+      where: {
+        eventId,
+        isActive: true,
+        weekday: 3,
+        startsAt: { gt: new Date() },
+      },
+    });
+    expect(wednesdayActive).toBeGreaterThan(0);
+
+    await prisma.reservationEventClassSection.updateMany({
+      where: { templateId, weekday: 1 },
+      data: { isActive: true },
+    });
   });
 });

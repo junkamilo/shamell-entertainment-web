@@ -5,6 +5,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { StripeWebhookProcessingStatus } from '@prisma/client';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { StripeWebhookDispatchService } from './stripe-webhook-dispatch.service';
 
@@ -77,9 +78,11 @@ export class StripeWebhookRetryService
         );
         if (didRetry) retried += 1;
       } catch (err) {
-        this.logger.warn(
-          `stripe-webhook-retry-failed eventId=${row.eventId} reason=${err instanceof Error ? err.message : String(err)}`,
-        );
+        logCaughtError(this.logger, err, {
+          op: 'stripe.webhook.retry',
+          level: 'warn',
+          extra: { eventId: row.eventId },
+        });
       }
     }
 

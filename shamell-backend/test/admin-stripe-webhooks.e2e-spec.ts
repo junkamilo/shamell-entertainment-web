@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AdminStripeWebhooksController } from '../src/modules/admin-stripe-webhooks/controllers/admin-stripe-webhooks.controller';
 import { AdminStripeWebhooksService } from '../src/modules/admin-stripe-webhooks/services/admin-stripe-webhooks.service';
-import { AdminJwtGuard } from '../src/common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../src/common/auth/guards/admin-jwt.guard';
 
 describe('AdminStripeWebhooks (e2e smoke)', () => {
   let app: INestApplication<App>;

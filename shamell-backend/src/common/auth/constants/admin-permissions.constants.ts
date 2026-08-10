@@ -1,17 +1,27 @@
-/** Coarse admin staff roles that may access /admin APIs. */
-export const ADMIN_STAFF_ROLES = ['ADMIN', 'SUPER_ADMIN'] as const;
-export type AdminStaffRole = (typeof ADMIN_STAFF_ROLES)[number];
+import type {
+  AdminPermission,
+  AdminStaffRole,
+} from '../types/admin-auth.types';
 
-export const ADMIN_PERMISSIONS = [
+export type {
+  AdminPermission,
+  AdminStaffRole,
+} from '../types/admin-auth.types';
+
+/** Coarse admin staff roles that may access /admin APIs. */
+export const ADMIN_STAFF_ROLES: readonly AdminStaffRole[] = [
+  'ADMIN',
+  'SUPER_ADMIN',
+];
+
+export const ADMIN_PERMISSIONS: readonly AdminPermission[] = [
   'admin.invite',
   'admin.access',
   'catalog.manage',
   'agenda.manage',
   'venue.manage',
   'content.manage',
-] as const;
-
-export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
+];
 
 const ALL_EXCEPT_INVITE: AdminPermission[] = ADMIN_PERMISSIONS.filter(
   (p) => p !== 'admin.invite',

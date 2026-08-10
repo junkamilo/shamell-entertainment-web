@@ -70,4 +70,17 @@ async function main(): Promise<void> {
   }
 }
 
-void main();
+void main().catch((err: unknown) => {
+  console.error(
+    JSON.stringify({
+      kind: 'scriptFailure',
+      script: 'resend-venue-seat-confirmation',
+      exceptionName: err instanceof Error ? err.name : 'UnknownError',
+      message: err instanceof Error ? err.message : String(err),
+    }),
+  );
+  if (err instanceof Error && err.stack) {
+    console.error(err.stack);
+  }
+  process.exit(1);
+});

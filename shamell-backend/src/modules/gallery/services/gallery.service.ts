@@ -2,9 +2,11 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { GalleryMediaType } from '@prisma/client';
+import { softFailToNull } from '../../../common/http/utils/log-caught-error.util';
 import {
   EVENT_CATALOG_GALLERY_CATEGORY_ID_ENV,
   EVENT_CATALOG_GALLERY_SLUG_DEFAULT,
@@ -29,6 +31,8 @@ import { GalleryRepository } from './gallery.repository';
 
 @Injectable()
 export class GalleryService {
+  private readonly logger = new Logger(GalleryService.name);
+
   constructor(
     private readonly repository: GalleryRepository,
     private readonly media: GalleryMediaService,
@@ -168,7 +172,7 @@ export class GalleryService {
       } catch (error) {
         await this.media
           .deleteMediaFromCloudinary(upload.publicId, upload.mediaType)
-          .catch(() => null);
+          .catch(softFailToNull(this.logger, 'cdn.cleanup'));
         throw error;
       }
     }
@@ -251,7 +255,7 @@ export class GalleryService {
       if (newUpload) {
         await this.media
           .deleteMediaFromCloudinary(existing.imagePublicId, existing.mediaType)
-          .catch(() => null);
+          .catch(softFailToNull(this.logger, 'cdn.cleanup'));
       }
 
       return {
@@ -262,7 +266,7 @@ export class GalleryService {
       if (newUpload) {
         await this.media
           .deleteMediaFromCloudinary(newUpload.publicId, newUpload.mediaType)
-          .catch(() => null);
+          .catch(softFailToNull(this.logger, 'cdn.cleanup'));
       }
       throw error;
     }
@@ -276,7 +280,7 @@ export class GalleryService {
 
     await this.media
       .deleteMediaFromCloudinary(existing.imagePublicId, existing.mediaType)
-      .catch(() => null);
+      .catch(softFailToNull(this.logger, 'cdn.cleanup'));
     await this.repository.deletePhoto(id);
 
     return {

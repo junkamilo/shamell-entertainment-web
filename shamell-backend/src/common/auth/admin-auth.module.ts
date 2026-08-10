@@ -1,15 +1,16 @@
 import { Global, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { resolveJwtSecret } from '../config/jwt-secret.util';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { AdminJwtGuard } from './admin-jwt.guard';
-import { RequirePermissionsGuard } from './require-permissions.guard';
+import { AdminJwtGuard } from './guards/admin-jwt.guard';
+import { RequirePermissionsGuard } from './guards/require-permissions.guard';
 
 @Global()
 @Module({
   imports: [
     PrismaModule,
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'change-me-in-production',
+      secret: resolveJwtSecret(),
     }),
   ],
   providers: [AdminJwtGuard, RequirePermissionsGuard],

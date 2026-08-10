@@ -8,11 +8,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import {
   RequirePermissions,
   RequirePermissionsGuard,
-} from '../../../common/auth/require-permissions.guard';
+} from '../../../common/auth/guards/require-permissions.guard';
 import {
   CurrentAdmin,
   type AdminJwtPayload,

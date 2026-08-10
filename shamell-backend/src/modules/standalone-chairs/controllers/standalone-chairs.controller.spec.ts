@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { createStandaloneChairsServiceMock } from '../__mocks__/standalone-chairs.service.mock';
 import { StandaloneChairsService } from '../services/standalone-chairs.service';
 import { StandaloneChairsController } from './standalone-chairs.controller';

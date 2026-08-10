@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { AvailabilityService } from '../services/availability.service';
 import { CreateClosureDto } from '../dto/create-closure.dto';
 import { UpsertWeeklySlotsDto } from '../dto/upsert-weekly-slots.dto';

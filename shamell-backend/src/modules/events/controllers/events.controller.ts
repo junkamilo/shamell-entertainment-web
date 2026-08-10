@@ -18,7 +18,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { GalleryService } from '../../gallery/services/gallery.service';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { CreateEventTypeDto } from '../dto/create-event-type.dto';

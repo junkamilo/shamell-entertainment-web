@@ -4,7 +4,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AboutController } from '../src/modules/about/controllers/about.controller';
 import { AboutService } from '../src/modules/about/services/about.service';
-import { AdminJwtGuard } from '../src/common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../src/common/auth/guards/admin-jwt.guard';
 
 describe('About (e2e smoke)', () => {
   let app: INestApplication<App>;

@@ -1,7 +1,8 @@
+import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
-import { RequirePermissionsGuard } from '../../../common/auth/require-permissions.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
+import { RequirePermissionsGuard } from '../../../common/auth/guards/require-permissions.guard';
 import { createAuthServiceMock } from '../__mocks__/auth.service.mock';
 import {
   makeInviteDto,
@@ -55,5 +56,23 @@ describe('AuthController', () => {
     const dto = makeInviteDto();
     await controller.inviteAdmin({ id: 'admin-1' }, dto);
     expect(authService.inviteAdmin).toHaveBeenCalledWith('admin-1', dto);
+  });
+
+  it('loginAdmin propagates UnauthorizedException from service', async () => {
+    authService.loginAdmin.mockRejectedValue(
+      new UnauthorizedException('Invalid credentials'),
+    );
+    await expect(controller.loginAdmin(makeLoginDto())).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it('inviteAdmin propagates ForbiddenException from service', async () => {
+    authService.inviteAdmin.mockRejectedValue(
+      new ForbiddenException('Missing required admin permission.'),
+    );
+    await expect(
+      controller.inviteAdmin({ id: 'admin-1' }, makeInviteDto()),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 });

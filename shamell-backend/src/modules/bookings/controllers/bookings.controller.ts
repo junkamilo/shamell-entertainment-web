@@ -16,7 +16,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { CurrentAdmin } from '../../auth/decorators/current-admin.decorator';
 import type { AdminJwtPayload } from '../../auth/decorators/current-admin.decorator';
 import { AdminBookingQueryDto } from '../dto/admin-booking-query.dto';

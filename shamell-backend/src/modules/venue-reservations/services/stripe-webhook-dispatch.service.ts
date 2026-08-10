@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import { BookingsService } from '../../bookings/services/bookings.service';
 import { UpcomingEventsService } from '../../upcoming-events/services/upcoming-events.service';
 import { StripeWebhookAuditService } from '../../stripe/services/stripe-webhook-audit.service';
@@ -38,9 +39,10 @@ export class StripeWebhookDispatchService {
         this.stripeService.webhookSecret,
       );
     } catch (err) {
-      this.logger.warn(
-        `stripe-webhook-invalid-signature reason=${err instanceof Error ? err.message : String(err)}`,
-      );
+      logCaughtError(this.logger, err, {
+        op: 'stripe.webhook.invalid_signature',
+        level: 'warn',
+      });
       throw new BadRequestException('Invalid stripe-signature header.');
     }
 

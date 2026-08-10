@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { AdminContactQueryDto } from '../dto/admin-contact-query.dto';
 import { AdminPeticionesBadgeQueryDto } from '../dto/admin-peticiones-badge-query.dto';
 import { AdminPeticionesQueryDto } from '../dto/admin-peticiones-query.dto';

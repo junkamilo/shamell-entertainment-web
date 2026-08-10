@@ -4,12 +4,12 @@ import {
   forwardRef,
   Inject,
   Injectable,
+  InternalServerErrorException,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import {
-  EventPublicSection,
   Prisma,
   ReservationEventScheduleMode,
   UpcomingClassEnrollmentStatus,
@@ -30,7 +30,10 @@ import {
   assessClassEventReadiness,
   templateSnapshotFromVenueConfig,
 } from '../utils/admin-bookable-class.util';
-import { UpcomingEventsRepository } from './upcoming-events.repository';
+import {
+  ADMIN_CLASS_PACKAGE_ENROLLMENT_INCLUDE,
+  UpcomingEventsRepository,
+} from './upcoming-events.repository';
 import {
   buildClassBundleConfirmationHtml,
   buildClassBundleConfirmationSubject,
@@ -86,7 +89,7 @@ export class AdminClassEnrollmentService {
   }
 
   async getAdminClassBookingContextLite(eventId: string) {
-    const event = await this.assertAdminUpcomingEvent(eventId);
+    const event = await this.repository.findAdminUpcomingEventOrThrow(eventId);
     if (event.experienceType !== UpcomingExperienceType.CLASSES) {
       throw new BadRequestException('This event is not a class event.');
     }
@@ -97,19 +100,9 @@ export class AdminClassEnrollmentService {
     }
 
     const now = new Date();
-    const venueConfigRow = await this.prisma.upcomingVenueConfig.findUnique({
-      where: { eventId: event.id },
-      include: {
-        reservationEventTemplate: {
-          include: {
-            weekdays: { orderBy: { weekday: 'asc' } },
-            classSections: {
-              orderBy: [{ weekday: 'asc' }, { sortOrder: 'asc' }],
-            },
-          },
-        },
-      },
-    });
+    const venueConfigRow = await this.repository.findVenueConfigWithTemplate(
+      event.id,
+    );
 
     const schedule = venueConfigRow?.reservationEventTemplate
       ? buildPublicScheduleDisplay(venueConfigRow.reservationEventTemplate)
@@ -119,17 +112,12 @@ export class AdminClassEnrollmentService {
         ? schedule.timezone
         : 'America/New_York';
 
-    const sessionRows = await this.prisma.upcomingClassSession.findMany({
-      where: {
-        eventId: event.id,
-        isActive: true,
-        endsAt: { gt: now },
-      },
-      include: { section: true },
-      orderBy: [{ startsAt: 'asc' }, { sortOrder: 'asc' }],
-    });
+    const sessionRows = await this.repository.findActiveClassSessionsForEvent(
+      event.id,
+      now,
+    );
 
-    const seatCounts = await this.batchSeatsRemaining(
+    const seatCounts = await this.repository.batchSeatsRemaining(
       sessionRows.map((row) => ({ id: row.id, capacity: row.capacity })),
     );
 
@@ -201,27 +189,7 @@ export class AdminClassEnrollmentService {
 
   async listAdminBookableClassEvents() {
     const now = new Date();
-    const events = await this.prisma.event.findMany({
-      where: {
-        publicSection: EventPublicSection.UPCOMING_EVENTS,
-        isActive: true,
-        experienceType: UpcomingExperienceType.CLASSES,
-      },
-      include: {
-        eventType: true,
-        venueConfig: {
-          include: {
-            reservationEventTemplate: {
-              include: {
-                weekdays: true,
-                classSections: true,
-              },
-            },
-          },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    const events = await this.repository.listActiveClassEventsWithVenueConfig();
 
     const bookable: Array<{
       id: string;
@@ -235,18 +203,12 @@ export class AdminClassEnrollmentService {
 
     const eventIds = events.map((event) => event.id);
     const allSessions =
-      eventIds.length === 0
-        ? []
-        : await this.prisma.upcomingClassSession.findMany({
-            where: {
-              eventId: { in: eventIds },
-              isActive: true,
-              endsAt: { gt: now },
-            },
-            select: { id: true, capacity: true, eventId: true },
-          });
+      await this.repository.listActiveClassSessionSummariesForEvents(
+        eventIds,
+        now,
+      );
 
-    const seatCounts = await this.batchSeatsRemaining(
+    const seatCounts = await this.repository.batchSeatsRemaining(
       allSessions.map((session) => ({
         id: session.id,
         capacity: session.capacity,
@@ -299,29 +261,19 @@ export class AdminClassEnrollmentService {
     const customer = this.normalizeClassCustomer(dto);
 
     if (resolved.kind === 'session') {
-      const enrollment = await this.prisma.upcomingClassEnrollment.create({
-        data: {
-          sessionId: resolved.session.id,
-          amount: resolved.session.price,
-          currency: resolved.session.currency,
-          status: UpcomingClassEnrollmentStatus.PAID,
-          paymentChannel: VenueReservationPaymentChannel.CASH,
-          paymentMethodType: 'cash',
-          paidAt: new Date(),
-          customerName: customer.customerName,
-          customerEmail: customer.customerEmail,
-          customerPhone: customer.customerPhone,
-          createdByAdminId: adminUserId,
-          boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
-        },
-        include: {
-          session: {
-            include: {
-              section: true,
-              event: { include: { eventType: true } },
-            },
-          },
-        },
+      const enrollment = await this.repository.createClassEnrollment({
+        sessionId: resolved.session.id,
+        amount: resolved.session.price,
+        currency: resolved.session.currency,
+        status: UpcomingClassEnrollmentStatus.PAID,
+        paymentChannel: VenueReservationPaymentChannel.CASH,
+        paymentMethodType: 'cash',
+        paidAt: new Date(),
+        customerName: customer.customerName,
+        customerEmail: customer.customerEmail,
+        customerPhone: customer.customerPhone,
+        createdByAdminId: adminUserId,
+        boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
       });
       await this.sendClassConfirmation(enrollment);
       await this.adminPaymentNotify.notifyPaymentOutcome({
@@ -412,22 +364,20 @@ export class AdminClassEnrollmentService {
         throw new BadRequestException('Could not start checkout.');
       }
 
-      const enrollment = await this.prisma.upcomingClassEnrollment.create({
-        data: {
-          sessionId: session.id,
-          amount: session.price,
-          currency: session.currency,
-          status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-          paymentChannel: VenueReservationPaymentChannel.STRIPE,
-          stripeCheckoutSessionId: checkout.id,
-          payTokenHash,
-          customerName: customer.customerName,
-          customerEmail: customer.customerEmail,
-          customerPhone: customer.customerPhone,
-          createdByAdminId: adminUserId,
-          boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
-          expiresAt,
-        },
+      const enrollment = await this.repository.createClassEnrollment({
+        sessionId: session.id,
+        amount: session.price,
+        currency: session.currency,
+        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+        paymentChannel: VenueReservationPaymentChannel.STRIPE,
+        stripeCheckoutSessionId: checkout.id,
+        payTokenHash,
+        customerName: customer.customerName,
+        customerEmail: customer.customerEmail,
+        customerPhone: customer.customerPhone,
+        createdByAdminId: adminUserId,
+        boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
+        expiresAt,
       });
 
       await this.stripeService.client.checkout.sessions.update(checkout.id, {
@@ -495,46 +445,40 @@ export class AdminClassEnrollmentService {
     }
 
     const packageEnrollment =
-      await this.prisma.upcomingClassPackageEnrollment.create({
-        data: {
-          eventId: resolved.event.id,
-          amount: resolved.totalAmount,
-          currency: 'usd',
-          status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-          paymentChannel: VenueReservationPaymentChannel.STRIPE,
-          stripeCheckoutSessionId: checkout.id,
-          payTokenHash,
-          customerName: customer.customerName,
-          customerEmail: customer.customerEmail,
-          customerPhone: customer.customerPhone,
-          selections: resolved.selections,
-          createdByAdminId: adminUserId,
-          boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
-          expiresAt,
-        },
+      await this.repository.createClassPackageEnrollment({
+        eventId: resolved.event.id,
+        amount: resolved.totalAmount,
+        currency: 'usd',
+        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+        paymentChannel: VenueReservationPaymentChannel.STRIPE,
+        stripeCheckoutSessionId: checkout.id,
+        payTokenHash,
+        customerName: customer.customerName,
+        customerEmail: customer.customerEmail,
+        customerPhone: customer.customerPhone,
+        selections: resolved.selections,
+        createdByAdminId: adminUserId,
+        boxOfficeDetails: this.toBoxOfficeJson(dto.boxOfficeDetails),
+        expiresAt,
       });
 
     for (const row of resolved.resolved) {
-      const enrollment = await this.prisma.upcomingClassEnrollment.create({
-        data: {
-          sessionId: row.session.id,
-          amount: row.session.price,
-          currency: row.session.currency,
-          status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-          paymentChannel: VenueReservationPaymentChannel.STRIPE,
-          customerName: customer.customerName,
-          customerEmail: customer.customerEmail,
-          customerPhone: customer.customerPhone,
-          createdByAdminId: adminUserId,
-          expiresAt,
-        },
+      const enrollment = await this.repository.createClassEnrollment({
+        sessionId: row.session.id,
+        amount: row.session.price,
+        currency: row.session.currency,
+        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+        paymentChannel: VenueReservationPaymentChannel.STRIPE,
+        customerName: customer.customerName,
+        customerEmail: customer.customerEmail,
+        customerPhone: customer.customerPhone,
+        createdByAdminId: adminUserId,
+        expiresAt,
       });
-      await this.prisma.upcomingClassPackageEnrollmentItem.create({
-        data: {
-          packageEnrollmentId: packageEnrollment.id,
-          enrollmentId: enrollment.id,
-          weekday: row.weekday,
-        },
+      await this.repository.createClassPackageEnrollmentItem({
+        packageEnrollmentId: packageEnrollment.id,
+        enrollmentId: enrollment.id,
+        weekday: row.weekday,
       });
     }
 
@@ -592,58 +536,6 @@ export class AdminClassEnrollmentService {
     return session.client_secret;
   }
 
-  private async assertAdminUpcomingEvent(eventId: string) {
-    const event = await this.prisma.event.findFirst({
-      where: { id: eventId, publicSection: EventPublicSection.UPCOMING_EVENTS },
-      include: { eventType: true },
-    });
-    if (!event) throw new NotFoundException('Upcoming event not found.');
-    return event;
-  }
-
-  private async batchSeatsRemaining(
-    sessions: Array<{ id: string; capacity: number }>,
-  ): Promise<Map<string, number>> {
-    const counts = new Map<string, number>();
-    if (sessions.length === 0) return counts;
-
-    const now = new Date();
-    const enrollments = await this.prisma.upcomingClassEnrollment.findMany({
-      where: {
-        sessionId: { in: sessions.map((s) => s.id) },
-        OR: [
-          { status: UpcomingClassEnrollmentStatus.PAID },
-          {
-            status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-        ],
-      },
-      select: { sessionId: true },
-    });
-    for (const row of enrollments) {
-      counts.set(row.sessionId, (counts.get(row.sessionId) ?? 0) + 1);
-    }
-    return counts;
-  }
-
-  private async seatsRemaining(sessionId: string, capacity: number) {
-    const now = new Date();
-    const blocking = await this.prisma.upcomingClassEnrollment.count({
-      where: {
-        sessionId,
-        OR: [
-          { status: UpcomingClassEnrollmentStatus.PAID },
-          {
-            status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-          },
-        ],
-      },
-    });
-    return Math.max(0, capacity - blocking);
-  }
-
   private sessionCalendarDateIso(startsAt: Date, timezone: string): string {
     return new Intl.DateTimeFormat('en-CA', {
       timeZone: timezone || 'America/New_York',
@@ -679,26 +571,6 @@ export class AdminClassEnrollmentService {
     return sectionPart ? `${when} — ${sectionPart}` : when;
   }
 
-  private packageEnrollmentInclude() {
-    return {
-      event: { include: { eventType: true } },
-      items: {
-        include: {
-          enrollment: {
-            include: {
-              session: {
-                include: {
-                  section: true,
-                  event: { include: { eventType: true } },
-                },
-              },
-            },
-          },
-        },
-      },
-    } as const;
-  }
-
   private normalizeClassCustomer(dto: CreateAdminClassEnrollmentDto) {
     return {
       customerName: dto.customerName.trim(),
@@ -725,13 +597,10 @@ export class AdminClassEnrollmentService {
 
   private async findPendingClassEnrollmentByPayToken(rawToken: string) {
     const payTokenHash = this.hashClassPayToken(rawToken);
-    const pkg = await this.prisma.upcomingClassPackageEnrollment.findFirst({
-      where: {
+    const pkg =
+      await this.repository.findPendingClassPackageEnrollmentByPayToken(
         payTokenHash,
-        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+      );
     if (pkg) {
       if (pkg.expiresAt && pkg.expiresAt.getTime() < Date.now()) {
         throw new BadRequestException('Payment link has expired.');
@@ -739,13 +608,8 @@ export class AdminClassEnrollmentService {
       return pkg;
     }
 
-    const enrollment = await this.prisma.upcomingClassEnrollment.findFirst({
-      where: {
-        payTokenHash,
-        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const enrollment =
+      await this.repository.findPendingClassEnrollmentByPayToken(payTokenHash);
     if (!enrollment) {
       throw new NotFoundException('Payment link not found.');
     }
@@ -947,8 +811,8 @@ export class AdminClassEnrollmentService {
   }) {
     const now = new Date();
     const packageEnrollment =
-      await this.prisma.upcomingClassPackageEnrollment.create({
-        data: {
+      await this.repository.createClassPackageEnrollment(
+        {
           eventId: args.eventId,
           amount: args.amount,
           currency: 'usd',
@@ -963,48 +827,40 @@ export class AdminClassEnrollmentService {
           createdByAdminId: args.adminUserId,
           boxOfficeDetails: this.toBoxOfficeJson(args.boxOfficeDetails),
         },
-        include: this.packageEnrollmentInclude(),
-      });
+        ADMIN_CLASS_PACKAGE_ENROLLMENT_INCLUDE,
+      );
 
     for (const row of args.resolvedItems) {
-      const enrollment = await this.prisma.upcomingClassEnrollment.create({
-        data: {
-          sessionId: row.session.id,
-          amount: row.session.price,
-          currency: row.session.currency,
-          status: UpcomingClassEnrollmentStatus.PAID,
-          paymentChannel: VenueReservationPaymentChannel.CASH,
-          paymentMethodType: 'cash',
-          paidAt: now,
-          customerName: args.customer.customerName,
-          customerEmail: args.customer.customerEmail,
-          customerPhone: args.customer.customerPhone,
-          createdByAdminId: args.adminUserId,
-        },
-        include: {
-          session: {
-            include: {
-              section: true,
-              event: { include: { eventType: true } },
-            },
-          },
-        },
+      const enrollment = await this.repository.createClassEnrollment({
+        sessionId: row.session.id,
+        amount: row.session.price,
+        currency: row.session.currency,
+        status: UpcomingClassEnrollmentStatus.PAID,
+        paymentChannel: VenueReservationPaymentChannel.CASH,
+        paymentMethodType: 'cash',
+        paidAt: now,
+        customerName: args.customer.customerName,
+        customerEmail: args.customer.customerEmail,
+        customerPhone: args.customer.customerPhone,
+        createdByAdminId: args.adminUserId,
       });
-      await this.prisma.upcomingClassPackageEnrollmentItem.create({
-        data: {
-          packageEnrollmentId: packageEnrollment.id,
-          enrollmentId: enrollment.id,
-          weekday: row.weekday,
-        },
+      await this.repository.createClassPackageEnrollmentItem({
+        packageEnrollmentId: packageEnrollment.id,
+        enrollmentId: enrollment.id,
+        weekday: row.weekday,
       });
     }
 
     const refreshed =
-      await this.prisma.upcomingClassPackageEnrollment.findUnique({
-        where: { id: packageEnrollment.id },
-        include: this.packageEnrollmentInclude(),
-      });
-    const emailPkg = refreshed ?? packageEnrollment;
+      await this.repository.findClassPackageEnrollmentWithAdminItems(
+        packageEnrollment.id,
+      );
+    if (!refreshed) {
+      throw new InternalServerErrorException(
+        'Could not reload class package enrollment.',
+      );
+    }
+    const emailPkg = refreshed;
     const isDayBundle = args.checkoutFlow === 'class_session_bundle';
 
     let sent = false;
@@ -1017,10 +873,7 @@ export class AdminClassEnrollmentService {
       );
     }
     if (sent) {
-      await this.prisma.upcomingClassPackageEnrollment.update({
-        where: { id: emailPkg.id },
-        data: { customerEmailSentAt: now },
-      });
+      await this.repository.stampPackageEnrollmentEmailSent(emailPkg.id, now);
     }
 
     const firstSession = emailPkg.items[0]?.enrollment.session;
@@ -1054,7 +907,9 @@ export class AdminClassEnrollmentService {
   }
 
   private async resolveAdminClassPurchase(dto: CreateAdminClassEnrollmentDto) {
-    const event = await this.assertAdminUpcomingEvent(dto.upcomingEventId);
+    const event = await this.repository.findAdminUpcomingEventOrThrow(
+      dto.upcomingEventId,
+    );
     if (event.experienceType !== UpcomingExperienceType.CLASSES) {
       throw new BadRequestException(
         'This event does not offer class sessions.',
@@ -1065,18 +920,18 @@ export class AdminClassEnrollmentService {
       if (!dto.sessionId?.trim()) {
         throw new BadRequestException('sessionId is required.');
       }
-      const session = await this.prisma.upcomingClassSession.findFirst({
-        where: {
-          id: dto.sessionId.trim(),
-          eventId: event.id,
-          isActive: true,
-        },
-      });
+      const session = await this.repository.findActiveClassSessionForEvent(
+        dto.sessionId.trim(),
+        event.id,
+      );
       if (!session) throw new NotFoundException('Class session not found.');
       if (session.endsAt <= new Date()) {
         throw new BadRequestException('This session has already ended.');
       }
-      const remaining = await this.seatsRemaining(session.id, session.capacity);
+      const remaining = await this.repository.seatsRemaining(
+        session.id,
+        session.capacity,
+      );
       if (remaining <= 0) {
         throw new ConflictException('This session is full.');
       }
@@ -1092,14 +947,10 @@ export class AdminClassEnrollmentService {
         throw new BadRequestException('Duplicate session ids are not allowed.');
       }
 
-      const rows = await this.prisma.upcomingClassSession.findMany({
-        where: {
-          id: { in: uniqueIds },
-          eventId: event.id,
-          isActive: true,
-        },
-        include: { section: true },
-      });
+      const rows = await this.repository.findActiveClassSessionsByIdsForEvent(
+        uniqueIds,
+        event.id,
+      );
       if (rows.length !== uniqueIds.length) {
         throw new NotFoundException(
           'One or more class sessions were not found.',
@@ -1121,7 +972,7 @@ export class AdminClassEnrollmentService {
             'One or more sessions have already ended.',
           );
         }
-        const remaining = await this.seatsRemaining(
+        const remaining = await this.repository.seatsRemaining(
           session.id,
           session.capacity,
         );
@@ -1182,14 +1033,9 @@ export class AdminClassEnrollmentService {
     if (!dto.monthIso?.trim()) {
       throw new BadRequestException('monthIso is required.');
     }
-    const venueConfig = await this.prisma.upcomingVenueConfig.findUnique({
-      where: { eventId: event.id },
-      include: {
-        reservationEventTemplate: {
-          include: { weekdays: true },
-        },
-      },
-    });
+    const venueConfig = await this.repository.findVenueConfigForMonthPackage(
+      event.id,
+    );
     if (!venueConfig?.classPackageEnabled) {
       throw new BadRequestException(
         'Full month package is not available for this event.',
@@ -1229,7 +1075,7 @@ export class AdminClassEnrollmentService {
       timezone,
     );
     await assertMonthSessionsAvailable(monthSessions, (sessionId, capacity) =>
-      this.seatsRemaining(sessionId, capacity),
+      this.repository.seatsRemaining(sessionId, capacity),
     );
 
     const sessionIds = monthSessions.map((s) => s.id);

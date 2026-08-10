@@ -18,7 +18,7 @@ import {
   CurrentAdmin,
   type AdminJwtPayload,
 } from '../../auth/decorators/current-admin.decorator';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { CreateClassCheckoutDto } from '../dto/create-class-checkout.dto';
 import { CreateAdminClassEnrollmentDto } from '../dto/create-admin-class-enrollment.dto';
 import { CreateClassBundleCheckoutDto } from '../dto/create-class-bundle-checkout.dto';

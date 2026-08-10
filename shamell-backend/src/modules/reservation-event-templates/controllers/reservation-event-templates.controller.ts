@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ReservationEventScheduleMode } from '@prisma/client';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { RESERVATION_EVENT_TEMPLATES_CONTROLLER_PATH } from '../constants/reservation-event-templates.constants';
 import { CreateReservationEventTemplateDto } from '../dto/create-reservation-event-template.dto';
 import { UpdateReservationEventTemplateDto } from '../dto/update-reservation-event-template.dto';

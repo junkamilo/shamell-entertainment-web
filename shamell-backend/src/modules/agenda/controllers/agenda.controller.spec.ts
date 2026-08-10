@@ -1,5 +1,5 @@
 import { Test } from '@nestjs/testing';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { createAgendaServiceMock } from '../__mocks__/agenda.service.mock';
 import {
   makeAgendarCatalogResponse,

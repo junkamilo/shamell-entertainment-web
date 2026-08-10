@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
-import { AdminJwtGuard } from '../src/common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../src/common/auth/guards/admin-jwt.guard';
 import { ServicesController } from '../src/modules/services/controllers/services.controller';
 import { ServicesService } from '../src/modules/services/services/services.service';
 
@@ -76,6 +76,39 @@ describe('Services (e2e smoke)', () => {
         expect(body).toHaveLength(1);
         expect(body[0].serviceTypeName).toBe('VIP Event');
         expect(servicesService.getPublicServices).toHaveBeenCalled();
+      });
+  });
+
+  it('GET /api/v1/services/admin/:id returns admin service detail', async () => {
+    jest.clearAllMocks();
+    servicesService.getAdminServiceById.mockResolvedValue({
+      id: 'svc-e2e-1',
+      serviceTypeName: 'VIP Event',
+      description: 'Demo',
+    });
+
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      controllers: [ServicesController],
+      providers: [{ provide: ServicesService, useValue: servicesService }],
+    })
+      .overrideGuard(AdminJwtGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
+
+    app = moduleFixture.createNestApplication();
+    app.setGlobalPrefix('api/v1');
+    await app.init();
+
+    await request(app.getHttpServer())
+      .get('/api/v1/services/admin/11111111-1111-4111-8111-111111111111')
+      .expect(200)
+      .expect((res) => {
+        const body = res.body as { id: string; serviceTypeName: string };
+        expect(body.id).toBe('svc-e2e-1');
+        expect(body.serviceTypeName).toBe('VIP Event');
+        expect(servicesService.getAdminServiceById).toHaveBeenCalledWith(
+          '11111111-1111-4111-8111-111111111111',
+        );
       });
   });
 });

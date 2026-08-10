@@ -6,7 +6,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
-  EventPublicSection,
   Prisma,
   ReservationEventScheduleMode,
   UpcomingClassEnrollmentStatus,
@@ -33,10 +32,7 @@ import {
 import { StripeService } from '../../stripe/services/stripe.service';
 import { CHECKOUT_TTL_MINUTES } from '../constants/upcoming-events.constants';
 import { resolveUpcomingPurchaseContext } from '../utils/upcoming-purchase-mode.util';
-import {
-  assignFixedEventTicketNumber,
-  fixedTicketsRemaining,
-} from '../utils/upcoming-fixed-ticket.util';
+import { fixedTicketsRemaining } from '../utils/upcoming-fixed-ticket.util';
 import type { CreateAdminFixedEventEnrollmentDto } from '../dto/create-admin-fixed-event-enrollment.dto';
 import { UpcomingEventsRepository } from './upcoming-events.repository';
 
@@ -56,34 +52,7 @@ export class AdminFixedEventEnrollmentService {
   }
 
   async listBoxOfficeFixedEvents() {
-    const events = await this.prisma.event.findMany({
-      where: {
-        publicSection: EventPublicSection.UPCOMING_EVENTS,
-        isActive: true,
-        OR: [
-          { experienceType: UpcomingExperienceType.VENUE_SEATING },
-          {
-            venueConfig: {
-              is: {
-                clientEnabled: false,
-                reservationEventTemplate: {
-                  is: {
-                    scheduleMode: ReservationEventScheduleMode.FIXED_EVENT,
-                  },
-                },
-              },
-            },
-          },
-        ],
-      },
-      include: {
-        eventType: true,
-        venueConfig: {
-          include: { reservationEventTemplate: true },
-        },
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    const events = await this.repository.listBoxOfficeEligibleEvents();
 
     const out: Array<{
       id: string;
@@ -179,9 +148,9 @@ export class AdminFixedEventEnrollmentService {
     }
 
     const now = new Date();
-    const enrollment = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.upcomingFixedEventEnrollment.create({
-        data: {
+    const enrollment =
+      await this.repository.createPaidFixedEnrollmentWithTicket(
+        {
           eventId: event.id,
           amount,
           currency: 'usd',
@@ -196,21 +165,13 @@ export class AdminFixedEventEnrollmentService {
           createdByAdminId: adminUserId,
           paidAt: now,
         },
-        include: { event: { include: { eventType: true } } },
-      });
-      await assignFixedEventTicketNumber(tx, event.id, created.id, capacity);
-      return tx.upcomingFixedEventEnrollment.findUniqueOrThrow({
-        where: { id: created.id },
-        include: { event: { include: { eventType: true } } },
-      });
-    });
+        event.id,
+        capacity,
+      );
 
     const sent = await this.sendPaidConfirmation(enrollment, venueConfig);
     if (sent) {
-      await this.prisma.upcomingFixedEventEnrollment.update({
-        where: { id: enrollment.id },
-        data: { customerEmailSentAt: now },
-      });
+      await this.repository.stampFixedEnrollmentEmailSent(enrollment.id);
     }
 
     await this.adminPaymentNotify.notifyPaymentOutcome({
@@ -303,21 +264,19 @@ export class AdminFixedEventEnrollmentService {
       throw new BadRequestException('Could not start checkout.');
     }
 
-    const enrollment = await this.prisma.upcomingFixedEventEnrollment.create({
-      data: {
-        eventId: event.id,
-        amount,
-        currency: 'usd',
-        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-        paymentChannel: VenueReservationPaymentChannel.STRIPE,
-        stripeCheckoutSessionId: checkout.id,
-        customerName: customer.customerName,
-        customerEmail: customer.customerEmail,
-        customerPhone: customer.customerPhone,
-        boxOfficeDetails: dto.boxOfficeDetails as Prisma.InputJsonValue,
-        createdByAdminId: adminUserId,
-        expiresAt,
-      },
+    const enrollment = await this.repository.createPendingFixedEventEnrollment({
+      eventId: event.id,
+      amount,
+      currency: 'usd',
+      status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+      paymentChannel: VenueReservationPaymentChannel.STRIPE,
+      stripeCheckoutSessionId: checkout.id,
+      customerName: customer.customerName,
+      customerEmail: customer.customerEmail,
+      customerPhone: customer.customerPhone,
+      boxOfficeDetails: dto.boxOfficeDetails as Prisma.InputJsonValue,
+      createdByAdminId: adminUserId,
+      expiresAt,
     });
 
     await this.stripeService.client.checkout.sessions.update(checkout.id, {
@@ -385,19 +344,8 @@ export class AdminFixedEventEnrollmentService {
   }
 
   private async assertAdminFixedTicketEvent(eventId: string) {
-    const event = await this.prisma.event.findFirst({
-      where: {
-        id: eventId,
-        publicSection: EventPublicSection.UPCOMING_EVENTS,
-        isActive: true,
-      },
-      include: {
-        eventType: true,
-        venueConfig: {
-          include: { reservationEventTemplate: true },
-        },
-      },
-    });
+    const event =
+      await this.repository.findActiveUpcomingEventWithVenueConfig(eventId);
     if (!event) throw new NotFoundException('Upcoming event not found.');
     const venueConfig = event.venueConfig;
     if (

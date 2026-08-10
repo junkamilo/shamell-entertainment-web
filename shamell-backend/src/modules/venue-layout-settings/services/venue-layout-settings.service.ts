@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { softFailToNull } from '../../../common/http/utils/log-caught-error.util';
 import { syncVenueSeatReservationEventDates } from '../../venue-reservations/utils/sync-venue-seat-reservation-event-date.util';
 import { DEFAULT_RESERVATION_TIMEZONE } from '../constants/venue-layout-settings.constants';
 import { UpsertVenueLayoutSettingsDto } from '../dto/upsert-venue-layout-settings.dto';
@@ -9,6 +10,8 @@ import { VenueLayoutSettingsRepository } from './venue-layout-settings.repositor
 
 @Injectable()
 export class VenueLayoutSettingsService {
+  private readonly logger = new Logger(VenueLayoutSettingsService.name);
+
   constructor(
     private readonly repository: VenueLayoutSettingsRepository,
     private readonly media: VenueLayoutSettingsMediaService,
@@ -161,7 +164,7 @@ export class VenueLayoutSettingsService {
       if (existing?.promoImagePublicId) {
         await this.media
           .deleteImage(existing.promoImagePublicId)
-          .catch(() => null);
+          .catch(softFailToNull(this.logger, 'cdn.cleanup'));
       }
 
       return {
@@ -169,7 +172,9 @@ export class VenueLayoutSettingsService {
         settings: this.mapSettingsAdmin(saved),
       };
     } catch (error) {
-      await this.media.deleteImage(upload.publicId).catch(() => null);
+      await this.media
+        .deleteImage(upload.publicId)
+        .catch(softFailToNull(this.logger, 'cdn.cleanup'));
       throw error;
     }
   }

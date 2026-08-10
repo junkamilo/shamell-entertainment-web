@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { ContactRequestStatus } from '@prisma/client';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import {
   makeContactRequestRow,
   makeCreateContactDto,

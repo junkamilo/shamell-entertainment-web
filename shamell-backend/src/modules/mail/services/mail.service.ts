@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EmailParams, MailerSend, Recipient, Sender } from 'mailersend';
+import { logCaughtError } from '../../../common/http/utils/log-caught-error.util';
 import {
   DEFAULT_MAIL_FROM_NAME,
   ENV_APP_PUBLIC_NAME,
@@ -117,9 +118,11 @@ export class MailService implements OnModuleInit {
     } catch (err) {
       const raw = MailService.extractProviderErrorMessage(err);
       const fromDomain = fromEmail.split('@')[1] ?? '?';
-      this.logger.error(
-        `MailerSend failed (from ***@${fromDomain} → ${email}): ${raw || 'unknown error'}`,
-      );
+      logCaughtError(this.logger, err, {
+        op: 'mail.send',
+        level: 'error',
+        extra: { fromDomain, email, providerError: raw || 'unknown error' },
+      });
       return { ok: false, errorText: raw };
     }
   }

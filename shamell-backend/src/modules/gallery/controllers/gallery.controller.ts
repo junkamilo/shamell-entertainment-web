@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { AdminJwtGuard } from '../../../common/auth/admin-jwt.guard';
+import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import {
   GALLERY_UPLOAD_MAX_FILES,
   GALLERY_UPLOAD_MAX_FILE_SIZE_BYTES,

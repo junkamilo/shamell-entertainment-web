@@ -1,4 +1,4 @@
-import { deriveAdminPermissions } from '../../../common/auth/admin-permissions';
+import { deriveAdminPermissions } from '../../../common/auth/constants/admin-permissions.constants';
 import type { AdminLoginUserPayload } from '../types/auth.types';
 
 export function adminLoginUserPayload(user: {
