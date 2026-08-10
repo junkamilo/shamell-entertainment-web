@@ -80,7 +80,7 @@ export default function OnComingEventsHubPage() {
                       "overscroll-x-contain [-webkit-overflow-scrolling:touch]",
                     )}
                   >
-                    <div className="flex w-max gap-4">
+                    <div className="flex w-max min-w-full justify-center gap-4">
                       {events.map((event) => (
                         <OnComingEventHubCard
                           key={`mobile-${event.slug}`}
