@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/require-await */
 import { NotFoundException } from '@nestjs/common';
 
 import {
@@ -6,9 +6,76 @@ import {
   UpcomingClassEnrollmentStatus,
 } from '@prisma/client';
 
-export function createUpcomingEventsRepositoryMock() {
-  const mock = {
-    asPrisma: jest.fn(),
+import type { PrismaMock } from '../../../testing';
+
+type JestFn = jest.Mock;
+
+export type UpcomingEventsRepositoryMock = {
+  asPrisma: jest.MockedFunction<() => PrismaMock>;
+  runTransaction: JestFn;
+  findClassEnrollmentByCheckoutSessionId: JestFn;
+  findClassEnrollmentForCheckoutSession: JestFn;
+  findClassEnrollmentForExpire: JestFn;
+  markClassEnrollmentPaid: JestFn;
+  stampClassEnrollmentEmailSent: JestFn;
+  markClassEnrollmentExpired: JestFn;
+  findPackageEnrollmentByCheckoutSessionId: JestFn;
+  findPackageEnrollmentForCheckoutSession: JestFn;
+  findPackageEnrollmentForExpire: JestFn;
+  findPackageEnrollmentById: JestFn;
+  markPackageEnrollmentPaid: JestFn;
+  markPackageChildEnrollmentPaid: JestFn;
+  stampPackageEnrollmentEmailSent: JestFn;
+  markPackageEnrollmentExpired: JestFn;
+  findFixedEnrollmentByCheckoutSessionId: JestFn;
+  findFixedEnrollmentForCheckoutSession: JestFn;
+  findFixedEnrollmentById: JestFn;
+  findFixedEnrollmentRecordById: JestFn;
+  stampFixedEnrollmentEmailSent: JestFn;
+  stampFixedEnrollmentAdminNotifySent: JestFn;
+  markFixedEnrollmentExpired: JestFn;
+  markFixedEnrollmentPaidWithoutTicket: JestFn;
+  finalizeFixedEnrollmentPayment: JestFn;
+  findClassSessionById: JestFn;
+  findVenueConfigByEventId: JestFn;
+  countPaidClassEnrollmentsForSession: JestFn;
+  findPublicUpcomingBySlug: JestFn;
+  findAdminUpcomingEventOrThrow: JestFn;
+  batchSeatsRemaining: JestFn;
+  seatsRemaining: JestFn;
+  findVenueConfigWithTemplate: JestFn;
+  findActiveClassSessionsForEvent: JestFn;
+  listActiveClassEventsWithVenueConfig: JestFn;
+  listActiveClassSessionSummariesForEvents: JestFn;
+  createClassEnrollment: JestFn;
+  createClassPackageEnrollment: JestFn;
+  createClassPackageEnrollmentItem: JestFn;
+  findPendingClassPackageEnrollmentByPayToken: JestFn;
+  findPendingClassEnrollmentByPayToken: JestFn;
+  findClassPackageEnrollmentWithAdminItems: JestFn;
+  findActiveClassSessionForEvent: JestFn;
+  findActiveClassSessionsByIdsForEvent: JestFn;
+  findVenueConfigForMonthPackage: JestFn;
+  listBoxOfficeEligibleEvents: JestFn;
+  findActiveUpcomingEventWithVenueConfig: JestFn;
+  createPaidFixedEnrollmentWithTicket: JestFn;
+  createPendingFixedEventEnrollment: JestFn;
+  listClassSessionsForAdmin: JestFn;
+  createClassSession: JestFn;
+  findClassSessionForEvent: JestFn;
+  updateClassSession: JestFn;
+  deleteClassSession: JestFn;
+  findVenueConfigWithReservationTemplate: JestFn;
+  updateUpcomingEventExperience: JestFn;
+  upsertVenueConfigWithTemplate: JestFn;
+  findVenueConfigRecord: JestFn;
+};
+
+export function createUpcomingEventsRepositoryMock(): UpcomingEventsRepositoryMock {
+  const asPrisma = jest.fn() as jest.MockedFunction<() => PrismaMock>;
+
+  return {
+    asPrisma,
 
     runTransaction: jest.fn(),
 
@@ -65,7 +132,7 @@ export function createUpcomingEventsRepositoryMock() {
     countPaidClassEnrollmentsForSession: jest.fn().mockResolvedValue(0),
 
     findPublicUpcomingBySlug: jest.fn(async (slug: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
 
       const normalized = slug.trim().toLowerCase();
 
@@ -99,7 +166,7 @@ export function createUpcomingEventsRepositoryMock() {
     }),
 
     findAdminUpcomingEventOrThrow: jest.fn(async (eventId: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
 
       const event = await prisma.event.findFirst({
         where: {
@@ -122,7 +189,7 @@ export function createUpcomingEventsRepositoryMock() {
 
         if (sessions.length === 0) return counts;
 
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
 
         const now = new Date();
 
@@ -153,7 +220,7 @@ export function createUpcomingEventsRepositoryMock() {
     ),
 
     seatsRemaining: jest.fn(async (sessionId: string, capacity: number) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
 
       const now = new Date();
 
@@ -173,11 +240,11 @@ export function createUpcomingEventsRepositoryMock() {
         },
       });
 
-      return Math.max(0, capacity - blocking);
+      return Math.max(0, capacity - (blocking as number));
     }),
 
     findVenueConfigWithTemplate: jest.fn(async (eventId: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
 
       return prisma.upcomingVenueConfig.findUnique({
         where: { eventId },
@@ -198,7 +265,7 @@ export function createUpcomingEventsRepositoryMock() {
 
     findActiveClassSessionsForEvent: jest.fn(
       async (eventId: string, now: Date) => {
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
 
         return prisma.upcomingClassSession.findMany({
           where: {
@@ -217,13 +284,13 @@ export function createUpcomingEventsRepositoryMock() {
     ),
 
     listActiveClassEventsWithVenueConfig: jest.fn(async () => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.event.findMany();
     }),
 
     listActiveClassSessionSummariesForEvents: jest.fn(
       async (eventIds: string[], now: Date) => {
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
         if (eventIds.length === 0) return [];
         return prisma.upcomingClassSession.findMany({
           where: {
@@ -237,12 +304,12 @@ export function createUpcomingEventsRepositoryMock() {
     ),
 
     createClassEnrollment: jest.fn(async (data, include) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingClassEnrollment.create({ data, include });
     }),
 
     createClassPackageEnrollment: jest.fn(async (data, include) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingClassPackageEnrollment.create({
         data,
         ...(include ? { include } : {}),
@@ -250,13 +317,13 @@ export function createUpcomingEventsRepositoryMock() {
     }),
 
     createClassPackageEnrollmentItem: jest.fn(async (data) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingClassPackageEnrollmentItem.create({ data });
     }),
 
     findPendingClassPackageEnrollmentByPayToken: jest.fn(
       async (payTokenHash: string) => {
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
         return prisma.upcomingClassPackageEnrollment.findFirst({
           where: {
             payTokenHash,
@@ -269,7 +336,7 @@ export function createUpcomingEventsRepositoryMock() {
 
     findPendingClassEnrollmentByPayToken: jest.fn(
       async (payTokenHash: string) => {
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
         return prisma.upcomingClassEnrollment.findFirst({
           where: {
             payTokenHash,
@@ -281,7 +348,7 @@ export function createUpcomingEventsRepositoryMock() {
     ),
 
     findClassPackageEnrollmentWithAdminItems: jest.fn(async (id: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingClassPackageEnrollment.findUnique({
         where: { id },
       });
@@ -289,7 +356,7 @@ export function createUpcomingEventsRepositoryMock() {
 
     findActiveClassSessionForEvent: jest.fn(
       async (sessionId: string, eventId: string) => {
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
         return prisma.upcomingClassSession.findFirst({
           where: { id: sessionId, eventId, isActive: true },
         });
@@ -298,7 +365,7 @@ export function createUpcomingEventsRepositoryMock() {
 
     findActiveClassSessionsByIdsForEvent: jest.fn(
       async (sessionIds: string[], eventId: string) => {
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
         return prisma.upcomingClassSession.findMany({
           where: {
             id: { in: sessionIds },
@@ -311,17 +378,17 @@ export function createUpcomingEventsRepositoryMock() {
     ),
 
     findVenueConfigForMonthPackage: jest.fn(async (eventId: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingVenueConfig.findUnique({ where: { eventId } });
     }),
 
     listBoxOfficeEligibleEvents: jest.fn(async () => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.event.findMany();
     }),
 
     findActiveUpcomingEventWithVenueConfig: jest.fn(async (eventId: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.event.findFirst({ where: { id: eventId } });
     }),
 
@@ -329,14 +396,18 @@ export function createUpcomingEventsRepositoryMock() {
       async (data, _eventId: string, _capacity: number) => {
         void _eventId;
         void _capacity;
-        const prisma = mock.asPrisma();
-        return prisma.$transaction(async (tx: typeof prisma) => {
-          const created = await tx.upcomingFixedEventEnrollment.create({
+        const prisma = asPrisma();
+        return prisma.$transaction(async (tx: PrismaMock) => {
+          const enrollment =
+            tx.upcomingFixedEventEnrollment as PrismaMock['upcomingFixedEventEnrollment'] & {
+              findUniqueOrThrow: jest.Mock;
+            };
+          const created = await enrollment.create({
             data,
             include: { event: { include: { eventType: true } } },
           });
-          return tx.upcomingFixedEventEnrollment.findUniqueOrThrow({
-            where: { id: created.id },
+          return enrollment.findUniqueOrThrow({
+            where: { id: (created as { id: string }).id },
             include: { event: { include: { eventType: true } } },
           });
         });
@@ -344,23 +415,23 @@ export function createUpcomingEventsRepositoryMock() {
     ),
 
     createPendingFixedEventEnrollment: jest.fn(async (data) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingFixedEventEnrollment.create({ data });
     }),
 
     listClassSessionsForAdmin: jest.fn(async (eventId: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingClassSession.findMany({ where: { eventId } });
     }),
 
     createClassSession: jest.fn(async (data) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingClassSession.create({ data });
     }),
 
     findClassSessionForEvent: jest.fn(
       async (sessionId: string, eventId: string) => {
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
         return prisma.upcomingClassSession.findFirst({
           where: { id: sessionId, eventId },
         });
@@ -368,7 +439,7 @@ export function createUpcomingEventsRepositoryMock() {
     ),
 
     updateClassSession: jest.fn(async (sessionId: string, data) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingClassSession.update({
         where: { id: sessionId },
         data,
@@ -376,12 +447,12 @@ export function createUpcomingEventsRepositoryMock() {
     }),
 
     deleteClassSession: jest.fn(async (sessionId: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingClassSession.delete({ where: { id: sessionId } });
     }),
 
     findVenueConfigWithReservationTemplate: jest.fn(async (eventId: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingVenueConfig.findUnique({
         where: { eventId },
         include: { reservationEventTemplate: true },
@@ -389,13 +460,13 @@ export function createUpcomingEventsRepositoryMock() {
     }),
 
     updateUpcomingEventExperience: jest.fn(async (eventId: string, data) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.event.update({ where: { id: eventId }, data });
     }),
 
     upsertVenueConfigWithTemplate: jest.fn(
       async (eventId: string, create, update) => {
-        const prisma = mock.asPrisma();
+        const prisma = asPrisma();
         return prisma.upcomingVenueConfig.upsert({
           where: { eventId },
           create,
@@ -405,14 +476,8 @@ export function createUpcomingEventsRepositoryMock() {
     ),
 
     findVenueConfigRecord: jest.fn(async (eventId: string) => {
-      const prisma = mock.asPrisma();
+      const prisma = asPrisma();
       return prisma.upcomingVenueConfig.findUnique({ where: { eventId } });
     }),
   };
-
-  return mock;
 }
-
-export type UpcomingEventsRepositoryMock = ReturnType<
-  typeof createUpcomingEventsRepositoryMock
->;
