@@ -55,6 +55,8 @@ describe("VenueSeatReturnClient", () => {
       ).toBeInTheDocument();
     });
     expect(screen.getByText("Large 1")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /view floor plan/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /home/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /view floor plan/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /event details/i })).not.toBeInTheDocument();
   });
 });

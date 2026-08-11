@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Footer, SiteHeader } from "@/components/shared";
@@ -14,10 +13,6 @@ import {
   type VenueSessionStatus,
 } from "../services/fetchVenueSessionStatus";
 import { formatCatalogPriceWithSuffix } from "@/lib/services/formatCatalogPrice";
-import {
-  onComingEventDetailHref,
-  onComingEventSeatsHref,
-} from "@/lib/on-coming-events/upcomingEventPublicRoutes";
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_ATTEMPTS = 8;
@@ -42,7 +37,7 @@ function sessionLabelFor(reservation: VenueSessionStatus["reservation"]): string
     : "Chair";
 }
 
-function VenueSeatReturnInner({ slug }: { slug: string }) {
+function VenueSeatReturnInner() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const [status, setStatus] = useState<ConfirmationStatus>("loading");
@@ -129,22 +124,6 @@ function VenueSeatReturnInner({ slug }: { slug: string }) {
             {reservation.customerEmail}
           </p>
         ) : null}
-        {slug ? (
-          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href={onComingEventSeatsHref(slug)}
-              className="rounded-xl border border-gold/30 px-4 py-2 font-brand text-xs tracking-[0.12em] text-gold uppercase transition hover:border-gold/50 hover:bg-gold/10"
-            >
-              View floor plan
-            </Link>
-            <Link
-              href={onComingEventDetailHref(slug)}
-              className="rounded-xl border border-gold/20 px-4 py-2 font-brand text-xs tracking-[0.12em] text-foreground/75 uppercase transition hover:border-gold/35 hover:text-gold"
-            >
-              Event details
-            </Link>
-          </div>
-        ) : null}
       </div>
     ) : null;
 
@@ -153,7 +132,6 @@ function VenueSeatReturnInner({ slug }: { slug: string }) {
       ? [
           {
             sessionLabel: sessionLabelFor(reservation),
-            confirmationReference: reservation.id.slice(0, 8).toUpperCase(),
           },
         ]
       : undefined;
@@ -177,7 +155,8 @@ function VenueSeatReturnInner({ slug }: { slug: string }) {
   );
 }
 
-export default function VenueSeatReturnClient({ slug }: { slug: string }) {
+export default function VenueSeatReturnClient({ slug: _slug }: { slug: string }) {
+  void _slug;
   return (
     <Suspense
       fallback={
@@ -188,7 +167,7 @@ export default function VenueSeatReturnClient({ slug }: { slug: string }) {
         </>
       }
     >
-      <VenueSeatReturnInner slug={slug} />
+      <VenueSeatReturnInner />
     </Suspense>
   );
 }
