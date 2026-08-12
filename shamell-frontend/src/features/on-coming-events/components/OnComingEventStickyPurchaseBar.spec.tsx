@@ -30,6 +30,20 @@ describe("OnComingEventStickyPurchaseBar", () => {
     expect(props.onBuyMonthPackage).toHaveBeenCalled();
   });
 
+  it("renders cart checkout chip when cart has items", async () => {
+    const onCartCheckout = vi.fn();
+    const props = createStickyPurchaseBarProps({
+      showMonthPackage: false,
+      cartCount: 3,
+      cartTotal: 90,
+      onCartCheckout,
+    });
+    renderWithProviders(<OnComingEventStickyPurchaseBar {...props} />);
+    const chip = screen.getByRole("button", { name: /checkout 3 classes/i });
+    await userEvent.click(chip);
+    expect(onCartCheckout).toHaveBeenCalled();
+  });
+
   it("navigates to seats for venue seating mode", async () => {
     const props = createStickyPurchaseBarProps({
       purchaseMode: "venue_seating",

@@ -120,7 +120,12 @@ describe("RecurringClassBulkSectionsEditor", () => {
     expect(onBlueprintChange).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({ sortOrder: 0 }),
-        expect.objectContaining({ sortOrder: 1, label: "" }),
+        expect.objectContaining({
+          sortOrder: 1,
+          label: "",
+          startTime: "12:00",
+          endTime: "14:00",
+        }),
       ]),
     );
   });

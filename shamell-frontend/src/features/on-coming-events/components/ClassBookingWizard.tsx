@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StripeCheckoutHost } from "@/components/stripe";
 import { MonthPackageIncludedSessions } from "./MonthPackageIncludedSessions";
-import { createClassBundleCheckoutSession } from "../services/createClassBundleCheckoutSession";
+import { createClassCartCheckoutSession } from "../services/createClassCartCheckoutSession";
 import { createClassMonthPackageCheckoutSession } from "../services/createClassMonthPackageCheckoutSession";
 import {
   createClassCheckoutSession,
@@ -14,6 +15,7 @@ import {
 } from "../services/createClassCheckoutSession";
 import type { ClassSessionPublic } from "../services/fetchUpcomingClassSessions";
 import type { MonthPackageOffer, OnComingEventSchedule } from "../services/fetchOnComingEventDetail";
+import type { ClassCartItem } from "../types/classSessionCart.types";
 import {
   buildDaySectionOffers,
   sumSelectedOfferPrices,
@@ -26,6 +28,7 @@ import {
 } from "../lib/buildMonthPackagePreview";
 import { getNextOccurrence } from "../lib/buildScheduleMonthGrid";
 import { parseISOLocal, toISOLocalDate } from "@/lib/contacto/contactLogisticsUtils";
+import { usePublicCheckoutModalLock } from "../lib/usePublicCheckoutModalLock";
 
 function formatSectionTime(start: string, end: string) {
   const fmt = (hhmm: string) => {
@@ -110,8 +113,14 @@ function SeatStatsGrid({
   );
 }
 
-type Step = "confirm" | "day" | "sections" | "details" | "legacySession";
-type BookingKind = "day" | "month";
+type Step =
+  | "confirm"
+  | "day"
+  | "sections"
+  | "cartReview"
+  | "details"
+  | "legacySession";
+type BookingKind = "day" | "month" | "cart";
 
 type Props = {
   slug: string;
@@ -120,9 +129,13 @@ type Props = {
   monthPackage?: MonthPackageOffer | null;
   open: boolean;
   onClose: () => void;
-  entryFlow?: "day" | "month";
+  entryFlow?: "day" | "month" | "cart";
   initialWeekday?: number | null;
   initialDateIso?: string | null;
+  cartItems?: ClassCartItem[];
+  onReplaceDayCart?: (dateIso: string, items: ClassCartItem[]) => void;
+  onRemoveCartItem?: (sessionId: string) => void;
+  onCartCheckoutStarted?: () => void;
 };
 
 export function ClassBookingWizard({
@@ -135,6 +148,10 @@ export function ClassBookingWizard({
   entryFlow = "day",
   initialWeekday = null,
   initialDateIso = null,
+  cartItems = [],
+  onReplaceDayCart,
+  onRemoveCartItem,
+  onCartCheckoutStarted,
 }: Props) {
   const days = useMemo(
     () => (schedule?.mode === "RECURRING_WEEKLY" ? schedule.days : []),
@@ -170,6 +187,8 @@ export function ClassBookingWizard({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  usePublicCheckoutModalLock(open && mounted);
 
   const selectedDay = days.find((d) => d.weekday === weekday) ?? null;
 
@@ -223,12 +242,39 @@ export function ClassBookingWizard({
     [sessions],
   );
 
-  const goToSections = (wd: number, dateIso: string) => {
+  const cartItemsRef = useRef(cartItems);
+  useEffect(() => {
+    cartItemsRef.current = cartItems;
+  }, [cartItems]);
+
+  const goToSections = useCallback((wd: number, dateIso: string) => {
     setWeekday(wd);
     setSelectedDateIso(dateIso);
-    setSelectedSessionIds(new Set());
+    const preexisting = cartItemsRef.current
+      .filter((item) => item.dateIso === dateIso)
+      .map((item) => item.sessionId);
+    setSelectedSessionIds(new Set(preexisting));
     setStep("sections");
-  };
+  }, []);
+
+  const dayAlreadyInCart =
+    selectedDateIso != null &&
+    cartItems.some((item) => item.dateIso === selectedDateIso);
+
+  const cartTotal = useMemo(
+    () => cartItems.reduce((sum, item) => sum + item.price, 0),
+    [cartItems],
+  );
+
+  const cartGroupedByDate = useMemo(() => {
+    const map = new Map<string, ClassCartItem[]>();
+    for (const item of cartItems) {
+      const list = map.get(item.dateIso) ?? [];
+      list.push(item);
+      map.set(item.dateIso, list);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [cartItems]);
 
   useEffect(() => {
     if (!open) return;
@@ -239,6 +285,15 @@ export function ClassBookingWizard({
     setCustomerName("");
     setCustomerEmail("");
     setCustomerPhone("");
+
+    if (entryFlow === "cart") {
+      setBookingKind("cart");
+      setSelectedMonthIso(null);
+      setWeekday(null);
+      setSelectedDateIso(null);
+      setStep("cartReview");
+      return;
+    }
 
     if (entryFlow === "month" && hasMonthPackage && monthPackage?.currentMonthIso) {
       setBookingKind("month");
@@ -291,23 +346,10 @@ export function ClassBookingWizard({
     initialDateIso,
     days,
     schedule,
+    goToSections,
   ]);
 
   const titleId = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open, onClose]);
 
   const pickDay = (wd: number) => {
     const todayIso = toISOLocalDate(new Date());
@@ -337,11 +379,34 @@ export function ClassBookingWizard({
 
   const clearSelection = () => setSelectedSessionIds(new Set());
 
+  const addSelectionToCart = () => {
+    if (!selectedDateIso || weekday == null || !onReplaceDayCart) return;
+    const dayItems: ClassCartItem[] = [];
+    for (const offer of offers) {
+      if (!offer.sessionId || !selectedSessionIds.has(offer.sessionId)) continue;
+      if (offer.price == null) continue;
+      dayItems.push({
+        sessionId: offer.sessionId,
+        dateIso: selectedDateIso,
+        weekday,
+        sectionId: offer.sectionId || null,
+        label: offer.label,
+        startTime: offer.startTime,
+        endTime: offer.endTime,
+        price: offer.price,
+        capacity: offer.capacity,
+        seatsRemaining: offer.seatsRemaining,
+      });
+    }
+    onReplaceDayCart(selectedDateIso, dayItems);
+    onClose();
+  };
+
   const startCheckout = async () => {
     setIsSubmitting(true);
     setCheckoutError(null);
 
-    if (step === "details" && useWizard && bookingKind === "month" && selectedMonthIso) {
+    if (step === "details" && bookingKind === "month" && selectedMonthIso) {
       const result = await createClassMonthPackageCheckoutSession(slug, {
         monthIso: selectedMonthIso,
         customerName: customerName.trim(),
@@ -357,9 +422,37 @@ export function ClassBookingWizard({
       return;
     }
 
-    if (step === "details" && useWizard && bookingKind === "day") {
+    if (step === "details" && bookingKind === "cart") {
+      const ids = cartItems.map((item) => item.sessionId);
+      if (ids.length === 0) {
+        setIsSubmitting(false);
+        setCheckoutError("Your cart is empty.");
+        return;
+      }
+      const result = await createClassCartCheckoutSession(slug, {
+        sessionIds: ids,
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim(),
+        customerPhone: customerPhone.trim() || undefined,
+      });
+      setIsSubmitting(false);
+      if (!result.ok) {
+        setCheckoutError(result.message);
+        return;
+      }
+      onCartCheckoutStarted?.();
+      setCheckoutSecret(result.clientSecret);
+      return;
+    }
+
+    if (step === "details" && bookingKind === "day") {
       const ids = [...selectedSessionIds];
-      const result = await createClassBundleCheckoutSession(slug, {
+      if (ids.length === 0) {
+        setIsSubmitting(false);
+        setCheckoutError("Select at least one class.");
+        return;
+      }
+      const result = await createClassCartCheckoutSession(slug, {
         sessionIds: ids,
         customerName: customerName.trim(),
         customerEmail: customerEmail.trim(),
@@ -395,10 +488,15 @@ export function ClassBookingWizard({
     : step === "day" ? "Choose a day"
     : step === "sections" && selectedDateIso ?
       formatDateHeader(selectedDateIso, timezone)
+    : step === "cartReview" ? "Your classes"
     : step === "details" ? "Your details"
     : "Choose a session";
 
   const showSectionsFooter = step === "sections";
+  const headerLabel =
+    bookingKind === "month" ? monthPackageLabel
+    : bookingKind === "cart" ? "Checkout"
+    : "Book a class";
 
   if (!open || !mounted) return null;
 
@@ -412,20 +510,17 @@ export function ClassBookingWizard({
     );
   }
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open ? (
         <motion.div
           key="class-booking-overlay"
-          className="fixed inset-0 z-60 flex items-end justify-center bg-shamell-night/88 px-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8"
+          className="fixed inset-0 z-120 flex items-end justify-center bg-shamell-night/88 px-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8"
           role="presentation"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: stepEase }}
-          onClick={(e) => {
-            if (e.target === e.currentTarget) onClose();
-          }}
         >
           <motion.div
             role="dialog"
@@ -435,7 +530,6 @@ export function ClassBookingWizard({
             initial={{ opacity: 0, y: 28, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1, transition: panelSpring }}
             exit={{ opacity: 0, y: 20, scale: 0.98, transition: { duration: 0.18 } }}
-            onClick={(e) => e.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between gap-3 border-b border-gold/20 px-4 py-3.5 sm:px-5 sm:py-4">
               <div className="min-w-0">
@@ -443,7 +537,7 @@ export function ClassBookingWizard({
                   id={titleId}
                   className="font-brand text-[11px] tracking-[0.18em] text-gold uppercase sm:text-xs sm:tracking-[0.2em]"
                 >
-                  {bookingKind === "month" ? monthPackageLabel : "Book a class"}
+                  {headerLabel}
                 </h2>
                 <motion.p
                   key={stepTitle}
@@ -651,6 +745,73 @@ export function ClassBookingWizard({
                         </button>
                       ) : null}
                     </>
+                  ) : step === "cartReview" ? (
+                    <div className="space-y-4">
+                      {cartItems.length === 0 ? (
+                        <p className="rounded-xl border border-gold/15 bg-black/25 px-4 py-6 text-center text-sm text-foreground/70">
+                          Your cart is empty. Choose a day on the calendar to add classes.
+                        </p>
+                      ) : (
+                        <>
+                          {cartGroupedByDate.map(([dateIso, dayItems]) => (
+                            <div
+                              key={dateIso}
+                              className="rounded-xl border border-gold/20 bg-black/25 px-3 py-3 sm:px-4"
+                            >
+                              <p className="text-xs uppercase tracking-[0.12em] text-foreground/50">
+                                {formatDateHeader(dateIso, timezone)}
+                              </p>
+                              <ul className="mt-2 space-y-2">
+                                {dayItems.map((item) => (
+                                  <li
+                                    key={item.sessionId}
+                                    className="flex items-start justify-between gap-3 border-t border-gold/10 pt-2 first:border-t-0 first:pt-0"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="font-brand text-sm text-gold">
+                                        {item.label}
+                                      </p>
+                                      <p className="mt-0.5 text-xs text-foreground/65">
+                                        {formatSectionTime(item.startTime, item.endTime)}
+                                      </p>
+                                      <p className="mt-0.5 text-sm tabular-nums text-foreground/80">
+                                        ${item.price.toFixed(2)}
+                                      </p>
+                                    </div>
+                                    {onRemoveCartItem ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => onRemoveCartItem(item.sessionId)}
+                                        className="shrink-0 text-xs text-foreground/45 transition hover:text-gold"
+                                      >
+                                        Remove
+                                      </button>
+                                    ) : null}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between rounded-xl border border-gold/25 bg-gold/10 px-4 py-3">
+                            <p className="text-xs uppercase tracking-[0.12em] text-foreground/55">
+                              Total
+                            </p>
+                            <p className="font-brand text-lg tabular-nums text-gold">
+                              ${cartTotal.toFixed(2)}
+                            </p>
+                          </div>
+                          <motion.button
+                            type="button"
+                            whileTap={{ scale: 0.98 }}
+                            disabled={cartItems.length === 0}
+                            onClick={() => setStep("details")}
+                            className="min-h-12 w-full rounded-xl border border-gold/45 bg-gold/15 py-3 font-brand text-xs tracking-[0.14em] text-gold uppercase disabled:opacity-50"
+                          >
+                            Continue
+                          </motion.button>
+                        </>
+                      )}
+                    </div>
                   ) : step === "details" ? (
                     <div className="space-y-4">
                       <div className="rounded-xl border border-gold/20 bg-black/25 px-4 py-3">
@@ -668,6 +829,16 @@ export function ClassBookingWizard({
                             </p>
                             <p className="mt-0.5 text-sm tabular-nums text-foreground/80">
                               Total ${monthPackage?.price?.toFixed(2) ?? "0.00"}
+                            </p>
+                          </>
+                        ) : bookingKind === "cart" ? (
+                          <>
+                            <p className="mt-1 font-brand text-sm text-gold">
+                              {cartItems.length} class
+                              {cartItems.length === 1 ? "" : "es"} in cart
+                            </p>
+                            <p className="mt-0.5 text-sm tabular-nums text-foreground/80">
+                              Total ${cartTotal.toFixed(2)}
                             </p>
                           </>
                         ) : (
@@ -718,11 +889,17 @@ export function ClassBookingWizard({
                       <button
                         type="button"
                         onClick={() =>
-                          setStep(bookingKind === "month" ? "confirm" : "sections")
+                          setStep(
+                            bookingKind === "month" ? "confirm"
+                            : bookingKind === "cart" ? "cartReview"
+                            : "sections",
+                          )
                         }
                         className="min-h-10 text-xs text-foreground/50 transition hover:text-gold"
                       >
-                        {bookingKind === "month" ? "← Back to package" : "← Back to sections"}
+                        {bookingKind === "month" ? "← Back to package"
+                        : bookingKind === "cart" ? "← Back to cart"
+                        : "← Back to sections"}
                       </button>
                     </div>
                   ) : step === "legacySession" ? (
@@ -859,22 +1036,37 @@ export function ClassBookingWizard({
                       </motion.p>
                     </div>
                   </div>
-                  <motion.button
-                    type="button"
-                    whileTap={{ scale: selectedSessionIds.size > 0 ? 0.98 : 1 }}
-                    disabled={selectedSessionIds.size === 0}
-                    onClick={() => setStep("details")}
-                    className="mt-4 min-h-12 w-full rounded-xl border border-gold/45 bg-gold/15 py-3.5 font-brand text-xs tracking-[0.16em] text-gold uppercase shadow-[0_8px_28px_rgba(0,0,0,0.35)] disabled:opacity-45 sm:text-sm"
-                  >
-                    Buy
-                  </motion.button>
+                  <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: selectedSessionIds.size > 0 ? 0.98 : 1 }}
+                      disabled={selectedSessionIds.size === 0}
+                      onClick={() => {
+                        setBookingKind("day");
+                        setStep("details");
+                      }}
+                      className="min-h-12 w-full rounded-xl border border-[#f5e6c8]/55 bg-[linear-gradient(165deg,#f4e6c4_0%,#d4b76a_45%,#a8873f_100%)] py-3.5 font-brand text-xs tracking-[0.16em] text-[#1a1208] uppercase shadow-[0_8px_28px_rgba(0,0,0,0.35)] disabled:opacity-45 sm:text-sm"
+                    >
+                      Buy now
+                    </motion.button>
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: selectedSessionIds.size > 0 ? 0.98 : 1 }}
+                      disabled={selectedSessionIds.size === 0 || !onReplaceDayCart}
+                      onClick={addSelectionToCart}
+                      className="min-h-12 w-full rounded-xl border border-gold/45 bg-gold/15 py-3.5 font-brand text-xs tracking-[0.16em] text-gold uppercase shadow-[0_8px_28px_rgba(0,0,0,0.35)] disabled:opacity-45 sm:text-sm"
+                    >
+                      {dayAlreadyInCart ? "Update cart" : "Add to cart"}
+                    </motion.button>
+                  </div>
                 </motion.div>
               ) : null}
             </AnimatePresence>
           </motion.div>
         </motion.div>
       ) : null}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 

@@ -3,9 +3,15 @@ import type { ClassSectionFormRow } from "../types/reservationEventTemplate.type
 /** Section template without weekday (shared across days). */
 export type ClassSectionBlueprint = Omit<ClassSectionFormRow, "weekday">;
 
-const HHMM_RE = /^(\d{2}):(\d{2})$/;
+export type SectionTimeBlockRange = {
+  startMinutes: number;
+  endMinutes: number;
+};
 
-function parseHHMMToMinutes(value: string): number | null {
+const HHMM_RE = /^(\d{2}):(\d{2})$/;
+const DAY_END_MINUTES = 24 * 60 - 1;
+
+export function parseHHMMToMinutes(value: string): number | null {
   const match = HHMM_RE.exec(value.trim());
   if (!match) return null;
   const h = Number(match[1]);
@@ -14,29 +20,222 @@ function parseHHMMToMinutes(value: string): number | null {
   return h * 60 + m;
 }
 
-export function validateBlueprintOverlapMessage(
-  blueprint: ClassSectionBlueprint[],
-): string | null {
-  const parsed: Array<{ index: number; start: number; end: number }> = [];
-  for (let i = 0; i < blueprint.length; i++) {
-    const s = blueprint[i]!;
+type ParsedInterval = { sortOrder: number; index: number; start: number; end: number };
+
+function parseSectionIntervals(
+  sections: Array<{ sortOrder: number; startTime: string; endTime: string }>,
+): { ok: ParsedInterval[]; error: string | null } {
+  const parsed: ParsedInterval[] = [];
+  const sorted = sections.slice().sort((a, b) => a.sortOrder - b.sortOrder);
+  for (let i = 0; i < sorted.length; i++) {
+    const s = sorted[i]!;
     const start = parseHHMMToMinutes(s.startTime);
     const end = parseHHMMToMinutes(s.endTime);
     if (start == null || end == null) {
-      return `Section ${i + 1}: use valid start and end times (HH:mm).`;
+      return {
+        ok: [],
+        error: `Section ${i + 1}: use valid start and end times (HH:mm).`,
+      };
     }
     if (end <= start) {
-      return `Section ${i + 1}: end time must be after start time.`;
+      return {
+        ok: [],
+        error: `Section ${i + 1}: end time must be after start time.`,
+      };
     }
-    parsed.push({ index: i, start, end });
+    parsed.push({ sortOrder: s.sortOrder, index: i, start, end });
   }
-  parsed.sort((a, b) => a.start - b.start || a.end - b.end);
-  for (let i = 1; i < parsed.length; i++) {
-    const prev = parsed[i - 1]!;
-    const curr = parsed[i]!;
+  return { ok: parsed, error: null };
+}
+
+function mergeBlockedRanges(
+  ranges: SectionTimeBlockRange[],
+): SectionTimeBlockRange[] {
+  if (ranges.length === 0) return [];
+  const sorted = ranges
+    .filter((r) => r.endMinutes >= r.startMinutes)
+    .slice()
+    .sort((a, b) => a.startMinutes - b.startMinutes || a.endMinutes - b.endMinutes);
+  if (sorted.length === 0) return [];
+  const out: SectionTimeBlockRange[] = [{ ...sorted[0]! }];
+  for (let i = 1; i < sorted.length; i++) {
+    const curr = sorted[i]!;
+    const last = out[out.length - 1]!;
+    if (curr.startMinutes <= last.endMinutes + 1) {
+      last.endMinutes = Math.max(last.endMinutes, curr.endMinutes);
+    } else {
+      out.push({ ...curr });
+    }
+  }
+  return out;
+}
+
+/**
+ * Ranges to disable in ContactTimePickerModal so a section cannot reclaim
+ * another section's window (half-open [start, end) like backend overlap).
+ */
+export function blockedRangesForSectionTimePick(args: {
+  field: "start" | "end";
+  editingSortOrder: number;
+  sections: Array<{ sortOrder: number; startTime: string; endTime: string }>;
+}): SectionTimeBlockRange[] {
+  const editing = args.sections.find((s) => s.sortOrder === args.editingSortOrder);
+  const others = args.sections.filter((s) => s.sortOrder !== args.editingSortOrder);
+  const otherIntervals: Array<{ start: number; end: number }> = [];
+  for (const s of others) {
+    const start = parseHHMMToMinutes(s.startTime);
+    const end = parseHHMMToMinutes(s.endTime);
+    if (start == null || end == null || end <= start) continue;
+    otherIntervals.push({ start, end });
+  }
+
+  const ranges: SectionTimeBlockRange[] = [];
+
+  if (args.field === "start") {
+    for (const o of otherIntervals) {
+      if (o.end - 1 >= o.start) {
+        ranges.push({ startMinutes: o.start, endMinutes: o.end - 1 });
+      }
+    }
+    const fixedEnd = editing ? parseHHMMToMinutes(editing.endTime) : null;
+    if (fixedEnd != null) {
+      for (const o of otherIntervals) {
+        if (fixedEnd <= o.start) continue;
+        const maxExclusive = Math.min(fixedEnd, o.end);
+        if (maxExclusive > 0) {
+          ranges.push({
+            startMinutes: 0,
+            endMinutes: maxExclusive - 1,
+          });
+        }
+      }
+    }
+    return mergeBlockedRanges(ranges);
+  }
+
+  const fixedStart = editing ? parseHHMMToMinutes(editing.startTime) : null;
+  if (fixedStart != null) {
+    ranges.push({ startMinutes: 0, endMinutes: fixedStart });
+    for (const o of otherIntervals) {
+      if (fixedStart >= o.end) continue;
+      if (o.start + 1 <= DAY_END_MINUTES) {
+        ranges.push({
+          startMinutes: o.start + 1,
+          endMinutes: DAY_END_MINUTES,
+        });
+      }
+    }
+  } else {
+    for (const o of otherIntervals) {
+      if (o.end - 1 >= o.start) {
+        ranges.push({ startMinutes: o.start, endMinutes: o.end - 1 });
+      }
+    }
+  }
+  return mergeBlockedRanges(ranges);
+}
+
+export function validateBlueprintOverlapMessage(
+  blueprint: ClassSectionBlueprint[],
+): string | null {
+  const { ok: parsed, error } = parseSectionIntervals(blueprint);
+  if (error) return error;
+  const byStart = parsed.slice().sort((a, b) => a.start - b.start || a.end - b.end);
+  for (let i = 1; i < byStart.length; i++) {
+    const prev = byStart[i - 1]!;
+    const curr = byStart[i]!;
     if (curr.start < prev.end) {
       return `Section ${curr.index + 1} overlaps section ${prev.index + 1}.`;
     }
+  }
+  return null;
+}
+
+/** Overlap only — ignores incomplete/invalid times (for live UI warnings). */
+export function liveSectionsOverlapMessage(
+  sections: Array<{ sortOrder: number; startTime: string; endTime: string }>,
+): string | null {
+  const ready = sections.filter((s) => {
+    const start = parseHHMMToMinutes(s.startTime);
+    const end = parseHHMMToMinutes(s.endTime);
+    return start != null && end != null && end > start;
+  });
+  if (ready.length < 2) return null;
+  return validateBlueprintOverlapMessage(
+    ready.map((s) => ({
+      label: "",
+      startTime: s.startTime,
+      endTime: s.endTime,
+      sortOrder: s.sortOrder,
+      defaultCapacity: "1",
+      defaultPrice: "1",
+    })),
+  );
+}
+
+function minutesToHHMM(total: number): string {
+  const h = Math.floor(total / 60);
+  const m = total % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** Next free slot after existing sections (default 2h), or 10:00–12:00 if none. */
+export function suggestNextSectionTimes(
+  sections: Array<{ startTime: string; endTime: string }>,
+  durationMinutes = 120,
+): { startTime: string; endTime: string } {
+  const intervals: Array<{ start: number; end: number }> = [];
+  for (const s of sections) {
+    const start = parseHHMMToMinutes(s.startTime);
+    const end = parseHHMMToMinutes(s.endTime);
+    if (start == null || end == null || end <= start) continue;
+    intervals.push({ start, end });
+  }
+  if (intervals.length === 0) {
+    return { startTime: "10:00", endTime: "12:00" };
+  }
+  const lastEnd = Math.max(...intervals.map((iv) => iv.end));
+  if (lastEnd + durationMinutes <= 24 * 60) {
+    return {
+      startTime: minutesToHHMM(lastEnd),
+      endTime: minutesToHHMM(lastEnd + durationMinutes),
+    };
+  }
+  // Day is full after the last section — try earliest gap from midnight.
+  intervals.sort((a, b) => a.start - b.start || a.end - b.end);
+  let cursor = 0;
+  for (const iv of intervals) {
+    if (cursor + durationMinutes <= iv.start) {
+      return {
+        startTime: minutesToHHMM(cursor),
+        endTime: minutesToHHMM(cursor + durationMinutes),
+      };
+    }
+    cursor = Math.max(cursor, iv.end);
+  }
+  return { startTime: "10:00", endTime: "12:00" };
+}
+
+export function validateDaySectionsOverlapMessage(
+  daySections: ClassSectionFormRow[],
+  dayLabel?: string,
+): string | null {
+  const prefix = dayLabel ? `${dayLabel}: ` : "";
+  const message = validateBlueprintOverlapMessage(sectionsToBlueprint(daySections));
+  return message ? `${prefix}${message}` : null;
+}
+
+export function validateActiveDaysSectionsNoOverlap(
+  classSections: ClassSectionFormRow[],
+  activeWeekdays: number[],
+  weekdayLabels: string[] = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+): string | null {
+  for (const wd of [...activeWeekdays].sort((a, b) => a - b)) {
+    const daySections = sectionsForWeekday(classSections, wd);
+    if (daySections.length === 0) continue;
+    const label = weekdayLabels[wd] ?? `Day ${wd}`;
+    const err = validateDaySectionsOverlapMessage(daySections, label);
+    if (err) return err;
   }
   return null;
 }

@@ -46,6 +46,10 @@
 }
 
 body:has([data-stripe-checkout-overlay]) .site-floating-actions,
+body[data-public-checkout-modal="open"] .site-floating-actions {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 body:has([data-stripe-checkout-overlay]) [data-radix-toast-viewport] {
   display: none;
 }

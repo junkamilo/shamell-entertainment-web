@@ -16,6 +16,8 @@ export function useStripeWebhooksPage() {
   const [perPage, setPerPageState] = useState(DEFAULT_LIMIT);
   const [statusFilter, setStatusFilter] = useState<AdminWebhookStatus | "">("");
   const [flowFilter, setFlowFilter] = useState("");
+  const [purchaseCorrelationFilter, setPurchaseCorrelationFilter] =
+    useState("");
   const [failedOnly, setFailedOnly] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,8 @@ export function useStripeWebhooksPage() {
         limit: perPage,
         status: failedOnly ? "FAILED" : statusFilter || undefined,
         metadataFlow: flowFilter.trim() || undefined,
+        purchaseCorrelationId:
+          purchaseCorrelationFilter.trim() || undefined,
       });
       setItems(data.items);
       setMeta(data.meta);
@@ -52,7 +56,7 @@ export function useStripeWebhooksPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, perPage, statusFilter, flowFilter, failedOnly]);
+  }, [page, perPage, statusFilter, flowFilter, purchaseCorrelationFilter, failedOnly]);
 
   useEffect(() => {
     void reload();
@@ -73,6 +77,8 @@ export function useStripeWebhooksPage() {
     setStatusFilter,
     flowFilter,
     setFlowFilter,
+    purchaseCorrelationFilter,
+    setPurchaseCorrelationFilter,
     failedOnly,
     setFailedOnly,
     isLoading,

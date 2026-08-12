@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { StripeCheckoutHost } from "@/components/stripe";
 import {
@@ -8,6 +9,7 @@ import {
   type CreateClassCheckoutBody,
 } from "../services/createClassCheckoutSession";
 import type { ClassSessionPublic } from "../services/fetchUpcomingClassSessions";
+import { usePublicCheckoutModalLock } from "../lib/usePublicCheckoutModalLock";
 
 function formatSessionWhen(session: ClassSessionPublic) {
   const start = new Date(session.startsAt);
@@ -36,8 +38,15 @@ export function OnComingEventClassBookingModal({ slug, sessions, open, onClose }
   const [checkoutSecret, setCheckoutSecret] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  if (!open) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  usePublicCheckoutModalLock(open && mounted);
+
+  if (!open || !mounted) return null;
 
   const resetAndClose = () => {
     setSelectedSession(null);
@@ -78,17 +87,22 @@ export function OnComingEventClassBookingModal({ slug, sessions, open, onClose }
     );
   }
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/70"
-        aria-label="Close booking"
-        onClick={resetAndClose}
-      />
+  return createPortal(
+    <div
+      className="fixed inset-0 z-120 flex items-end justify-center sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="class-booking-legacy-title"
+    >
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-[2px]" aria-hidden="true" />
       <div className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl border border-gold/30 bg-[#0a0908] shadow-2xl sm:rounded-2xl">
         <div className="flex items-center justify-between border-b border-gold/20 px-4 py-3">
-          <h2 className="font-brand text-xs tracking-[0.16em] text-gold">BOOK A SESSION</h2>
+          <h2
+            id="class-booking-legacy-title"
+            className="font-brand text-xs tracking-[0.16em] text-gold"
+          >
+            BOOK A SESSION
+          </h2>
           <button
             type="button"
             onClick={resetAndClose}
@@ -164,6 +178,7 @@ export function OnComingEventClassBookingModal({ slug, sessions, open, onClose }
           ) : null}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

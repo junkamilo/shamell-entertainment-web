@@ -11,7 +11,7 @@ import {
   type SessionTicket,
 } from "./ClassPaymentConfirmationPanel";
 
-type PurchaseKind = "day_bundle" | "package" | null;
+type PurchaseKind = "day_bundle" | "session_cart" | "package" | null;
 
 function PackageCheckoutReturnInner() {
   const searchParams = useSearchParams();
@@ -37,7 +37,7 @@ function PackageCheckoutReturnInner() {
     }
     const o = data as Record<string, unknown>;
     const kind = o.purchaseKind;
-    if (kind === "day_bundle" || kind === "package") {
+    if (kind === "day_bundle" || kind === "session_cart" || kind === "package") {
       setPurchaseKind(kind);
     } else if (o.package === true) {
       setPurchaseKind("package");
@@ -87,12 +87,13 @@ function PackageCheckoutReturnInner() {
   }, [status, sessionId, pollCount, loadStatus]);
 
   const paidTitle =
-    purchaseKind === "day_bundle" ? "Classes confirmed"
+    purchaseKind === "day_bundle" || purchaseKind === "session_cart"
+      ? "Classes confirmed"
     : purchaseKind === "package" ? "Package confirmed"
     : "Booking confirmed";
 
   const paidSubtitle =
-    purchaseKind === "day_bundle"
+    purchaseKind === "day_bundle" || purchaseKind === "session_cart"
       ? "We sent one confirmation email with your class details and confirmation codes. Present it at check-in."
       : "We sent one confirmation email with all class dates and confirmation codes. Present it at check-in.";
 

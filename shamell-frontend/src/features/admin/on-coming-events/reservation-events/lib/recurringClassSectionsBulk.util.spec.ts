@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
   applyBlueprintToWeekdays,
+  blockedRangesForSectionTimePick,
   defaultBlueprint,
   inferBlueprintFromActiveDays,
+  liveSectionsOverlapMessage,
   sectionsMatchBlueprint,
   sectionsToBlueprint,
+  suggestNextSectionTimes,
+  validateActiveDaysSectionsNoOverlap,
   validateBlueprintComplete,
   validateBlueprintOverlapMessage,
 } from "./recurringClassSectionsBulk.util";
@@ -62,6 +66,115 @@ describe("recurringClassSectionsBulk.util", () => {
           { label: "B", startTime: "11:00", endTime: "13:00", sortOrder: 1, defaultCapacity: "10", defaultPrice: "10" },
         ]),
       ).toMatch(/overlaps/);
+    });
+  });
+
+  describe("liveSectionsOverlapMessage", () => {
+    it("ignores incomplete times", () => {
+      expect(
+        liveSectionsOverlapMessage([
+          { sortOrder: 0, startTime: "06:00", endTime: "08:00" },
+          { sortOrder: 1, startTime: "", endTime: "12:00" },
+        ]),
+      ).toBeNull();
+    });
+
+    it("flags real overlaps only", () => {
+      expect(
+        liveSectionsOverlapMessage([
+          { sortOrder: 0, startTime: "06:00", endTime: "08:00" },
+          { sortOrder: 1, startTime: "07:00", endTime: "09:00" },
+        ]),
+      ).toMatch(/overlaps/);
+    });
+  });
+
+  describe("blockedRangesForSectionTimePick", () => {
+    const sections = [
+      { sortOrder: 0, startTime: "06:00", endTime: "08:00" },
+      { sortOrder: 1, startTime: "09:00", endTime: "12:00" },
+    ];
+
+    it("blocks the other section window when picking start", () => {
+      const ranges = blockedRangesForSectionTimePick({
+        field: "start",
+        editingSortOrder: 1,
+        sections,
+      });
+      // 06:00–08:00 half-open → inclusive 06:00–07:59
+      expect(ranges.some((r) => r.startMinutes <= 360 && r.endMinutes >= 479)).toBe(true);
+      // 08:00 adjacent start remains available
+      const blocksEight = ranges.some(
+        (r) => r.startMinutes <= 480 && r.endMinutes >= 480,
+      );
+      expect(blocksEight).toBe(false);
+    });
+
+    it("blocks ends that would span into another section", () => {
+      const ranges = blockedRangesForSectionTimePick({
+        field: "end",
+        editingSortOrder: 1,
+        sections: [
+          { sortOrder: 0, startTime: "06:00", endTime: "08:00" },
+          { sortOrder: 1, startTime: "05:00", endTime: "12:00" },
+        ],
+      });
+      // start 05:00 with other [06:00,08:00) → ends after 06:00 overlap
+      expect(ranges.some((r) => r.startMinutes <= 361 && r.endMinutes >= 361)).toBe(true);
+    });
+  });
+
+  describe("suggestNextSectionTimes", () => {
+    it("defaults to 10:00–12:00 when empty", () => {
+      expect(suggestNextSectionTimes([])).toEqual({
+        startTime: "10:00",
+        endTime: "12:00",
+      });
+    });
+
+    it("places the next slot after the last section", () => {
+      expect(
+        suggestNextSectionTimes([{ startTime: "06:00", endTime: "08:00" }]),
+      ).toEqual({ startTime: "08:00", endTime: "10:00" });
+    });
+  });
+
+  describe("validateActiveDaysSectionsNoOverlap", () => {
+    it("returns null when each day is clean", () => {
+      expect(
+        validateActiveDaysSectionsNoOverlap(
+          [
+            row({ weekday: 1, startTime: "06:00", endTime: "08:00" }),
+            row({
+              weekday: 1,
+              sortOrder: 1,
+              startTime: "09:00",
+              endTime: "12:00",
+              label: "Second",
+            }),
+            row({ weekday: 2, startTime: "06:00", endTime: "08:00" }),
+          ],
+          [1, 2],
+        ),
+      ).toBeNull();
+    });
+
+    it("prefixes weekday when a day overlaps", () => {
+      expect(
+        validateActiveDaysSectionsNoOverlap(
+          [
+            row({ weekday: 1, startTime: "06:00", endTime: "08:00" }),
+            row({
+              weekday: 1,
+              sortOrder: 1,
+              startTime: "07:00",
+              endTime: "09:00",
+              label: "Clash",
+            }),
+          ],
+          [1],
+        ),
+      ).toMatch(/^Mon:.*overlaps/);
     });
   });
 

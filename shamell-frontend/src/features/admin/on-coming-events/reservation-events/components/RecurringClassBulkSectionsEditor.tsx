@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import {
   applyBlueprintToWeekdays,
+  liveSectionsOverlapMessage,
+  suggestNextSectionTimes,
   validateBlueprintComplete,
   type ClassSectionBlueprint,
 } from "../lib/recurringClassSectionsBulk.util";
@@ -63,12 +65,13 @@ export function RecurringClassBulkSectionsEditor({
   const addSection = () => {
     const nextSort =
       blueprint.length > 0 ? Math.max(...blueprint.map((s) => s.sortOrder)) + 1 : 0;
+    const times = suggestNextSectionTimes(blueprint);
     onBlueprintChange([
       ...blueprint,
       {
         label: "",
-        startTime: "10:00",
-        endTime: "12:00",
+        startTime: times.startTime,
+        endTime: times.endTime,
         sortOrder: nextSort,
         defaultCapacity: "",
         defaultPrice: "",
@@ -84,6 +87,10 @@ export function RecurringClassBulkSectionsEditor({
   };
 
   const blueprintIncomplete = validateBlueprintComplete(blueprint) != null;
+  const overlapMessage = useMemo(
+    () => liveSectionsOverlapMessage(blueprint),
+    [blueprint],
+  );
 
   const runApply = (mode: "fill_empty" | "replace_all") => {
     const result = applyBlueprintToWeekdays(sections, activeWeekdays, blueprint, mode);
@@ -155,10 +162,21 @@ export function RecurringClassBulkSectionsEditor({
           ))}
       </div>
 
+      {overlapMessage ? (
+        <p className="mt-3 text-xs text-amber-200/90" role="alert">
+          {overlapMessage} Times already used by another section are blocked in the time picker.
+        </p>
+      ) : null}
+
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         <button
           type="button"
-          disabled={disabled || blueprintIncomplete || emptyActiveDays.length === 0}
+          disabled={
+            disabled ||
+            blueprintIncomplete ||
+            overlapMessage != null ||
+            emptyActiveDays.length === 0
+          }
           onClick={() => runApply("fill_empty")}
           className="rounded-lg border border-gold/35 bg-gold/10 px-3 py-2 font-brand text-[10px] tracking-[0.12em] text-gold uppercase hover:bg-gold/15 disabled:opacity-50"
         >
@@ -166,7 +184,7 @@ export function RecurringClassBulkSectionsEditor({
         </button>
         <button
           type="button"
-          disabled={disabled || blueprintIncomplete}
+          disabled={disabled || blueprintIncomplete || overlapMessage != null}
           onClick={() => setOverwriteModalOpen(true)}
           className="rounded-lg border border-white/15 px-3 py-2 text-[10px] text-foreground/65 hover:border-gold/30 hover:text-gold disabled:opacity-50"
         >

@@ -13,6 +13,9 @@ function buildQueryString(query: AdminStripeWebhookEventsQuery): string {
   if (query.checkoutSessionId?.trim()) {
     sp.set("checkoutSessionId", query.checkoutSessionId.trim());
   }
+  if (query.purchaseCorrelationId?.trim()) {
+    sp.set("purchaseCorrelationId", query.purchaseCorrelationId.trim());
+  }
   if (query.status) sp.set("status", query.status);
   if (query.processed === true) sp.set("processed", "true");
   if (query.processed === false) sp.set("processed", "false");

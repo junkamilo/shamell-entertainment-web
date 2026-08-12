@@ -20,6 +20,7 @@ export function makeWebhookRow(
     status: "PROCESSED",
     metadataFlow: "class_session",
     checkoutSessionId: FIXTURE_CHECKOUT_SESSION_ID,
+    purchaseCorrelationId: "corr-fixture-1",
     handler: "classSessionCheckout",
     payloadSummary: { amount: 100 },
     processedAt: "2026-07-20T12:05:00.000Z",

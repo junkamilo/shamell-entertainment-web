@@ -12,6 +12,7 @@ export type AdminStripeWebhookEventRow = {
   status: AdminWebhookStatus;
   metadataFlow: string | null;
   checkoutSessionId: string | null;
+  purchaseCorrelationId: string | null;
   handler: string | null;
   payloadSummary: Record<string, unknown> | null;
   processedAt: string | null;
@@ -27,6 +28,7 @@ export type AdminStripeWebhookEventsQuery = {
   eventType?: string;
   metadataFlow?: string;
   checkoutSessionId?: string;
+  purchaseCorrelationId?: string;
   status?: AdminWebhookStatus;
   processed?: boolean;
 };

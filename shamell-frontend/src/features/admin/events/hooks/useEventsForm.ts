@@ -6,6 +6,7 @@ import {
   scheduleFormFromTemplate,
   type ScheduleFormState,
 } from "@/features/admin/on-coming-events/reservation-events/components/ReservationEventScheduleSections";
+import { validateActiveDaysSectionsNoOverlap } from "@/features/admin/on-coming-events/reservation-events/lib/recurringClassSectionsBulk.util";
 import type { ReservationEventTemplate } from "@/features/admin/on-coming-events/reservation-events/types/reservationEventTemplate.types";
 import {
   DESCRIPTION_MAX_LENGTH,
@@ -259,6 +260,12 @@ export function useEventsForm({
           if (sectionError) return sectionError;
         }
       }
+      const overlapErr = validateActiveDaysSectionsNoOverlap(
+        schedule.classSections,
+        activeDays,
+        SECTION_WEEKDAY_LABELS,
+      );
+      if (overlapErr) return overlapErr;
       if (!priceResult.ok || priceResult.value == null) {
         return "Set the event base price for classes (required for recurring schedules).";
       }

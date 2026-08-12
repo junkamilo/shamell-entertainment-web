@@ -22,6 +22,7 @@ import { OnComingEventScheduleSection } from "./OnComingEventScheduleSection";
 import { OnComingEventStickyPurchaseBar } from "./OnComingEventStickyPurchaseBar";
 import { ClassBookingWizard, weekdayFromIsoDate } from "./ClassBookingWizard";
 import { OnComingEventFixedTicketBookingModal } from "./OnComingEventFixedTicketBookingModal";
+import { useClassSessionCart } from "../hooks/useClassSessionCart";
 import {
   classPriceHeroAriaLabel,
   computeClassPriceDisplay,
@@ -71,11 +72,12 @@ export default function OnComingEventDetailPage({ slug }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
-  const [bookingFlow, setBookingFlow] = useState<"day" | "month">("day");
+  const [bookingFlow, setBookingFlow] = useState<"day" | "month" | "cart">("day");
   const [bookingWeekday, setBookingWeekday] = useState<number | null>(null);
   const [bookingDateIso, setBookingDateIso] = useState<string | null>(null);
   const [ticketOpen, setTicketOpen] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const classCart = useClassSessionCart(slug);
 
   const handleBackNavigate = useCallback(() => {
     setLeaving(true);
@@ -135,6 +137,12 @@ export default function OnComingEventDetailPage({ slug }: Props) {
   };
   const openMonthPackageBooking = () => {
     setBookingFlow("month");
+    setBookingDateIso(null);
+    setBookingWeekday(null);
+    setBookingOpen(true);
+  };
+  const openCartCheckout = () => {
+    setBookingFlow("cart");
     setBookingDateIso(null);
     setBookingWeekday(null);
     setBookingOpen(true);
@@ -268,6 +276,9 @@ export default function OnComingEventDetailPage({ slug }: Props) {
               ticketsRemaining={event.ticketsRemaining}
               showMonthPackage={showMonthPackage}
               monthPackageLabel={monthPackageLabel}
+              cartCount={isClasses ? classCart.count : 0}
+              cartTotal={isClasses ? classCart.total : 0}
+              onCartCheckout={isClasses ? openCartCheckout : undefined}
               onBuyMonthPackage={openMonthPackageBooking}
               onBuyTicket={() => setTicketOpen(true)}
                   />
@@ -283,6 +294,10 @@ export default function OnComingEventDetailPage({ slug }: Props) {
                     open={bookingOpen}
                     initialWeekday={bookingWeekday}
                     initialDateIso={bookingDateIso}
+                    cartItems={classCart.items}
+                    onReplaceDayCart={classCart.replaceDay}
+                    onRemoveCartItem={classCart.removeItem}
+                    onCartCheckoutStarted={classCart.clear}
                     onClose={() => {
                       setBookingOpen(false);
                       setBookingFlow("day");

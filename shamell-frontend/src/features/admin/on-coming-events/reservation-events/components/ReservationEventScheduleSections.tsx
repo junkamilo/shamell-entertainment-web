@@ -32,6 +32,7 @@ import {
   RecurringClassBulkSectionsEditor,
 } from "./RecurringClassBulkSectionsEditor";
 import {
+  blockedRangesForSectionTimePick,
   defaultBlueprint,
   inferBlueprintFromActiveDays,
   type ClassSectionBlueprint,
@@ -222,6 +223,19 @@ export function ReservationEventScheduleSections({
     }
     prevActiveDayCountRef.current = count;
   }, [activeWeekdayList, value.classSections]);
+
+  const sectionTimeBlockedRanges = useMemo(() => {
+    if (!sectionTimePick) return [];
+    const sections =
+      sectionTimePick.weekday === BULK_SECTION_WEEKDAY
+        ? bulkBlueprint
+        : value.classSections.filter((s) => s.weekday === sectionTimePick.weekday);
+    return blockedRangesForSectionTimePick({
+      field: sectionTimePick.field,
+      editingSortOrder: sectionTimePick.sortOrder,
+      sections,
+    });
+  }, [sectionTimePick, bulkBlueprint, value.classSections]);
 
   const threeState = experienceMode !== undefined;
 
@@ -565,6 +579,7 @@ export function ReservationEventScheduleSections({
                     s.sortOrder === sectionTimePick.sortOrder,
                 )?.[sectionTimePick.field === "start" ? "startTime" : "endTime"] ?? "10:00")
           }
+          blockedRanges={sectionTimeBlockedRanges}
           onClose={() => setSectionTimePick(null)}
           onConfirm={(hhmm) => {
             const { weekday, sortOrder, field } = sectionTimePick;

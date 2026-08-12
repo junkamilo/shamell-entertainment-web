@@ -8,6 +8,7 @@ import {
   createFixedEventCheckoutSession,
   type CreateFixedEventCheckoutBody,
 } from "../services/createFixedEventCheckoutSession";
+import { usePublicCheckoutModalLock } from "../lib/usePublicCheckoutModalLock";
 
 type Props = {
   slug: string;
@@ -36,6 +37,8 @@ export function OnComingEventFixedTicketBookingModal({
     setMounted(true);
   }, []);
 
+  usePublicCheckoutModalLock(open && mounted);
+
   const resetAndClose = () => {
     setCustomerName("");
     setCustomerEmail("");
@@ -44,15 +47,6 @@ export function OnComingEventFixedTicketBookingModal({
     setCheckoutError(null);
     onClose();
   };
-
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [open]);
 
   if (!open || !mounted) return null;
 

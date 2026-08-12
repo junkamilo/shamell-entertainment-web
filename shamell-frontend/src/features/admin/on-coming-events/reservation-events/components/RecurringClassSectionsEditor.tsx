@@ -2,8 +2,10 @@
 
 import { Plus } from "lucide-react";
 import {
+  liveSectionsOverlapMessage,
   sectionsMatchBlueprint,
   sectionsToBlueprint,
+  suggestNextSectionTimes,
   type ClassSectionBlueprint,
 } from "../lib/recurringClassSectionsBulk.util";
 import type { ClassSectionFormRow } from "../types/reservationEventTemplate.types";
@@ -43,13 +45,14 @@ export function RecurringClassSectionsEditor({
   const addSection = (weekday: number) => {
     const day = sectionsForDay(weekday);
     const nextSort = day.length > 0 ? Math.max(...day.map((s) => s.sortOrder)) + 1 : 0;
+    const times = suggestNextSectionTimes(day);
     updateDay(weekday, [
       ...day,
       {
         weekday,
         label: "",
-        startTime: "10:00",
-        endTime: "12:00",
+        startTime: times.startTime,
+        endTime: times.endTime,
         sortOrder: nextSort,
         defaultCapacity: "",
         defaultPrice: "",
@@ -99,6 +102,7 @@ export function RecurringClassSectionsEditor({
           sharedBlueprint.length > 0 &&
           daySections.length > 0 &&
           sectionsMatchBlueprint(daySections, sharedBlueprint);
+        const dayOverlap = liveSectionsOverlapMessage(daySections);
         return (
           <div
             key={weekday}
@@ -123,6 +127,12 @@ export function RecurringClassSectionsEditor({
                 Add section
               </button>
             </div>
+            {dayOverlap ? (
+              <p className="mb-3 text-xs text-amber-200/90" role="alert">
+                {dayOverlap} Times already used by another section are blocked in the time
+                picker.
+              </p>
+            ) : null}
             {daySections.length === 0 ? (
               <p className="text-xs text-foreground/50">
                 No sections yet. Use shared setup above or add a section here.

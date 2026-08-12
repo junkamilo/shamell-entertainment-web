@@ -50,6 +50,19 @@ export default function StripeWebhooksPageContent() {
           />
         </label>
         <label className="flex flex-col gap-1 text-xs text-foreground/60">
+          Purchase id
+          <input
+            type="text"
+            value={page.purchaseCorrelationFilter}
+            onChange={(e) => {
+              page.setPurchaseCorrelationFilter(e.target.value);
+              page.setPage(1);
+            }}
+            placeholder="correlationId / purchase"
+            className="rounded border border-foreground/15 bg-background px-2 py-1.5 text-sm text-foreground font-mono"
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-xs text-foreground/60">
           Status
           <select
             value={page.statusFilter}
@@ -107,6 +120,7 @@ export default function StripeWebhooksPageContent() {
                   <th className="px-2 py-2">Handler</th>
                   <th className="px-2 py-2">Status</th>
                   <th className="px-2 py-2">Attempts</th>
+                  <th className="px-2 py-2">Purchase id</th>
                   <th className="px-2 py-2">Checkout session</th>
                   <th className="px-2 py-2">Error</th>
                 </tr>
@@ -131,6 +145,9 @@ export default function StripeWebhooksPageContent() {
                       </span>
                     </td>
                     <td className="px-2 py-2">{row.attempts}</td>
+                    <td className="max-w-[140px] truncate px-2 py-2 font-mono text-xs">
+                      {row.purchaseCorrelationId ?? "—"}
+                    </td>
                     <td className="max-w-[140px] truncate px-2 py-2 font-mono text-xs">
                       {row.checkoutSessionId ?? "—"}
                     </td>
@@ -164,6 +181,11 @@ export default function StripeWebhooksPageContent() {
                   {row.metadataFlow ?? "—"} · {row.handler ?? "—"} · attempts{" "}
                   {row.attempts}
                 </p>
+                {row.purchaseCorrelationId ? (
+                  <p className="truncate font-mono text-xs text-foreground/60">
+                    purchase: {row.purchaseCorrelationId}
+                  </p>
+                ) : null}
                 {row.checkoutSessionId ? (
                   <p className="truncate font-mono text-xs text-foreground/60">
                     {row.checkoutSessionId}
