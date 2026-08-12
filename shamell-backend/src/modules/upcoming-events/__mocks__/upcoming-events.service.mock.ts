@@ -12,6 +12,7 @@ export function createUpcomingEventsServiceMock() {
     createClassCheckout: jest.fn(),
     createClassPackageCheckout: jest.fn(),
     createClassBundleCheckout: jest.fn(),
+    createClassCartCheckout: jest.fn(),
     createFixedEventCheckout: jest.fn(),
     processClassStripeWebhookEvent: jest.fn(),
     processClassPackageStripeWebhookEvent: jest.fn(),

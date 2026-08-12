@@ -21,9 +21,17 @@
 1. Create webhook endpoint:
    - URL: `https://<backend-domain>/api/v1/stripe/webhook`
    - Do **not** use `/api/v1/bookings/public/webhook` for upcoming/fixed/venue flows.
-2. Subscribe events:
+2. Subscribe events (negocio + timeline audit-only; see `docs/stripe-webhooks.md`):
    - `checkout.session.completed`
    - `checkout.session.expired`
+   - `payment_intent.created`
+   - `payment_intent.succeeded`
+   - `payment_intent.payment_failed`
+   - `charge.succeeded`
+   - `charge.updated`
+   - `charge.failed`
+   - `charge.refunded`
+   - Note: PAID/EXPIRED only from Checkout; PI/charge rows use `handler = audit_only`.
 3. Copy webhook signing secret (`whsec_...`) to Render as `STRIPE_WEBHOOK_SECRET`.
 4. **Customer receipts (Stripe):** Settings → Customer emails → enable successful payment receipts (separate from Shamell MailerSend emails).
 

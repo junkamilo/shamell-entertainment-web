@@ -7,8 +7,10 @@ import type { StripeWebhookEventLite } from '../types/stripe-webhook.types';
 export type WebhookAuditContext = {
   metadataFlow?: string | null;
   checkoutSessionId?: string | null;
+  purchaseCorrelationId?: string | null;
   handler?: string | null;
   payloadSummary?: Prisma.InputJsonValue;
+  payload?: Prisma.InputJsonValue;
 };
 
 @Injectable()
@@ -43,8 +45,10 @@ export class StripeWebhookAuditService {
         attempts: 1,
         metadataFlow: ctx.metadataFlow ?? null,
         checkoutSessionId: ctx.checkoutSessionId ?? null,
+        purchaseCorrelationId: ctx.purchaseCorrelationId ?? null,
         handler: ctx.handler ?? null,
         payloadSummary: summary === Prisma.JsonNull ? undefined : summary,
+        ...(ctx.payload !== undefined ? { payload: ctx.payload } : {}),
       },
       update: {
         attempts: { increment: 1 },
@@ -57,6 +61,9 @@ export class StripeWebhookAuditService {
         ...(ctx.checkoutSessionId !== undefined
           ? { checkoutSessionId: ctx.checkoutSessionId }
           : {}),
+        ...(ctx.purchaseCorrelationId !== undefined
+          ? { purchaseCorrelationId: ctx.purchaseCorrelationId }
+          : {}),
         ...(ctx.handler !== undefined ? { handler: ctx.handler } : {}),
         ...(ctx.payloadSummary !== undefined
           ? {
@@ -64,6 +71,7 @@ export class StripeWebhookAuditService {
                 summary === Prisma.JsonNull ? Prisma.JsonNull : summary,
             }
           : {}),
+        ...(ctx.payload !== undefined ? { payload: ctx.payload } : {}),
         lastError: null,
       },
     });

@@ -41,11 +41,16 @@ export async function createVenueReservationsServiceTestModule(): Promise<VenueR
   stripe.client.checkout.sessions.create = jest.fn().mockResolvedValue({
     id: 'cs_test_created',
     client_secret: 'cs_test_secret',
+    payment_intent: 'pi_test_created',
   });
   stripe.client.checkout.sessions.update = jest
     .fn()
     .mockResolvedValue({ id: 'cs_test_created' });
   stripe.client.checkout.sessions.retrieve = jest.fn();
+  stripe.client.paymentIntents.update = jest.fn().mockResolvedValue({});
+  stripe.client.paymentIntents.search = jest
+    .fn()
+    .mockResolvedValue({ data: [] });
 
   const moduleRef = await Test.createTestingModule({
     providers: [

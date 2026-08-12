@@ -425,8 +425,47 @@ describe('VenueReservationsService', () => {
         harness.stripe.client.checkout.sessions.create,
       ).toHaveBeenCalledTimes(1);
       const stripeCreateCalls = harness.stripe.client.checkout.sessions.create
-        .mock.calls as Array<[{ metadata: Record<string, string> }]>;
+        .mock.calls as Array<
+        [
+          {
+            metadata: Record<string, string>;
+            payment_intent_data: {
+              description: string;
+              receipt_email: string;
+              metadata: Record<string, string>;
+            };
+          },
+        ]
+      >;
       expect(stripeCreateCalls[0][0].metadata.flow).toBe('venue_seat');
+      expect(stripeCreateCalls[0][0].metadata.upcomingEventId).toBe(EVENT_ID);
+      expect(stripeCreateCalls[0][0].metadata.correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+      expect(stripeCreateCalls[0][0].payment_intent_data.metadata.flow).toBe(
+        'venue_seat',
+      );
+      expect(
+        stripeCreateCalls[0][0].payment_intent_data.metadata.correlationId,
+      ).toBe(stripeCreateCalls[0][0].metadata.correlationId);
+      expect(stripeCreateCalls[0][0].payment_intent_data.receipt_email).toBe(
+        'ada@example.com',
+      );
+      expect(stripeCreateCalls[0][0].payment_intent_data.description).toContain(
+        '—',
+      );
+
+      expect(harness.stripe.client.paymentIntents.update).toHaveBeenCalledWith(
+        'pi_test_created',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            flow: 'venue_seat',
+            checkoutSessionId: 'cs_test_created',
+            upcomingEventId: EVENT_ID,
+            correlationId: stripeCreateCalls[0][0].metadata.correlationId,
+          }) as Record<string, unknown>,
+        }),
+      );
 
       const stripeUpdateCalls = harness.stripe.client.checkout.sessions.update
         .mock.calls as Array<[string, { metadata: Record<string, string> }]>;
@@ -436,6 +475,63 @@ describe('VenueReservationsService', () => {
       expect(updateMetadata.metadata.flow).toBe('venue_seat');
       expect(updateMetadata.metadata.reservationId).toBe('res-new');
       expect(updateMetadata.metadata.upcomingEventId).toBe(EVENT_ID);
+      expect(updateMetadata.metadata.layoutItemId).toBe(LAYOUT_ITEM_ID);
+
+      expect(harness.stripe.client.paymentIntents.update).toHaveBeenCalledWith(
+        'pi_test_created',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            reservationId: 'res-new',
+            layoutItemId: LAYOUT_ITEM_ID,
+            checkoutSessionId: 'cs_test_created',
+          }) as Record<string, unknown>,
+        }),
+      );
+    });
+
+    it('createCheckoutSession resolves PI via search when session.payment_intent is null', async () => {
+      const prisma = setupPublishedVenueContext(harness);
+      prisma.venueSeatReservation.create.mockResolvedValue(
+        makeVenueSeatReservationLite({
+          id: 'res-search',
+          stripeCheckoutSessionId: 'cs_test_created',
+        }),
+      );
+      harness.stripe.client.checkout.sessions.create = jest
+        .fn()
+        .mockResolvedValue({
+          id: 'cs_test_created',
+          client_secret: 'cs_test_secret',
+          payment_intent: null,
+        });
+      harness.stripe.client.checkout.sessions.retrieve = jest
+        .fn()
+        .mockResolvedValue({
+          id: 'cs_test_created',
+          payment_intent: null,
+        });
+      harness.stripe.client.paymentIntents.search = jest
+        .fn()
+        .mockResolvedValue({ data: [{ id: 'pi_from_search' }] });
+
+      await service.createCheckoutSession(makeCheckoutDto());
+
+      expect(harness.stripe.client.paymentIntents.search).toHaveBeenCalled();
+      const searchCalls = harness.stripe.client.paymentIntents.search.mock
+        .calls as Array<[{ query: string; limit: number }]>;
+      expect(searchCalls[0][0].limit).toBe(1);
+      expect(searchCalls[0][0].query).toMatch(
+        /metadata\["correlationId"\]:"[0-9a-f-]{36}"/i,
+      );
+      expect(harness.stripe.client.paymentIntents.update).toHaveBeenCalledWith(
+        'pi_from_search',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            checkoutSessionId: 'cs_test_created',
+            reservationId: 'res-search',
+          }) as Record<string, unknown>,
+        }),
+      );
     });
 
     it('createCheckoutSession rejects seat not on published floor plan', async () => {

@@ -92,6 +92,48 @@ describe('BookingsQuoteService', () => {
           expectedAmount: 500,
         }),
       );
+
+      const createCalls = stripe.client.checkout.sessions.create.mock
+        .calls as Array<
+        [
+          {
+            metadata: Record<string, string>;
+            payment_intent_data: {
+              description: string;
+              receipt_email: string;
+              metadata: Record<string, string>;
+            };
+            expand: string[];
+          },
+        ]
+      >;
+      expect(createCalls[0][0].metadata.flow).toBe('booking_quote');
+      expect(createCalls[0][0].metadata.correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+      expect(createCalls[0][0].payment_intent_data.metadata.flow).toBe(
+        'booking_quote',
+      );
+      expect(createCalls[0][0].payment_intent_data.metadata.correlationId).toBe(
+        createCalls[0][0].metadata.correlationId,
+      );
+      expect(createCalls[0][0].payment_intent_data.receipt_email).toBe(
+        'ada@example.com',
+      );
+      expect(createCalls[0][0].payment_intent_data.description).toContain(
+        'Booking',
+      );
+      expect(createCalls[0][0].expand).toContain('payment_intent');
+      expect(stripe.client.paymentIntents.update).toHaveBeenCalledWith(
+        'pi_quote_1',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            flow: 'booking_quote',
+            checkoutSessionId: 'cs_quote_1',
+            correlationId: createCalls[0][0].metadata.correlationId,
+          }) as Record<string, unknown>,
+        }),
+      );
     });
 
     it('createBookingQuote DEPOSIT splits deposit and balance', async () => {
@@ -198,6 +240,7 @@ describe('BookingsQuoteService', () => {
       stripe.client.checkout.sessions.create = jest.fn().mockResolvedValue({
         id: 'cs_balance_1',
         client_secret: 'cs_balance_secret',
+        payment_intent: 'pi_balance_1',
       });
 
       const result = await service.sendBookingBalanceLink(
@@ -353,6 +396,7 @@ describe('BookingsQuoteService', () => {
       stripe.client.checkout.sessions.create = jest.fn().mockResolvedValue({
         id: 'cs_reissued',
         client_secret: 'cs_reissued_secret',
+        payment_intent: 'pi_reissued',
       });
       repository.createBookingPayment.mockResolvedValue({
         id: 'payment-reissued',

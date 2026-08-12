@@ -22,6 +22,7 @@ import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import { CreateClassCheckoutDto } from '../dto/create-class-checkout.dto';
 import { CreateAdminClassEnrollmentDto } from '../dto/create-admin-class-enrollment.dto';
 import { CreateClassBundleCheckoutDto } from '../dto/create-class-bundle-checkout.dto';
+import { CreateClassCartCheckoutDto } from '../dto/create-class-cart-checkout.dto';
 import { CreateClassPackageCheckoutDto } from '../dto/create-class-package-checkout.dto';
 import { CreateFixedEventCheckoutDto } from '../dto/create-fixed-event-checkout.dto';
 import { UpsertClassSessionDto } from '../dto/upsert-class-session.dto';
@@ -313,6 +314,17 @@ export class UpcomingEventsController {
     @Body() dto: CreateClassBundleCheckoutDto,
   ) {
     return this.upcomingEventsService.createClassBundleCheckout(slug, dto);
+  }
+
+  @Post('upcoming-events/:slug/sessions/cart-checkout-session')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  createClassCartCheckout(
+    @Param('slug') slug: string,
+    @Body() dto: CreateClassCartCheckoutDto,
+  ) {
+    return this.upcomingEventsService.createClassCartCheckout(slug, dto);
   }
 
   @Post('upcoming-events/admin/events/:eventId/sessions/regenerate')

@@ -49,14 +49,24 @@ export type StripeWebhookEventPrismaRow = {
   status: StripeWebhookProcessingStatus;
   metadataFlow: string | null;
   checkoutSessionId: string | null;
+  purchaseCorrelationId: string | null;
   handler: string | null;
   payloadSummary: Prisma.JsonValue;
+  payload: Prisma.JsonValue | null;
   processedAt: Date | null;
   attempts: number;
   lastError: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
+
+export function jsonObjectOrNull(
+  value: Prisma.JsonValue | null | undefined,
+): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value
+    : null;
+}
 
 export function iso(d: Date | null | undefined): string | null {
   return d ? d.toISOString() : null;
@@ -73,16 +83,23 @@ export function toRow(
     status: row.status,
     metadataFlow: row.metadataFlow,
     checkoutSessionId: row.checkoutSessionId,
+    purchaseCorrelationId: row.purchaseCorrelationId,
     handler: row.handler,
-    payloadSummary:
-      row.payloadSummary && typeof row.payloadSummary === 'object'
-        ? (row.payloadSummary as Record<string, unknown>)
-        : null,
+    payloadSummary: jsonObjectOrNull(row.payloadSummary),
     processedAt: iso(row.processedAt),
     attempts: row.attempts,
     lastError: row.lastError,
     createdAt: iso(row.createdAt) ?? '',
     updatedAt: iso(row.updatedAt) ?? '',
+  };
+}
+
+export function toDetailRow(row: StripeWebhookEventPrismaRow): {
+  payload: Record<string, unknown> | null;
+} & ReturnType<typeof toRow> {
+  return {
+    ...toRow(row),
+    payload: jsonObjectOrNull(row.payload),
   };
 }
 

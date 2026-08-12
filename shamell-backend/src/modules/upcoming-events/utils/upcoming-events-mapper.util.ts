@@ -73,11 +73,11 @@ export function sessionLabel(session: {
     timeZone: session.timezone,
   });
   const sectionPart = session.section?.label
-    ? `${session.section.label} (${session.section.startTime}?${session.section.endTime})`
+    ? `${session.section.label} (${session.section.startTime}-${session.section.endTime})`
     : session.section
-      ? `${session.section.startTime}?${session.section.endTime}`
+      ? `${session.section.startTime}-${session.section.endTime}`
       : null;
-  return sectionPart ? `${when} ? ${sectionPart}` : when;
+  return sectionPart ? `${when} - ${sectionPart}` : when;
 }
 
 export function mapPublicSummary(event: {

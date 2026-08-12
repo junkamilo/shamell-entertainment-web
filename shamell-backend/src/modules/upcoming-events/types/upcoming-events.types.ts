@@ -46,6 +46,20 @@ export type ClassSessionBundleSelections = {
   items: ClassSessionBundleSelectionItem[];
 };
 
+export type ClassSessionCartSelectionItem = {
+  sessionId: string;
+  weekday: number;
+  sectionId: string | null;
+  dateIso: string;
+  amount: number;
+};
+
+export type ClassSessionCartSelections = {
+  kind: 'class_session_cart';
+  sessionIds: string[];
+  items: ClassSessionCartSelectionItem[];
+};
+
 export type ClassPackageSelections = {
   kind: 'class_package';
   sessionIds: string[];

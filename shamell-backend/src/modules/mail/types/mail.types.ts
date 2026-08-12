@@ -23,6 +23,7 @@ export type AdminPaymentFlowLabel =
   | 'Class'
   | 'Class package'
   | 'Same-day classes'
+  | 'Class cart'
   | 'Fixed ticket';
 
 export type NotifyAdminPaymentInput = {
@@ -33,6 +34,7 @@ export type NotifyAdminPaymentInput = {
     | 'CLASS_SESSION'
     | 'CLASS_PACKAGE'
     | 'CLASS_DAY_BUNDLE'
+    | 'CLASS_SESSION_CART'
     | 'FIXED_TICKET';
   customerName: string;
   customerEmail: string;

@@ -24,6 +24,12 @@ import {
   stripeAutomaticTaxParams,
   stripeTaxProductData,
 } from '../../stripe/utils/stripe-tax.util';
+import {
+  attachPaymentIntentCheckoutMetadata,
+  buildCheckoutCorrelationMetadata,
+  resolvePaymentIntentIdForCheckoutSession,
+} from '../../stripe/utils/stripe-checkout-pi-enrich.util';
+import { paymentIntentIdFromSession } from '../../stripe/types/stripe-webhook.types';
 import { StripeService } from '../../stripe/services/stripe.service';
 import { CHECKOUT_TTL_MINUTES } from '../constants/upcoming-events.constants';
 import {
@@ -47,6 +53,7 @@ import {
 import {
   buildClassMonthPackageSelections,
   buildClassSessionBundleSelections,
+  buildClassSessionCartSelections,
 } from '../utils/class-package-selections.util';
 import {
   assertMonthSessionsAvailable,
@@ -328,41 +335,35 @@ export class AdminClassEnrollmentService {
     if (resolved.kind === 'session') {
       const session = resolved.session;
       const amountCents = Math.round(Number(session.price) * 100);
-      const checkout = await this.stripeService.client.checkout.sessions.create(
-        {
-          ...STRIPE_EMBEDDED_CHECKOUT_BASE,
-          mode: 'payment',
-          customer_email: customer.customerEmail,
-          ...stripeAutomaticTaxParams(),
-          payment_intent_data: {
-            receipt_email: customer.customerEmail,
+      const classLabel = this.sessionLabel(session);
+      const productName = `${eventName} — class`;
+      const { checkout, paymentIntentId, metadata } =
+        await this.createEnrichedAdminClassCheckout({
+          customerEmail: customer.customerEmail,
+          description: `${productName} — ${classLabel}`,
+          baseMetadata: {
+            flow: 'class_session',
+            upcomingEventId: resolved.event.id,
+            sessionId: session.id,
+            adminUserId,
+            paymentChannel: 'STRIPE',
           },
-          line_items: [
+          lineItems: [
             {
               quantity: 1,
               price_data: {
                 currency: session.currency,
                 unit_amount: amountCents,
                 product_data: stripeTaxProductData({
-                  name: `${eventName} — class`,
-                  description: this.sessionLabel(session),
+                  name: productName,
+                  description: classLabel,
                 }),
               },
             },
           ],
-          metadata: {
-            flow: 'class_session',
-            adminUserId,
-            paymentChannel: 'STRIPE',
-          },
-          return_url: returnUrl,
-          expires_at: Math.floor(expiresAt.getTime() / 1000),
-        },
-      );
-
-      if (!checkout.client_secret) {
-        throw new BadRequestException('Could not start checkout.');
-      }
+          returnUrl,
+          expiresAt,
+        });
 
       const enrollment = await this.repository.createClassEnrollment({
         sessionId: session.id,
@@ -380,12 +381,12 @@ export class AdminClassEnrollmentService {
         expiresAt,
       });
 
-      await this.stripeService.client.checkout.sessions.update(checkout.id, {
+      await this.attachAdminCheckoutMetadata({
+        checkoutSessionId: checkout.id,
+        paymentIntentId,
         metadata: {
-          flow: 'class_session',
+          ...metadata,
           enrollmentId: enrollment.id,
-          adminUserId,
-          paymentChannel: 'STRIPE',
         },
       });
 
@@ -396,7 +397,7 @@ export class AdminClassEnrollmentService {
         customerEmail: customer.customerEmail,
         amount: Number(session.price),
         eventLabel: eventName,
-        classLabel: this.sessionLabel(session),
+        classLabel,
         payUrl,
       });
 
@@ -410,39 +411,32 @@ export class AdminClassEnrollmentService {
       };
     }
 
-    const checkout = await this.stripeService.client.checkout.sessions.create({
-      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
-      mode: 'payment',
-      customer_email: customer.customerEmail,
-      ...stripeAutomaticTaxParams(),
-      payment_intent_data: {
-        receipt_email: customer.customerEmail,
-      },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'usd',
-            unit_amount: Math.round(resolved.totalAmount * 100),
-            product_data: stripeTaxProductData({
-              name: resolved.productName,
-              description: resolved.productDescription,
-            }),
-          },
+    const { checkout, paymentIntentId, metadata } =
+      await this.createEnrichedAdminClassCheckout({
+        customerEmail: customer.customerEmail,
+        description: `${resolved.productName} — ${resolved.productDescription}`,
+        baseMetadata: {
+          flow: resolved.checkoutFlow,
+          upcomingEventId: resolved.event.id,
+          adminUserId,
+          paymentChannel: 'STRIPE',
         },
-      ],
-      metadata: {
-        flow: resolved.checkoutFlow,
-        adminUserId,
-        paymentChannel: 'STRIPE',
-      },
-      return_url: returnUrl,
-      expires_at: Math.floor(expiresAt.getTime() / 1000),
-    });
-
-    if (!checkout.client_secret) {
-      throw new BadRequestException('Could not start checkout.');
-    }
+        lineItems: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'usd',
+              unit_amount: Math.round(resolved.totalAmount * 100),
+              product_data: stripeTaxProductData({
+                name: resolved.productName,
+                description: resolved.productDescription,
+              }),
+            },
+          },
+        ],
+        returnUrl,
+        expiresAt,
+      });
 
     const packageEnrollment =
       await this.repository.createClassPackageEnrollment({
@@ -482,12 +476,12 @@ export class AdminClassEnrollmentService {
       });
     }
 
-    await this.stripeService.client.checkout.sessions.update(checkout.id, {
+    await this.attachAdminCheckoutMetadata({
+      checkoutSessionId: checkout.id,
+      paymentIntentId,
       metadata: {
-        flow: resolved.checkoutFlow,
+        ...metadata,
         packageEnrollmentId: packageEnrollment.id,
-        adminUserId,
-        paymentChannel: 'STRIPE',
       },
     });
 
@@ -510,6 +504,90 @@ export class AdminClassEnrollmentService {
       message: 'Payment link sent to customer.',
       payUrl,
     };
+  }
+
+  private async createEnrichedAdminClassCheckout(args: {
+    customerEmail: string;
+    description: string;
+    baseMetadata: Record<string, string>;
+    lineItems: NonNullable<
+      NonNullable<
+        Parameters<StripeService['client']['checkout']['sessions']['create']>[0]
+      >['line_items']
+    >;
+    returnUrl: string;
+    expiresAt: Date;
+  }) {
+    const { correlationId, metadata } = buildCheckoutCorrelationMetadata(
+      args.baseMetadata,
+    );
+    const checkout = (await this.stripeService.client.checkout.sessions.create({
+      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
+      mode: 'payment',
+      customer_email: args.customerEmail,
+      ...stripeAutomaticTaxParams(),
+      payment_intent_data: {
+        description: args.description,
+        receipt_email: args.customerEmail,
+        metadata,
+      },
+      line_items: args.lineItems,
+      metadata,
+      expand: ['payment_intent'],
+      return_url: args.returnUrl,
+      expires_at: Math.floor(args.expiresAt.getTime() / 1000),
+    })) as {
+      id: string;
+      client_secret: string | null;
+      payment_intent?: string | { id?: string } | null;
+    };
+
+    if (!checkout.client_secret) {
+      throw new BadRequestException('Could not start checkout.');
+    }
+
+    const paymentIntentId = await resolvePaymentIntentIdForCheckoutSession(
+      this.stripeService.client,
+      {
+        checkoutSessionId: checkout.id,
+        paymentIntentFromSession: paymentIntentIdFromSession(checkout),
+        correlationId,
+        logger: this.logger,
+        opPrefix: 'admin_class.checkout',
+      },
+    );
+
+    if (paymentIntentId) {
+      await attachPaymentIntentCheckoutMetadata(this.stripeService.client, {
+        paymentIntentId,
+        checkoutSessionId: checkout.id,
+        metadata,
+      });
+    } else {
+      this.logger.warn(
+        `admin-class-checkout-missing-pi session=${checkout.id} correlationId=${correlationId} flow=${args.baseMetadata.flow ?? 'none'}`,
+      );
+    }
+
+    return { checkout, correlationId, paymentIntentId, metadata };
+  }
+
+  private async attachAdminCheckoutMetadata(args: {
+    checkoutSessionId: string;
+    paymentIntentId: string | null;
+    metadata: Record<string, string>;
+  }) {
+    await this.stripeService.client.checkout.sessions.update(
+      args.checkoutSessionId,
+      { metadata: args.metadata },
+    );
+    if (args.paymentIntentId) {
+      await attachPaymentIntentCheckoutMetadata(this.stripeService.client, {
+        paymentIntentId: args.paymentIntentId,
+        checkoutSessionId: args.checkoutSessionId,
+        metadata: args.metadata,
+      });
+    }
   }
 
   async resolveClassPayCheckoutClientSecret(token: string): Promise<string> {
@@ -564,11 +642,11 @@ export class AdminClassEnrollmentService {
       timeZone: session.timezone,
     });
     const sectionPart = session.section?.label
-      ? `${session.section.label} (${session.section.startTime}–${session.section.endTime})`
+      ? `${session.section.label} (${session.section.startTime}-${session.section.endTime})`
       : session.section
-        ? `${session.section.startTime}–${session.section.endTime}`
+        ? `${session.section.startTime}-${session.section.endTime}`
         : null;
-    return sectionPart ? `${when} — ${sectionPart}` : when;
+    return sectionPart ? `${when} - ${sectionPart}` : when;
   }
 
   private normalizeClassCustomer(dto: CreateAdminClassEnrollmentDto) {
@@ -862,6 +940,7 @@ export class AdminClassEnrollmentService {
     }
     const emailPkg = refreshed;
     const isDayBundle = args.checkoutFlow === 'class_session_bundle';
+    const isSessionCart = args.checkoutFlow === 'class_session_cart';
 
     let sent = false;
     if (emailPkg.items.length === 1) {
@@ -887,11 +966,17 @@ export class AdminClassEnrollmentService {
     const contextLabel =
       isDayBundle && bundleDate
         ? `${emailPkg.event.eventType.name} — ${emailPkg.items.length} section(s) on ${bundleDate}`
-        : `${emailPkg.event.eventType.name} — class package (${emailPkg.items.length} sessions)`;
+        : isSessionCart
+          ? `${emailPkg.event.eventType.name} — ${emailPkg.items.length} class${emailPkg.items.length === 1 ? '' : 'es'}`
+          : `${emailPkg.event.eventType.name} — class package (${emailPkg.items.length} sessions)`;
 
     await this.adminPaymentNotify.notifyPaymentOutcome({
       outcome: 'PAID',
-      flow: isDayBundle ? 'CLASS_DAY_BUNDLE' : 'CLASS_PACKAGE',
+      flow: isDayBundle
+        ? 'CLASS_DAY_BUNDLE'
+        : isSessionCart
+          ? 'CLASS_SESSION_CART'
+          : 'CLASS_PACKAGE',
       customerName: emailPkg.customerName,
       customerEmail: emailPkg.customerEmail,
       amount: Number(emailPkg.amount),
@@ -1027,6 +1112,88 @@ export class AdminClassEnrollmentService {
         productName: `${event.eventType.name} — ${sectionCount} class${sectionCount === 1 ? '' : 'es'}`,
         productDescription: `${sectionCount} section(s) on ${bundleDateIso}`,
         classLabel: `${sectionCount} section(s) on ${bundleDateIso}`,
+      };
+    }
+
+    if (dto.purchaseKind === 'session_cart') {
+      if (!dto.sessionIds?.length) {
+        throw new BadRequestException('sessionIds is required.');
+      }
+      const uniqueIds = [...new Set(dto.sessionIds)];
+      if (uniqueIds.length !== dto.sessionIds.length) {
+        throw new BadRequestException('Duplicate session ids are not allowed.');
+      }
+
+      const rows = await this.repository.findActiveClassSessionsByIdsForEvent(
+        uniqueIds,
+        event.id,
+      );
+      if (rows.length !== uniqueIds.length) {
+        throw new NotFoundException(
+          'One or more class sessions were not found.',
+        );
+      }
+
+      const now = new Date();
+      let totalAmount = 0;
+      const resolved: Array<{
+        session: (typeof rows)[0];
+        weekday: number;
+        dateIso: string;
+      }> = [];
+
+      for (const sessionId of uniqueIds) {
+        const session = rows.find((r) => r.id === sessionId);
+        if (!session) continue;
+        if (session.endsAt <= now) {
+          throw new BadRequestException(
+            'One or more sessions have already ended.',
+          );
+        }
+        const remaining = await this.repository.seatsRemaining(
+          session.id,
+          session.capacity,
+        );
+        if (remaining <= 0) {
+          throw new ConflictException('One or more sessions are full.');
+        }
+        totalAmount += Number(session.price);
+        resolved.push({
+          session,
+          weekday: session.weekday ?? session.section?.weekday ?? 0,
+          dateIso: this.sessionCalendarDateIso(
+            session.startsAt,
+            session.timezone,
+          ),
+        });
+      }
+
+      const amountCents = Math.round(totalAmount * 100);
+      if (amountCents < 50) {
+        throw new BadRequestException('Invalid cart total.');
+      }
+
+      const sectionCount = resolved.length;
+      const dayCount = new Set(resolved.map((r) => r.dateIso)).size;
+      return {
+        kind: 'session_cart' as const,
+        event,
+        resolved,
+        totalAmount,
+        checkoutFlow: 'class_session_cart',
+        selections: buildClassSessionCartSelections({
+          sessionIds: uniqueIds,
+          items: resolved.map((row) => ({
+            sessionId: row.session.id,
+            weekday: row.weekday,
+            sectionId: row.session.sectionId,
+            dateIso: row.dateIso,
+            amount: Number(row.session.price),
+          })),
+        }),
+        productName: `${event.eventType.name} — ${sectionCount} class${sectionCount === 1 ? '' : 'es'}`,
+        productDescription: `${sectionCount} class${sectionCount === 1 ? '' : 'es'} across ${dayCount} day${dayCount === 1 ? '' : 's'}`,
+        classLabel: `${sectionCount} class${sectionCount === 1 ? '' : 'es'} across ${dayCount} day${dayCount === 1 ? '' : 's'}`,
       };
     }
 

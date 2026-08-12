@@ -37,8 +37,10 @@ export function makePrismaWebhookEvent(
     status: StripeWebhookProcessingStatus.PROCESSED,
     metadataFlow: 'venue_seat',
     checkoutSessionId: 'cs_test_1',
+    purchaseCorrelationId: 'corr-test-1',
     handler: 'venue',
     payloadSummary: { type: 'checkout.session.completed' },
+    payload: null,
     processedAt: NOW,
     attempts: 1,
     lastError: null,
@@ -59,6 +61,7 @@ export function makeWebhookEventRow(
     status: 'PROCESSED',
     metadataFlow: 'venue_seat',
     checkoutSessionId: 'cs_test_1',
+    purchaseCorrelationId: 'corr-test-1',
     handler: 'venue',
     payloadSummary: { type: 'checkout.session.completed' },
     processedAt: NOW.toISOString(),
@@ -90,6 +93,7 @@ export function makeWebhookEventDetail(
 ): AdminStripeWebhookEventDetail {
   return {
     ...makeWebhookEventRow(),
+    payload: null,
     relatedPayments: [makeRelatedPayment()],
     ...overrides,
   };

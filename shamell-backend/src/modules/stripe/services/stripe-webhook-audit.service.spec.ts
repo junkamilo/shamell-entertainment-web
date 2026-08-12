@@ -71,13 +71,17 @@ describe('StripeWebhookAuditService', () => {
     });
   });
 
-  it('trackAttempt upserts RECEIVED row', async () => {
+  it('trackAttempt upserts RECEIVED row including payload', async () => {
     prisma.stripeWebhookEvent.upsert.mockResolvedValue({});
     const event = makeStripeWebhookEventLite({ id: 'evt_track' });
     await service.trackAttempt(event, {
       metadataFlow: 'booking_quote',
       checkoutSessionId: 'cs_1',
       handler: 'bookings',
+      payload: {
+        object: { id: 'pi_1' },
+        previous_attributes: null,
+      },
     });
     const upsertCalls = prisma.stripeWebhookEvent.upsert.mock.calls as Array<
       [
@@ -88,6 +92,7 @@ describe('StripeWebhookAuditService', () => {
             status: StripeWebhookProcessingStatus;
             attempts: number;
             metadataFlow: string;
+            payload?: { object: { id: string }; previous_attributes: null };
           };
         },
       ]
@@ -99,6 +104,10 @@ describe('StripeWebhookAuditService', () => {
     );
     expect(upsertCalls[0][0].create.attempts).toBe(1);
     expect(upsertCalls[0][0].create.metadataFlow).toBe('booking_quote');
+    expect(upsertCalls[0][0].create.payload).toEqual({
+      object: { id: 'pi_1' },
+      previous_attributes: null,
+    });
   });
 
   it('isProcessed is false when row exists but not processed', async () => {

@@ -5,6 +5,8 @@ import type {
   ClassPackageSelections,
   ClassSessionBundleSelectionItem,
   ClassSessionBundleSelections,
+  ClassSessionCartSelectionItem,
+  ClassSessionCartSelections,
 } from '../types/upcoming-events.types';
 
 export type {
@@ -13,6 +15,8 @@ export type {
   ClassPackageSelections,
   ClassSessionBundleSelectionItem,
   ClassSessionBundleSelections,
+  ClassSessionCartSelectionItem,
+  ClassSessionCartSelections,
 } from '../types/upcoming-events.types';
 
 export function buildClassSessionBundleSelections(params: {
@@ -23,6 +27,18 @@ export function buildClassSessionBundleSelections(params: {
   const payload: ClassSessionBundleSelections = {
     kind: 'class_session_bundle',
     dateIso: params.dateIso,
+    sessionIds: params.sessionIds,
+    items: params.items,
+  };
+  return payload;
+}
+
+export function buildClassSessionCartSelections(params: {
+  sessionIds: string[];
+  items: ClassSessionCartSelectionItem[];
+}): Prisma.InputJsonValue {
+  const payload: ClassSessionCartSelections = {
+    kind: 'class_session_cart',
     sessionIds: params.sessionIds,
     items: params.items,
   };

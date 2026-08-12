@@ -151,8 +151,8 @@ describe('upcoming-events-mapper.util', () => {
         },
       });
       expect(label).toContain('Intermediate');
-      expect(label).toContain('18:00?19:00');
-      expect(label).toContain(' ? ');
+      expect(label).toContain('18:00-19:00');
+      expect(label).toContain(' - ');
     });
 
     it('returns date-only label when section is missing', () => {
@@ -161,7 +161,7 @@ describe('upcoming-events-mapper.util', () => {
         endsAt: new Date('2026-08-10T23:00:00.000Z'),
         timezone: 'America/New_York',
       });
-      expect(label).not.toContain(' ? ');
+      expect(label).not.toContain(' - ');
     });
   });
 

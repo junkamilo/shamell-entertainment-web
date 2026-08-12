@@ -14,10 +14,14 @@ import {
   ValidateIf,
 } from 'class-validator';
 
-export type AdminClassPurchaseKind = 'session' | 'day_bundle' | 'month_package';
+export type AdminClassPurchaseKind =
+  | 'session'
+  | 'day_bundle'
+  | 'session_cart'
+  | 'month_package';
 
 export class CreateAdminClassEnrollmentDto {
-  @IsIn(['session', 'day_bundle', 'month_package'])
+  @IsIn(['session', 'day_bundle', 'session_cart', 'month_package'])
   purchaseKind!: AdminClassPurchaseKind;
 
   @IsUUID('4')
@@ -30,11 +34,12 @@ export class CreateAdminClassEnrollmentDto {
   sessionId?: string;
 
   @ValidateIf(
-    (o: CreateAdminClassEnrollmentDto) => o.purchaseKind === 'day_bundle',
+    (o: CreateAdminClassEnrollmentDto) =>
+      o.purchaseKind === 'day_bundle' || o.purchaseKind === 'session_cart',
   )
   @IsArray()
   @ArrayMinSize(1)
-  @ArrayMaxSize(10)
+  @ArrayMaxSize(20)
   @IsUUID('4', { each: true })
   sessionIds?: string[];
 

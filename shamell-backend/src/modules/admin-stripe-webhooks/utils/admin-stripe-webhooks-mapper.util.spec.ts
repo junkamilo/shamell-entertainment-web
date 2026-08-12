@@ -8,6 +8,7 @@ import {
 import {
   emptyRelatedPaymentSources,
   mapRelatedPaymentsFromSources,
+  toDetailRow,
   toRow,
 } from './admin-stripe-webhooks-mapper.util';
 
@@ -28,6 +29,20 @@ describe('admin-stripe-webhooks-mapper.util', () => {
     expect(row.payloadSummary).toBeNull();
   });
 
+  it('toDetailRow exposes redacted payload object', () => {
+    const detail = toDetailRow(
+      makePrismaWebhookEvent({
+        payload: {
+          object: { id: 'pi_1', client_secret: '[redacted]' },
+          previous_attributes: null,
+        },
+      }),
+    );
+    expect(detail.payload).toEqual({
+      object: { id: 'pi_1', client_secret: '[redacted]' },
+      previous_attributes: null,
+    });
+  });
   it('mapRelatedPaymentsFromSources returns empty for empty sources', () => {
     expect(mapRelatedPaymentsFromSources(emptyRelatedPaymentSources())).toEqual(
       [],

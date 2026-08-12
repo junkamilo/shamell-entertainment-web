@@ -197,7 +197,16 @@ describe('UpcomingEventsService', () => {
         harness.stripe.client.checkout.sessions.create,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata: { flow: 'class_session' },
+          metadata: expect.objectContaining({
+            flow: 'class_session',
+            sessionId: 'session-1',
+            upcomingEventId: 'event-1',
+          }) as Record<string, unknown>,
+          payment_intent_data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              flow: 'class_session',
+            }) as Record<string, unknown>,
+          }) as Record<string, unknown>,
         }),
       );
       expect(prisma.upcomingClassEnrollment.create).toHaveBeenCalled();
@@ -222,9 +231,17 @@ describe('UpcomingEventsService', () => {
       );
       expect(
         harness.stripe.client.checkout.sessions.update,
-      ).toHaveBeenCalledWith('cs_test_created', {
-        metadata: { flow: 'class_session', enrollmentId: 'enroll-new' },
-      });
+      ).toHaveBeenCalledWith(
+        'cs_test_created',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            flow: 'class_session',
+            enrollmentId: 'enroll-new',
+            sessionId: 'session-1',
+            upcomingEventId: 'event-1',
+          }) as Record<string, unknown>,
+        }),
+      );
     });
   });
 
@@ -297,17 +314,29 @@ describe('UpcomingEventsService', () => {
         harness.stripe.client.checkout.sessions.create,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata: { flow: 'class_session_bundle' },
+          metadata: expect.objectContaining({
+            flow: 'class_session_bundle',
+            upcomingEventId: 'event-1',
+          }) as Record<string, unknown>,
+          payment_intent_data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              flow: 'class_session_bundle',
+            }) as Record<string, unknown>,
+          }) as Record<string, unknown>,
         }),
       );
       expect(
         harness.stripe.client.checkout.sessions.update,
-      ).toHaveBeenCalledWith('cs_test_created', {
-        metadata: {
-          flow: 'class_session_bundle',
-          packageEnrollmentId: 'pkg-enroll-1',
-        },
-      });
+      ).toHaveBeenCalledWith(
+        'cs_test_created',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            flow: 'class_session_bundle',
+            packageEnrollmentId: 'pkg-enroll-1',
+            upcomingEventId: 'event-1',
+          }) as Record<string, unknown>,
+        }),
+      );
     });
   });
 
@@ -386,7 +415,15 @@ describe('UpcomingEventsService', () => {
         harness.stripe.client.checkout.sessions.create,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata: { flow: 'class_month_package' },
+          metadata: expect.objectContaining({
+            flow: 'class_month_package',
+            upcomingEventId: 'event-1',
+          }) as Record<string, unknown>,
+          payment_intent_data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              flow: 'class_month_package',
+            }) as Record<string, unknown>,
+          }) as Record<string, unknown>,
         }),
       );
     });
@@ -1526,18 +1563,31 @@ describe('UpcomingEventsService', () => {
         harness.stripe.client.checkout.sessions.create,
       ).toHaveBeenCalledWith(
         expect.objectContaining({
-          metadata: { flow: 'fixed_event_ticket' },
+          metadata: expect.objectContaining({
+            flow: 'fixed_event_ticket',
+            upcomingEventId: 'event-fixed-1',
+          }) as Record<string, unknown>,
+          payment_intent_data: expect.objectContaining({
+            metadata: expect.objectContaining({
+              flow: 'fixed_event_ticket',
+              upcomingEventId: 'event-fixed-1',
+            }) as Record<string, unknown>,
+          }) as Record<string, unknown>,
         }),
       );
       expect(prisma.upcomingFixedEventEnrollment.create).toHaveBeenCalled();
       expect(
         harness.stripe.client.checkout.sessions.update,
-      ).toHaveBeenCalledWith('cs_test_created', {
-        metadata: {
-          flow: 'fixed_event_ticket',
-          enrollmentId: 'fixed-enroll-new',
-        },
-      });
+      ).toHaveBeenCalledWith(
+        'cs_test_created',
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            flow: 'fixed_event_ticket',
+            enrollmentId: 'fixed-enroll-new',
+            upcomingEventId: 'event-fixed-1',
+          }) as Record<string, unknown>,
+        }),
+      );
     });
   });
 });

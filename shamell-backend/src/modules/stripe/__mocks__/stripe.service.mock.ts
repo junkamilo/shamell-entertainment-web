@@ -18,6 +18,8 @@ export function createStripeServiceMock() {
       },
       paymentIntents: {
         retrieve: jest.fn(),
+        update: jest.fn().mockResolvedValue({}),
+        search: jest.fn().mockResolvedValue({ data: [] }),
       },
     },
   };

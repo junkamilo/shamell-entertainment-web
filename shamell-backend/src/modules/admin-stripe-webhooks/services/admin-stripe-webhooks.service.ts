@@ -9,6 +9,7 @@ import type { AdminStripeWebhookEventDetail } from '../types/admin-stripe-webhoo
 import type { AdminStripeWebhookEventsQueryDto } from '../dto/admin-stripe-webhook-events-query.dto';
 import {
   mapRelatedPaymentsFromSources,
+  toDetailRow,
   toRow,
 } from '../utils/admin-stripe-webhooks-mapper.util';
 import { AdminStripeWebhooksRepository } from './admin-stripe-webhooks.repository';
@@ -38,6 +39,9 @@ export class AdminStripeWebhooksService {
     }
     if (query.checkoutSessionId?.trim()) {
       where.checkoutSessionId = query.checkoutSessionId.trim();
+    }
+    if (query.purchaseCorrelationId?.trim()) {
+      where.purchaseCorrelationId = query.purchaseCorrelationId.trim();
     }
     if (query.status) {
       where.status = query.status;
@@ -75,7 +79,7 @@ export class AdminStripeWebhooksService {
       row.checkoutSessionId,
     );
     return {
-      ...toRow(row),
+      ...toDetailRow(row),
       relatedPayments: mapRelatedPaymentsFromSources(sources),
     };
   }

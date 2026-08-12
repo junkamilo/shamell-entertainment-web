@@ -25,10 +25,19 @@ export async function createUpcomingEventsCheckoutServiceTestModule(): Promise<U
   stripe.client.checkout.sessions.create = jest.fn().mockResolvedValue({
     id: 'cs_1',
     client_secret: 'sec_1',
+    payment_intent: 'pi_1',
+  });
+  stripe.client.checkout.sessions.retrieve = jest.fn().mockResolvedValue({
+    id: 'cs_1',
+    payment_intent: 'pi_1',
   });
   stripe.client.checkout.sessions.update = jest
     .fn()
     .mockResolvedValue({ id: 'cs_1' });
+  stripe.client.paymentIntents.update = jest.fn().mockResolvedValue({});
+  stripe.client.paymentIntents.search = jest
+    .fn()
+    .mockResolvedValue({ data: [] });
 
   const moduleRef = await Test.createTestingModule({
     providers: [

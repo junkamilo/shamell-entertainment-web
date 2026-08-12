@@ -50,6 +50,7 @@ export async function createBookingsQuoteServiceTestModule(): Promise<BookingsQu
   stripe.client.checkout.sessions.create = jest.fn().mockResolvedValue({
     id: 'cs_quote_1',
     client_secret: 'cs_secret_1',
+    payment_intent: 'pi_quote_1',
   });
   stripe.client.checkout.sessions.retrieve = jest.fn().mockResolvedValue({
     id: 'cs_quote_1',
@@ -57,6 +58,10 @@ export async function createBookingsQuoteServiceTestModule(): Promise<BookingsQu
     client_secret: 'cs_secret_1',
     payment_status: 'unpaid',
   });
+  stripe.client.paymentIntents.update = jest.fn().mockResolvedValue({});
+  stripe.client.paymentIntents.search = jest
+    .fn()
+    .mockResolvedValue({ data: [] });
 
   repository.createBookingQuote.mockResolvedValue({ id: 'quote-1' });
   repository.createBookingPayment.mockResolvedValue({

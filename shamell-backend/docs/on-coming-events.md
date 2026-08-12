@@ -8,8 +8,9 @@
 | **Section** | Time window on a weekday (`ReservationEventClassSection`: start/end, default capacity, optional price override). |
 | **Session** | Concrete occurrence (`UpcomingClassSession`) generated from sections; sold via Stripe. |
 | **Event base price** | Catalog `Event.price`; default per-section price when override is empty. |
-| **Drop-in** | Public flow: calendar day → section(s) → one payment per session or same-day bundle. |
-| **Same-day bundle** | Multiple sections on one calendar day; one Stripe payment = sum of session prices (`class_session_bundle`). |
+| **Drop-in** | Public flow: calendar day → add section(s) to cart → checkout (one or more days). |
+| **Class session cart** | Multi-day cart of sessions; one Stripe payment = sum of session prices (`class_session_cart`). Client cart in `sessionStorage` until checkout. |
+| **Same-day bundle** | Admin/compat API: multiple sections on one calendar day (`class_session_bundle`). Public detail uses the cart instead. |
 | **Full month package** | All active sessions in a calendar month; one Stripe payment at admin-defined flat price (`class_month_package`). |
 
 Sessions are generated automatically (12-week window, upsert) when an admin saves a `RECURRING_WEEKLY` template or venue config.
@@ -24,7 +25,7 @@ Sessions are generated automatically (12-week window, upsert) when an admin save
 | `/on-coming-events/[slug]` | Event detail; class booking wizard |
 | `/on-coming-events/[slug]/classes` | Class schedule + Stripe embedded checkout |
 | `/on-coming-events/[slug]/classes/return` | Single-session checkout return |
-| `/on-coming-events/[slug]/classes/package-return` | Same-day bundle or month package return |
+| `/on-coming-events/[slug]/classes/package-return` | Cart, same-day bundle, or month package return |
 | `/on-coming-events/[slug]/return` | Fixed-event ticket checkout return |
 | `/on-coming-events/return` | Venue seat checkout return (canonical; `event_slug` query param) |
 | `/on-coming-events/[slug]/seats` | Floor plan seat reservations for that event |
@@ -41,7 +42,8 @@ Legacy venue return `/on-coming-events/[slug]/seats/return` redirects to `/on-co
 - `GET /api/v1/upcoming-events/:slug/class-options` — days, sections, sessions grouped by weekday
 - `GET /api/v1/upcoming-events/:slug/sessions` — class sessions list
 - `POST /api/v1/upcoming-events/:slug/sessions/checkout-session` — drop-in Stripe checkout (`flow: class_session`)
-- `POST /api/v1/upcoming-events/:slug/sessions/bundle-checkout-session` — same-day multi-section checkout (`flow: class_session_bundle`)
+- `POST /api/v1/upcoming-events/:slug/sessions/cart-checkout-session` — multi-day cart checkout (`flow: class_session_cart`, 1..20 sessionIds, no same-day rule)
+- `POST /api/v1/upcoming-events/:slug/sessions/bundle-checkout-session` — same-day multi-section checkout (`flow: class_session_bundle`; admin/compat)
 - `POST /api/v1/upcoming-events/:slug/class-package/checkout-session` — full month package checkout (`flow: class_month_package`, body: `monthIso`, customer fields)
 - `GET /api/v1/class-enrollments/session-status?session_id=` — return pages (reconciles paid Stripe if webhook delayed)
 - `POST /api/v1/class-enrollments/reconcile?session_id=` — manual reconcile (throttled)
@@ -63,7 +65,7 @@ Legacy venue return `/on-coming-events/[slug]/seats/return` redirects to `/on-co
 
 1. `booking_quote`
 2. `class_session`
-3. `class_package` (legacy) / `class_session_bundle` / `class_month_package` (package enrollment row; one email per purchase)
+3. `class_package` (legacy) / `class_session_bundle` / `class_session_cart` / `class_month_package` (package enrollment row; one email per purchase)
 4. `venue_seat` (venue reservations)
 
 ## Admin

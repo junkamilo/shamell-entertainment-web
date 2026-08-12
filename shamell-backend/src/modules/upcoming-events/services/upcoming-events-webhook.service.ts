@@ -132,6 +132,7 @@ export class UpcomingEventsWebhookService {
       !sessionObj ||
       (flow !== 'class_package' &&
         flow !== 'class_session_bundle' &&
+        flow !== 'class_session_cart' &&
         flow !== 'class_month_package')
     ) {
       return { handled: false };
@@ -432,7 +433,11 @@ export class UpcomingEventsWebhookService {
         )) ?? packageEnrollment;
 
       const purchaseKind =
-        checkoutFlow === 'class_session_bundle' ? 'day_bundle' : 'package';
+        checkoutFlow === 'class_session_bundle'
+          ? 'day_bundle'
+          : checkoutFlow === 'class_session_cart'
+            ? 'session_cart'
+            : 'package';
 
       return {
         stripeStatus,
@@ -1190,6 +1195,7 @@ export class UpcomingEventsWebhookService {
     const checkoutFlow = session.metadata?.flow;
 
     const isDayBundle = checkoutFlow === 'class_session_bundle';
+    const isSessionCart = checkoutFlow === 'class_session_cart';
 
     await this.repository.markPackageEnrollmentPaid(pkg.id);
 
@@ -1229,13 +1235,19 @@ export class UpcomingEventsWebhookService {
 
     const contextLabel =
       isDayBundle && bundleDate
-        ? `${emailPkg.event.eventType.name} ? ${emailPkg.items.length} section(s) on ${bundleDate}`
-        : `${emailPkg.event.eventType.name} ? class package (${emailPkg.items.length} days)`;
+        ? `${emailPkg.event.eventType.name} — ${emailPkg.items.length} section(s) on ${bundleDate}`
+        : isSessionCart
+          ? `${emailPkg.event.eventType.name} — ${emailPkg.items.length} class${emailPkg.items.length === 1 ? '' : 'es'}`
+          : `${emailPkg.event.eventType.name} — class package (${emailPkg.items.length} days)`;
 
     await this.adminPaymentNotify.notifyPaymentOutcome({
       outcome: 'PAID',
 
-      flow: isDayBundle ? 'CLASS_DAY_BUNDLE' : 'CLASS_PACKAGE',
+      flow: isDayBundle
+        ? 'CLASS_DAY_BUNDLE'
+        : isSessionCart
+          ? 'CLASS_SESSION_CART'
+          : 'CLASS_PACKAGE',
 
       customerName: emailPkg.customerName,
 

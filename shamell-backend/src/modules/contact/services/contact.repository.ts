@@ -181,7 +181,7 @@ export class ContactRepository {
       isOrphanContact,
       isShadowedBookingInquiryContact,
       isConciergeContact,
-      isPrivateClassBooking,
+      isNonPrivateClassBooking,
     } = peticionesSqlFragments();
     const rows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(
       Prisma.sql`
@@ -195,7 +195,7 @@ export class ContactRepository {
           UNION ALL
           SELECT b."createdAt" AS created_at
           FROM "bookings" b
-          WHERE NOT ${isPrivateClassBooking}
+          WHERE ${isNonPrivateClassBooking}
         ) unified
         ${this.sinceFilter(since)}
       `,
@@ -275,12 +275,12 @@ export class ContactRepository {
   }
 
   async countBookingsLaneNonPrivate(): Promise<number> {
-    const { isPrivateClassBooking } = peticionesSqlFragments();
+    const { isNonPrivateClassBooking } = peticionesSqlFragments();
     const rows = await this.prisma.$queryRaw<Array<{ total: bigint }>>(
       Prisma.sql`
         SELECT COUNT(*)::bigint AS total
         FROM "bookings" b
-        WHERE NOT ${isPrivateClassBooking}
+        WHERE ${isNonPrivateClassBooking}
       `,
     );
     return Number(rows[0]?.total ?? 0n);
@@ -294,7 +294,7 @@ export class ContactRepository {
       isOrphanContact,
       isShadowedBookingInquiryContact,
       isConciergeContact,
-      isPrivateClassBooking,
+      isNonPrivateClassBooking,
     } = peticionesSqlFragments();
     return this.prisma.$queryRaw<PeticionesFeedRow[]>(Prisma.sql`
       SELECT *
@@ -307,7 +307,7 @@ export class ContactRepository {
         UNION ALL
         SELECT 'BOOKING_ADMIN'::text AS origin, b.id AS id, b."createdAt" AS created_at
         FROM "bookings" b
-        WHERE NOT ${isPrivateClassBooking}
+        WHERE ${isNonPrivateClassBooking}
       ) unified
       ORDER BY created_at DESC
       OFFSET ${skip}

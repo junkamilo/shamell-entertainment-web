@@ -31,10 +31,15 @@ export function peticionesSqlFragments() {
   const isPrivateClassBooking = Prisma.sql`
     (b."bookingDetails"->>'kind') = 'private_class'
   `;
+  /** Null-safe: public booking inquiries omit `kind` (SQL NULL); `NOT (kind = …)` would drop them. */
+  const isNonPrivateClassBooking = Prisma.sql`
+    (b."bookingDetails"->>'kind') IS DISTINCT FROM 'private_class'
+  `;
   return {
     isOrphanContact,
     isShadowedBookingInquiryContact,
     isConciergeContact,
     isPrivateClassBooking,
+    isNonPrivateClassBooking,
   };
 }

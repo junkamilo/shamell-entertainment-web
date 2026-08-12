@@ -32,12 +32,10 @@ export async function createUpcomingEventsWebhookServiceTestModule(): Promise<Up
   repository.asPrisma.mockReturnValue(prisma);
   stripe.client.webhooks.constructEvent = jest.fn();
   stripe.client.checkout.sessions.retrieve = jest.fn();
-  stripe.client.paymentIntents = {
-    retrieve: jest.fn().mockResolvedValue({
-      id: 'pi_test_1',
-      payment_method: null,
-    }),
-  };
+  stripe.client.paymentIntents.retrieve = jest.fn().mockResolvedValue({
+    id: 'pi_test_1',
+    payment_method: null,
+  });
 
   const moduleRef = await Test.createTestingModule({
     providers: [

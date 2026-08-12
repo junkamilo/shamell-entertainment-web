@@ -1,6 +1,7 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { CreateClassCheckoutDto } from '../dto/create-class-checkout.dto';
 import { CreateClassBundleCheckoutDto } from '../dto/create-class-bundle-checkout.dto';
+import { CreateClassCartCheckoutDto } from '../dto/create-class-cart-checkout.dto';
 import { CreateClassPackageCheckoutDto } from '../dto/create-class-package-checkout.dto';
 import { AdminClassEnrollmentService } from './admin-class-enrollment.service';
 import type { CreateAdminClassEnrollmentDto } from '../dto/create-admin-class-enrollment.dto';
@@ -80,6 +81,10 @@ export class UpcomingEventsService {
 
   createClassBundleCheckout(slug: string, dto: CreateClassBundleCheckoutDto) {
     return this.checkoutService.createClassBundleCheckout(slug, dto);
+  }
+
+  createClassCartCheckout(slug: string, dto: CreateClassCartCheckoutDto) {
+    return this.checkoutService.createClassCartCheckout(slug, dto);
   }
 
   createClassPackageCheckout(slug: string, dto: CreateClassPackageCheckoutDto) {

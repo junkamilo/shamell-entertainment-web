@@ -167,6 +167,7 @@ describe('UpcomingEventsWebhookService (money matrix)', () => {
           classCompletedEvent({ amount_total: 999 }),
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repository.markClassEnrollmentPaid).not.toHaveBeenCalled();
     });
     it('marks PENDING as EXPIRED and notifies on checkout.session.expired', async () => {
       const enrollment = makeClassEnrollmentWebhookInclude();
@@ -316,6 +317,25 @@ describe('UpcomingEventsWebhookService (money matrix)', () => {
           packageCompletedEvent({ amount_total: 100 }),
         ),
       ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repository.markPackageEnrollmentPaid).not.toHaveBeenCalled();
+      expect(repository.markPackageChildEnrollmentPaid).not.toHaveBeenCalled();
+    });
+
+    it('security checklist: amount mismatch for class_session_cart does not mark PAID', async () => {
+      repository.findPackageEnrollmentForCheckoutSession.mockResolvedValue(
+        makeClassPackageWebhookInclude({ itemCount: 2 }),
+      );
+      await expect(
+        service.processClassPackageStripeWebhookEvent(
+          packageCompletedEvent({
+            amount_total: 1,
+            amount_subtotal: 1,
+            metadata: { flow: 'class_session_cart' },
+          }),
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repository.markPackageEnrollmentPaid).not.toHaveBeenCalled();
+      expect(repository.markPackageChildEnrollmentPaid).not.toHaveBeenCalled();
     });
     it('expires PENDING package and child enrollments', async () => {
       const pkg = makeClassPackageWebhookInclude({ itemCount: 2 });
@@ -878,5 +898,77 @@ describe('UpcomingEventsWebhookService (money matrix)', () => {
         service.handleFixedEventTicketWebhook(Buffer.from('{}'), 'sig_test'),
       ).resolves.toEqual({ handled: true });
     });
+  });
+});
+
+describe('Stripe webhook security checklist — class reconcile', () => {
+  let harness: UpcomingEventsWebhookServiceTestHarness;
+  let service: UpcomingEventsWebhookServiceTestHarness['service'];
+  let repository: UpcomingEventsWebhookServiceTestHarness['repository'];
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    harness = await createUpcomingEventsWebhookServiceTestModule();
+    service = harness.service;
+    repository = harness.repository;
+  });
+
+  it('invented session_id: Stripe retrieve reject does not mark PAID', async () => {
+    repository.findPackageEnrollmentByCheckoutSessionId.mockResolvedValue(null);
+    harness.stripe.client.checkout.sessions.retrieve.mockRejectedValue(
+      Object.assign(new Error('No such checkout.session: cs_invented'), {
+        type: 'StripeInvalidRequestError',
+        code: 'resource_missing',
+      }),
+    );
+
+    await expect(
+      service.reconcileClassFromStripeSession('cs_invented_missing'),
+    ).rejects.toThrow(/No such checkout\.session/i);
+
+    expect(repository.markClassEnrollmentPaid).not.toHaveBeenCalled();
+    expect(repository.markPackageEnrollmentPaid).not.toHaveBeenCalled();
+    expect(repository.markPackageChildEnrollmentPaid).not.toHaveBeenCalled();
+    expect(repository.createClassEnrollment).not.toHaveBeenCalled();
+  });
+
+  it('invented session_id: unpaid Stripe session does not mark PAID', async () => {
+    repository.findPackageEnrollmentByCheckoutSessionId.mockResolvedValue(null);
+    harness.stripe.client.checkout.sessions.retrieve.mockResolvedValue(
+      makeStripeCheckoutSessionLite({
+        id: 'cs_invented_unpaid',
+        status: 'open',
+        payment_status: 'unpaid',
+        metadata: { flow: 'class_session' },
+      }),
+    );
+
+    await expect(
+      service.reconcileClassFromStripeSession('cs_invented_unpaid'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repository.markClassEnrollmentPaid).not.toHaveBeenCalled();
+    expect(repository.markPackageEnrollmentPaid).not.toHaveBeenCalled();
+  });
+
+  it('package unpaid reconcile does not mark package or children PAID', async () => {
+    repository.findPackageEnrollmentByCheckoutSessionId.mockResolvedValue({
+      id: 'pkg-1',
+    });
+    harness.stripe.client.checkout.sessions.retrieve.mockResolvedValue(
+      makeStripeCheckoutSessionLite({
+        id: 'cs_pkg_unpaid',
+        status: 'open',
+        payment_status: 'unpaid',
+        metadata: { flow: 'class_session_cart' },
+      }),
+    );
+
+    await expect(
+      service.reconcileClassFromStripeSession('cs_pkg_unpaid'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(repository.markPackageEnrollmentPaid).not.toHaveBeenCalled();
+    expect(repository.markPackageChildEnrollmentPaid).not.toHaveBeenCalled();
   });
 });

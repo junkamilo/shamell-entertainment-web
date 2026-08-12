@@ -415,8 +415,52 @@ describe('AdminClassEnrollmentService', () => {
 
       expect(harness.stripe.client.checkout.sessions.create).toHaveBeenCalled();
       const createCalls = harness.stripe.client.checkout.sessions.create.mock
-        .calls as [[{ metadata: { flow: string } }]];
+        .calls as [
+        [
+          {
+            metadata: {
+              flow: string;
+              correlationId?: string;
+              adminUserId?: string;
+            };
+            payment_intent_data?: {
+              description?: string;
+              receipt_email?: string;
+              metadata?: { flow?: string; correlationId?: string };
+            };
+            expand?: string[];
+          },
+        ],
+      ];
       expect(createCalls[0][0].metadata.flow).toBe('class_session');
+      expect(createCalls[0][0].metadata.correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+      expect(createCalls[0][0].payment_intent_data?.metadata?.flow).toBe(
+        'class_session',
+      );
+      expect(
+        createCalls[0][0].payment_intent_data?.metadata?.correlationId,
+      ).toBe(createCalls[0][0].metadata.correlationId);
+      expect(createCalls[0][0].payment_intent_data?.receipt_email).toBe(
+        'stripe@example.com',
+      );
+      expect(createCalls[0][0].expand).toEqual(['payment_intent']);
+      expect(harness.stripe.client.paymentIntents.update).toHaveBeenCalled();
+      const updateArgs = harness.stripe.client.checkout.sessions.update.mock
+        .calls[0] as [
+        string,
+        {
+          metadata?: {
+            enrollmentId?: string;
+            correlationId?: string;
+          };
+        },
+      ];
+      expect(updateArgs[1]?.metadata?.enrollmentId).toBe('enroll-stripe');
+      expect(updateArgs[1]?.metadata?.correlationId).toBe(
+        createCalls[0][0].metadata.correlationId,
+      );
       expect(result.enrollmentId).toBe('enroll-stripe');
       expect(result.message).toBe('Payment link sent to customer.');
       expect(result.payUrl).toContain('/pay/class?token=');
@@ -492,7 +536,39 @@ describe('AdminClassEnrollmentService', () => {
       expect(result.enrollmentId).toBe('pkg-stripe');
       expect(result.payUrl).toContain('/pay/class?token=');
       expect(harness.stripe.client.checkout.sessions.create).toHaveBeenCalled();
+      const createCalls = harness.stripe.client.checkout.sessions.create.mock
+        .calls as [
+        [
+          {
+            metadata: { flow?: string; correlationId?: string };
+            payment_intent_data?: {
+              metadata?: { flow?: string; correlationId?: string };
+            };
+          },
+        ],
+      ];
+      expect(createCalls[0][0].metadata.flow).toBe('class_session_bundle');
+      expect(createCalls[0][0].metadata.correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+      expect(
+        createCalls[0][0].payment_intent_data?.metadata?.correlationId,
+      ).toBe(createCalls[0][0].metadata.correlationId);
       expect(harness.stripe.client.checkout.sessions.update).toHaveBeenCalled();
+      const updateArgs = harness.stripe.client.checkout.sessions.update.mock
+        .calls[0] as [
+        string,
+        {
+          metadata?: {
+            packageEnrollmentId?: string;
+            correlationId?: string;
+          };
+        },
+      ];
+      expect(updateArgs[1]?.metadata?.packageEnrollmentId).toBe('pkg-stripe');
+      expect(updateArgs[1]?.metadata?.correlationId).toBe(
+        createCalls[0][0].metadata.correlationId,
+      );
     });
 
     it('createAdminClassCheckoutSession day_bundle rejects missing client_secret', async () => {
@@ -754,6 +830,63 @@ describe('AdminClassEnrollmentService', () => {
           customerEmail: 'bundle@example.com',
         }),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('session_cart cash enrollment', () => {
+    it('createAdminClassCashEnrollment allows sessions across multiple days', async () => {
+      const session1 = makeFutureClassSessionStub({
+        id: 'session-a',
+        startsAt: new Date('2026-08-15T14:00:00.000Z'),
+        endsAt: new Date('2026-08-15T15:00:00.000Z'),
+        section: null,
+        weekday: 5,
+        price: 40,
+        currency: 'usd',
+        timezone: NY_TIMEZONE,
+      });
+      const session2 = makeFutureClassSessionStub({
+        id: 'session-b',
+        startsAt: new Date('2026-08-16T14:00:00.000Z'),
+        endsAt: new Date('2026-08-16T15:00:00.000Z'),
+        section: null,
+        weekday: 6,
+        price: 60,
+        currency: 'usd',
+        timezone: NY_TIMEZONE,
+      });
+      prisma.event.findFirst.mockResolvedValue(classesEvent);
+      prisma.upcomingClassSession.findMany.mockResolvedValue([
+        session1,
+        session2,
+      ]);
+      prisma.upcomingClassEnrollment.count.mockResolvedValue(0);
+      const { packageEnrollment } = mockPaidPackageEnrollmentFlow(
+        [session1, session2],
+        'pkg-cart-1',
+      );
+
+      const result = await service.createAdminClassCashEnrollment('admin-1', {
+        upcomingEventId: 'event-1',
+        purchaseKind: 'session_cart',
+        sessionIds: ['session-a', 'session-b'],
+        customerName: 'Cart Guest',
+        customerEmail: 'cart@example.com',
+      });
+
+      expect(result.enrollmentId).toBe(packageEnrollment.id);
+      expect(prisma.upcomingClassPackageEnrollment.create).toHaveBeenCalled();
+      const packageCreateCalls = prisma.upcomingClassPackageEnrollment.create
+        .mock.calls as [
+        [{ data: { amount: number; selections: { kind: string } } }],
+      ];
+      expect(packageCreateCalls[0][0].data.amount).toBe(100);
+      expect(packageCreateCalls[0][0].data.selections.kind).toBe(
+        'class_session_cart',
+      );
+      const notifyCalls = harness.adminPaymentNotify.notifyPaymentOutcome.mock
+        .calls as [[{ flow: string }]];
+      expect(notifyCalls[0][0].flow).toBe('CLASS_SESSION_CART');
     });
   });
 

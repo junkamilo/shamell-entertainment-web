@@ -30,11 +30,19 @@ export async function createAdminClassEnrollmentServiceTestModule(): Promise<Adm
   stripe.client.checkout.sessions.create = jest.fn().mockResolvedValue({
     id: 'cs_admin',
     client_secret: 'cs_admin_secret',
+    payment_intent: 'pi_admin',
   });
   stripe.client.checkout.sessions.update = jest
     .fn()
     .mockResolvedValue({ id: 'cs_admin' });
-  stripe.client.checkout.sessions.retrieve = jest.fn();
+  stripe.client.checkout.sessions.retrieve = jest.fn().mockResolvedValue({
+    id: 'cs_admin',
+    payment_intent: 'pi_admin',
+  });
+  stripe.client.paymentIntents.update = jest.fn().mockResolvedValue({});
+  stripe.client.paymentIntents.search = jest
+    .fn()
+    .mockResolvedValue({ data: [] });
 
   const moduleRef = await Test.createTestingModule({
     providers: [

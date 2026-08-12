@@ -49,7 +49,7 @@ describe('StripeWebhookDispatchService', () => {
     return service.handle(Buffer.from('{}'), 'sig_test');
   }
 
-  describe('gates', () => {
+  describe('Stripe webhook security checklist', () => {
     it('rejects missing stripe-signature header', async () => {
       await expect(
         service.handle(Buffer.from('{}'), undefined),
@@ -212,15 +212,178 @@ describe('StripeWebhookDispatchService', () => {
     });
   });
 
-  describe('unknown / payment_intent / unhandled', () => {
-    it('payment_intent.succeeded is unhandled and markFailed', async () => {
+  describe('audit-only timeline events', () => {
+    const auditOnlyTypes = [
+      'payment_intent.created',
+      'payment_intent.succeeded',
+      'payment_intent.payment_failed',
+      'charge.succeeded',
+      'charge.updated',
+      'charge.failed',
+      'charge.refunded',
+    ] as const;
+
+    it.each(auditOnlyTypes)(
+      '%s is PROCESSED as audit_only without domain handlers',
+      async (type) => {
+        const result = await handleEvent(
+          makeStripeWebhookEventLite({
+            id: `evt_${type}`,
+            type,
+            livemode: true,
+            data: {
+              object: type.startsWith('payment_intent.')
+                ? {
+                    id: 'pi_1',
+                    status: 'succeeded',
+                    amount: 3500,
+                    currency: 'usd',
+                    metadata: {
+                      flow: 'venue_seat',
+                      correlationId: 'corr-shared',
+                      checkoutSessionId: 'cs_test_linked',
+                    },
+                    payment_details: {
+                      order_reference: 'cs_test_linked',
+                    },
+                  }
+                : {
+                    id: 'ch_1',
+                    status: 'succeeded',
+                    amount: 3500,
+                    currency: 'usd',
+                    payment_intent: 'pi_1',
+                    metadata: {
+                      flow: 'venue_seat',
+                      correlationId: 'corr-shared',
+                      checkoutSessionId: 'cs_test_linked',
+                    },
+                    refunded: type === 'charge.refunded',
+                  },
+            },
+          }),
+        );
+
+        expect(result).toEqual({
+          received: true,
+          handler: 'audit_only',
+          deduplicated: false,
+        });
+        expect(
+          harness.bookings.processStripeWebhookEvent,
+        ).not.toHaveBeenCalled();
+        expect(harness.venue.processStripeWebhookEvent).not.toHaveBeenCalled();
+        expect(
+          harness.upcoming.processClassStripeWebhookEvent,
+        ).not.toHaveBeenCalled();
+        expect(harness.audit.markProcessing).toHaveBeenCalledWith(
+          `evt_${type}`,
+          'audit_only',
+        );
+        expect(harness.audit.markProcessed).toHaveBeenCalledWith(`evt_${type}`);
+        expect(harness.audit.markFailed).not.toHaveBeenCalled();
+        expect(harness.audit.trackAttempt).toHaveBeenCalledWith(
+          expect.objectContaining({ id: `evt_${type}` }),
+          expect.objectContaining({
+            metadataFlow: 'venue_seat',
+            checkoutSessionId: 'cs_test_linked',
+            purchaseCorrelationId: 'corr-shared',
+            payloadSummary: expect.objectContaining({
+              flow: 'venue_seat',
+              purchaseCorrelationId: 'corr-shared',
+              checkoutSessionId: 'cs_test_linked',
+            }) as Record<string, unknown>,
+          }),
+        );
+      },
+    );
+
+    it('payment_intent.succeeded trackAttempt includes checkoutSessionId from order_reference', async () => {
+      await handleEvent(
+        makeStripeWebhookEventLite({
+          id: 'evt_pi_cs',
+          type: 'payment_intent.succeeded',
+          livemode: true,
+          data: {
+            object: {
+              id: 'pi_1',
+              status: 'succeeded',
+              amount: 3500,
+              currency: 'usd',
+              metadata: {
+                flow: 'venue_seat',
+                correlationId: 'corr-pi',
+              },
+              payment_details: { order_reference: 'cs_test_linked' },
+            },
+          },
+        }),
+      );
+
+      expect(harness.audit.trackAttempt).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'evt_pi_cs' }),
+        expect.objectContaining({
+          metadataFlow: 'venue_seat',
+          checkoutSessionId: 'cs_test_linked',
+          purchaseCorrelationId: 'corr-pi',
+          payloadSummary: expect.objectContaining({
+            flow: 'venue_seat',
+            paymentIntentId: 'pi_1',
+            checkoutSessionId: 'cs_test_linked',
+            purchaseCorrelationId: 'corr-pi',
+          }) as Record<string, unknown>,
+          payload: expect.objectContaining({
+            object: expect.objectContaining({ id: 'pi_1' }) as Record<
+              string,
+              unknown
+            >,
+            previous_attributes: null,
+          }) as Record<string, unknown>,
+        }),
+      );
+    });
+
+    it('audit_only trackAttempt stores redacted payload without client_secret', async () => {
+      await handleEvent(
+        makeStripeWebhookEventLite({
+          id: 'evt_pi_created',
+          type: 'payment_intent.created',
+          livemode: true,
+          data: {
+            object: {
+              id: 'pi_secret',
+              client_secret: 'pi_should_not_persist',
+              status: 'requires_payment_method',
+            },
+          },
+        }),
+      );
+
+      expect(harness.audit.trackAttempt).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'evt_pi_created' }),
+        expect.objectContaining({
+          payload: {
+            object: {
+              id: 'pi_secret',
+              client_secret: '[redacted]',
+              status: 'requires_payment_method',
+            },
+            previous_attributes: null,
+          },
+        }),
+      );
+    });
+  });
+
+  describe('unknown / unhandled', () => {
+    it('invoice.paid remains unhandled and markFailed', async () => {
       await expect(
         handleEvent(
           makeStripeWebhookEventLite({
-            id: 'evt_pi',
-            type: 'payment_intent.succeeded',
+            id: 'evt_invoice',
+            type: 'invoice.paid',
             livemode: true,
-            data: { object: { id: 'pi_1' } },
+            data: { object: { id: 'in_1' } },
           }),
         ),
       ).rejects.toThrow(/Unhandled Stripe webhook/i);

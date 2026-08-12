@@ -53,6 +53,14 @@ export class AdminStripeWebhookEventsQueryDto {
   @IsString()
   checkoutSessionId?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Shared purchase id (metadata.correlationId or checkout session id)',
+  })
+  @IsOptional()
+  @IsString()
+  purchaseCorrelationId?: string;
+
   @ApiPropertyOptional({ enum: ADMIN_WEBHOOK_STATUSES })
   @IsOptional()
   @IsIn([...ADMIN_WEBHOOK_STATUSES])

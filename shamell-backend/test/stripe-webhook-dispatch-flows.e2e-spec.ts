@@ -114,6 +114,105 @@ describe('Stripe webhook dispatch flows (deep e2e)', () => {
     await harness.app.close();
   });
 
+  describe('Stripe webhook security checklist', () => {
+    it('POST without stripe-signature returns 400', async () => {
+      const res = await request(harness.app.getHttpServer())
+        .post('/api/v1/stripe/webhook')
+        .send({ id: 'evt_no_sig' })
+        .expect(400);
+
+      const body = res.body as ErrorBody;
+      expect(body.message).toBe('Missing stripe-signature header.');
+      expect(harness.audit.trackAttempt).not.toHaveBeenCalled();
+      expect(harness.constructEvent).not.toHaveBeenCalled();
+    });
+
+    it('POST with invalid signature returns 400', async () => {
+      harness.constructEvent.mockImplementation(() => {
+        throw new Error('bad sig');
+      });
+
+      const res = await request(harness.app.getHttpServer())
+        .post('/api/v1/stripe/webhook')
+        .set('stripe-signature', 'sig_bad')
+        .send({ id: 'evt_bad_sig' })
+        .expect(400);
+
+      const body = res.body as ErrorBody;
+      expect(body.message).toBe('Invalid stripe-signature header.');
+      expect(harness.audit.trackAttempt).not.toHaveBeenCalled();
+    });
+
+    it('POST with altered body (constructEvent throw) returns 400', async () => {
+      harness.constructEvent.mockImplementation(() => {
+        throw new Error(
+          'No signatures found matching the expected signature for payload',
+        );
+      });
+
+      const res = await request(harness.app.getHttpServer())
+        .post('/api/v1/stripe/webhook')
+        .set('stripe-signature', 'sig_for_other_body')
+        .send({ id: 'evt_altered' })
+        .expect(400);
+
+      const body = res.body as ErrorBody;
+      expect(body.message).toBe('Invalid stripe-signature header.');
+      expect(harness.venue.processStripeWebhookEvent).not.toHaveBeenCalled();
+    });
+
+    it('POST test-mode event in production returns 400', async () => {
+      const previous = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'production';
+      try {
+        harness.constructEvent.mockReturnValue(
+          makeCheckoutSessionWebhookEvent({
+            flow: 'venue_seat',
+            eventId: 'evt_testmode_prod',
+            livemode: false,
+          }),
+        );
+
+        const res = await request(harness.app.getHttpServer())
+          .post('/api/v1/stripe/webhook')
+          .set('stripe-signature', 'sig_test')
+          .send({ id: 'evt_testmode_prod' })
+          .expect(400);
+
+        const body = res.body as ErrorBody;
+        expect(body.message).toBe(
+          'Test-mode Stripe events are not accepted in production.',
+        );
+        expect(harness.venue.processStripeWebhookEvent).not.toHaveBeenCalled();
+        expect(harness.audit.trackAttempt).not.toHaveBeenCalled();
+      } finally {
+        process.env.NODE_ENV = previous;
+      }
+    });
+
+    it('POST replay of processed eventId returns deduplicated without domain handlers', async () => {
+      harness.audit.isProcessed.mockResolvedValue(true);
+      harness.constructEvent.mockReturnValue(
+        makeCheckoutSessionWebhookEvent({
+          flow: 'venue_seat',
+          eventId: 'evt_dup_security',
+        }),
+      );
+
+      const res = await request(harness.app.getHttpServer())
+        .post('/api/v1/stripe/webhook')
+        .set('stripe-signature', 'sig_test')
+        .send({ id: 'evt_dup_security' })
+        .expect(200);
+
+      const body = res.body as WebhookDispatchBody;
+      expect(body).toEqual({ received: true, deduplicated: true });
+      expect(harness.venue.processStripeWebhookEvent).not.toHaveBeenCalled();
+      expect(harness.bookings.processStripeWebhookEvent).not.toHaveBeenCalled();
+      expect(harness.audit.trackAttempt).not.toHaveBeenCalled();
+    });
+  });
+
   it('POST /stripe/webhook venue_seat completed returns typed handler', async () => {
     harness.constructEvent.mockReturnValue(
       makeCheckoutSessionWebhookEvent({
@@ -175,7 +274,7 @@ describe('Stripe webhook dispatch flows (deep e2e)', () => {
     expect(harness.venue.processStripeWebhookEvent).not.toHaveBeenCalled();
   });
 
-  it('POST /stripe/webhook payment_intent.succeeded returns 400 unhandled', async () => {
+  it('POST /stripe/webhook payment_intent.succeeded is audit_only (200)', async () => {
     harness.constructEvent.mockReturnValue(
       makeStripeWebhookEventLite({
         id: 'evt_pi_deep',
@@ -189,12 +288,16 @@ describe('Stripe webhook dispatch flows (deep e2e)', () => {
       .post('/api/v1/stripe/webhook')
       .set('stripe-signature', 'sig_test')
       .send({ id: 'evt_pi_deep' })
-      .expect(400);
+      .expect(200);
 
-    const body = res.body as ErrorBody;
-    expect(String(body.message)).toMatch(/Unhandled Stripe webhook/i);
-    expect(harness.audit.markFailed).toHaveBeenCalled();
+    const body = res.body as WebhookDispatchBody;
+    expect(body).toEqual({
+      received: true,
+      handler: 'audit_only',
+      deduplicated: false,
+    });
     expect(harness.venue.processStripeWebhookEvent).not.toHaveBeenCalled();
+    expect(harness.audit.markProcessed).toHaveBeenCalledWith('evt_pi_deep');
   });
 
   it('POST /stripe/webhook domain throw marks failed and returns 400', async () => {
@@ -217,21 +320,5 @@ describe('Stripe webhook dispatch flows (deep e2e)', () => {
     const body = res.body as ErrorBody;
     expect(body.message).toBe('venue domain failed');
     expect(harness.audit.markFailed).toHaveBeenCalled();
-  });
-
-  it('POST /stripe/webhook invalid signature returns 400', async () => {
-    harness.constructEvent.mockImplementation(() => {
-      throw new Error('bad sig');
-    });
-
-    const res = await request(harness.app.getHttpServer())
-      .post('/api/v1/stripe/webhook')
-      .set('stripe-signature', 'sig_bad')
-      .send({ id: 'evt_bad_sig' })
-      .expect(400);
-
-    const body = res.body as ErrorBody;
-    expect(body.message).toBe('Invalid stripe-signature header.');
-    expect(harness.audit.trackAttempt).not.toHaveBeenCalled();
   });
 });

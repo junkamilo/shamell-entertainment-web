@@ -6,6 +6,7 @@ export type AdminStripeWebhookEventRow = {
   status: string;
   metadataFlow: string | null;
   checkoutSessionId: string | null;
+  purchaseCorrelationId: string | null;
   handler: string | null;
   payloadSummary: Record<string, unknown> | null;
   processedAt: string | null;
@@ -31,5 +32,7 @@ export type AdminStripeWebhookRelatedPayment = {
 };
 
 export type AdminStripeWebhookEventDetail = AdminStripeWebhookEventRow & {
+  /** Stripe `data` shape (`object` + `previous_attributes`), secrets redacted. */
+  payload: Record<string, unknown> | null;
   relatedPayments: AdminStripeWebhookRelatedPayment[];
 };

@@ -181,6 +181,7 @@ export function flowLabelFromCode(
     | 'CLASS_SESSION'
     | 'CLASS_PACKAGE'
     | 'CLASS_DAY_BUNDLE'
+    | 'CLASS_SESSION_CART'
     | 'FIXED_TICKET',
 ): AdminPaymentFlowLabel {
   switch (flow) {
@@ -194,6 +195,8 @@ export function flowLabelFromCode(
       return 'Class package';
     case 'CLASS_DAY_BUNDLE':
       return 'Same-day classes';
+    case 'CLASS_SESSION_CART':
+      return 'Class cart';
     case 'FIXED_TICKET':
       return 'Fixed ticket';
   }

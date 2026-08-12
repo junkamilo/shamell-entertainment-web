@@ -4,10 +4,17 @@ import { BookingsService } from '../../bookings/services/bookings.service';
 import { UpcomingEventsService } from '../../upcoming-events/services/upcoming-events.service';
 import { StripeWebhookAuditService } from '../../stripe/services/stripe-webhook-audit.service';
 import { StripeService } from '../../stripe/services/stripe.service';
+import { Prisma } from '@prisma/client';
 import {
+  buildWebhookEventPayload,
   buildWebhookPayloadSummary,
-  checkoutSessionFlow,
+  isStripeAuditOnlyEventType,
+  isStripeCheckoutBusinessEventType,
   parseCheckoutSession,
+  redactStripePayload,
+  resolveWebhookCheckoutSessionId,
+  resolveWebhookMetadataFlow,
+  resolveWebhookPurchaseCorrelationId,
   type StripeWebhookEventLite,
 } from '../../stripe/types/stripe-webhook.types';
 import { VenueReservationsService } from './venue-reservations.service';
@@ -77,21 +84,52 @@ export class StripeWebhookDispatchService {
   }
 
   private async processVerifiedEvent(event: StripeWebhookEventLite) {
-    const sessionObj =
-      event.type === 'checkout.session.completed' ||
-      event.type === 'checkout.session.expired'
-        ? parseCheckoutSession(event.data.object)
-        : null;
-    const flow = checkoutSessionFlow(sessionObj);
-    const checkoutSessionId = sessionObj?.id?.trim() ?? null;
+    const sessionObj = isStripeCheckoutBusinessEventType(event.type)
+      ? parseCheckoutSession(event.data.object)
+      : null;
+    const flow = resolveWebhookMetadataFlow(event, sessionObj);
+    const checkoutSessionId = resolveWebhookCheckoutSessionId(
+      event,
+      sessionObj,
+    );
+    const purchaseCorrelationId = resolveWebhookPurchaseCorrelationId(
+      event,
+      sessionObj,
+      checkoutSessionId,
+    );
+    const payloadSummary = buildWebhookPayloadSummary(event, sessionObj);
+    const payload = redactStripePayload(
+      buildWebhookEventPayload(event),
+    ) as Prisma.InputJsonValue;
 
     await this.audit.trackAttempt(event, {
       metadataFlow: flow,
       checkoutSessionId,
-      payloadSummary: buildWebhookPayloadSummary(event, sessionObj),
+      purchaseCorrelationId,
+      payloadSummary,
+      payload,
     });
 
     try {
+      if (isStripeAuditOnlyEventType(event.type)) {
+        const handler = 'audit_only';
+        await this.audit.markProcessing(event.id, handler);
+        await this.audit.markProcessed(event.id);
+        this.logger.log(
+          `stripe-webhook-audit-only eventId=${event.id} type=${event.type} checkoutSessionId=${checkoutSessionId ?? 'none'}`,
+        );
+        return { received: true, handler, deduplicated: false };
+      }
+
+      if (!isStripeCheckoutBusinessEventType(event.type)) {
+        this.logger.warn(
+          `stripe-webhook-not-handled eventId=${event.id} flow=${flow ?? 'none'} type=${event.type} checkoutSessionId=${checkoutSessionId ?? 'none'}`,
+        );
+        throw new BadRequestException(
+          `Unhandled Stripe webhook flow=${flow ?? 'none'} type=${event.type}`,
+        );
+      }
+
       let handler = 'unhandled';
       let handled = false;
 
@@ -112,6 +150,7 @@ export class StripeWebhookDispatchService {
       } else if (
         flow === 'class_package' ||
         flow === 'class_session_bundle' ||
+        flow === 'class_session_cart' ||
         flow === 'class_month_package'
       ) {
         handler = flow;

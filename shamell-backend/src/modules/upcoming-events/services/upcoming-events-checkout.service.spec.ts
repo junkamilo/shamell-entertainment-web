@@ -84,11 +84,65 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
         enrollmentId: 'enroll-1',
       });
       expect(repository.createClassEnrollment).toHaveBeenCalled();
+
+      const createCalls = stripe.client.checkout.sessions.create.mock.calls as [
+        [
+          {
+            metadata: { flow?: string; correlationId?: string };
+            payment_intent_data?: {
+              description?: string;
+              receipt_email?: string;
+              metadata?: { flow?: string; correlationId?: string };
+            };
+            expand?: string[];
+          },
+        ],
+      ];
+      expect(createCalls[0][0].metadata.flow).toBe('class_session');
+      expect(createCalls[0][0].metadata.correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+      expect(createCalls[0][0].payment_intent_data?.metadata?.flow).toBe(
+        'class_session',
+      );
+      expect(
+        createCalls[0][0].payment_intent_data?.metadata?.correlationId,
+      ).toBe(createCalls[0][0].metadata.correlationId);
+      expect(createCalls[0][0].payment_intent_data?.receipt_email).toBe(
+        'ada@example.com',
+      );
+      expect(createCalls[0][0].payment_intent_data?.description).toContain(
+        'class',
+      );
+      expect(createCalls[0][0].expand).toEqual(['payment_intent']);
+
+      expect(stripe.client.paymentIntents.update).toHaveBeenCalled();
+      const piUpdateCalls = stripe.client.paymentIntents.update.mock.calls as [
+        [string, { metadata?: Record<string, string> }],
+      ];
+      expect(piUpdateCalls.some((c) => c[0] === 'pi_1')).toBe(true);
+      expect(
+        piUpdateCalls.some((c) => c[1]?.metadata?.checkoutSessionId === 'cs_1'),
+      ).toBe(true);
+
       expect(stripe.client.checkout.sessions.update).toHaveBeenCalled();
       const updateArgs = stripe.client.checkout.sessions.update.mock
-        .calls[0] as [string, { metadata?: { flow?: string } }];
+        .calls[0] as [
+        string,
+        {
+          metadata?: {
+            flow?: string;
+            correlationId?: string;
+            enrollmentId?: string;
+          };
+        },
+      ];
       expect(updateArgs[0]).toBe('cs_1');
       expect(updateArgs[1]?.metadata?.flow).toBe('class_session');
+      expect(updateArgs[1]?.metadata?.enrollmentId).toBe('enroll-1');
+      expect(updateArgs[1]?.metadata?.correlationId).toBe(
+        createCalls[0][0].metadata.correlationId,
+      );
     });
 
     it('rejects non-CLASSES experience', async () => {
@@ -325,6 +379,84 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
     });
   });
 
+  describe('createClassCartCheckout', () => {
+    const cartDto = {
+      sessionIds: ['session-1', 'session-2'],
+      customerName: 'Ada Lovelace',
+      customerEmail: 'ada@example.com',
+    };
+
+    function twoDifferentDaySessions() {
+      return [
+        makeCheckoutClassSessionStub({
+          id: 'session-1',
+          startsAt: new Date('2026-08-18T12:00:00.000Z'),
+          endsAt: new Date('2026-08-18T13:00:00.000Z'),
+          price: 25,
+          weekday: 2,
+        }),
+        makeCheckoutClassSessionStub({
+          id: 'session-2',
+          startsAt: new Date('2026-08-19T12:00:00.000Z'),
+          endsAt: new Date('2026-08-19T13:00:00.000Z'),
+          price: 25,
+          weekday: 3,
+        }),
+      ];
+    }
+
+    it('creates package enrollment across multiple calendar days', async () => {
+      repository.findPublicUpcomingBySlug.mockResolvedValue(
+        makeClassesPublicEventStub(),
+      );
+      repository.findActiveClassSessionsByIdsForEvent.mockResolvedValue(
+        twoDifferentDaySessions(),
+      );
+      repository.createClassPackageEnrollment.mockResolvedValue({
+        id: 'pkg-cart-1',
+      });
+      repository.createClassEnrollment.mockResolvedValue({ id: 'child-1' });
+      repository.createClassPackageEnrollmentItem.mockResolvedValue({});
+
+      await expect(
+        service.createClassCartCheckout('salsa-night', cartDto),
+      ).resolves.toEqual({
+        clientSecret: 'sec_1',
+        packageEnrollmentId: 'pkg-cart-1',
+      });
+
+      const createCalls = stripe.client.checkout.sessions.create.mock.calls as [
+        [
+          {
+            metadata: { flow?: string };
+            payment_intent_data?: { metadata?: { flow?: string } };
+          },
+        ],
+      ];
+      expect(createCalls[0][0].metadata.flow).toBe('class_session_cart');
+      expect(createCalls[0][0].payment_intent_data?.metadata?.flow).toBe(
+        'class_session_cart',
+      );
+      expect(repository.createClassEnrollment).toHaveBeenCalledTimes(2);
+      const packageCreateCalls = repository.createClassPackageEnrollment.mock
+        .calls as Array<[{ selections: { kind: string } }]>;
+      const pkgCreate = packageCreateCalls[0][0];
+      expect(pkgCreate.selections.kind).toBe('class_session_cart');
+    });
+
+    it('rejects duplicate session ids', async () => {
+      repository.findPublicUpcomingBySlug.mockResolvedValue(
+        makeClassesPublicEventStub(),
+      );
+      await expect(
+        service.createClassCartCheckout('salsa-night', {
+          ...cartDto,
+          sessionIds: ['session-1', 'session-1'],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
   describe('createClassPackageCheckout', () => {
     it('creates month package enrollment when enabled', async () => {
       const monthIso =
@@ -359,6 +491,53 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
         clientSecret: 'sec_1',
         packageEnrollmentId: 'pkg-month-1',
       });
+
+      const createCalls = stripe.client.checkout.sessions.create.mock.calls as [
+        [
+          {
+            metadata: { flow?: string; correlationId?: string };
+            payment_intent_data?: {
+              description?: string;
+              receipt_email?: string;
+              metadata?: { flow?: string; correlationId?: string };
+            };
+          },
+        ],
+      ];
+      expect(createCalls[0][0].metadata.flow).toBe('class_month_package');
+      expect(createCalls[0][0].metadata.correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+      expect(createCalls[0][0].payment_intent_data?.metadata?.flow).toBe(
+        'class_month_package',
+      );
+      expect(
+        createCalls[0][0].payment_intent_data?.metadata?.correlationId,
+      ).toBe(createCalls[0][0].metadata.correlationId);
+      expect(createCalls[0][0].payment_intent_data?.receipt_email).toBe(
+        'ada@example.com',
+      );
+      expect(createCalls[0][0].payment_intent_data?.description).toContain(
+        monthIso,
+      );
+
+      const updateArgs = stripe.client.checkout.sessions.update.mock
+        .calls[0] as [
+        string,
+        {
+          metadata?: {
+            flow?: string;
+            correlationId?: string;
+            packageEnrollmentId?: string;
+          };
+        },
+      ];
+      expect(updateArgs[1]?.metadata?.flow).toBe('class_month_package');
+      expect(updateArgs[1]?.metadata?.packageEnrollmentId).toBe('pkg-month-1');
+      expect(updateArgs[1]?.metadata?.correlationId).toBe(
+        createCalls[0][0].metadata.correlationId,
+      );
+      expect(stripe.client.paymentIntents.update).toHaveBeenCalled();
     });
 
     it('rejects disabled package', async () => {
@@ -498,6 +677,48 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
         clientSecret: 'sec_1',
         enrollmentId: 'fixed-enroll-1',
       });
+
+      const createCalls = stripe.client.checkout.sessions.create.mock.calls as [
+        [
+          {
+            metadata: { flow?: string; correlationId?: string };
+            payment_intent_data?: {
+              description?: string;
+              receipt_email?: string;
+              metadata?: { flow?: string; correlationId?: string };
+            };
+          },
+        ],
+      ];
+      expect(createCalls[0][0].metadata.flow).toBe('fixed_event_ticket');
+      expect(createCalls[0][0].metadata.correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+      expect(createCalls[0][0].payment_intent_data?.metadata?.flow).toBe(
+        'fixed_event_ticket',
+      );
+      expect(createCalls[0][0].payment_intent_data?.receipt_email).toBe(
+        'ada@example.com',
+      );
+      expect(createCalls[0][0].payment_intent_data?.description).toContain(
+        'ticket',
+      );
+
+      const updateArgs = stripe.client.checkout.sessions.update.mock
+        .calls[0] as [
+        string,
+        {
+          metadata?: {
+            flow?: string;
+            correlationId?: string;
+            enrollmentId?: string;
+          };
+        },
+      ];
+      expect(updateArgs[1]?.metadata?.enrollmentId).toBe('fixed-enroll-1');
+      expect(updateArgs[1]?.metadata?.correlationId).toBe(
+        createCalls[0][0].metadata.correlationId,
+      );
     });
 
     it('rejects when ticket capacity is not configured', async () => {

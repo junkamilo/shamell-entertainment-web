@@ -2,6 +2,7 @@ import {
   buildClassMonthPackageSelections,
   buildClassPackageSelections,
   buildClassSessionBundleSelections,
+  buildClassSessionCartSelections,
 } from './class-package-selections.util';
 
 describe('class-package-selections.util', () => {
@@ -23,6 +24,33 @@ describe('class-package-selections.util', () => {
       dateIso: '2026-06-04',
       sessionIds: ['s1', 's2'],
     });
+  });
+
+  it('builds cart selections payload', () => {
+    const json = buildClassSessionCartSelections({
+      sessionIds: ['s1', 's2'],
+      items: [
+        {
+          sessionId: 's1',
+          weekday: 2,
+          sectionId: 'sec-1',
+          dateIso: '2026-08-18',
+          amount: 25,
+        },
+        {
+          sessionId: 's2',
+          weekday: 3,
+          sectionId: 'sec-2',
+          dateIso: '2026-08-19',
+          amount: 25,
+        },
+      ],
+    });
+    expect(json).toMatchObject({
+      kind: 'class_session_cart',
+      sessionIds: ['s1', 's2'],
+    });
+    expect((json as { items: unknown[] }).items).toHaveLength(2);
   });
 
   it('builds package selections payload', () => {

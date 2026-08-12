@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -15,11 +16,21 @@ import {
   stripeAutomaticTaxParams,
   stripeTaxProductData,
 } from '../../stripe/utils/stripe-tax.util';
+import {
+  attachPaymentIntentCheckoutMetadata,
+  buildCheckoutCorrelationMetadata,
+  resolvePaymentIntentIdForCheckoutSession,
+} from '../../stripe/utils/stripe-checkout-pi-enrich.util';
+import { paymentIntentIdFromSession } from '../../stripe/types/stripe-webhook.types';
 import { StripeService } from '../../stripe/services/stripe.service';
-import { CHECKOUT_TTL_MINUTES } from '../constants/upcoming-events.constants';
+import {
+  CHECKOUT_TTL_MINUTES,
+  STRIPE_FLOW_CLASS_SESSION_CART,
+} from '../constants/upcoming-events.constants';
 import { UpcomingEventsRepository } from './upcoming-events.repository';
 import { CreateClassCheckoutDto } from '../dto/create-class-checkout.dto';
 import { CreateClassBundleCheckoutDto } from '../dto/create-class-bundle-checkout.dto';
+import { CreateClassCartCheckoutDto } from '../dto/create-class-cart-checkout.dto';
 import { CreateClassPackageCheckoutDto } from '../dto/create-class-package-checkout.dto';
 import { CreateFixedEventCheckoutDto } from '../dto/create-fixed-event-checkout.dto';
 import { resolveUpcomingPurchaseContext } from '../utils/upcoming-purchase-mode.util';
@@ -27,6 +38,7 @@ import { fixedTicketsRemaining } from '../utils/upcoming-fixed-ticket.util';
 import {
   buildClassMonthPackageSelections,
   buildClassSessionBundleSelections,
+  buildClassSessionCartSelections,
 } from '../utils/class-package-selections.util';
 import {
   assertMonthSessionsAvailable,
@@ -39,9 +51,9 @@ import {
   sessionLabel as formatSessionLabel,
 } from '../utils/upcoming-events-mapper.util';
 
-type StripeCheckoutCreateParams = Parameters<
-  StripeService['client']['checkout']['sessions']['create']
->[0];
+type StripeCheckoutCreateParams = NonNullable<
+  Parameters<StripeService['client']['checkout']['sessions']['create']>[0]
+>;
 
 type PackageChildRow = {
   session: {
@@ -53,8 +65,21 @@ type PackageChildRow = {
   weekday: number;
 };
 
+type EnrichedCheckoutResult = {
+  checkout: {
+    id: string;
+    client_secret: string | null;
+    payment_intent?: string | { id?: string } | null;
+  };
+  correlationId: string;
+  paymentIntentId: string | null;
+  metadata: Record<string, string>;
+};
+
 @Injectable()
 export class UpcomingEventsCheckoutService {
+  private readonly logger = new Logger(UpcomingEventsCheckoutService.name);
+
   constructor(
     private readonly repository: UpcomingEventsRepository,
     private readonly stripeService: StripeService,
@@ -87,32 +112,35 @@ export class UpcomingEventsCheckoutService {
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
     const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/classes/return?session_id={CHECKOUT_SESSION_ID}`;
+    const customerEmail = dto.customerEmail.trim().toLowerCase();
+    const sessionLabel = formatSessionLabel(session);
+    const productName = `${event.eventType.name} — class`;
 
-    const checkout = await this.createEmbeddedCheckoutSession({
-      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
-      mode: 'payment',
-      customer_email: dto.customerEmail,
-      ...stripeAutomaticTaxParams(),
-      payment_intent_data: {
-        receipt_email: dto.customerEmail.trim().toLowerCase(),
-      },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: session.currency,
-            unit_amount: amountCents,
-            product_data: stripeTaxProductData({
-              name: `${event.eventType.name} ? class`,
-              description: formatSessionLabel(session),
-            }),
-          },
+    const { checkout, paymentIntentId, metadata } =
+      await this.createEnrichedEmbeddedCheckout({
+        customerEmail,
+        description: `${productName} — ${sessionLabel}`,
+        baseMetadata: {
+          flow: 'class_session',
+          upcomingEventId: event.id,
+          sessionId: session.id,
         },
-      ],
-      metadata: { flow: 'class_session' },
-      return_url: returnUrl,
-      expires_at: Math.floor(expiresAt.getTime() / 1000),
-    });
+        lineItems: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: session.currency,
+              unit_amount: amountCents,
+              product_data: stripeTaxProductData({
+                name: productName,
+                description: sessionLabel,
+              }),
+            },
+          },
+        ],
+        returnUrl,
+        expiresAt,
+      });
 
     const enrollment = await this.repository.createClassEnrollment(
       {
@@ -122,16 +150,20 @@ export class UpcomingEventsCheckoutService {
         status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
         stripeCheckoutSessionId: checkout.id,
         customerName: dto.customerName.trim(),
-        customerEmail: dto.customerEmail.trim().toLowerCase(),
+        customerEmail,
         customerPhone: dto.customerPhone?.trim() || null,
         expiresAt,
       },
       {},
     );
 
-    await this.attachCheckoutFlowMetadata(checkout.id, {
-      flow: 'class_session',
-      enrollmentId: enrollment.id,
+    await this.attachCheckoutAndPaymentIntentMetadata({
+      checkoutSessionId: checkout.id,
+      paymentIntentId,
+      metadata: {
+        ...metadata,
+        enrollmentId: enrollment.id,
+      },
     });
 
     return {
@@ -215,32 +247,34 @@ export class UpcomingEventsCheckoutService {
     const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/classes/package-return?session_id={CHECKOUT_SESSION_ID}`;
     const sectionCount = resolved.length;
     const dateLabel = bundleDateIso;
+    const customerEmail = dto.customerEmail.trim().toLowerCase();
+    const productName = `${event.eventType.name} — ${sectionCount} class${sectionCount === 1 ? '' : 'es'}`;
+    const productDescription = `${sectionCount} section(s) on ${dateLabel}`;
 
-    const checkout = await this.createEmbeddedCheckoutSession({
-      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
-      mode: 'payment',
-      customer_email: dto.customerEmail,
-      ...stripeAutomaticTaxParams(),
-      payment_intent_data: {
-        receipt_email: dto.customerEmail.trim().toLowerCase(),
-      },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'usd',
-            unit_amount: amountCents,
-            product_data: stripeTaxProductData({
-              name: `${event.eventType.name} ? ${sectionCount} class${sectionCount === 1 ? '' : 'es'}`,
-              description: `${sectionCount} section(s) on ${dateLabel}`,
-            }),
-          },
+    const { checkout, paymentIntentId, metadata } =
+      await this.createEnrichedEmbeddedCheckout({
+        customerEmail,
+        description: `${productName} — ${productDescription}`,
+        baseMetadata: {
+          flow: 'class_session_bundle',
+          upcomingEventId: event.id,
         },
-      ],
-      metadata: { flow: 'class_session_bundle' },
-      return_url: returnUrl,
-      expires_at: Math.floor(expiresAt.getTime() / 1000),
-    });
+        lineItems: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'usd',
+              unit_amount: amountCents,
+              product_data: stripeTaxProductData({
+                name: productName,
+                description: productDescription,
+              }),
+            },
+          },
+        ],
+        returnUrl,
+        expiresAt,
+      });
 
     const packageEnrollment =
       await this.repository.createClassPackageEnrollment({
@@ -250,7 +284,7 @@ export class UpcomingEventsCheckoutService {
         status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
         stripeCheckoutSessionId: checkout.id,
         customerName: dto.customerName.trim(),
-        customerEmail: dto.customerEmail.trim().toLowerCase(),
+        customerEmail,
         customerPhone: dto.customerPhone?.trim() || null,
         selections: buildClassSessionBundleSelections({
           dateIso: bundleDateIso,
@@ -269,14 +303,152 @@ export class UpcomingEventsCheckoutService {
       packageEnrollmentId: packageEnrollment.id,
       resolved,
       customerName: dto.customerName.trim(),
-      customerEmail: dto.customerEmail.trim().toLowerCase(),
+      customerEmail,
       customerPhone: dto.customerPhone?.trim() || null,
       expiresAt,
     });
 
-    await this.attachCheckoutFlowMetadata(checkout.id, {
-      flow: 'class_session_bundle',
+    await this.attachCheckoutAndPaymentIntentMetadata({
+      checkoutSessionId: checkout.id,
+      paymentIntentId,
+      metadata: {
+        ...metadata,
+        packageEnrollmentId: packageEnrollment.id,
+      },
+    });
+
+    return {
+      clientSecret: checkout.client_secret!,
       packageEnrollmentId: packageEnrollment.id,
+    };
+  }
+
+  async createClassCartCheckout(slug: string, dto: CreateClassCartCheckoutDto) {
+    const event = await this.repository.findPublicUpcomingBySlug(slug);
+    this.assertClassesExperience(event);
+
+    const uniqueIds = [...new Set(dto.sessionIds)];
+    if (uniqueIds.length !== dto.sessionIds.length) {
+      throw new BadRequestException('Duplicate session ids are not allowed.');
+    }
+
+    const rows = await this.repository.findActiveClassSessionsByIdsForEvent(
+      uniqueIds,
+      event.id,
+    );
+    if (rows.length !== uniqueIds.length) {
+      throw new NotFoundException('One or more class sessions were not found.');
+    }
+
+    const now = new Date();
+    let totalAmount = 0;
+    const resolved: Array<{
+      session: (typeof rows)[0];
+      weekday: number;
+      dateIso: string;
+    }> = [];
+
+    for (const sessionId of uniqueIds) {
+      const session = rows.find((r) => r.id === sessionId);
+      if (!session) continue;
+      if (session.endsAt <= now) {
+        throw new BadRequestException(
+          'One or more sessions have already ended.',
+        );
+      }
+      const remaining = await this.repository.seatsRemaining(
+        session.id,
+        session.capacity,
+      );
+      if (remaining <= 0) {
+        throw new ConflictException('One or more sessions are full.');
+      }
+      totalAmount += Number(session.price);
+      resolved.push({
+        session,
+        weekday: session.weekday ?? session.section?.weekday ?? 0,
+        dateIso: sessionCalendarDateIso(session.startsAt, session.timezone),
+      });
+    }
+
+    const amountCents = Math.round(totalAmount * 100);
+    if (amountCents < 50) {
+      throw new BadRequestException('Invalid cart total.');
+    }
+
+    const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
+    const frontendUrl = this.stripeService.frontendUrl();
+    const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/classes/package-return?session_id={CHECKOUT_SESSION_ID}`;
+    const sectionCount = resolved.length;
+    const dayCount = new Set(resolved.map((r) => r.dateIso)).size;
+    const customerEmail = dto.customerEmail.trim().toLowerCase();
+    const productName = `${event.eventType.name} — ${sectionCount} class${sectionCount === 1 ? '' : 'es'}`;
+    const productDescription = `${sectionCount} class${sectionCount === 1 ? '' : 'es'} across ${dayCount} day${dayCount === 1 ? '' : 's'}`;
+
+    const { checkout, paymentIntentId, metadata } =
+      await this.createEnrichedEmbeddedCheckout({
+        customerEmail,
+        description: `${productName} — ${productDescription}`,
+        baseMetadata: {
+          flow: STRIPE_FLOW_CLASS_SESSION_CART,
+          upcomingEventId: event.id,
+        },
+        lineItems: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'usd',
+              unit_amount: amountCents,
+              product_data: stripeTaxProductData({
+                name: productName,
+                description: productDescription,
+              }),
+            },
+          },
+        ],
+        returnUrl,
+        expiresAt,
+      });
+
+    const packageEnrollment =
+      await this.repository.createClassPackageEnrollment({
+        eventId: event.id,
+        amount: totalAmount,
+        currency: 'usd',
+        status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+        stripeCheckoutSessionId: checkout.id,
+        customerName: dto.customerName.trim(),
+        customerEmail,
+        customerPhone: dto.customerPhone?.trim() || null,
+        selections: buildClassSessionCartSelections({
+          sessionIds: uniqueIds,
+          items: resolved.map((row) => ({
+            sessionId: row.session.id,
+            weekday: row.weekday,
+            sectionId: row.session.sectionId,
+            dateIso: row.dateIso,
+            amount: Number(row.session.price),
+          })),
+        }),
+        expiresAt,
+      });
+
+    await this.createPackageChildrenEnrollments({
+      packageEnrollmentId: packageEnrollment.id,
+      resolved,
+      customerName: dto.customerName.trim(),
+      customerEmail,
+      customerPhone: dto.customerPhone?.trim() || null,
+      expiresAt,
+    });
+
+    await this.attachCheckoutAndPaymentIntentMetadata({
+      checkoutSessionId: checkout.id,
+      paymentIntentId,
+      metadata: {
+        ...metadata,
+        packageEnrollmentId: packageEnrollment.id,
+      },
     });
 
     return {
@@ -349,32 +521,34 @@ export class UpcomingEventsCheckoutService {
     const packageLabel =
       venueConfig.classPackageLabel?.trim() || 'Full month package';
     const sessionCount = resolved.length;
+    const customerEmail = dto.customerEmail.trim().toLowerCase();
+    const productName = `${event.eventType.name} — ${packageLabel}`;
+    const productDescription = `${sessionCount} class${sessionCount === 1 ? '' : 'es'} in ${dto.monthIso}`;
 
-    const checkout = await this.createEmbeddedCheckoutSession({
-      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
-      mode: 'payment',
-      customer_email: dto.customerEmail,
-      ...stripeAutomaticTaxParams(),
-      payment_intent_data: {
-        receipt_email: dto.customerEmail.trim().toLowerCase(),
-      },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'usd',
-            unit_amount: amountCents,
-            product_data: stripeTaxProductData({
-              name: `${event.eventType.name} ? ${packageLabel}`,
-              description: `${sessionCount} class${sessionCount === 1 ? '' : 'es'} in ${dto.monthIso}`,
-            }),
-          },
+    const { checkout, paymentIntentId, metadata } =
+      await this.createEnrichedEmbeddedCheckout({
+        customerEmail,
+        description: `${productName} (${dto.monthIso})`,
+        baseMetadata: {
+          flow: 'class_month_package',
+          upcomingEventId: event.id,
         },
-      ],
-      metadata: { flow: 'class_month_package' },
-      return_url: returnUrl,
-      expires_at: Math.floor(expiresAt.getTime() / 1000),
-    });
+        lineItems: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'usd',
+              unit_amount: amountCents,
+              product_data: stripeTaxProductData({
+                name: productName,
+                description: productDescription,
+              }),
+            },
+          },
+        ],
+        returnUrl,
+        expiresAt,
+      });
 
     const packageEnrollment =
       await this.repository.createClassPackageEnrollment({
@@ -384,7 +558,7 @@ export class UpcomingEventsCheckoutService {
         status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
         stripeCheckoutSessionId: checkout.id,
         customerName: dto.customerName.trim(),
-        customerEmail: dto.customerEmail.trim().toLowerCase(),
+        customerEmail,
         customerPhone: dto.customerPhone?.trim() || null,
         selections: buildClassMonthPackageSelections({
           monthIso: dto.monthIso,
@@ -403,14 +577,18 @@ export class UpcomingEventsCheckoutService {
       packageEnrollmentId: packageEnrollment.id,
       resolved,
       customerName: dto.customerName.trim(),
-      customerEmail: dto.customerEmail.trim().toLowerCase(),
+      customerEmail,
       customerPhone: dto.customerPhone?.trim() || null,
       expiresAt,
     });
 
-    await this.attachCheckoutFlowMetadata(checkout.id, {
-      flow: 'class_month_package',
-      packageEnrollmentId: packageEnrollment.id,
+    await this.attachCheckoutAndPaymentIntentMetadata({
+      checkoutSessionId: checkout.id,
+      paymentIntentId,
+      metadata: {
+        ...metadata,
+        packageEnrollmentId: packageEnrollment.id,
+      },
     });
 
     return {
@@ -448,32 +626,35 @@ export class UpcomingEventsCheckoutService {
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
     const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/return?session_id={CHECKOUT_SESSION_ID}`;
+    const customerEmail = dto.customerEmail.trim().toLowerCase();
+    const productName = `${event.eventType.name} — ticket`;
+    const productDescription =
+      venueConfig.reservationEventLabel ?? 'Event ticket';
 
-    const checkout = await this.createEmbeddedCheckoutSession({
-      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
-      mode: 'payment',
-      customer_email: dto.customerEmail,
-      ...stripeAutomaticTaxParams(),
-      payment_intent_data: {
-        receipt_email: dto.customerEmail.trim().toLowerCase(),
-      },
-      line_items: [
-        {
-          quantity: 1,
-          price_data: {
-            currency: 'usd',
-            unit_amount: amountCents,
-            product_data: stripeTaxProductData({
-              name: `${event.eventType.name} ? ticket`,
-              description: venueConfig.reservationEventLabel ?? 'Event ticket',
-            }),
-          },
+    const { checkout, paymentIntentId, metadata } =
+      await this.createEnrichedEmbeddedCheckout({
+        customerEmail,
+        description: `${productName} — ${productDescription}`,
+        baseMetadata: {
+          flow: 'fixed_event_ticket',
+          upcomingEventId: event.id,
         },
-      ],
-      metadata: { flow: 'fixed_event_ticket' },
-      return_url: returnUrl,
-      expires_at: Math.floor(expiresAt.getTime() / 1000),
-    });
+        lineItems: [
+          {
+            quantity: 1,
+            price_data: {
+              currency: 'usd',
+              unit_amount: amountCents,
+              product_data: stripeTaxProductData({
+                name: productName,
+                description: productDescription,
+              }),
+            },
+          },
+        ],
+        returnUrl,
+        expiresAt,
+      });
 
     const enrollment = await this.repository.createPendingFixedEventEnrollment({
       eventId: event.id,
@@ -482,14 +663,18 @@ export class UpcomingEventsCheckoutService {
       status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
       stripeCheckoutSessionId: checkout.id,
       customerName: dto.customerName.trim(),
-      customerEmail: dto.customerEmail.trim().toLowerCase(),
+      customerEmail,
       customerPhone: dto.customerPhone?.trim() || null,
       expiresAt,
     });
 
-    await this.attachCheckoutFlowMetadata(checkout.id, {
-      flow: 'fixed_event_ticket',
-      enrollmentId: enrollment.id,
+    await this.attachCheckoutAndPaymentIntentMetadata({
+      checkoutSessionId: checkout.id,
+      paymentIntentId,
+      metadata: {
+        ...metadata,
+        enrollmentId: enrollment.id,
+      },
     });
 
     return {
@@ -508,24 +693,84 @@ export class UpcomingEventsCheckoutService {
     }
   }
 
-  private async createEmbeddedCheckoutSession(
-    params: StripeCheckoutCreateParams,
-  ) {
-    const checkout =
-      await this.stripeService.client.checkout.sessions.create(params);
+  private async createEnrichedEmbeddedCheckout(args: {
+    customerEmail: string;
+    description: string;
+    baseMetadata: Record<string, string>;
+    lineItems: NonNullable<StripeCheckoutCreateParams['line_items']>;
+    returnUrl: string;
+    expiresAt: Date;
+  }): Promise<EnrichedCheckoutResult> {
+    const { correlationId, metadata } = buildCheckoutCorrelationMetadata(
+      args.baseMetadata,
+    );
+    const params = {
+      ...STRIPE_EMBEDDED_CHECKOUT_BASE,
+      mode: 'payment' as const,
+      customer_email: args.customerEmail,
+      ...stripeAutomaticTaxParams(),
+      payment_intent_data: {
+        description: args.description,
+        receipt_email: args.customerEmail,
+        metadata,
+      },
+      line_items: args.lineItems,
+      metadata,
+      expand: ['payment_intent'],
+      return_url: args.returnUrl,
+      expires_at: Math.floor(args.expiresAt.getTime() / 1000),
+    } satisfies StripeCheckoutCreateParams;
+
+    const checkout = (await this.stripeService.client.checkout.sessions.create(
+      params,
+    )) as EnrichedCheckoutResult['checkout'];
+
     if (!checkout.client_secret) {
       throw new BadRequestException('Could not start checkout.');
     }
-    return checkout;
+
+    const paymentIntentId = await resolvePaymentIntentIdForCheckoutSession(
+      this.stripeService.client,
+      {
+        checkoutSessionId: checkout.id,
+        paymentIntentFromSession: paymentIntentIdFromSession(checkout),
+        correlationId,
+        logger: this.logger,
+        opPrefix: 'upcoming_events.checkout',
+      },
+    );
+
+    if (paymentIntentId) {
+      await attachPaymentIntentCheckoutMetadata(this.stripeService.client, {
+        paymentIntentId,
+        checkoutSessionId: checkout.id,
+        metadata,
+      });
+    } else {
+      this.logger.warn(
+        `upcoming-events-checkout-missing-pi session=${checkout.id} correlationId=${correlationId} flow=${args.baseMetadata.flow ?? 'none'}`,
+      );
+    }
+
+    return { checkout, correlationId, paymentIntentId, metadata };
   }
 
-  private attachCheckoutFlowMetadata(
-    checkoutId: string,
-    metadata: Record<string, string>,
-  ) {
-    return this.stripeService.client.checkout.sessions.update(checkoutId, {
-      metadata,
-    });
+  private async attachCheckoutAndPaymentIntentMetadata(args: {
+    checkoutSessionId: string;
+    paymentIntentId: string | null;
+    metadata: Record<string, string>;
+  }) {
+    await this.stripeService.client.checkout.sessions.update(
+      args.checkoutSessionId,
+      { metadata: args.metadata },
+    );
+    if (args.paymentIntentId) {
+      await attachPaymentIntentCheckoutMetadata(this.stripeService.client, {
+        paymentIntentId: args.paymentIntentId,
+        checkoutSessionId: args.checkoutSessionId,
+        metadata: args.metadata,
+      });
+    }
   }
 
   private async createPackageChildrenEnrollments(args: {

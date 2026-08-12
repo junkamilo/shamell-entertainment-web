@@ -883,8 +883,12 @@ model StripeWebhookEvent {
   status            StripeWebhookProcessingStatus  @default(RECEIVED)
   metadataFlow      String?
   checkoutSessionId String?
+  /// Shared id for all webhook rows of one purchase (metadata.correlationId, else cs_).
+  purchaseCorrelationId String?
   handler           String?
   payloadSummary    Json?
+  /// Full Stripe event data (`object` + `previous_attributes`), secrets redacted.
+  payload           Json?
   processedAt       DateTime?
   attempts          Int                            @default(0)
   lastError         String?
@@ -893,6 +897,7 @@ model StripeWebhookEvent {
 
   @@index([eventType, processedAt])
   @@index([checkoutSessionId])
+  @@index([purchaseCorrelationId])
   @@index([status, createdAt])
   @@map("stripe_webhook_events")
 }

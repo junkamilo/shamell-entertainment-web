@@ -27,6 +27,12 @@ import {
   stripeTaxProductData,
 } from '../../stripe/utils/stripe-tax.util';
 import { StripeService } from '../../stripe/services/stripe.service';
+import { paymentIntentIdFromSession } from '../../stripe/types/stripe-webhook.types';
+import {
+  attachPaymentIntentCheckoutMetadata,
+  buildCheckoutCorrelationMetadata,
+  resolvePaymentIntentIdForCheckoutSession,
+} from '../../stripe/utils/stripe-checkout-pi-enrich.util';
 import { BookingsAdminService } from './bookings-admin.service';
 import { BookingsWebhookService } from './bookings-webhook.service';
 import { BookingsRepository } from './bookings.repository';
@@ -448,10 +454,26 @@ export class BookingsQuoteService {
     if (amountCents < 50) throw new BadRequestException('Invalid amount.');
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const returnUrl = `${this.stripeService.frontendUrl()}/pay/quote/return?session_id={CHECKOUT_SESSION_ID}`;
+    const customerEmail = args.customerEmail.trim().toLowerCase();
+    const productName =
+      args.stage === BookingPaymentStage.FULL
+        ? 'Booking full payment'
+        : args.stage === BookingPaymentStage.DEPOSIT
+          ? 'Booking deposit payment'
+          : 'Booking balance payment';
+    const bookingShort = args.bookingId.slice(0, 8).toUpperCase();
+    const { correlationId, metadata: piMetadata } =
+      buildCheckoutCorrelationMetadata({
+        flow: 'booking_quote',
+        bookingId: args.bookingId,
+        quoteId: args.quoteId,
+        stage: args.stage,
+        adminUserId: args.adminUserId,
+      });
     const sessionParams = {
       ...STRIPE_EMBEDDED_CHECKOUT_BASE,
       mode: 'payment' as const,
-      customer_email: args.customerEmail,
+      customer_email: customerEmail,
       ...stripeAutomaticTaxParams(),
       line_items: [
         {
@@ -460,32 +482,55 @@ export class BookingsQuoteService {
             currency: args.currency,
             unit_amount: amountCents,
             product_data: stripeTaxProductData({
-              name:
-                args.stage === BookingPaymentStage.FULL
-                  ? 'Booking full payment'
-                  : args.stage === BookingPaymentStage.DEPOSIT
-                    ? 'Booking deposit payment'
-                    : 'Booking balance payment',
-              description: `Booking ${args.bookingId.slice(0, 8).toUpperCase()}`,
+              name: productName,
+              description: `Booking ${bookingShort}`,
             }),
           },
         },
       ],
+      payment_intent_data: {
+        description: `${productName} — Booking ${bookingShort}`,
+        receipt_email: customerEmail,
+        metadata: piMetadata,
+      },
       expires_at: Math.floor(expiresAt.getTime() / 1000),
       return_url: returnUrl,
-      metadata: {
-        flow: 'booking_quote',
-        bookingId: args.bookingId,
-        quoteId: args.quoteId,
-        stage: args.stage,
-        adminUserId: args.adminUserId,
-      },
+      metadata: piMetadata,
+      expand: ['payment_intent'],
     };
-    const session =
-      await this.stripeService.client.checkout.sessions.create(sessionParams);
+    const session = (await this.stripeService.client.checkout.sessions.create(
+      sessionParams,
+    )) as {
+      id: string;
+      client_secret: string | null;
+      payment_intent?: string | { id?: string } | null;
+    };
     if (!session.client_secret) {
       throw new BadRequestException('Could not start checkout.');
     }
+
+    const paymentIntentId = await resolvePaymentIntentIdForCheckoutSession(
+      this.stripeService.client,
+      {
+        checkoutSessionId: session.id,
+        paymentIntentFromSession: paymentIntentIdFromSession(session),
+        correlationId,
+        logger: this.logger,
+        opPrefix: 'booking_quote.checkout',
+      },
+    );
+    if (paymentIntentId) {
+      await attachPaymentIntentCheckoutMetadata(this.stripeService.client, {
+        paymentIntentId,
+        checkoutSessionId: session.id,
+        metadata: piMetadata,
+      });
+    } else {
+      this.logger.warn(
+        `booking-quote-checkout-missing-pi session=${session.id} correlationId=${correlationId}`,
+      );
+    }
+
     return this.repository.createBookingPayment({
       bookingId: args.bookingId,
       quoteId: args.quoteId,

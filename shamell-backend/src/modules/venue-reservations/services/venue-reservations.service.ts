@@ -27,6 +27,12 @@ import {
   stripeTaxProductData,
 } from '../../stripe/utils/stripe-tax.util';
 import { StripeService } from '../../stripe/services/stripe.service';
+import { paymentIntentIdFromSession } from '../../stripe/types/stripe-webhook.types';
+import {
+  attachPaymentIntentCheckoutMetadata,
+  buildCheckoutCorrelationMetadata,
+  resolvePaymentIntentIdForCheckoutSession,
+} from '../../stripe/utils/stripe-checkout-pi-enrich.util';
 import { formatVenueTableSizeLabel } from '../../venue-tables/utils/venue-table-names.util';
 import {
   maskCustomerName,
@@ -229,14 +235,19 @@ export class VenueReservationsService {
       eventSlug = eventRow?.slug ?? null;
     }
     const returnUrl = this.buildPublicVenueReturnUrl(eventSlug);
-    const { session, expiresAt } = await this.createStripeCheckoutSession({
-      amount: seat.amount,
-      productName: seat.productName,
-      eventLabel,
-      customerEmail: dto.customerEmail,
-      returnUrl,
-      metadata: { flow: 'venue_seat' },
-    });
+    const checkoutMetadata = {
+      flow: 'venue_seat',
+      upcomingEventId: ctx.upcomingEventId,
+    };
+    const { session, expiresAt, paymentIntentId, correlationId } =
+      await this.createStripeCheckoutSession({
+        amount: seat.amount,
+        productName: seat.productName,
+        eventLabel,
+        customerEmail: dto.customerEmail,
+        returnUrl,
+        metadata: checkoutMetadata,
+      });
 
     const reservation = await this.createPendingStripeReservation({
       upcomingEventId: ctx.upcomingEventId,
@@ -250,12 +261,16 @@ export class VenueReservationsService {
       payTokenHash: null,
     });
 
-    await this.stripeService.client.checkout.sessions.update(session.id, {
-      metadata: {
-        flow: 'venue_seat',
-        reservationId: reservation.id,
-        upcomingEventId: ctx.upcomingEventId,
-      },
+    const postReservationMetadata = {
+      ...checkoutMetadata,
+      correlationId,
+      reservationId: reservation.id,
+      layoutItemId: seat.layoutItemId,
+    };
+    await this.attachVenueCheckoutMetadata({
+      checkoutSessionId: session.id,
+      paymentIntentId,
+      metadata: postReservationMetadata,
     });
 
     this.logger.log(
@@ -337,18 +352,21 @@ export class VenueReservationsService {
     const rawToken = randomBytes(32).toString('hex');
     const payTokenHash = this.hashPayToken(rawToken);
 
-    const { session, expiresAt } = await this.createStripeCheckoutSession({
-      amount: seat.amount,
-      productName: seat.productName,
-      eventLabel,
-      customerEmail: dto.customerEmail,
-      returnUrl,
-      metadata: {
-        flow: 'venue_seat',
-        adminUserId,
-        paymentChannel: 'STRIPE',
-      },
-    });
+    const checkoutMetadata = {
+      flow: 'venue_seat',
+      upcomingEventId,
+      adminUserId,
+      paymentChannel: 'STRIPE',
+    };
+    const { session, expiresAt, paymentIntentId, correlationId } =
+      await this.createStripeCheckoutSession({
+        amount: seat.amount,
+        productName: seat.productName,
+        eventLabel,
+        customerEmail: dto.customerEmail,
+        returnUrl,
+        metadata: checkoutMetadata,
+      });
 
     const reservation = await this.createPendingStripeReservation({
       upcomingEventId,
@@ -362,13 +380,14 @@ export class VenueReservationsService {
       payTokenHash,
     });
 
-    await this.stripeService.client.checkout.sessions.update(session.id, {
+    await this.attachVenueCheckoutMetadata({
+      checkoutSessionId: session.id,
+      paymentIntentId,
       metadata: {
-        flow: 'venue_seat',
+        ...checkoutMetadata,
+        correlationId,
         reservationId: reservation.id,
-        upcomingEventId,
-        adminUserId,
-        paymentChannel: 'STRIPE',
+        layoutItemId: seat.layoutItemId,
       },
     });
 
@@ -1408,11 +1427,14 @@ export class VenueReservationsService {
       throw new BadRequestException('Invalid seat price.');
     }
 
+    const customerEmail = args.customerEmail.trim().toLowerCase();
+    const { correlationId, metadata: piMetadata } =
+      buildCheckoutCorrelationMetadata(args.metadata);
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const sessionParams = {
       ...STRIPE_EMBEDDED_CHECKOUT_BASE,
       mode: 'payment',
-      customer_email: args.customerEmail,
+      customer_email: customerEmail,
       ...stripeAutomaticTaxParams(),
       line_items: [
         {
@@ -1427,7 +1449,13 @@ export class VenueReservationsService {
           },
         },
       ],
-      metadata: args.metadata,
+      payment_intent_data: {
+        description: `${args.productName} — ${args.eventLabel}`,
+        receipt_email: customerEmail,
+        metadata: piMetadata,
+      },
+      metadata: piMetadata,
+      expand: ['payment_intent'],
       return_url: args.returnUrl,
       expires_at: Math.floor(expiresAt.getTime() / 1000),
     };
@@ -1436,13 +1464,58 @@ export class VenueReservationsService {
       sessionParams as Parameters<
         typeof this.stripeService.client.checkout.sessions.create
       >[0],
-    )) as { id: string; client_secret: string | null };
+    )) as {
+      id: string;
+      client_secret: string | null;
+      payment_intent?: string | { id?: string } | null;
+    };
 
     if (!session.client_secret) {
       throw new BadRequestException('Could not start checkout.');
     }
 
-    return { session, expiresAt };
+    const paymentIntentId = await resolvePaymentIntentIdForCheckoutSession(
+      this.stripeService.client,
+      {
+        checkoutSessionId: session.id,
+        paymentIntentFromSession: paymentIntentIdFromSession(session),
+        correlationId,
+        logger: this.logger,
+        opPrefix: 'venue.checkout',
+      },
+    );
+
+    if (paymentIntentId) {
+      await attachPaymentIntentCheckoutMetadata(this.stripeService.client, {
+        paymentIntentId,
+        checkoutSessionId: session.id,
+        metadata: piMetadata,
+      });
+    } else {
+      this.logger.warn(
+        `venue-checkout-missing-pi session=${session.id} correlationId=${correlationId}`,
+      );
+    }
+
+    return { session, expiresAt, paymentIntentId, correlationId };
+  }
+
+  private async attachVenueCheckoutMetadata(args: {
+    checkoutSessionId: string;
+    paymentIntentId: string | null;
+    metadata: Record<string, string>;
+  }) {
+    await this.stripeService.client.checkout.sessions.update(
+      args.checkoutSessionId,
+      { metadata: args.metadata },
+    );
+    if (args.paymentIntentId) {
+      await attachPaymentIntentCheckoutMetadata(this.stripeService.client, {
+        paymentIntentId: args.paymentIntentId,
+        checkoutSessionId: args.checkoutSessionId,
+        metadata: args.metadata,
+      });
+    }
   }
 
   private async createPaidCashReservation(
