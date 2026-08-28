@@ -1,5 +1,5 @@
 export type ParsePriceResult =
-  | { ok: true; value: number | null }
+  | { ok: true; value: number }
   | { ok: false; value: null };
 
 export function parsePriceInput(priceInput: string): ParsePriceResult {

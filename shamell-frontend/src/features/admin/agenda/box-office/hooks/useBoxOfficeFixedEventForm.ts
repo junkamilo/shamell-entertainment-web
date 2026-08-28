@@ -122,7 +122,7 @@ export function useBoxOfficeFixedEventForm() {
 
       const chairCatalog =
         chairsResult.ok && chairsResult.config
-          ? chairsResult.config.chairs.map((c) => ({
+          ? (chairsResult.config.chairs ?? []).map((c) => ({
               id: c.id,
               chairName: c.chairName,
               sortOrder: c.sortOrder,
