@@ -36,5 +36,41 @@ describe("useVenueSceneLayout", () => {
     expect(result.current.bucket).toBe("laptop");
     expect(result.current.perfProfile).toBe("high");
     expect(result.current.dpr).toEqual([1, 1.5]);
+    expect(result.current.chromeCss).toBe("14rem");
+  });
+
+  it("resolves admin chrome and phone bucket", () => {
+    media.values.laptop = false;
+    media.values.phone = true;
+    const { result } = renderHook(() => useVenueSceneLayout("admin"));
+    expect(result.current.bucket).toBe("phone");
+    expect(result.current.chromeCss).toBe("10rem");
+    media.values.phone = false;
+    media.values.laptop = true;
+  });
+
+  it("resolves tablet and tv buckets", () => {
+    media.values.laptop = false;
+    media.values.tablet = true;
+    const tablet = renderHook(() => useVenueSceneLayout());
+    expect(tablet.result.current.bucket).toBe("tablet");
+    media.values.tablet = false;
+    media.values.tv = true;
+    const tv = renderHook(() => useVenueSceneLayout());
+    expect(tv.result.current.bucket).toBe("tv");
+    expect(tv.result.current.dpr).toEqual([1, 2]);
+    media.values.tv = false;
+    media.values.reduced = true;
+    media.values.tv = true;
+    const tvReduced = renderHook(() => useVenueSceneLayout());
+    expect(tvReduced.result.current.dpr).toEqual([1, 1.5]);
+    media.values.tv = false;
+    media.values.reduced = false;
+    media.values.laptop = false;
+    media.values.tablet = false;
+    media.values.phone = false;
+    const phoneFallback = renderHook(() => useVenueSceneLayout());
+    expect(phoneFallback.result.current.bucket).toBe("phone");
+    media.values.laptop = true;
   });
 });

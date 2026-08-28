@@ -59,6 +59,7 @@ export function OnComingEventClassBookingModal({ slug, sessions, open, onClose }
   };
 
   const startCheckout = async () => {
+    /* v8 ignore next -- the payment button only renders after a session is selected */
     if (!selectedSession) return;
     setIsSubmitting(true);
     setCheckoutError(null);

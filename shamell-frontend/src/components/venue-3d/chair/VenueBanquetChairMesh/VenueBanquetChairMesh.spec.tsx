@@ -24,4 +24,12 @@ describe("VenueBanquetChairMesh smoke", () => {
       render(<VenueBanquetChairMesh selected reserved={false} />),
     ).not.toThrow();
   });
+
+  it("uses the mobile seat mesh", async () => {
+    const { default: VenueBanquetChairMesh } = await import("./VenueBanquetChairMesh");
+    const { container } = render(
+      <VenueBanquetChairMesh reserved perfProfile="mobile" rotationY={0.2} />,
+    );
+    expect(container.querySelectorAll('[data-r3f="mesh"]').length).toBeGreaterThan(0);
+  });
 });

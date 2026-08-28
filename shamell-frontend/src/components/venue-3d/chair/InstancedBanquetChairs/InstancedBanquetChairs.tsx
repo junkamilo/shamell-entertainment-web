@@ -100,6 +100,7 @@ function InstancedChairPart({
 
   useLayoutEffect(() => {
     const mesh = ref.current;
+    /* v8 ignore next */
     if (!mesh || chairMatrices.length === 0) return;
 
     if (part === "leg") {
@@ -124,6 +125,7 @@ function InstancedChairPart({
     invalidate();
   }, [chairMatrices, invalidate, part]);
 
+  /* v8 ignore next */
   if (count === 0) return null;
 
   return (

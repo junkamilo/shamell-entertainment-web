@@ -3,12 +3,13 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState, type FormEvent } from "react";
 import { SHAMELL_ADMIN_PATH } from "@/lib/admin/routes";
-import { loginAdminAction } from "../actions/authActions";
+import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
 import {
   ADMIN_ACCESS_TOKEN_KEY,
   notifyAdminSessionChanged,
   persistAdminSessionUser,
 } from "@/lib/admin/session";
+import { postAdminLogin } from "../services/postAdminLogin";
 
 export function useAdminLogin() {
   const router = useRouter();
@@ -25,15 +26,30 @@ export function useAdminLogin() {
       setMessage(null);
       setIsSubmitting(true);
       try {
-        const result = await loginAdminAction(email, password);
-        if (!result.ok) {
-          setError(result.message);
+        const { response, data } = await postAdminLogin(email, password);
+
+        if (!response.ok) {
+          setError(nestApiErrorMessage(data, "Invalid admin credentials."));
           return;
         }
 
-        localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, result.accessToken);
-        if (result.user) {
-          persistAdminSessionUser(result.user);
+        const record =
+          data && typeof data === "object"
+            ? (data as Record<string, unknown>)
+            : {};
+        const accessTokenRaw = record.accessToken;
+        const accessToken =
+          typeof accessTokenRaw === "string" ? accessTokenRaw.trim() : "";
+
+        if (!accessToken) {
+          setError("Invalid admin credentials.");
+          return;
+        }
+
+        localStorage.setItem(ADMIN_ACCESS_TOKEN_KEY, accessToken);
+        const userUnknown = record.user;
+        if (userUnknown && typeof userUnknown === "object" && userUnknown !== null) {
+          persistAdminSessionUser(userUnknown as Record<string, unknown>);
         }
 
         notifyAdminSessionChanged();

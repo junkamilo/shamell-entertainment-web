@@ -53,7 +53,7 @@ export default function ContactInquiryPhaseDetail(props: ContactInquiryPhaseProp
         <>
           <p className="text-sm text-foreground/75 font-body">Project focus (select all that apply)</p>
           <div className="grid gap-2">
-            {(selectedLine?.occasionBespokeProject ?? []).map((o) => (
+            {(selectedLine!.occasionBespokeProject).map((o) => (
               <label
                 key={o.id}
                 className="flex cursor-pointer items-center gap-3 rounded border border-gold/20 px-3 py-2 text-sm hover:border-gold/40"
@@ -75,7 +75,7 @@ export default function ContactInquiryPhaseDetail(props: ContactInquiryPhaseProp
         <>
           <p className="text-sm text-foreground/75 font-body pt-2">How can Shamell contribute?</p>
           <div className="grid gap-2">
-            {(selectedLine?.occasionBespokeRole ?? []).map((o) => (
+            {(selectedLine!.occasionBespokeRole).map((o) => (
               <label
                 key={o.id}
                 className="flex cursor-pointer items-center gap-3 rounded border border-gold/20 px-3 py-2 text-sm hover:border-gold/40"

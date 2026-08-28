@@ -7,11 +7,80 @@ import { makeAdminService } from "../test/fixtures/services.fixture";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
 vi.mock("./ServicesTable", () => ({
-  default: () => <div data-testid="services-table" />,
+  default: ({
+    services,
+    onView,
+    onEdit,
+    onDelete,
+    onToggle,
+    onBlockedDeactivate,
+  }: {
+    services: { id: string }[];
+    onView: (item: { id: string }) => void;
+    onEdit: (item: { id: string }) => void;
+    onDelete: (item: { id: string }) => void;
+    onToggle: (item: { id: string }) => void;
+    onBlockedDeactivate: (item: { id: string }) => void;
+  }) => (
+    <div data-testid="services-table">
+      {services.map((item) => (
+        <div key={item.id}>
+          <button type="button" onClick={() => onView(item)}>
+            table-view
+          </button>
+          <button type="button" onClick={() => onEdit(item)}>
+            table-edit
+          </button>
+          <button type="button" onClick={() => onDelete(item)}>
+            table-delete
+          </button>
+          <button type="button" onClick={() => onToggle(item)}>
+            table-toggle
+          </button>
+          <button type="button" onClick={() => onBlockedDeactivate(item)}>
+            table-blocked
+          </button>
+        </div>
+      ))}
+    </div>
+  ),
 }));
 
 vi.mock("./ServicesMobileCard", () => ({
-  default: () => <div data-testid="services-mobile-card" />,
+  default: ({
+    deactivateBlocked,
+    onView,
+    onEdit,
+    onDelete,
+    onToggle,
+    onBlockedDeactivate,
+  }: {
+    service: { id: string };
+    deactivateBlocked: boolean;
+    onView: () => void;
+    onEdit: () => void;
+    onDelete: () => void;
+    onToggle: () => void;
+    onBlockedDeactivate: () => void;
+  }) => (
+    <div data-testid="services-mobile-card" data-blocked={String(deactivateBlocked)}>
+      <button type="button" onClick={onView}>
+        mobile-view
+      </button>
+      <button type="button" onClick={onEdit}>
+        mobile-edit
+      </button>
+      <button type="button" onClick={onDelete}>
+        mobile-delete
+      </button>
+      <button type="button" onClick={onToggle}>
+        mobile-toggle
+      </button>
+      <button type="button" onClick={onBlockedDeactivate}>
+        mobile-blocked
+      </button>
+    </div>
+  ),
 }));
 
 vi.mock("./ServicesPagination", () => ({
@@ -88,5 +157,60 @@ describe("ServicesListSection", () => {
 
     await user.click(screen.getByRole("button", { name: "stub-next-page" }));
     expect(props.onPageChange).toHaveBeenCalledWith(2);
+  });
+
+  it("shows Refreshing... when loading with existing results", () => {
+    renderSection({ isLoading: true });
+    expect(screen.getByText("Refreshing...")).toBeInTheDocument();
+    expect(screen.getByTestId("services-table")).toBeInTheDocument();
+    expect(screen.getByTestId("services-pagination")).toBeInTheDocument();
+  });
+
+  it("wires mobile card handlers and deactivateBlocked", async () => {
+    const user = userEvent.setup();
+    const service = makeAdminService();
+    const cannotDeactivate = vi.fn(() => true);
+    const { props } = renderSection({
+      filteredServices: [service],
+      paginatedServices: [service],
+      cannotDeactivate,
+    });
+
+    expect(cannotDeactivate).toHaveBeenCalledWith(service);
+    expect(screen.getByTestId("services-mobile-card")).toHaveAttribute(
+      "data-blocked",
+      "true",
+    );
+
+    await user.click(screen.getByRole("button", { name: "mobile-view" }));
+    expect(props.onView).toHaveBeenCalledWith(service);
+    await user.click(screen.getByRole("button", { name: "mobile-edit" }));
+    expect(props.onEdit).toHaveBeenCalledWith(service);
+    await user.click(screen.getByRole("button", { name: "mobile-delete" }));
+    expect(props.onDelete).toHaveBeenCalledWith(service);
+    await user.click(screen.getByRole("button", { name: "mobile-toggle" }));
+    expect(props.onToggle).toHaveBeenCalledWith(service);
+    await user.click(screen.getByRole("button", { name: "mobile-blocked" }));
+    expect(props.onBlockedDeactivate).toHaveBeenCalledWith(service);
+  });
+
+  it("wires table row handlers", async () => {
+    const user = userEvent.setup();
+    const service = makeAdminService();
+    const { props } = renderSection({
+      filteredServices: [service],
+      paginatedServices: [service],
+    });
+
+    await user.click(screen.getByRole("button", { name: "table-view" }));
+    expect(props.onView).toHaveBeenCalledWith(service);
+    await user.click(screen.getByRole("button", { name: "table-edit" }));
+    expect(props.onEdit).toHaveBeenCalledWith(service);
+    await user.click(screen.getByRole("button", { name: "table-delete" }));
+    expect(props.onDelete).toHaveBeenCalledWith(service);
+    await user.click(screen.getByRole("button", { name: "table-toggle" }));
+    expect(props.onToggle).toHaveBeenCalledWith(service);
+    await user.click(screen.getByRole("button", { name: "table-blocked" }));
+    expect(props.onBlockedDeactivate).toHaveBeenCalledWith(service);
   });
 });

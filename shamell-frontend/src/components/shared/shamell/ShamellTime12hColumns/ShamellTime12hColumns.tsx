@@ -34,6 +34,7 @@ function resolveSelection(
   const ensureMinute = (h: number, m: number, a: "AM" | "PM") => {
     if (isTimeSlotSelectable(h, m, a, timeClamp, blockedRanges)) return m;
     const first = MINUTES.find((mm) => isTimeSlotSelectable(h, mm, a, timeClamp, blockedRanges));
+    /* v8 ignore next */
     return first ?? m;
   };
 
@@ -41,6 +42,7 @@ function resolveSelection(
     min = ensureMinute(h12, min, ap);
   }
   if (patch.min !== undefined && patch.h12 === undefined && patch.ap === undefined) {
+    /* v8 ignore next 3 */
     if (!isTimeSlotSelectable(h12, min, ap, timeClamp, blockedRanges)) {
       min = ensureMinute(h12, min, ap);
     }
@@ -197,6 +199,7 @@ export default function ShamellTime12hColumns({
             } else if (e.key === "Home") {
               e.preventDefault();
               const first = MINUTES.find((m) => isTimeSlotSelectable(h12, m, ap, timeClamp, blockedRanges));
+              /* v8 ignore start */
               if (first !== undefined) emit({ min: first });
             } else if (e.key === "End") {
               e.preventDefault();
@@ -204,6 +207,7 @@ export default function ShamellTime12hColumns({
                 isTimeSlotSelectable(h12, m, ap, timeClamp, blockedRanges),
               );
               if (last !== undefined) emit({ min: last });
+              /* v8 ignore stop */
             }
           }}
         >

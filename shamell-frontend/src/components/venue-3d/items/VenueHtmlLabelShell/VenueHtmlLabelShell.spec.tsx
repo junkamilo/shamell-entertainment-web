@@ -30,4 +30,16 @@ describe("VenueHtmlLabelShell", () => {
     );
     expect(screen.getByText("Reserved")).toBeInTheDocument();
   });
+
+  it("hides the speech-bubble tail", () => {
+    render(
+      <VenueHtmlLabelShell
+        label="T1"
+        ariaLabel="Table 1"
+        variant="number"
+        showTail={false}
+      />,
+    );
+    expect(screen.getByText("T1")).toBeInTheDocument();
+  });
 });

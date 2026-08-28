@@ -101,4 +101,19 @@ describe("GalleryCategoriesFormModal", () => {
     renderModal({ isOpen: false });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("shows ellipsis slug when editing id is missing from list", () => {
+    renderModal({
+      editingCategoryId: "missing-id",
+      categoryName: "Ghost",
+    });
+    expect(screen.getByText("/…")).toBeInTheDocument();
+  });
+
+  it("submits when name is present", async () => {
+    const user = userEvent.setup();
+    const { props } = renderModal({ categoryName: "Weddings" });
+    await user.click(screen.getByRole("button", { name: "Create category" }));
+    expect(props.onSubmit).toHaveBeenCalledOnce();
+  });
 });

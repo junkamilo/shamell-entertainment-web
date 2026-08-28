@@ -50,6 +50,30 @@ describe("venueScenePerformance", () => {
           isCoarsePointer: false,
         }),
       ).toBe("mobile");
+      expect(
+        resolveVenuePerfProfile({
+          bucket: "laptop",
+          isPhone: true,
+          isTablet: false,
+          isCoarsePointer: false,
+        }),
+      ).toBe("high");
+      expect(
+        resolveVenuePerfProfile({
+          bucket: "laptop",
+          isPhone: false,
+          isTablet: true,
+          isCoarsePointer: true,
+        }),
+      ).toBe("high");
+      expect(
+        resolveVenuePerfProfile({
+          bucket: "other" as never,
+          isPhone: false,
+          isTablet: false,
+          isCoarsePointer: false,
+        }),
+      ).toBe("high");
     });
   });
 

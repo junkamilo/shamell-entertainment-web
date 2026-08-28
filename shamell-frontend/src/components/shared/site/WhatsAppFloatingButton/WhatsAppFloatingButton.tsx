@@ -18,6 +18,7 @@ function normalizePhoneDigits(raw: string | undefined): string {
 function whatsAppHref(phoneDigits: string, text: string): string {
   const base = `https://wa.me/${phoneDigits}`;
   const msg = text.trim();
+  /* v8 ignore next -- Send is disabled when message is empty */
   if (!msg) return base;
   const params = new URLSearchParams({ text: msg });
   return `${base}?${params.toString()}`;

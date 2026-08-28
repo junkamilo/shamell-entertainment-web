@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useState, type FormEvent } from "react";
-import { forgotPasswordAction } from "../actions/forgotPasswordAction";
+import { nestApiErrorMessage } from "@/lib/nestApiErrorMessage";
+import { requestPasswordReset } from "../services/requestPasswordReset";
+
+const SUCCESS_FALLBACK =
+  "If this email exists, a secure recovery link has been sent.";
 
 export function useForgotPassword() {
   const [email, setEmail] = useState("");
@@ -16,15 +20,43 @@ export function useForgotPassword() {
       setError(null);
       setMessage(null);
       setResetLink(null);
+
+      const trimmed = email.trim();
+      if (!trimmed) {
+        setError("Please enter your email address.");
+        return;
+      }
+
       setIsSubmitting(true);
       try {
-        const result = await forgotPasswordAction(email);
-        if (!result.ok) {
-          setError(result.message);
+        const response = await requestPasswordReset(trimmed);
+        const data: unknown = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          setError(
+            nestApiErrorMessage(
+              data,
+              "Could not process your request. Please try again.",
+            ),
+          );
           return;
         }
-        setMessage(result.message);
-        setResetLink(result.resetLink ?? null);
+
+        const record =
+          data && typeof data === "object"
+            ? (data as Record<string, unknown>)
+            : {};
+        const nextMessage =
+          typeof record.message === "string" && record.message.trim()
+            ? record.message.trim()
+            : SUCCESS_FALLBACK;
+        const resetLinkRaw = record.resetLink;
+        setMessage(nextMessage);
+        setResetLink(
+          typeof resetLinkRaw === "string" && resetLinkRaw.trim()
+            ? resetLinkRaw.trim()
+            : null,
+        );
         setEmail("");
       } catch {
         setError("Cannot reach backend. Ensure API is running.");

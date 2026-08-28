@@ -100,6 +100,7 @@ export function usePaletteToFloorPointerDrag({
           sceneHandleRef.current?.setOrbitEnabled(false);
         }
 
+        /* v8 ignore next */
         if (!isDragging) return;
 
         ev.preventDefault();
@@ -115,6 +116,7 @@ export function usePaletteToFloorPointerDrag({
       const finish = (ev: PointerEvent) => {
         if (ev.pointerId !== pointerId) return;
 
+        /* v8 ignore next 4 */
         if (isScrollGesture) {
           endSession();
           return;

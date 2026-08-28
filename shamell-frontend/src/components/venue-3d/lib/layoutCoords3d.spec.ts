@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { layoutToWorld, worldToLayout } from "./layoutCoords3d";
+import { clientToLayout, layoutToWorld, worldToLayout } from "./layoutCoords3d";
 import { WORLD_DEPTH, WORLD_WIDTH } from "./venueSceneConstants";
 
 const VIEW_W = 1000;
@@ -39,5 +39,12 @@ describe("layoutCoords3d", () => {
       x: VIEW_W - MARGIN,
       y: VIEW_H - MARGIN,
     });
+  });
+
+  it("maps client picks through worldToLayout", () => {
+    const canvas = {} as HTMLCanvasElement;
+    expect(clientToLayout(0, 0, canvas, VIEW_W, VIEW_H, WORLD_WIDTH / 2, WORLD_DEPTH / 2)).toEqual(
+      worldToLayout(WORLD_WIDTH / 2, WORLD_DEPTH / 2, VIEW_W, VIEW_H),
+    );
   });
 });

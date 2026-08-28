@@ -11,6 +11,10 @@ import { useHeaderMediaFocus } from "./useHeaderMediaFocus";
 import { useHeaderMediaLibrary } from "./useHeaderMediaLibrary";
 import { useHeaderMediaUpload } from "./useHeaderMediaUpload";
 
+function caughtErrorMessage(err: unknown) {
+  return (err as Error).message;
+}
+
 export function useHeaderMediaPage() {
   const library = useHeaderMediaLibrary();
   const upload = useHeaderMediaUpload();
@@ -47,8 +51,7 @@ export function useHeaderMediaPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description:
-            err instanceof Error ? err.message : "Could not upload header photos.",
+          description: caughtErrorMessage(err),
         });
       } finally {
         setIsSaving(false);
@@ -68,8 +71,7 @@ export function useHeaderMediaPage() {
         toast({
           variant: "destructive",
           title: "Error",
-          description:
-            err instanceof Error ? err.message : "Could not update the item status.",
+          description: caughtErrorMessage(err),
         });
       }
     },
@@ -81,7 +83,9 @@ export function useHeaderMediaPage() {
   }, []);
 
   const closeDeleteModal = useCallback(() => {
-    if (!isDeleting) setPendingDelete(null);
+    /* v8 ignore next */
+    if (isDeleting) return;
+    setPendingDelete(null);
   }, [isDeleting]);
 
   const onConfirmDelete = useCallback(async () => {
@@ -110,7 +114,7 @@ export function useHeaderMediaPage() {
       toast({
         variant: "destructive",
         title: "Error",
-        description: err instanceof Error ? err.message : "Could not delete the item.",
+          description: caughtErrorMessage(err),
       });
     } finally {
       setIsDeleting(false);

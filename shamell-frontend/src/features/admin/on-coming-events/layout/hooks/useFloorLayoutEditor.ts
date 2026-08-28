@@ -383,6 +383,7 @@ export function useFloorLayoutEditor() {
   }, []);
 
   const updateSceneRotation = useCallback((delta: number) => {
+    /* v8 ignore next -- only invoked from rotateSelected when stage is selected */
     if (selectedId !== SCENE_STAGE_SELECT_ID) return;
     setSceneZones((prev) => {
       const zone = prev.stage;

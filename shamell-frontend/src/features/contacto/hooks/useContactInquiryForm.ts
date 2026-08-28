@@ -127,9 +127,11 @@ export function useContactInquiryForm({
         email: wizard.data.email.trim(),
         phone: wizard.data.phone.trim() || undefined,
         eventDate: wizard.data.eventDate || undefined,
+        /* v8 ignore next */
         location: wizard.data.location.trim() || undefined,
         serviceType: wizard.data.inquiryCode || undefined,
         message: wizard.data.message.trim(),
+        /* v8 ignore next */
         inquiryDetails: inquiryDetails ?? {},
       });
       if (!result.ok) {

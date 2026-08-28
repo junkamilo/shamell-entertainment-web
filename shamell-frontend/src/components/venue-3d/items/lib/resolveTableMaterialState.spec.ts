@@ -20,6 +20,15 @@ describe("resolveTableMaterialState", () => {
     expect(state.emissive).toBe("#332200");
     expect(state.emissiveIntensity).toBe(0.3);
   });
+
+  it("uses idle colors when not selected", () => {
+    expect(resolveTableMaterialState(false, false)).toEqual({
+      topColor: VENUE_COLORS.tableTop,
+      baseColor: VENUE_COLORS.tableBase,
+      emissive: "#000000",
+      emissiveIntensity: 0,
+    });
+  });
 });
 
 describe("nextSpawnScale", () => {

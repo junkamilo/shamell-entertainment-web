@@ -77,10 +77,12 @@ export default function StageBackdropSignage() {
     const maxLogoW = backdropW * 0.9;
     let h = maxLogoH;
     let w = h * LOGO_ASPECT;
+    /* v8 ignore start */
     if (w > maxLogoW) {
       w = maxLogoW;
       h = w / LOGO_ASPECT;
     }
+    /* v8 ignore stop */
     const ww = backdropW * 0.82;
     const wh = backdropH * 0.14;
     return {

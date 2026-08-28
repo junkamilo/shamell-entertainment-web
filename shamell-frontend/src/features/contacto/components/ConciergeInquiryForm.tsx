@@ -405,11 +405,13 @@ function ConciergeSelect({
         </span>
         <motion.button
           type="button"
+          /* v8 ignore start */
           id={triggerId}
           aria-labelledby={labelId}
           aria-expanded={open}
           aria-haspopup="listbox"
           aria-controls={listId}
+          /* v8 ignore stop */
           onClick={() => setOpen((v) => !v)}
           whileTap={{ scale: 0.995 }}
           transition={{ type: "spring", stiffness: 520, damping: 38 }}

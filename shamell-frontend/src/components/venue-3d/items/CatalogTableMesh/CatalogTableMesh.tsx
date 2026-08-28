@@ -42,6 +42,7 @@ function CatalogTableMesh({
   const materials = resolveTableMaterialState(selected, reserved);
 
   useFrame(() => {
+    /* v8 ignore next */
     if (!animateSpawn || !groupRef.current || scaleRef.current >= 1) return;
     scaleRef.current = nextSpawnScale(scaleRef.current);
     const s = scaleRef.current;

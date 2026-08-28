@@ -74,6 +74,7 @@ function HomeButton() {
   return (
     <Link
       href="/"
+      data-testid="payment-confirmation-home"
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-lg border border-gold/35 px-5 py-2.5",
         "font-brand text-xs tracking-[0.14em] text-gold uppercase transition-colors hover:bg-gold/10",
@@ -225,58 +226,62 @@ export function ClassPaymentConfirmationPanel({
   const animatePaid = status === "paid" && !prefersReducedMotion;
 
   return (
-    <ConfirmationPageShell>
-      {status === "loading" ? (
-        <CenteredState showHome={false}>
-          <ShamellLogo pulse />
-          <div className="mt-6 flex items-center justify-center gap-2 text-sm text-foreground/75">
-            <Loader2 className="h-4 w-4 animate-spin text-gold/80" aria-hidden />
-            <span>{loadingMessage}</span>
-          </div>
-        </CenteredState>
-      ) : null}
-
-      {status === "paid" ? (
-        <PaidContent
-          title={paidTitle}
-          subtitle={paidSubtitle}
-          eyebrow={paidEyebrow}
-          sessionRows={sessionRows}
-          paidExtra={paidExtra}
-          animate={animatePaid}
-        />
-      ) : null}
-
-      {status === "pending" ? (
-        <CenteredState showHome>
-          <ShamellLogo />
-          <h2 className="mt-5 font-display text-xl text-gold sm:text-2xl">Almost there</h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-foreground/80 sm:text-base">
-            {pendingMessage}
-          </p>
-          {onRefresh ? (
-            <button
-              type="button"
-              onClick={onRefresh}
-              className="mt-5 rounded-xl border border-gold/30 px-4 py-2 font-brand text-xs tracking-[0.12em] text-gold uppercase transition hover:border-gold/50 hover:bg-gold/10"
-            >
-              Refresh now
-            </button>
+    <div data-testid="payment-confirmation-panel">
+      <ConfirmationPageShell>
+        <div data-testid={`payment-confirmation-${status}`}>
+          {status === "loading" ? (
+            <CenteredState showHome={false}>
+              <ShamellLogo pulse />
+              <div className="mt-6 flex items-center justify-center gap-2 text-sm text-foreground/75">
+                <Loader2 className="h-4 w-4 animate-spin text-gold/80" aria-hidden />
+                <span>{loadingMessage}</span>
+              </div>
+            </CenteredState>
           ) : null}
-        </CenteredState>
-      ) : null}
 
-      {status === "error" ? (
-        <CenteredState showHome>
-          <ShamellLogo />
-          <div className="mx-auto mt-5 flex h-12 w-12 items-center justify-center rounded-full border border-red-400/30 bg-red-950/30">
-            <XCircle className="h-7 w-7 text-red-300" strokeWidth={1.75} aria-hidden />
-          </div>
-          <h2 className="mt-4 font-display text-xl text-red-300 sm:text-2xl">Something went wrong</h2>
-          <p className="mx-auto mt-3 max-w-lg text-sm text-foreground/75 sm:text-base">{errorMessage}</p>
-        </CenteredState>
-      ) : null}
-    </ConfirmationPageShell>
+          {status === "paid" ? (
+            <PaidContent
+              title={paidTitle}
+              subtitle={paidSubtitle}
+              eyebrow={paidEyebrow}
+              sessionRows={sessionRows}
+              paidExtra={paidExtra}
+              animate={animatePaid}
+            />
+          ) : null}
+
+          {status === "pending" ? (
+            <CenteredState showHome>
+              <ShamellLogo />
+              <h2 className="mt-5 font-display text-xl text-gold sm:text-2xl">Almost there</h2>
+              <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-foreground/80 sm:text-base">
+                {pendingMessage}
+              </p>
+              {onRefresh ? (
+                <button
+                  type="button"
+                  onClick={onRefresh}
+                  className="mt-5 rounded-xl border border-gold/30 px-4 py-2 font-brand text-xs tracking-[0.12em] text-gold uppercase transition hover:border-gold/50 hover:bg-gold/10"
+                >
+                  Refresh now
+                </button>
+              ) : null}
+            </CenteredState>
+          ) : null}
+
+          {status === "error" ? (
+            <CenteredState showHome>
+              <ShamellLogo />
+              <div className="mx-auto mt-5 flex h-12 w-12 items-center justify-center rounded-full border border-red-400/30 bg-red-950/30">
+                <XCircle className="h-7 w-7 text-red-300" strokeWidth={1.75} aria-hidden />
+              </div>
+              <h2 className="mt-4 font-display text-xl text-red-300 sm:text-2xl">Something went wrong</h2>
+              <p className="mx-auto mt-3 max-w-lg text-sm text-foreground/75 sm:text-base">{errorMessage}</p>
+            </CenteredState>
+          ) : null}
+        </div>
+      </ConfirmationPageShell>
+    </div>
   );
 }
 

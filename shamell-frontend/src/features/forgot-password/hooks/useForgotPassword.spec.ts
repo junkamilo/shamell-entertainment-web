@@ -2,28 +2,45 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
+import { FIXTURE_USER_EMAIL } from "../test/fixtures/uuids.fixture";
 
-const forgotPasswordActionMock = vi.fn();
+const requestPasswordResetMock = vi.fn();
 
-vi.mock("../actions/forgotPasswordAction", () => ({
-  forgotPasswordAction: (...args: unknown[]) =>
-    forgotPasswordActionMock(...args),
+vi.mock("../services/requestPasswordReset", () => ({
+  requestPasswordReset: (...args: unknown[]) =>
+    requestPasswordResetMock(...args),
 }));
 
 import { useForgotPassword } from "./useForgotPassword";
-import { FIXTURE_USER_EMAIL } from "../test/fixtures/uuids.fixture";
-import { makeDevResetLink } from "../test/helpers/mockForgotPassword";
+
+function makeEvent(): React.FormEvent<HTMLFormElement> {
+  return {
+    preventDefault: vi.fn(),
+  } as unknown as React.FormEvent<HTMLFormElement>;
+}
 
 describe("useForgotPassword", () => {
   beforeEach(() => {
-    forgotPasswordActionMock.mockReset();
+    requestPasswordResetMock.mockReset();
   });
 
-  it("submits email and stores success message + resetLink", async () => {
-    forgotPasswordActionMock.mockResolvedValue({
+  it("rejects empty email without calling the API", async () => {
+    const { result } = renderHook(() => useForgotPassword());
+
+    await act(async () => {
+      await result.current.onSubmit(makeEvent());
+    });
+
+    expect(requestPasswordResetMock).not.toHaveBeenCalled();
+    expect(result.current.error).toBe("Please enter your email address.");
+  });
+
+  it("onSubmit success sets message and clears email", async () => {
+    requestPasswordResetMock.mockResolvedValue({
       ok: true,
-      message: "Link sent.",
-      resetLink: makeDevResetLink(),
+      json: async () => ({
+        message: "If this email exists, a secure recovery link has been sent.",
+      }),
     });
 
     const { result } = renderHook(() => useForgotPassword());
@@ -33,49 +50,53 @@ describe("useForgotPassword", () => {
     });
 
     await act(async () => {
-      await result.current.onSubmit({
-        preventDefault: vi.fn(),
-      } as unknown as React.FormEvent<HTMLFormElement>);
-    });
-
-    expect(forgotPasswordActionMock).toHaveBeenCalledWith(FIXTURE_USER_EMAIL);
-    expect(result.current.message).toBe("Link sent.");
-    expect(result.current.resetLink).toBe(makeDevResetLink());
-    expect(result.current.email).toBe("");
-    expect(result.current.isSubmitting).toBe(false);
-  });
-
-  it("stores error when action fails", async () => {
-    forgotPasswordActionMock.mockResolvedValue({
-      ok: false,
-      message: "Please enter your email address.",
-    });
-
-    const { result } = renderHook(() => useForgotPassword());
-
-    await act(async () => {
-      await result.current.onSubmit({
-        preventDefault: vi.fn(),
-      } as unknown as React.FormEvent<HTMLFormElement>);
-    });
-
-    expect(result.current.error).toBe("Please enter your email address.");
-    expect(result.current.message).toBeNull();
-  });
-
-  it("stores offline error when action throws", async () => {
-    forgotPasswordActionMock.mockRejectedValue(new Error("network"));
-
-    const { result } = renderHook(() => useForgotPassword());
-
-    await act(async () => {
-      await result.current.onSubmit({
-        preventDefault: vi.fn(),
-      } as unknown as React.FormEvent<HTMLFormElement>);
+      await result.current.onSubmit(makeEvent());
     });
 
     await waitFor(() => {
-      expect(result.current.error).toMatch(/Cannot reach backend/);
+      expect(result.current.message).toMatch(/secure recovery link/i);
+    });
+    expect(requestPasswordResetMock).toHaveBeenCalledWith(FIXTURE_USER_EMAIL);
+    expect(result.current.email).toBe("");
+    expect(result.current.error).toBeNull();
+  });
+
+  it("onSubmit failure sets error from API", async () => {
+    requestPasswordResetMock.mockResolvedValue({
+      ok: false,
+      json: async () => ({ message: "Rate limited." }),
+    });
+
+    const { result } = renderHook(() => useForgotPassword());
+
+    act(() => {
+      result.current.setEmail(FIXTURE_USER_EMAIL);
+    });
+
+    await act(async () => {
+      await result.current.onSubmit(makeEvent());
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toBe("Rate limited.");
+    });
+  });
+
+  it("onSubmit network error sets reachability message", async () => {
+    requestPasswordResetMock.mockRejectedValue(new Error("network"));
+
+    const { result } = renderHook(() => useForgotPassword());
+
+    act(() => {
+      result.current.setEmail(FIXTURE_USER_EMAIL);
+    });
+
+    await act(async () => {
+      await result.current.onSubmit(makeEvent());
+    });
+
+    await waitFor(() => {
+      expect(result.current.error).toMatch(/Cannot reach backend/i);
     });
   });
 });

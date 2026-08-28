@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { AGENDAR_PATH } from "./e2eConstants";
+import { AGENDAR_PATH } from "../../constants";
 
 test.describe("Agendar — class enrollment flow", () => {
   test.beforeEach(() => {
@@ -16,6 +16,8 @@ test.describe("Agendar — class enrollment flow", () => {
 
   test("can open class tab with bookable events list", async ({ page }) => {
     await page.goto(`${AGENDAR_PATH}?mode=class`);
-    await expect(page.getByTestId("agendar-class-panel")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("agendar-class-panel")).toBeVisible({
+      timeout: 20_000,
+    });
   });
 });

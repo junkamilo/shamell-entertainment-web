@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { test as setup, expect } from "@playwright/test";
-import { ADMIN_ACCESS_TOKEN_KEY, ADMIN_USER_KEY } from "./e2eConstants";
+import { ADMIN_ACCESS_TOKEN_KEY, ADMIN_USER_KEY } from "./constants";
 
 const authDir = path.join(__dirname, ".auth");
 const authFile = path.join(authDir, "admin.json");
@@ -22,10 +22,9 @@ setup("authenticate admin", async ({ page, baseURL }) => {
     return;
   }
 
-  const backend = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(
-    /\/$/,
-    "",
-  );
+  const backend = (
+    process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001"
+  ).replace(/\/$/, "");
 
   const response = await fetch(`${backend}/api/v1/auth/admin/login`, {
     method: "POST",

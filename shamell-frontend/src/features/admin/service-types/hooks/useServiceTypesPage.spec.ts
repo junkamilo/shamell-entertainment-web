@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
-import { makeServiceTypesApiPayload } from "../test/fixtures/serviceTypes.fixture";
+import { makeServiceTypeItem, makeServiceTypesApiPayload } from "../test/fixtures/serviceTypes.fixture";
 import {
   FIXTURE_SERVICE_TYPE_ID,
   FIXTURE_SERVICE_TYPE_ID_2,
@@ -162,5 +162,158 @@ describe("useServiceTypesPage", () => {
     expect(toastMock).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Type deleted" }),
     );
+  });
+
+  it("closes the modal and ignores blocked delete/deactivate", async () => {
+    const { result } = renderHook(() => useServiceTypesPage());
+    await waitFor(() => expect(result.current.list.isLoading).toBe(false));
+    act(() => {
+      result.current.openCreateModal();
+      result.current.closeModal();
+    });
+    expect(result.current.isModalOpen).toBe(false);
+    const blocked = makeServiceTypeItem({ isActive: true, serviceCount: 2 });
+    await act(async () => {
+      await result.current.onToggleActive(blocked);
+    });
+    act(() => {
+      result.current.openDeleteConfirm(blocked);
+    });
+    expect(result.current.pendingDelete).toBeNull();
+    await act(async () => {
+      await result.current.onConfirmDelete();
+    });
+    act(() => {
+      result.current.closeDeleteModal();
+    });
+  });
+
+  it("toasts unsigned/invalid submit then updates and hides", async () => {
+    const { result } = renderHook(() => useServiceTypesPage());
+    await waitFor(() => expect(result.current.list.isLoading).toBe(false));
+    const event = { preventDefault: vi.fn() } as unknown as React.FormEvent<HTMLFormElement>;
+
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Sign-in required" }),
+    );
+
+    getTokenMock.mockReturnValue("token-1");
+    act(() => {
+      result.current.openCreateModal();
+    });
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Check the form" }),
+    );
+
+    const item = result.current.list.types[0]!;
+    act(() => {
+      result.current.startEdit(item);
+      result.current.form.setName(`${item.name} plus`);
+    });
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Type updated" }),
+    );
+
+    await act(async () => {
+      await result.current.onToggleActive(item);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Type hidden" }),
+    );
+  });
+
+  it("toasts errors and resets the form when activating the edited row", async () => {
+    const { result } = renderHook(() => useServiceTypesPage());
+    await waitFor(() => expect(result.current.list.isLoading).toBe(false));
+    const event = { preventDefault: vi.fn() } as unknown as React.FormEvent<HTMLFormElement>;
+
+    server.use(http.post("*/api/v1/services/types/admin", () => HttpResponse.error()));
+    act(() => {
+      result.current.openCreateModal();
+      result.current.form.setName("Offline type");
+    });
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Offline" }));
+
+    server.use(
+      http.post("*/api/v1/services/types/admin", () =>
+        HttpResponse.json({ message: "Nope" }, { status: 500 }),
+      ),
+    );
+    act(() => {
+      result.current.openCreateModal();
+      result.current.form.setName("Broken type");
+    });
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Error" }));
+
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onToggleActive(result.current.list.types[0]!);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Sign-in required" }),
+    );
+
+    getTokenMock.mockReturnValue("token-1");
+    server.use(
+      http.patch("*/api/v1/services/types/admin/:id", () =>
+        HttpResponse.json({ message: "Nope" }, { status: 500 }),
+      ),
+    );
+    await act(async () => {
+      await result.current.onToggleActive(result.current.list.types[0]!);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Error" }));
+
+    server.use(
+      http.patch("*/api/v1/services/types/admin/:id", () => HttpResponse.json({ ok: true })),
+    );
+    const inactive = result.current.list.types.find((r) => r.id === FIXTURE_SERVICE_TYPE_ID_2)!;
+    act(() => {
+      result.current.startEdit(inactive);
+    });
+    await act(async () => {
+      await result.current.onToggleActive(inactive);
+    });
+
+    act(() => {
+      result.current.startEdit(result.current.list.types[0]!);
+      result.current.openDeleteConfirm(result.current.list.types[0]!);
+    });
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onConfirmDelete();
+    });
+    getTokenMock.mockReturnValue("token-1");
+    server.use(
+      http.delete("*/api/v1/services/types/admin/:id", () =>
+        HttpResponse.json({ message: "locked" }, { status: 500 }),
+      ),
+    );
+    await act(async () => {
+      await result.current.onConfirmDelete();
+    });
+    server.use(
+      http.delete("*/api/v1/services/types/admin/:id", () => HttpResponse.json({ ok: true })),
+    );
+    await act(async () => {
+      await result.current.onConfirmDelete();
+    });
+    expect(result.current.isModalOpen).toBe(false);
   });
 });

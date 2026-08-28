@@ -101,4 +101,11 @@ describe("OccasionTypesFormModal", () => {
     renderModal({ isOpen: false });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("submits when Create is clicked", async () => {
+    const user = userEvent.setup();
+    const { props } = renderModal({ name: "Birthday", canSubmit: true });
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(props.onSubmit).toHaveBeenCalledOnce();
+  });
 });

@@ -3,9 +3,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
+const zones = vi.hoisted(() => ({
+  stage: { x: 12, z: 11, rotationY: 0 } as
+    | { x: number; z: number; rotationY: number }
+    | undefined,
+}));
+
 vi.mock("../../scene/FloorSceneZonesContext", () => ({
   useFloorSceneZones: () => ({
-    stage: { x: 12, z: 11, rotationY: 0 },
+    stage: zones.stage,
     carpet: { x: 12, z: 11, rotationY: 0 },
   }),
 }));
@@ -27,7 +33,13 @@ import VenueStage from "./VenueStage";
 
 describe("VenueStage", () => {
   it("mounts corner plants in stage composition", () => {
+    zones.stage = { x: 12, z: 11, rotationY: 0 };
     render(<VenueStage />);
     expect(screen.getByTestId("corner-plants")).toBeInTheDocument();
+  });
+
+  it("falls back to default stage pose", () => {
+    zones.stage = undefined;
+    expect(() => render(<VenueStage />)).not.toThrow();
   });
 });

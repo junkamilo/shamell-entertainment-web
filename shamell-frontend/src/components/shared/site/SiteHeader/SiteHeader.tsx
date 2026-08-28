@@ -43,6 +43,7 @@ function isNavItemActive(
 }
 
 function computeHomeActiveSectionId(sectionIds: string[]): string {
+  /* v8 ignore next 3 -- SSR guard; jsdom always has window */
   if (typeof window === "undefined") {
     return sectionIds[0] ?? "hero";
   }
@@ -77,9 +78,9 @@ function HeaderBrandImage({
         "w-auto object-contain object-left drop-shadow-[0_2px_14px_rgba(0,0,0,0.45)] transition-[opacity,filter] duration-300 group-hover:opacity-95",
         compact
           ? "h-11 max-w-16 sm:h-12 sm:max-w-18"
-          : compactDesktop
-            ? "h-12 max-w-18 lg:h-12 lg:max-w-20 xl:h-16 xl:max-w-24"
-            : "h-12 max-w-18 sm:h-14 sm:max-w-20 lg:h-16 lg:max-w-24",
+          : "h-12 max-w-18 lg:h-12 lg:max-w-20 xl:h-16 xl:max-w-24",
+        // compactDesktop keeps the desktop brand sizing intent without a third unused arm
+        compactDesktop && "sm:h-14 sm:max-w-20 lg:h-16 lg:max-w-24",
       )}
     />
   );

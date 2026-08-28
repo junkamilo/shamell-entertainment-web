@@ -63,8 +63,10 @@ export function RecurringClassBulkSectionsEditor({
   };
 
   const addSection = () => {
-    const nextSort =
-      blueprint.length > 0 ? Math.max(...blueprint.map((s) => s.sortOrder)) + 1 : 0;
+    let nextSort = 0;
+    if (blueprint.length > 0) {
+      nextSort = Math.max(...blueprint.map((s) => s.sortOrder)) + 1;
+    }
     const times = suggestNextSectionTimes(blueprint);
     onBlueprintChange([
       ...blueprint,

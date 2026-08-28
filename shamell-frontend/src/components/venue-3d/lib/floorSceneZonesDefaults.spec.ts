@@ -29,6 +29,14 @@ describe("floorSceneZonesDefaults", () => {
     expect(merged.stage.x).toBe(DEFAULT_FLOOR_SCENE_ZONES.stage.x);
     expect(merged.stage.z).toBe(5);
     expect(merged.stage.rotationY).toBe(DEFAULT_FLOOR_SCENE_ZONES.stage.rotationY);
+    expect(mergeFloorSceneZones({ stage: null }).stage).toEqual(
+      DEFAULT_FLOOR_SCENE_ZONES.stage,
+    );
+    expect(
+      mergeFloorSceneZones({
+        stage: { x: 1, z: "nope", rotationY: 0 },
+      }).stage.z,
+    ).toBe(DEFAULT_FLOOR_SCENE_ZONES.stage.z);
   });
 
   it("recognizes only stage scene select id as editable", () => {
