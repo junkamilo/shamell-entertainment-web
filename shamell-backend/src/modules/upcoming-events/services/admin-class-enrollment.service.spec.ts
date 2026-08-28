@@ -16,6 +16,9 @@ import {
   makeFutureClassSessionStub,
   makeMonthPackageVenueConfigStub,
   makeUpcomingClassSessionStub,
+  futureDifferentCalendarDaySessions,
+  futureSameCalendarDaySessions,
+  futureSessionUtcWindow,
 } from '../__mocks__/upcoming-events.fixtures';
 import { currentCalendarMonthIso } from '../utils/class-month-package.util';
 import {
@@ -76,10 +79,14 @@ describe('AdminClassEnrollmentService', () => {
   }
 
   function makeSameDayBundleSessions() {
+    const [first, second] = futureSameCalendarDaySessions({
+      firstStartHourUtc: 14,
+      gapHours: 3,
+    });
     const session1 = makeFutureClassSessionStub({
       id: 'session-a',
-      startsAt: new Date('2026-08-15T14:00:00.000Z'),
-      endsAt: new Date('2026-08-15T15:00:00.000Z'),
+      startsAt: first.startsAt,
+      endsAt: first.endsAt,
       section: null,
       weekday: 5,
       price: 50,
@@ -88,8 +95,8 @@ describe('AdminClassEnrollmentService', () => {
     });
     const session2 = makeFutureClassSessionStub({
       id: 'session-b',
-      startsAt: new Date('2026-08-15T18:00:00.000Z'),
-      endsAt: new Date('2026-08-15T19:00:00.000Z'),
+      startsAt: second.startsAt,
+      endsAt: second.endsAt,
       section: null,
       weekday: 5,
       price: 50,
@@ -794,10 +801,11 @@ describe('AdminClassEnrollmentService', () => {
     });
 
     it('createAdminClassCashEnrollment throws BadRequest when day_bundle sessions span days', async () => {
+      const [dayOne, dayTwo] = futureDifferentCalendarDaySessions();
       const session1 = makeFutureClassSessionStub({
         id: 'session-a',
-        startsAt: new Date('2026-08-15T14:00:00.000Z'),
-        endsAt: new Date('2026-08-15T15:00:00.000Z'),
+        startsAt: dayOne.startsAt,
+        endsAt: dayOne.endsAt,
         section: null,
         weekday: 5,
         price: 50,
@@ -806,8 +814,8 @@ describe('AdminClassEnrollmentService', () => {
       });
       const session2 = makeFutureClassSessionStub({
         id: 'session-b',
-        startsAt: new Date('2026-08-16T14:00:00.000Z'),
-        endsAt: new Date('2026-08-16T15:00:00.000Z'),
+        startsAt: dayTwo.startsAt,
+        endsAt: dayTwo.endsAt,
         section: null,
         weekday: 6,
         price: 50,
@@ -835,10 +843,11 @@ describe('AdminClassEnrollmentService', () => {
 
   describe('session_cart cash enrollment', () => {
     it('createAdminClassCashEnrollment allows sessions across multiple days', async () => {
+      const [dayOne, dayTwo] = futureDifferentCalendarDaySessions();
       const session1 = makeFutureClassSessionStub({
         id: 'session-a',
-        startsAt: new Date('2026-08-15T14:00:00.000Z'),
-        endsAt: new Date('2026-08-15T15:00:00.000Z'),
+        startsAt: dayOne.startsAt,
+        endsAt: dayOne.endsAt,
         section: null,
         weekday: 5,
         price: 40,
@@ -847,8 +856,8 @@ describe('AdminClassEnrollmentService', () => {
       });
       const session2 = makeFutureClassSessionStub({
         id: 'session-b',
-        startsAt: new Date('2026-08-16T14:00:00.000Z'),
-        endsAt: new Date('2026-08-16T15:00:00.000Z'),
+        startsAt: dayTwo.startsAt,
+        endsAt: dayTwo.endsAt,
         section: null,
         weekday: 6,
         price: 60,
@@ -944,10 +953,12 @@ describe('AdminClassEnrollmentService', () => {
 
     it('createAdminClassCashEnrollment creates PAID package for current month sessions', async () => {
       const currentMonthIso = currentCalendarMonthIso(NY_TIMEZONE);
+      const monthSession1Window = futureSessionUtcWindow(1, 14, 2);
+      const monthSession2Window = futureSessionUtcWindow(2, 14, 2);
       const monthSession1 = makeFutureClassSessionStub({
         id: 'month-s1',
-        startsAt: new Date('2026-08-20T14:00:00.000Z'),
-        endsAt: new Date('2026-08-20T16:00:00.000Z'),
+        startsAt: monthSession1Window.startsAt,
+        endsAt: monthSession1Window.endsAt,
         section: null,
         weekday: 4,
         price: 50,
@@ -956,8 +967,8 @@ describe('AdminClassEnrollmentService', () => {
       });
       const monthSession2 = makeFutureClassSessionStub({
         id: 'month-s2',
-        startsAt: new Date('2026-08-27T14:00:00.000Z'),
-        endsAt: new Date('2026-08-27T16:00:00.000Z'),
+        startsAt: monthSession2Window.startsAt,
+        endsAt: monthSession2Window.endsAt,
         section: null,
         weekday: 4,
         price: 50,

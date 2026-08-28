@@ -13,6 +13,8 @@ import {
   makeFixedPublicCheckoutVenueStub,
   makeFixedTicketEventStub,
   makeMonthPackageVenueEnabledStub,
+  futureDifferentCalendarDaySessions,
+  futureSameCalendarDaySessions,
 } from '../__mocks__/upcoming-events.fixtures';
 import {
   createUpcomingEventsCheckoutServiceTestModule,
@@ -224,19 +226,20 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
 
   describe('createClassBundleCheckout', () => {
     function twoSameDaySessions() {
-      const startsAt = new Date('2026-08-15T15:00:00.000Z');
-      const endsAt = new Date('2026-08-15T16:00:00.000Z');
+      const [first, second] = futureSameCalendarDaySessions({
+        firstStartHourUtc: 15,
+      });
       return [
         makeCheckoutClassSessionStub({
           id: 'session-1',
-          startsAt,
-          endsAt,
+          startsAt: first.startsAt,
+          endsAt: first.endsAt,
           price: 40,
         }),
         makeCheckoutClassSessionStub({
           id: 'session-2',
-          startsAt: new Date('2026-08-15T17:00:00.000Z'),
-          endsAt: new Date('2026-08-15T18:00:00.000Z'),
+          startsAt: second.startsAt,
+          endsAt: second.endsAt,
           price: 40,
           weekday: 1,
         }),
@@ -319,19 +322,20 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
     });
 
     it('rejects sessions on different calendar days', async () => {
+      const [dayOne, dayTwo] = futureDifferentCalendarDaySessions();
       repository.findPublicUpcomingBySlug.mockResolvedValue(
         makeClassesPublicEventStub(),
       );
       repository.findActiveClassSessionsByIdsForEvent.mockResolvedValue([
         makeCheckoutClassSessionStub({
           id: 'session-1',
-          startsAt: new Date('2026-08-15T15:00:00.000Z'),
-          endsAt: new Date('2026-08-15T16:00:00.000Z'),
+          startsAt: dayOne.startsAt,
+          endsAt: dayOne.endsAt,
         }),
         makeCheckoutClassSessionStub({
           id: 'session-2',
-          startsAt: new Date('2026-08-16T15:00:00.000Z'),
-          endsAt: new Date('2026-08-16T16:00:00.000Z'),
+          startsAt: dayTwo.startsAt,
+          endsAt: dayTwo.endsAt,
         }),
       ]);
       await expect(
@@ -340,6 +344,9 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
     });
 
     it('rejects invalid bundle total', async () => {
+      const [first, second] = futureSameCalendarDaySessions({
+        firstStartHourUtc: 15,
+      });
       repository.findPublicUpcomingBySlug.mockResolvedValue(
         makeClassesPublicEventStub(),
       );
@@ -347,14 +354,14 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
         makeCheckoutClassSessionStub({
           id: 'session-1',
           price: 0.1,
-          startsAt: new Date('2026-08-15T15:00:00.000Z'),
-          endsAt: new Date('2026-08-15T16:00:00.000Z'),
+          startsAt: first.startsAt,
+          endsAt: first.endsAt,
         }),
         makeCheckoutClassSessionStub({
           id: 'session-2',
           price: 0.1,
-          startsAt: new Date('2026-08-15T17:00:00.000Z'),
-          endsAt: new Date('2026-08-15T18:00:00.000Z'),
+          startsAt: second.startsAt,
+          endsAt: second.endsAt,
         }),
       ]);
       await expect(
@@ -387,18 +394,19 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
     };
 
     function twoDifferentDaySessions() {
+      const [dayOne, dayTwo] = futureDifferentCalendarDaySessions();
       return [
         makeCheckoutClassSessionStub({
           id: 'session-1',
-          startsAt: new Date('2026-08-18T12:00:00.000Z'),
-          endsAt: new Date('2026-08-18T13:00:00.000Z'),
+          startsAt: dayOne.startsAt,
+          endsAt: dayOne.endsAt,
           price: 25,
           weekday: 2,
         }),
         makeCheckoutClassSessionStub({
           id: 'session-2',
-          startsAt: new Date('2026-08-19T12:00:00.000Z'),
-          endsAt: new Date('2026-08-19T13:00:00.000Z'),
+          startsAt: dayTwo.startsAt,
+          endsAt: dayTwo.endsAt,
           price: 25,
           weekday: 3,
         }),

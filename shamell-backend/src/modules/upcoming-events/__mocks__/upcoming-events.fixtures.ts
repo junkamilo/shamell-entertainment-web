@@ -8,11 +8,12 @@ import {
 export function makeUpcomingClassSessionStub(
   overrides: Record<string, unknown> = {},
 ) {
+  const { startsAt, endsAt } = futureSessionUtcWindow();
   return {
     id: 'session-1',
     eventId: 'event-1',
-    startsAt: new Date('2026-08-01T15:00:00.000Z'),
-    endsAt: new Date('2026-08-01T16:00:00.000Z'),
+    startsAt,
+    endsAt,
     timezone: 'America/New_York',
     capacity: 20,
     price: 50,
@@ -23,6 +24,49 @@ export function makeUpcomingClassSessionStub(
     sectionId: 'section-1',
     ...overrides,
   };
+}
+
+/** UTC session window N days ahead (stable for "not ended" checkout tests). */
+export function futureSessionUtcWindow(
+  daysFromNow = 14,
+  startHourUtc = 15,
+  durationHours = 1,
+): { startsAt: Date; endsAt: Date } {
+  const startsAt = new Date(Date.now() + daysFromNow * 86_400_000);
+  startsAt.setUTCHours(startHourUtc, 0, 0, 0);
+  const endsAt = new Date(startsAt.getTime() + durationHours * 3_600_000);
+  return { startsAt, endsAt };
+}
+
+/** Two future sessions on the same UTC calendar day. */
+export function futureSameCalendarDaySessions(options?: {
+  daysFromNow?: number;
+  firstStartHourUtc?: number;
+  gapHours?: number;
+}): [{ startsAt: Date; endsAt: Date }, { startsAt: Date; endsAt: Date }] {
+  const daysFromNow = options?.daysFromNow ?? 14;
+  const first = futureSessionUtcWindow(
+    daysFromNow,
+    options?.firstStartHourUtc ?? 15,
+    1,
+  );
+  const secondStart = new Date(
+    first.endsAt.getTime() + (options?.gapHours ?? 1) * 3_600_000,
+  );
+  const secondEnd = new Date(secondStart.getTime() + 3_600_000);
+  return [
+    { startsAt: first.startsAt, endsAt: first.endsAt },
+    { startsAt: secondStart, endsAt: secondEnd },
+  ];
+}
+
+/** Two future sessions on different UTC calendar days. */
+export function futureDifferentCalendarDaySessions(options?: {
+  daysFromNow?: number;
+}): [{ startsAt: Date; endsAt: Date }, { startsAt: Date; endsAt: Date }] {
+  const day1 = futureSessionUtcWindow(options?.daysFromNow ?? 14, 12, 1);
+  const day2 = futureSessionUtcWindow((options?.daysFromNow ?? 14) + 1, 12, 1);
+  return [day1, day2];
 }
 
 export function makeClassEnrollmentStub(
