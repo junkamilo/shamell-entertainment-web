@@ -16,8 +16,6 @@ import {
   makeFutureClassSessionStub,
   makeMonthPackageVenueConfigStub,
   makeUpcomingClassSessionStub,
-  futureDifferentCalendarDaySessions,
-  futureSameCalendarDaySessions,
   futureSessionUtcWindow,
 } from '../__mocks__/upcoming-events.fixtures';
 import { currentCalendarMonthIso } from '../utils/class-month-package.util';
