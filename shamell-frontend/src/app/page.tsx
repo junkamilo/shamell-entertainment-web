@@ -27,7 +27,7 @@ export default async function Home() {
   return (
     <main className="relative z-10 min-h-screen text-foreground">
       <HomeSectionHashScroll />
-      <SiteHeader />
+      <SiteHeader initialOnComingSettings={onComingSettings} />
       <HeroSection initialPhotos={headerPhotos} initialHeaderText={headerText} />
       <ExperiencesSection />
       <ServicesSection />

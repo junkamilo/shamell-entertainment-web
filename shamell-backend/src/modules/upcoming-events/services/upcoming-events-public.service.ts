@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  FixedTicketMode,
   ReservationEventScheduleMode,
   UpcomingExperienceType,
 } from '@prisma/client';
@@ -18,6 +19,7 @@ import { resolveUpcomingPurchaseContext } from '../utils/upcoming-purchase-mode.
 import {
   fixedEventStartsAtIso,
   fixedTicketPublicStats,
+  getFixedTicketInventory,
 } from '../utils/upcoming-fixed-ticket.util';
 import { venueTablePublicStats } from '../utils/upcoming-venue-table.util';
 import {
@@ -30,12 +32,19 @@ import {
   mapPublicSummary,
   mapSessionPublic,
 } from '../utils/upcoming-events-mapper.util';
+import { UpcomingFixedEventPackagesRepository } from '../packages/upcoming-fixed-event-packages.repository';
+import {
+  mapActivityPublic,
+  mapPackagePublic,
+} from '../packages/util/fixed-event-package.mapper';
+import type { FixedEventPackagePublicDto } from '../packages/util/fixed-event-package.mapper';
 
 @Injectable()
 export class UpcomingEventsPublicService {
   constructor(
     private readonly repository: UpcomingEventsRepository,
     private readonly venueConfigService: UpcomingEventsVenueConfigService,
+    private readonly packagesRepository: UpcomingFixedEventPackagesRepository,
   ) {}
 
   private get prisma() {
@@ -85,26 +94,62 @@ export class UpcomingEventsPublicService {
       hasActiveSessions = sessions.length > 0;
     }
 
+    let ticketMode: 'SINGLE' | 'PACKAGES' = 'SINGLE';
+    let packagesPublic: FixedEventPackagePublicDto[] = [];
+    let activitiesPublic: ReturnType<typeof mapActivityPublic>[] = [];
+
     const templateScheduleMode =
       venueConfigRow?.reservationEventTemplate?.scheduleMode ?? null;
     const clientEnabled = venueConfigRow?.clientEnabled ?? false;
+    const fixedTicketMode =
+      venueConfigRow?.fixedTicketMode ?? FixedTicketMode.SINGLE;
+
     if (
       templateScheduleMode === ReservationEventScheduleMode.FIXED_EVENT &&
-      !clientEnabled &&
-      venueConfigRow?.fixedTicketCapacity != null &&
-      venueConfigRow.fixedTicketCapacity >= 1
+      !clientEnabled
     ) {
-      fixedTicketCapacity = venueConfigRow.fixedTicketCapacity;
-      const stats = await fixedTicketPublicStats(
-        this.prisma,
-        event.id,
-        venueConfigRow.fixedTicketCapacity,
-      );
-      ticketsRemaining = stats.ticketsRemaining;
-      ticketsSold = stats.ticketsSold;
       eventStartsAt = fixedEventStartsAtIso(
-        venueConfigRow.reservationEventDate,
+        venueConfigRow?.reservationEventDate,
       );
+
+      if (fixedTicketMode === FixedTicketMode.PACKAGES) {
+        ticketMode = 'PACKAGES';
+        const inventory = await getFixedTicketInventory(this.prisma, event.id, {
+          fixedTicketMode: FixedTicketMode.PACKAGES,
+          fixedTicketCapacity: null,
+        });
+        ticketsRemaining = inventory.total.remaining;
+        ticketsSold = inventory.total.sold;
+
+        const [activities, packages] = await Promise.all([
+          this.packagesRepository.listActiveActivitiesByEvent(event.id),
+          this.packagesRepository.listPackagesByEvent(event.id, true),
+        ]);
+        activitiesPublic = activities.map(mapActivityPublic);
+        packagesPublic = packages.map((pkg) =>
+          mapPackagePublic(
+            pkg,
+            inventory.byPackage.get(pkg.id) ?? {
+              blocking: 0,
+              remaining: pkg.capacity,
+              sold: 0,
+              capacity: pkg.capacity,
+            },
+          ),
+        );
+      } else if (
+        venueConfigRow?.fixedTicketCapacity != null &&
+        venueConfigRow.fixedTicketCapacity >= 1
+      ) {
+        fixedTicketCapacity = venueConfigRow.fixedTicketCapacity;
+        const stats = await fixedTicketPublicStats(
+          this.prisma,
+          event.id,
+          venueConfigRow.fixedTicketCapacity,
+        );
+        ticketsRemaining = stats.ticketsRemaining;
+        ticketsSold = stats.ticketsSold;
+      }
     }
 
     if (
@@ -148,6 +193,8 @@ export class UpcomingEventsPublicService {
       hasActiveSessions,
       fixedTicketCapacity,
       ticketsRemaining,
+      ticketMode,
+      packages: packagesPublic,
     });
 
     const scheduleTimezone =
@@ -199,11 +246,14 @@ export class UpcomingEventsPublicService {
       salesOpen: purchaseCtx.salesOpen,
       purchasable: purchaseCtx.purchasable,
       purchaseMode: purchaseCtx.purchaseMode,
+      ticketMode: purchaseCtx.ticketMode,
       sessions,
       ...(monthPackage ? { monthPackage } : {}),
       ...(ticketsRemaining !== undefined ? { ticketsRemaining } : {}),
       ...(fixedTicketCapacity != null ? { fixedTicketCapacity } : {}),
       ...(ticketsSold !== undefined ? { ticketsSold } : {}),
+      ...(packagesPublic.length > 0 ? { packages: packagesPublic } : {}),
+      ...(activitiesPublic.length > 0 ? { activities: activitiesPublic } : {}),
       ...(eventStartsAt != null ? { eventStartsAt } : {}),
       ...(tableCapacity !== undefined ? { tableCapacity } : {}),
       ...(tablesRemaining !== undefined ? { tablesRemaining } : {}),

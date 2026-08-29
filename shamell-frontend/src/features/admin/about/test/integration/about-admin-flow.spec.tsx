@@ -2,8 +2,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useEffect } from "react";
-import { screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
 import { renderWithProviders } from "../utils/renderWithProviders";
@@ -64,13 +63,16 @@ function AboutEditFlow({ onSaved }: { onSaved: () => Promise<void> }) {
   );
 }
 
+function fillLabeledField(label: RegExp, value: string) {
+  fireEvent.change(screen.getByLabelText(label), { target: { value } });
+}
+
 describe("about admin edit flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("edits fields and PATCHes the admin about API", async () => {
-    const user = userEvent.setup();
     let received: FormData | null = null;
     server.use(
       http.patch("*/api/v1/about/admin", async ({ request }) => {
@@ -89,18 +91,11 @@ describe("about admin edit flow", () => {
     renderWithProviders(<AboutEditFlow onSaved={onSaved} />);
 
     const title = await screen.findByLabelText(/title/i);
-    await user.clear(title);
-    await user.type(title, "Updated About");
+    fillLabeledField(/title/i, "Updated About");
+    fillLabeledField(/texto principal/i, "Updated body");
+    fillLabeledField(/values/i, "Craft\nPresence");
 
-    const paragraph = screen.getByLabelText(/texto principal/i);
-    await user.clear(paragraph);
-    await user.type(paragraph, "Updated body");
-
-    const values = screen.getByLabelText(/values/i);
-    await user.clear(values);
-    await user.type(values, "Craft\nPresence");
-
-    await user.click(screen.getByRole("button", { name: /^save$/i }));
+    fireEvent.submit(title.closest("form")!);
 
     await waitFor(() => expect(received).not.toBeNull());
     expect(received!.get("title")).toBe("Updated About");

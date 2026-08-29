@@ -95,13 +95,14 @@ export class GalleryMediaService {
 
   uploadMediaToCloudinary(
     prepared: PreparedGalleryMulterFile,
+    folder: string = GALLERY_CLOUDINARY_FOLDER,
   ): Promise<GalleryCloudinaryUploadResult> {
     return new Promise((resolve, reject) => {
       const mime = (prepared.mimetype ?? '').toLowerCase();
       const isVideo = mime.startsWith('video/');
       const uploadStream = cloudinary.uploader.upload_stream(
         {
-          folder: GALLERY_CLOUDINARY_FOLDER,
+          folder,
           resource_type: isVideo ? 'video' : 'image',
         },
         (error, result) => {

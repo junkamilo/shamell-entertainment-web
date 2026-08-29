@@ -35,9 +35,11 @@ type AdminPaymentMailInput = {
   flowLabel: AdminPaymentFlowLabel;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string | null;
   amountUsd: string;
   contextLabel: string;
   reference?: string;
+  detailsLines?: string[];
   stageLabel?: string;
 };
 
@@ -115,12 +117,28 @@ export function buildAdminPaymentOutcomeHtml(
       `<strong class="email-text-primary" style="color:${emailLightInlineStyle('textPrimary')};">${customerName}</strong>`,
     ),
     buildEmailDetailRow('Email', emailLink),
+    ...(input.customerPhone?.trim()
+      ? [buildEmailDetailRow('Phone', escapeHtml(input.customerPhone.trim()))]
+      : []),
     buildEmailDetailRow('Purchase', context),
+    ...(input.detailsLines ?? [])
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const sep = line.indexOf(':');
+        if (sep > 0 && sep < 40) {
+          return buildEmailDetailRow(
+            line.slice(0, sep).trim(),
+            escapeHtml(line.slice(sep + 1).trim()),
+          );
+        }
+        return buildEmailDetailRow('Detail', escapeHtml(line));
+      }),
     ...(input.reference
       ? [
           buildEmailDetailRow(
-            'Reference',
-            `<span style="font-family:Consolas,'Courier New',monospace;font-size:14px;color:${emailLightInlineStyle('textAccent')};letter-spacing:0.06em;">${escapeHtml(input.reference)}</span>`,
+            'Verification code',
+            `<span style="font-family:Consolas,'Courier New',monospace;font-size:13px;color:${emailLightInlineStyle('textAccent')};letter-spacing:0.04em;word-break:break-all;">${escapeHtml(input.reference)}</span>`,
           ),
         ]
       : []),
@@ -165,8 +183,12 @@ export function buildAdminPaymentOutcomeText(
     '',
     `Customer: ${input.customerName}`,
     `Email: ${input.customerEmail}`,
+    ...(input.customerPhone?.trim()
+      ? [`Phone: ${input.customerPhone.trim()}`]
+      : []),
     `Purchase: ${input.contextLabel}`,
-    ...(input.reference ? [`Reference: ${input.reference}`] : []),
+    ...(input.detailsLines ?? []).map((line) => line.trim()).filter(Boolean),
+    ...(input.reference ? [`Verification code: ${input.reference}`] : []),
     ...(input.stageLabel ? [`Stage: ${input.stageLabel}`] : []),
     `Amount: ${input.amountUsd}`,
     '',

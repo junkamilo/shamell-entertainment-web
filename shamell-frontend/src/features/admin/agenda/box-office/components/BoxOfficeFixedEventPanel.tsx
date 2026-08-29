@@ -20,6 +20,15 @@ export function BoxOfficeFixedEventPanel() {
     [form.events],
   );
 
+  const packageOptions = useMemo(
+    () =>
+      (form.selectedEvent?.packages ?? []).map((pkg) => ({
+        id: pkg.id,
+        label: `${pkg.title} · ${formatPriceEn(pkg.price)} · ${pkg.remaining} left`,
+      })),
+    [form.selectedEvent],
+  );
+
   if (form.eventsLoading) {
     return <AgendaCatalogSpinner />;
   }
@@ -108,7 +117,49 @@ export function BoxOfficeFixedEventPanel() {
         </div>
       ) : null}
 
-      {form.selectedEvent?.purchaseKind === "fixed_ticket" ? (
+      {form.selectedEvent?.purchaseKind === "fixed_ticket" &&
+      form.selectedEvent.ticketMode === "PACKAGES" ? (
+        <div className="block">
+          <span className={fieldLabelClass}>TICKET PACKAGE</span>
+          <div className="mt-2">
+            <AccordionSingleSelect
+              options={packageOptions}
+              value={form.selectedPackageId}
+              onChange={form.onSelectPackage}
+              emptyDisplay="Select a package"
+              ariaLabel="Select ticket package"
+              required
+              showNoneOption
+            />
+          </div>
+          {form.selectedPackage ? (
+            <div className="mt-3 rounded-xl border border-gold/20 bg-black/20 px-4 py-3 text-sm">
+              <p className="text-foreground/70">
+                Event:{" "}
+                <span className="text-foreground">
+                  {form.selectedEvent.name}
+                </span>
+              </p>
+              <p className="text-foreground/70">
+                Package:{" "}
+                <span className="text-foreground">
+                  {form.selectedPackage.title}
+                </span>
+              </p>
+              <p className="mt-1 text-gold">
+                Price: {formatPriceEn(form.selectedPackage.price)}
+              </p>
+              <p className="mt-1 text-foreground/65">
+                Remaining: {form.selectedPackage.remaining}
+                {` / ${form.selectedPackage.capacity}`}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {form.selectedEvent?.purchaseKind === "fixed_ticket" &&
+      form.selectedEvent.ticketMode !== "PACKAGES" ? (
         <div className="rounded-xl border border-gold/20 bg-black/20 px-4 py-3 text-sm">
           <p className="text-foreground/70">
             Ticket:{" "}

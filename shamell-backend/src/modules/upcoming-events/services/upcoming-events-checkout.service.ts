@@ -4,8 +4,10 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  FixedTicketMode,
   Prisma,
   ReservationEventScheduleMode,
   UpcomingClassEnrollmentStatus,
@@ -34,7 +36,20 @@ import { CreateClassCartCheckoutDto } from '../dto/create-class-cart-checkout.dt
 import { CreateClassPackageCheckoutDto } from '../dto/create-class-package-checkout.dto';
 import { CreateFixedEventCheckoutDto } from '../dto/create-fixed-event-checkout.dto';
 import { resolveUpcomingPurchaseContext } from '../utils/upcoming-purchase-mode.util';
-import { fixedTicketsRemaining } from '../utils/upcoming-fixed-ticket.util';
+import {
+  fixedTicketsRemaining,
+  getFixedTicketInventory,
+} from '../utils/upcoming-fixed-ticket.util';
+import { UpcomingFixedEventPackagesRepository } from '../packages/upcoming-fixed-event-packages.repository';
+import {
+  FIXED_EVENT_PACKAGE_ERROR_CODES,
+  packageErrorBody,
+} from '../packages/util/fixed-event-package-errors';
+import {
+  buildPackageSnapshotInclusions,
+  formatArrivalLabel,
+  mapPackagePublic,
+} from '../packages/util/fixed-event-package.mapper';
 import {
   buildClassMonthPackageSelections,
   buildClassSessionBundleSelections,
@@ -83,6 +98,7 @@ export class UpcomingEventsCheckoutService {
   constructor(
     private readonly repository: UpcomingEventsRepository,
     private readonly stripeService: StripeService,
+    private readonly packagesRepository: UpcomingFixedEventPackagesRepository,
   ) {}
 
   async createClassCheckout(slug: string, dto: CreateClassCheckoutDto) {
@@ -601,44 +617,67 @@ export class UpcomingEventsCheckoutService {
     slug: string,
     dto: CreateFixedEventCheckoutDto,
   ) {
-    const { event, venueConfig } = await this.assertFixedTicketCheckout(slug);
-    const capacity = venueConfig.fixedTicketCapacity;
-    if (capacity == null || capacity < 1) {
-      throw new BadRequestException(
-        'Ticket capacity is not configured for this event.',
-      );
-    }
-    const remaining = await fixedTicketsRemaining(
-      this.repository.asPrisma(),
-      event.id,
-      capacity,
-    );
-    if (remaining <= 0) {
-      throw new ConflictException('Tickets sold out.');
-    }
-
-    const amount = Number(event.price);
-    const amountCents = Math.round(amount * 100);
-    if (amountCents < 50) {
-      throw new BadRequestException('Invalid event ticket price.');
-    }
+    const { event, venueConfig, ticketMode, packageRow } =
+      await this.assertFixedTicketCheckout(slug, dto.packageId);
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
     const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/return?session_id={CHECKOUT_SESSION_ID}`;
     const customerEmail = dto.customerEmail.trim().toLowerCase();
-    const productName = `${event.eventType.name} — ticket`;
+
+    let amountCents: number;
+    let productName: string;
+    let packageSnapshot:
+      | {
+          packageId: string;
+          packageTitle: string;
+          packagePriceCents: number;
+          packageArrivalLabel: string;
+          packageInclusions: Prisma.InputJsonValue;
+          packageCapacity: number;
+        }
+      | undefined;
+
+    if (ticketMode === FixedTicketMode.PACKAGES && packageRow) {
+      amountCents = packageRow.priceCents;
+      productName = `${event.eventType.name} — ${packageRow.title}`;
+      packageSnapshot = {
+        packageId: packageRow.id,
+        packageTitle: packageRow.title,
+        packagePriceCents: packageRow.priceCents,
+        packageArrivalLabel: formatArrivalLabel(
+          packageRow.arrivalStartTime,
+          packageRow.arrivalEndTime,
+        ),
+        packageInclusions: buildPackageSnapshotInclusions(
+          packageRow.activityLinks,
+        ) as Prisma.InputJsonValue,
+        packageCapacity: packageRow.capacity,
+      };
+    } else {
+      amountCents = Math.round(Number(event.price) * 100);
+      productName = `${event.eventType.name} — ticket`;
+      if (amountCents < 50) {
+        throw new BadRequestException('Invalid event ticket price.');
+      }
+    }
+
     const productDescription =
       venueConfig.reservationEventLabel ?? 'Event ticket';
+
+    const baseMetadata: Record<string, string> = {
+      flow: 'fixed_event_ticket',
+      upcomingEventId: event.id,
+    };
+    if (packageSnapshot) {
+      baseMetadata.package_id = packageSnapshot.packageId;
+    }
 
     const { checkout, paymentIntentId, metadata } =
       await this.createEnrichedEmbeddedCheckout({
         customerEmail,
         description: `${productName} — ${productDescription}`,
-        baseMetadata: {
-          flow: 'fixed_event_ticket',
-          upcomingEventId: event.id,
-        },
+        baseMetadata,
         lineItems: [
           {
             quantity: 1,
@@ -656,17 +695,40 @@ export class UpcomingEventsCheckoutService {
         expiresAt,
       });
 
-    const enrollment = await this.repository.createPendingFixedEventEnrollment({
-      eventId: event.id,
-      amount: event.price!,
-      currency: 'usd',
-      status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
-      stripeCheckoutSessionId: checkout.id,
-      customerName: dto.customerName.trim(),
-      customerEmail,
-      customerPhone: dto.customerPhone?.trim() || null,
-      expiresAt,
-    });
+    const enrollment =
+      await this.repository.createPendingFixedEventEnrollmentLocked(
+        {
+          eventId: event.id,
+          amount: amountCents / 100,
+          currency: 'usd',
+          status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+          stripeCheckoutSessionId: checkout.id,
+          customerName: dto.customerName.trim(),
+          customerEmail,
+          customerPhone: dto.customerPhone?.trim() || null,
+          expiresAt,
+          ...(packageSnapshot
+            ? {
+                packageId: packageSnapshot.packageId,
+                packageTitle: packageSnapshot.packageTitle,
+                packagePriceCents: packageSnapshot.packagePriceCents,
+                packageArrivalLabel: packageSnapshot.packageArrivalLabel,
+                packageInclusions: packageSnapshot.packageInclusions,
+              }
+            : {}),
+        },
+        ticketMode === FixedTicketMode.PACKAGES && packageSnapshot
+          ? {
+              mode: 'PACKAGES' as const,
+              packageId: packageSnapshot.packageId,
+              packageCapacity: packageSnapshot.packageCapacity,
+            }
+          : {
+              mode: 'SINGLE' as const,
+              eventId: event.id,
+              eventCapacity: venueConfig.fixedTicketCapacity!,
+            },
+      );
 
     await this.attachCheckoutAndPaymentIntentMetadata({
       checkoutSessionId: checkout.id,
@@ -803,7 +865,7 @@ export class UpcomingEventsCheckoutService {
     }
   }
 
-  private async assertFixedTicketCheckout(slug: string) {
+  private async assertFixedTicketCheckout(slug: string, packageId?: string) {
     const event = await this.repository.findPublicUpcomingBySlug(slug);
     const venueConfig =
       await this.repository.findVenueConfigWithReservationTemplate(event.id);
@@ -815,6 +877,92 @@ export class UpcomingEventsCheckoutService {
     ) {
       throw new BadRequestException('This event does not offer ticket sales.');
     }
+
+    const ticketMode = venueConfig.fixedTicketMode ?? FixedTicketMode.SINGLE;
+
+    if (ticketMode === FixedTicketMode.PACKAGES) {
+      if (!packageId) {
+        throw new UnprocessableEntityException(
+          packageErrorBody(
+            FIXED_EVENT_PACKAGE_ERROR_CODES.PACKAGE_REQUIRED,
+            'Select a ticket package to continue.',
+          ),
+        );
+      }
+    } else if (packageId) {
+      throw new BadRequestException(
+        packageErrorBody(
+          FIXED_EVENT_PACKAGE_ERROR_CODES.PACKAGE_NOT_APPLICABLE,
+          'This event does not use ticket packages.',
+        ),
+      );
+    }
+
+    let packageRow: Awaited<
+      ReturnType<UpcomingFixedEventPackagesRepository['findPackageById']>
+    > = null;
+
+    let ticketsRemaining: number | undefined;
+    let packagesPublic: import('../packages/util/fixed-event-package.mapper').FixedEventPackagePublicDto[] =
+      [];
+
+    if (ticketMode === FixedTicketMode.PACKAGES) {
+      packageRow = await this.packagesRepository.findPackageById(
+        packageId!,
+        event.id,
+      );
+      if (!packageRow) {
+        throw new NotFoundException(
+          packageErrorBody(
+            FIXED_EVENT_PACKAGE_ERROR_CODES.PACKAGE_NOT_FOUND,
+            'Package not found.',
+          ),
+        );
+      }
+      if (!packageRow.isActive) {
+        throw new UnprocessableEntityException(
+          packageErrorBody(
+            FIXED_EVENT_PACKAGE_ERROR_CODES.PACKAGE_INACTIVE,
+            'This package is no longer available.',
+          ),
+        );
+      }
+      const inventory = await getFixedTicketInventory(
+        this.repository.asPrisma(),
+        event.id,
+        {
+          fixedTicketMode: FixedTicketMode.PACKAGES,
+          fixedTicketCapacity: null,
+        },
+      );
+      const pkgInventory = inventory.byPackage.get(packageRow.id);
+      if (!pkgInventory || pkgInventory.remaining <= 0) {
+        throw new ConflictException(
+          packageErrorBody(
+            FIXED_EVENT_PACKAGE_ERROR_CODES.PACKAGE_SOLD_OUT,
+            'This package is sold out.',
+          ),
+        );
+      }
+      ticketsRemaining = pkgInventory.remaining;
+      packagesPublic = [mapPackagePublic(packageRow, pkgInventory)];
+    } else {
+      const capacity = venueConfig.fixedTicketCapacity;
+      if (capacity == null || capacity < 1) {
+        throw new BadRequestException(
+          'Ticket capacity is not configured for this event.',
+        );
+      }
+      ticketsRemaining = await fixedTicketsRemaining(
+        this.repository.asPrisma(),
+        event.id,
+        capacity,
+      );
+      if (ticketsRemaining <= 0) {
+        throw new ConflictException('Tickets sold out.');
+      }
+    }
+
     const purchaseCtx = resolveUpcomingPurchaseContext({
       experienceType: event.experienceType,
       price: event.price != null ? Number(event.price) : null,
@@ -825,15 +973,10 @@ export class UpcomingEventsCheckoutService {
       reservationEventDate: venueConfig.reservationEventDate,
       reservationTimezone: venueConfig.reservationTimezone,
       fixedTicketCapacity: venueConfig.fixedTicketCapacity,
-      ticketsRemaining:
-        venueConfig.fixedTicketCapacity != null &&
-        venueConfig.fixedTicketCapacity >= 1
-          ? await fixedTicketsRemaining(
-              this.repository.asPrisma(),
-              event.id,
-              venueConfig.fixedTicketCapacity,
-            )
-          : undefined,
+      ticketsRemaining,
+      ticketMode:
+        ticketMode === FixedTicketMode.PACKAGES ? 'PACKAGES' : 'SINGLE',
+      packages: packagesPublic,
     });
     if (
       purchaseCtx.purchaseMode !== 'fixed_ticket' ||
@@ -843,6 +986,6 @@ export class UpcomingEventsCheckoutService {
         'Ticket sales are not open for this event.',
       );
     }
-    return { event, venueConfig };
+    return { event, venueConfig, ticketMode, packageRow };
   }
 }

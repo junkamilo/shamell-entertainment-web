@@ -2,15 +2,28 @@ export type BoxOfficePaymentMethod = "cash" | "stripe";
 
 export type BoxOfficePurchaseKind = "venue_seating" | "fixed_ticket";
 
+export type BoxOfficeTicketMode = "SINGLE" | "PACKAGES";
+
+export type BoxOfficeFixedPackage = {
+  id: string;
+  title: string;
+  price: number;
+  capacity: number;
+  sold: number;
+  remaining: number;
+};
+
 export type BoxOfficeFixedEvent = {
   id: string;
   name: string;
   slug: string | null;
   purchaseKind: BoxOfficePurchaseKind;
+  ticketMode: BoxOfficeTicketMode;
   price: number | null;
   currency: string;
   ticketsRemaining: number | null;
   fixedTicketCapacity: number | null;
+  packages: BoxOfficeFixedPackage[];
   floorLayoutId: string | null;
   eventDateIso: string | null;
   eventLabel: string | null;

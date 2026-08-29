@@ -28,4 +28,8 @@ export class CreateAdminFixedEventEnrollmentDto {
 
   @IsObject()
   boxOfficeDetails!: Record<string, unknown>;
+
+  @IsOptional()
+  @IsUUID('4')
+  packageId?: string;
 }

@@ -3,16 +3,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import {
+  makeBoxOfficePackage,
   makeFixedTicketEvent,
-  makeSeatAvailability,
-  makeVenueFixedEvent,
+  makePackagesFixedTicketEvent,
 } from "../test/fixtures/boxOffice.fixture";
 import {
   FIXTURE_FIXED_EVENT_ID,
-  FIXTURE_LAYOUT_CHAIR_ID,
-  FIXTURE_LAYOUT_TABLE_ID,
-  FIXTURE_VENUE_EVENT_ID,
-  FIXTURE_VENUE_TABLE_CONFIG_ID,
+  FIXTURE_PACKAGE_ID,
+  FIXTURE_PACKAGE_ID_2,
 } from "../test/fixtures/uuids.fixture";
 
 const toastMock = vi.fn();
@@ -532,5 +530,72 @@ describe("useBoxOfficeFixedEventForm", () => {
       await result.current.onSubmit(makeFormEvent());
     });
     expect(result.current.formError).toBe("Taken");
+  });
+
+  it("requires a package before submitting a PACKAGES event", async () => {
+    fetchEventsMock.mockResolvedValue([
+      makePackagesFixedTicketEvent({
+        packages: [
+          makeBoxOfficePackage(),
+          makeBoxOfficePackage({
+            id: FIXTURE_PACKAGE_ID_2,
+            title: "General",
+            price: 45,
+          }),
+        ],
+      }),
+    ]);
+    const { result } = renderHook(() => useBoxOfficeFixedEventForm());
+    await waitFor(() => expect(result.current.eventsLoading).toBe(false));
+
+    act(() => {
+      result.current.onSelectEvent(FIXTURE_FIXED_EVENT_ID);
+      result.current.setCustomerName("Jane Doe");
+      result.current.setCustomerEmail("jane@example.com");
+      result.current.setCashConfirmed(true);
+    });
+
+    await act(async () => {
+      await result.current.onSubmit(makeFormEvent());
+    });
+
+    expect(result.current.formError).toBe("Select a ticket package.");
+    expect(cashMock).not.toHaveBeenCalled();
+  });
+
+  it("preselects the only package and submits packageId", async () => {
+    fetchEventsMock.mockResolvedValue([makePackagesFixedTicketEvent()]);
+    const { result } = renderHook(() => useBoxOfficeFixedEventForm());
+    await waitFor(() => expect(result.current.eventsLoading).toBe(false));
+
+    act(() => {
+      result.current.onSelectEvent(FIXTURE_FIXED_EVENT_ID);
+      result.current.setCustomerName("Jane Doe");
+      result.current.setCustomerEmail("jane@example.com");
+      result.current.setCashConfirmed(true);
+    });
+
+    await waitFor(() =>
+      expect(result.current.selectedPackageId).toBe(FIXTURE_PACKAGE_ID),
+    );
+
+    await act(async () => {
+      await result.current.onSubmit(makeFormEvent());
+    });
+
+    expect(cashMock).toHaveBeenCalledWith(
+      "token-1",
+      expect.objectContaining({
+        upcomingEventId: FIXTURE_FIXED_EVENT_ID,
+        packageId: FIXTURE_PACKAGE_ID,
+        boxOfficeDetails: expect.objectContaining({
+          selection: expect.objectContaining({
+            packageId: FIXTURE_PACKAGE_ID,
+            packageTitle: "VIP Early Entry",
+            amount: 85,
+          }),
+        }),
+      }),
+    );
   });
 });

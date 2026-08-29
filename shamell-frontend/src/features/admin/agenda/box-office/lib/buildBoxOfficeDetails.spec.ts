@@ -86,6 +86,30 @@ describe("buildBoxOfficeDetails", () => {
     });
   });
 
+  it("includes packageId and packageTitle in fixed-ticket selection when provided", () => {
+    const payload = buildBoxOfficeDetails({
+      purchaseKind: "fixed_ticket",
+      upcomingEventId: FIXTURE_FIXED_EVENT_ID,
+      paymentMethod: "cash",
+      customerName: "Jane Doe",
+      customerEmail: "jane@example.com",
+      customerPhone: "",
+      seat: null,
+      ticketAmount: 85,
+      ticketCurrency: "usd",
+      packageId: "pkg-1",
+      packageTitle: "VIP Early Entry",
+    });
+
+    expect(payload.selection).toEqual({
+      quantity: 1,
+      amount: 85,
+      currency: "usd",
+      packageId: "pkg-1",
+      packageTitle: "VIP Early Entry",
+    });
+  });
+
   it("trims the name and lowercases the email", () => {
     const payload = buildBoxOfficeDetails({
       purchaseKind: "fixed_ticket",

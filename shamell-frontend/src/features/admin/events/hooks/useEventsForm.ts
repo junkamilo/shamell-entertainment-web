@@ -20,6 +20,7 @@ import { isCatalogMediaFile } from "../lib/eventsMedia";
 import { formatPriceInput, parseOptionalPrice } from "../lib/eventsPrice";
 import type { AdminEvent, CatalogImage, EventFormSnapshot, EventsEventTypeOption } from "../types/events.types";
 import type { CreateAdminEventBody, UpdateAdminEventBody } from "../types/events.types";
+import type { EventActivityForm } from "@/features/admin/on-coming-events/fixed-packages/types/fixedEventPackage.types";
 import type {
   EventPublicSection,
   UpcomingClassVariant,
@@ -91,6 +92,14 @@ function experienceFieldsForMode(
   return { experienceType: null, classVariant: null };
 }
 
+function normalizeItemsText(text: string): string {
+  return text
+    .split("\n")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function useEventsForm({
   eventTypes,
   eventTypeId,
@@ -111,6 +120,8 @@ export function useEventsForm({
   );
   const [schedule, setSchedule] = useState<ScheduleFormState>(emptyScheduleForm);
   const [enableVenueSeating, setEnableVenueSeating] = useState(false);
+  const [enablePackages, setEnablePackages] = useState(false);
+  const [activities, setActivities] = useState<EventActivityForm[]>([]);
   const [fixedTicketCapacityInput, setFixedTicketCapacityInput] = useState("");
   const [linkedTemplateId, setLinkedTemplateId] = useState<string | null>(null);
   const [monthPackageEnabled, setMonthPackageEnabled] = useState(false);
@@ -142,6 +153,8 @@ export function useEventsForm({
     setExperienceMode(defaultExperienceModeForSection(defaultPublicSection));
     setSchedule(emptyScheduleForm());
     setEnableVenueSeating(false);
+    setEnablePackages(false);
+    setActivities([]);
     setFixedTicketCapacityInput("");
     setLinkedTemplateId(null);
     setMonthPackageEnabled(false);
@@ -159,6 +172,7 @@ export function useEventsForm({
     .split("\n")
     .map((item) => item.trim())
     .filter(Boolean);
+  const normalizedItemsText = normalizedItems.join("\n");
   const trimmedDescription = description.trim();
   const hasValidEventName =
     trimmedEventName.length >= EVENT_NAME_MIN_LENGTH &&
@@ -166,8 +180,10 @@ export function useEventsForm({
   const hasValidDescriptionLength =
     trimmedDescription.length >= DESCRIPTION_MIN_LENGTH &&
     trimmedDescription.length <= DESCRIPTION_MAX_LENGTH;
-  const hasValidItems =
-    normalizedItems.length > 0 && normalizedItems.every((item) => item.length <= ITEM_MAX_LENGTH);
+  /** Empty line items are allowed on create and edit; only enforce per-line max length. */
+  const hasValidItems = normalizedItems.every(
+    (item) => item.length <= ITEM_MAX_LENGTH,
+  );
   const hasValidType = freeEventNameMode ? hasValidEventName : Boolean(eventTypeId);
   const priceMode = editingId ? ("edit" as const) : ("create" as const);
   const priceResult = parseOptionalPrice(priceInput, priceMode);
@@ -179,12 +195,13 @@ export function useEventsForm({
             ? trimmedEventName !== originalSnapshot.eventName
             : eventTypeId !== originalSnapshot.eventTypeId) ||
             trimmedDescription !== originalSnapshot.description ||
-            normalizedItems.join("\n") !== originalSnapshot.itemsText ||
+            normalizedItemsText !== originalSnapshot.itemsText ||
             publicSection !== originalSnapshot.publicSection ||
             (isUpcomingForm &&
               (experienceMode !== (originalSnapshot.experienceMode ?? "NORMAL") ||
                 scheduleKey !== (originalSnapshot.scheduleKey ?? "") ||
                 enableVenueSeating !== (originalSnapshot.enableVenueSeating ?? false) ||
+                enablePackages !== (originalSnapshot.enablePackages ?? false) ||
                 fixedTicketCapacityInput !== (originalSnapshot.fixedTicketCapacityInput ?? "") ||
                 monthPackageEnabled !== (originalSnapshot.monthPackageEnabled ?? false) ||
                 monthPackagePrice !== (originalSnapshot.monthPackagePrice ?? "") ||
@@ -202,6 +219,7 @@ export function useEventsForm({
           (isUpcomingForm &&
             (experienceMode !== "NORMAL" ||
               enableVenueSeating ||
+              enablePackages ||
               fixedTicketCapacityInput.trim() ||
               monthPackageEnabled ||
               monthPackagePrice.trim() ||
@@ -209,7 +227,8 @@ export function useEventsForm({
           pendingFiles.length > 0,
       );
 
-  const priceOk = priceResult.ok;
+  const priceOk =
+    enablePackages && experienceMode === "FIXED_EVENT" ? true : priceResult.ok;
   const canSubmit =
     !isSubmitting && hasValidType && hasValidDescriptionLength && hasValidItems && priceOk && hasChanges;
 
@@ -229,7 +248,7 @@ export function useEventsForm({
       ) {
         return "Complete the sales window: sales start/end, event date and times.";
       }
-      if (!enableVenueSeating) {
+      if (!enableVenueSeating && !enablePackages) {
         if (!priceResult.ok || priceResult.value == null) {
           return "Set a ticket price for this fixed event (required when table & seat sales are off).";
         }
@@ -239,8 +258,11 @@ export function useEventsForm({
         const capRaw = fixedTicketCapacityInput.trim();
         const cap = Number.parseInt(capRaw, 10);
         if (!capRaw || !Number.isFinite(cap) || cap < 1) {
-          return "Enter the number of tickets for sale (integer ÔëÑ 1).";
+          return "Enter the number of tickets for sale (integer ≥ 1).";
         }
+      }
+      if (enablePackages && activities.filter((a) => a.title.trim()).length === 0) {
+        return "Add at least one activity before enabling ticket packages.";
       }
     }
     if (experienceMode === "RECURRING_WEEKLY") {
@@ -295,7 +317,8 @@ export function useEventsForm({
     if (!hasValidDescriptionLength) {
       return `The description must be between ${DESCRIPTION_MIN_LENGTH} and ${DESCRIPTION_MAX_LENGTH} characters.`;
     }
-    if (!hasValidItems) return "Add at least one line item. Each line may be up to 180 characters.";
+    if (!hasValidItems)
+      return `Each line item may be up to ${ITEM_MAX_LENGTH} characters.`;
     if (isUpcomingForm) {
       const schedErr = scheduleError();
       if (schedErr) return schedErr;
@@ -348,6 +371,8 @@ export function useEventsForm({
       price: number | null;
       label: string | null;
     } | null = null,
+    venueFixedTicketMode: "SINGLE" | "PACKAGES" = "SINGLE",
+    initialActivities: EventActivityForm[] = [],
   ) => {
     setEditingId(item.id);
     if (!freeEventNameMode) {
@@ -355,7 +380,7 @@ export function useEventsForm({
     }
     setEventName(item.eventTypeName);
     setDescription(item.description);
-    const itemsJoined = item.items.join("\n");
+    const itemsJoined = normalizeItemsText(item.items.join("\n"));
     setItemsText(itemsJoined);
     setPriceInput(item.price != null ? formatPriceInput(item.price) : "");
     setPublicSection(item.publicSection ?? "GENERAL");
@@ -376,6 +401,12 @@ export function useEventsForm({
         venueClientEnabled &&
         item.experienceType === "VENUE_SEATING",
     );
+    setEnablePackages(
+      mode === "FIXED_EVENT" &&
+        !venueClientEnabled &&
+        venueFixedTicketMode === "PACKAGES",
+    );
+    setActivities(initialActivities);
     setFixedTicketCapacityInput(
       mode === "FIXED_EVENT" && venueFixedTicketCapacity != null
         ? String(venueFixedTicketCapacity)
@@ -407,6 +438,10 @@ export function useEventsForm({
         mode === "FIXED_EVENT" &&
         venueClientEnabled &&
         item.experienceType === "VENUE_SEATING",
+      enablePackages:
+        mode === "FIXED_EVENT" &&
+        !venueClientEnabled &&
+        venueFixedTicketMode === "PACKAGES",
       fixedTicketCapacityInput:
         mode === "FIXED_EVENT" && venueFixedTicketCapacity != null
           ? String(venueFixedTicketCapacity)
@@ -457,8 +492,21 @@ export function useEventsForm({
     enableVenueSeating,
     setEnableVenueSeating: (enabled: boolean) => {
       setEnableVenueSeating(enabled);
-      if (enabled) setFixedTicketCapacityInput("");
+      if (enabled) {
+        setFixedTicketCapacityInput("");
+        setEnablePackages(false);
+      }
     },
+    enablePackages,
+    setEnablePackages: (enabled: boolean) => {
+      setEnablePackages(enabled);
+      if (enabled) {
+        setEnableVenueSeating(false);
+        setFixedTicketCapacityInput("");
+      }
+    },
+    activities,
+    setActivities,
     fixedTicketCapacityInput,
     setFixedTicketCapacityInput,
     parseFixedTicketCapacity: (): number | null => {

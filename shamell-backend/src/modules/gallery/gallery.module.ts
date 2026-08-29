@@ -9,6 +9,6 @@ import { GalleryService } from './services/gallery.service';
   imports: [PrismaModule],
   controllers: [GalleryController],
   providers: [GalleryRepository, GalleryMediaService, GalleryService],
-  exports: [GalleryService],
+  exports: [GalleryService, GalleryMediaService],
 })
 export class GalleryModule {}

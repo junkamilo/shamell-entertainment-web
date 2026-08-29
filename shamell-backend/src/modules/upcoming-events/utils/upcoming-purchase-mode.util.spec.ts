@@ -21,6 +21,8 @@ describe('resolveUpcomingPurchaseContext', () => {
       purchaseMode: 'classes',
       salesOpen: false,
       purchasable: true,
+      ticketMode: 'SINGLE',
+      packages: [],
     });
   });
 
@@ -72,6 +74,8 @@ describe('resolveUpcomingPurchaseContext', () => {
       purchaseMode: 'none',
       salesOpen: false,
       purchasable: false,
+      ticketMode: 'SINGLE',
+      packages: [],
     });
   });
 
@@ -181,6 +185,8 @@ describe('resolveUpcomingPurchaseContext', () => {
       purchaseMode: 'classes',
       salesOpen: false,
       purchasable: false,
+      ticketMode: 'SINGLE',
+      packages: [],
     });
   });
 

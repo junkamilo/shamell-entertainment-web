@@ -4,6 +4,7 @@ import { AdminPaymentNotifyService } from '../../mail/services/admin-payment-not
 import { createStripeServiceMock } from '../../stripe/__mocks__/stripe.service.mock';
 import { StripeService } from '../../stripe/services/stripe.service';
 import { createUpcomingEventsRepositoryMock } from '../__mocks__/upcoming-events.repository.mock';
+import { UpcomingFixedEventPackagesRepository } from '../packages/upcoming-fixed-event-packages.repository';
 import { AdminFixedEventEnrollmentService } from '../services/admin-fixed-event-enrollment.service';
 import { UpcomingEventsRepository } from '../services/upcoming-events.repository';
 
@@ -11,6 +12,12 @@ export type AdminFixedEventEnrollmentServiceTestHarness = {
   moduleRef: TestingModule;
   service: AdminFixedEventEnrollmentService;
   repository: ReturnType<typeof createUpcomingEventsRepositoryMock>;
+  packagesRepository: {
+    findPackageById: jest.Mock;
+    listPackagesByEvent: jest.Mock;
+    minActivePackagePriceCents: jest.Mock;
+    countActivePackagesByEvent: jest.Mock;
+  };
   stripe: ReturnType<typeof createStripeServiceMock>;
   mail: { sendTransactional: jest.Mock };
   adminPaymentNotify: { notifyPaymentOutcome: jest.Mock };
@@ -18,6 +25,12 @@ export type AdminFixedEventEnrollmentServiceTestHarness = {
 
 export async function createAdminFixedEventEnrollmentServiceTestModule(): Promise<AdminFixedEventEnrollmentServiceTestHarness> {
   const repository = createUpcomingEventsRepositoryMock();
+  const packagesRepository = {
+    findPackageById: jest.fn(),
+    listPackagesByEvent: jest.fn().mockResolvedValue([]),
+    minActivePackagePriceCents: jest.fn().mockResolvedValue(null),
+    countActivePackagesByEvent: jest.fn().mockResolvedValue(0),
+  };
   const stripe = createStripeServiceMock();
   const mail = {
     sendTransactional: jest.fn().mockResolvedValue({ ok: true }),
@@ -39,6 +52,10 @@ export async function createAdminFixedEventEnrollmentServiceTestModule(): Promis
     providers: [
       AdminFixedEventEnrollmentService,
       { provide: UpcomingEventsRepository, useValue: repository },
+      {
+        provide: UpcomingFixedEventPackagesRepository,
+        useValue: packagesRepository,
+      },
       { provide: StripeService, useValue: stripe },
       { provide: MailService, useValue: mail },
       { provide: AdminPaymentNotifyService, useValue: adminPaymentNotify },
@@ -49,6 +66,7 @@ export async function createAdminFixedEventEnrollmentServiceTestModule(): Promis
     moduleRef,
     service: moduleRef.get(AdminFixedEventEnrollmentService),
     repository,
+    packagesRepository,
     stripe,
     mail,
     adminPaymentNotify,

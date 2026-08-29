@@ -14,6 +14,7 @@ import type {
 import type {
   BoxOfficeDetailsPayload,
   BoxOfficeFixedEvent,
+  BoxOfficeFixedPackage,
   BoxOfficeSeatOption,
 } from "../../types/boxOfficeFixed.types";
 import {
@@ -22,11 +23,26 @@ import {
   FIXTURE_FIXED_EVENT_ID,
   FIXTURE_LAYOUT_CHAIR_ID,
   FIXTURE_LAYOUT_TABLE_ID,
+  FIXTURE_PACKAGE_ID,
   FIXTURE_SECTION_ID,
   FIXTURE_SESSION_ID,
   FIXTURE_VENUE_EVENT_ID,
   FIXTURE_VENUE_TABLE_CONFIG_ID,
 } from "./uuids.fixture";
+
+export function makeBoxOfficePackage(
+  overrides: Partial<BoxOfficeFixedPackage> = {},
+): BoxOfficeFixedPackage {
+  return {
+    id: FIXTURE_PACKAGE_ID,
+    title: "VIP Early Entry",
+    price: 85,
+    capacity: 40,
+    sold: 5,
+    remaining: 35,
+    ...overrides,
+  };
+}
 
 export function makeVenueFixedEvent(
   overrides: Partial<BoxOfficeFixedEvent> = {},
@@ -36,10 +52,12 @@ export function makeVenueFixedEvent(
     name: "Gala Night",
     slug: "gala-night",
     purchaseKind: "venue_seating",
+    ticketMode: "SINGLE",
     price: null,
     currency: "usd",
     ticketsRemaining: null,
     fixedTicketCapacity: null,
+    packages: [],
     floorLayoutId: "fl_1",
     eventDateIso: "2030-08-01",
     eventLabel: "Saturday Gala",
@@ -55,15 +73,30 @@ export function makeFixedTicketEvent(
     name: "Showcase",
     slug: "showcase",
     purchaseKind: "fixed_ticket",
+    ticketMode: "SINGLE",
     price: 45,
     currency: "usd",
     ticketsRemaining: 12,
     fixedTicketCapacity: 100,
+    packages: [],
     floorLayoutId: null,
     eventDateIso: "2030-08-15",
     eventLabel: null,
     ...overrides,
   };
+}
+
+export function makePackagesFixedTicketEvent(
+  overrides: Partial<BoxOfficeFixedEvent> = {},
+): BoxOfficeFixedEvent {
+  return makeFixedTicketEvent({
+    ticketMode: "PACKAGES",
+    price: 85,
+    ticketsRemaining: 35,
+    fixedTicketCapacity: null,
+    packages: [makeBoxOfficePackage()],
+    ...overrides,
+  });
 }
 
 export function makeTableSeat(

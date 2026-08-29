@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { UpcomingExperienceType } from '@prisma/client';
 import { createPrismaMock } from '../../../testing';
 import { createUpcomingEventsRepositoryMock } from '../__mocks__/upcoming-events.repository.mock';
+import { UpcomingFixedEventPackagesRepository } from '../packages/upcoming-fixed-event-packages.repository';
 import { UpcomingEventsPublicService } from './upcoming-events-public.service';
 import { UpcomingEventsRepository } from './upcoming-events.repository';
 import { UpcomingEventsVenueConfigService } from './upcoming-events-venue-config.service';
@@ -13,6 +14,11 @@ describe('UpcomingEventsPublicService', () => {
   const venueConfigService = {
     getVenueConfigForEvent: jest.fn(),
   };
+  const packagesRepository = {
+    listActiveActivitiesByEvent: jest.fn().mockResolvedValue([]),
+    listPackagesByEvent: jest.fn().mockResolvedValue([]),
+    findPackageById: jest.fn(),
+  };
   let service: UpcomingEventsPublicService;
 
   beforeEach(async () => {
@@ -22,6 +28,8 @@ describe('UpcomingEventsPublicService', () => {
     repository.batchSeatsRemaining.mockResolvedValue(new Map());
     repository.findVenueConfigWithTemplate.mockResolvedValue(null);
     repository.findActiveClassSessionsForEvent.mockResolvedValue([]);
+    packagesRepository.listActiveActivitiesByEvent.mockResolvedValue([]);
+    packagesRepository.listPackagesByEvent.mockResolvedValue([]);
     const moduleRef = await Test.createTestingModule({
       providers: [
         UpcomingEventsPublicService,
@@ -29,6 +37,10 @@ describe('UpcomingEventsPublicService', () => {
         {
           provide: UpcomingEventsVenueConfigService,
           useValue: venueConfigService,
+        },
+        {
+          provide: UpcomingFixedEventPackagesRepository,
+          useValue: packagesRepository,
         },
       ],
     }).compile();

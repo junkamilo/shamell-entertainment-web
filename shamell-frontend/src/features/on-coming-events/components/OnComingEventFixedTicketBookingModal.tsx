@@ -10,10 +10,13 @@ import {
 } from "../services/createFixedEventCheckoutSession";
 import { usePublicCheckoutModalLock } from "../lib/usePublicCheckoutModalLock";
 
+import type { FixedEventPackagePublic } from "../services/fetchOnComingEventDetail";
+
 type Props = {
   slug: string;
   eventName: string;
   price: number | null;
+  selectedPackage?: FixedEventPackagePublic | null;
   open: boolean;
   onClose: () => void;
 };
@@ -22,6 +25,7 @@ export function OnComingEventFixedTicketBookingModal({
   slug,
   eventName,
   price,
+  selectedPackage = null,
   open,
   onClose,
 }: Props) {
@@ -57,6 +61,7 @@ export function OnComingEventFixedTicketBookingModal({
       customerName: customerName.trim(),
       customerEmail: customerEmail.trim(),
       customerPhone: customerPhone.trim() || undefined,
+      ...(selectedPackage ? { packageId: selectedPackage.id } : {}),
     };
     const result = await createFixedEventCheckoutSession(slug, body);
     setIsSubmitting(false);

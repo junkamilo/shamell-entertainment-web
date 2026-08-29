@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 
 import {
   EventPublicSection,
@@ -11,6 +15,7 @@ import {
 import { PrismaService } from '../../../prisma/prisma.service';
 
 import { assignFixedEventTicketNumber } from '../utils/upcoming-fixed-ticket.util';
+import { countBlockingEnrollmentsForPackage } from '../utils/upcoming-fixed-ticket.util';
 
 export const CLASS_ENROLLMENT_CHECKOUT_INCLUDE = {
   session: {
@@ -797,6 +802,62 @@ export class UpcomingEventsRepository {
     return this.prisma.upcomingFixedEventEnrollment.create({ data });
   }
 
+  async createPendingFixedEventEnrollmentLocked(
+    data: Prisma.UpcomingFixedEventEnrollmentUncheckedCreateInput,
+    lock:
+      | {
+          mode: 'SINGLE';
+          eventId: string;
+          eventCapacity: number;
+        }
+      | {
+          mode: 'PACKAGES';
+          packageId: string;
+          packageCapacity: number;
+        },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      if (lock.mode === 'PACKAGES') {
+        const rows = await tx.$queryRaw<{ capacity: number }[]>(Prisma.sql`
+          SELECT capacity FROM upcoming_fixed_event_packages
+          WHERE id = ${lock.packageId}
+          FOR UPDATE
+        `);
+        if (rows.length === 0) {
+          throw new ConflictException('Package not found.');
+        }
+        const blocking = await countBlockingEnrollmentsForPackage(
+          tx,
+          lock.packageId,
+        );
+        if (blocking >= lock.packageCapacity) {
+          throw new ConflictException({
+            code: 'PACKAGE_SOLD_OUT',
+            message: 'This package is sold out.',
+          });
+        }
+      } else {
+        const blocking = await tx.upcomingFixedEventEnrollment.count({
+          where: {
+            eventId: lock.eventId,
+            OR: [
+              { status: UpcomingClassEnrollmentStatus.PAID },
+              {
+                status: UpcomingClassEnrollmentStatus.PENDING_PAYMENT,
+                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+              },
+            ],
+          },
+        });
+        if (blocking >= lock.eventCapacity) {
+          throw new ConflictException('Tickets sold out.');
+        }
+      }
+
+      return tx.upcomingFixedEventEnrollment.create({ data });
+    });
+  }
+
   listClassSessionsForAdmin(eventId: string) {
     return this.prisma.upcomingClassSession.findMany({
       where: { eventId },
@@ -844,6 +905,13 @@ export class UpcomingEventsRepository {
     return this.prisma.event.update({
       where: { id: eventId },
       data,
+    });
+  }
+
+  updateUpcomingEventPrice(eventId: string, price: number) {
+    return this.prisma.event.update({
+      where: { id: eventId },
+      data: { price },
     });
   }
 

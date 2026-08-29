@@ -44,6 +44,23 @@ describe("createBoxOfficeFixedTicketCash", () => {
     expect(body).toMatchObject(payload);
   });
 
+  it("forwards packageId when present", async () => {
+    let body: unknown;
+    server.use(
+      http.post(CASH_ROUTE, async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ message: "Ticket reserved." });
+      }),
+    );
+
+    const payload = {
+      ...makeBody(),
+      packageId: "pkg-1",
+    };
+    await createBoxOfficeFixedTicketCash("token-1", payload);
+    expect(body).toMatchObject({ packageId: "pkg-1" });
+  });
+
   it("defaults the success message when the API omits it", async () => {
     server.use(http.post(CASH_ROUTE, () => HttpResponse.json({})));
     const result = await createBoxOfficeFixedTicketCash(

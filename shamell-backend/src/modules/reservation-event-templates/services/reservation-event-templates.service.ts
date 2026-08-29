@@ -66,7 +66,20 @@ export class ReservationEventTemplatesService {
   async updateAdmin(id: string, dto: UpdateReservationEventTemplateDto) {
     const existing = await this.findByIdOrThrow(id);
     const merged = this.mergeDto(existing, dto);
-    const validated = validateTemplatePayload(merged);
+    const validated = validateTemplatePayload({
+      ...merged,
+      ...(existing.scheduleMode === ReservationEventScheduleMode.FIXED_EVENT
+        ? {
+            existingFixedDates: {
+              salesStartDate:
+                existing.salesStartDate?.toISOString().slice(0, 10) ?? null,
+              salesEndDate:
+                existing.salesEndDate?.toISOString().slice(0, 10) ?? null,
+              eventDate: existing.eventDate?.toISOString().slice(0, 10) ?? null,
+            },
+          }
+        : {}),
+    });
 
     const updated = await this.repository.runTransaction(async (tx) => {
       await this.repository.deleteWeekdays(tx, id);

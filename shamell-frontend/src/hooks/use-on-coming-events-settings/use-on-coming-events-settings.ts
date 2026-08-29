@@ -26,12 +26,14 @@ export function clearOnComingEventsSettingsCache(): void {
 }
 
 function readFreshCache(): OnComingEventsPromo | null {
+  if (typeof window === "undefined") return null;
   if (!cachedPromo) return null;
   if (Date.now() - cachedAt > CACHE_TTL_MS) return null;
   return cachedPromo;
 }
 
 function writeCache(promo: OnComingEventsPromo): void {
+  if (typeof window === "undefined") return;
   cachedPromo = promo;
   cachedAt = Date.now();
 }

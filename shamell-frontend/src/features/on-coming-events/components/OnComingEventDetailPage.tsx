@@ -22,6 +22,8 @@ import { OnComingEventScheduleSection } from "./OnComingEventScheduleSection";
 import { OnComingEventStickyPurchaseBar } from "./OnComingEventStickyPurchaseBar";
 import { ClassBookingWizard, weekdayFromIsoDate } from "./ClassBookingWizard";
 import { OnComingEventFixedTicketBookingModal } from "./OnComingEventFixedTicketBookingModal";
+import { FixedEventNightExperience } from "./fixed-event-night";
+import type { FixedEventPackagePublic } from "../services/fetchOnComingEventDetail";
 import { useClassSessionCart } from "../hooks/useClassSessionCart";
 import {
   classPriceHeroAriaLabel,
@@ -76,6 +78,7 @@ export default function OnComingEventDetailPage({ slug }: Props) {
   const [bookingWeekday, setBookingWeekday] = useState<number | null>(null);
   const [bookingDateIso, setBookingDateIso] = useState<string | null>(null);
   const [ticketOpen, setTicketOpen] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<FixedEventPackagePublic | null>(null);
   const [leaving, setLeaving] = useState(false);
   const classCart = useClassSessionCart(slug);
 
@@ -117,8 +120,11 @@ export default function OnComingEventDetailPage({ slug }: Props) {
     event?.tableCapacity != null &&
     event.tableCapacity >= 1;
   const soldOut = ticketSoldOut || seatingSoldOut;
+  const isPackageTickets =
+    isFixedTicket && event?.ticketMode === "PACKAGES" && (event.packages?.length ?? 0) > 0;
   const showTicketInventory =
     isFixedTicket &&
+    !isPackageTickets &&
     event?.fixedTicketCapacity != null &&
     event.fixedTicketCapacity >= 1;
   const showTableInventory =
@@ -258,6 +264,19 @@ export default function OnComingEventDetailPage({ slug }: Props) {
             <OnComingEventItemsSection items={event.items} />
                 </div>
 
+                {isPackageTickets ? (
+                  <div className="mt-10 w-full md:mt-14">
+                    <FixedEventNightExperience
+                      activities={event.activities ?? []}
+                      packages={event.packages ?? []}
+                      onSelectPackage={(pkg) => {
+                        setSelectedPackage(pkg);
+                        setTicketOpen(true);
+                      }}
+                    />
+                  </div>
+                ) : null}
+
             <OnComingEventScheduleSection
               schedule={event.schedule}
               calendarBookable={isClasses && event.purchasable}
@@ -266,21 +285,21 @@ export default function OnComingEventDetailPage({ slug }: Props) {
               }}
             />
 
-                {event.purchaseMode !== "none" ? (
+                {event.purchaseMode !== "none" && !isPackageTickets ? (
                   <OnComingEventStickyPurchaseBar
-              slug={slug}
-              purchaseMode={event.purchaseMode}
-              purchasable={event.purchasable}
-              salesOpen={event.salesOpen}
-              hasActiveSessions={event.hasActiveSessions}
-              ticketsRemaining={event.ticketsRemaining}
-              showMonthPackage={showMonthPackage}
-              monthPackageLabel={monthPackageLabel}
-              cartCount={isClasses ? classCart.count : 0}
-              cartTotal={isClasses ? classCart.total : 0}
-              onCartCheckout={isClasses ? openCartCheckout : undefined}
-              onBuyMonthPackage={openMonthPackageBooking}
-              onBuyTicket={() => setTicketOpen(true)}
+                    slug={slug}
+                    purchaseMode={event.purchaseMode}
+                    purchasable={event.purchasable}
+                    salesOpen={event.salesOpen}
+                    hasActiveSessions={event.hasActiveSessions}
+                    ticketsRemaining={event.ticketsRemaining}
+                    showMonthPackage={showMonthPackage}
+                    monthPackageLabel={monthPackageLabel}
+                    cartCount={isClasses ? classCart.count : 0}
+                    cartTotal={isClasses ? classCart.total : 0}
+                    onCartCheckout={isClasses ? openCartCheckout : undefined}
+                    onBuyMonthPackage={openMonthPackageBooking}
+                    onBuyTicket={() => setTicketOpen(true)}
                   />
                 ) : null}
 
@@ -311,9 +330,13 @@ export default function OnComingEventDetailPage({ slug }: Props) {
                   <OnComingEventFixedTicketBookingModal
                     slug={slug}
                     eventName={event.eventTypeName}
-                    price={event.price}
+                    price={selectedPackage?.price ?? event.price}
+                    selectedPackage={selectedPackage}
                     open={ticketOpen}
-                    onClose={() => setTicketOpen(false)}
+                    onClose={() => {
+                      setTicketOpen(false);
+                      setSelectedPackage(null);
+                    }}
                   />
                 ) : null}
               </>

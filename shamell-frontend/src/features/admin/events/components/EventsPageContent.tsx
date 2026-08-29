@@ -138,6 +138,10 @@ export default function EventsPageContent({ state }: Props) {
         onScheduleChange={form.setSchedule}
         enableVenueSeating={form.enableVenueSeating}
         onEnableVenueSeatingChange={form.setEnableVenueSeating}
+        enablePackages={form.enablePackages}
+        onEnablePackagesChange={form.setEnablePackages}
+        activities={form.activities}
+        onActivitiesChange={form.setActivities}
         fixedTicketCapacityInput={form.fixedTicketCapacityInput}
         onFixedTicketCapacityInputChange={form.setFixedTicketCapacityInput}
         monthPackageEnabled={form.monthPackageEnabled}

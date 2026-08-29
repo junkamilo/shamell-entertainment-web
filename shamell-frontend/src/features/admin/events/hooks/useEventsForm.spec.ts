@@ -36,6 +36,62 @@ describe("useEventsForm", () => {
     vi.unstubAllGlobals();
   });
 
+  it("canSubmit is true for create when type, description, and price are set without line items", () => {
+    const { result } = renderHook(() => useFormHarness());
+
+    act(() => {
+      result.current.setDescription("Long enough description");
+      result.current.setItemsText("");
+      result.current.setPriceInput("1500");
+    });
+
+    expect(result.current.canSubmit).toBe(true);
+    expect(result.current.getValidationError()).toBeNull();
+  });
+
+  it("canSubmit is true on edit with empty line items when another field changes", () => {
+    const { result } = renderHook(() => useFormHarness({ initialTypeId: "" }));
+    const event = makeAdminEvent({
+      id: FIXTURE_EVENT_ID,
+      description: "Original description here",
+      items: [],
+      price: 17,
+    });
+
+    act(() => {
+      result.current.startEdit(event);
+    });
+
+    expect(result.current.canSubmit).toBe(false);
+
+    act(() => {
+      result.current.setDescription("Updated description text");
+      result.current.setItemsText("");
+    });
+
+    expect(result.current.canSubmit).toBe(true);
+    expect(result.current.getValidationError()).toBeNull();
+    expect(result.current.buildUpdateBody().items).toEqual([]);
+  });
+
+  it("canSubmit is true on edit when clearing optional line items", () => {
+    const { result } = renderHook(() => useFormHarness({ initialTypeId: "" }));
+    const event = makeAdminEvent({
+      id: FIXTURE_EVENT_ID,
+      description: "Original description here",
+      items: ["A", "B"],
+      price: 17,
+    });
+
+    act(() => {
+      result.current.startEdit(event);
+      result.current.setItemsText("");
+    });
+
+    expect(result.current.canSubmit).toBe(true);
+    expect(result.current.buildUpdateBody().items).toEqual([]);
+  });
+
   it("canSubmit is true for create when type, description, items, and price are set", () => {
     const { result } = renderHook(() => useFormHarness());
 

@@ -57,7 +57,14 @@ import {
   buildFixedTicketConfirmationHtml,
   buildFixedTicketConfirmationSubject,
   buildFixedTicketConfirmationText,
+  packageSnapshotFromEnrollment,
 } from '../mail/fixed-ticket-confirmation.mail';
+import {
+  buildFixedTicketAdminContextLabel,
+  buildFixedTicketAdminDetailsLines,
+  fixedTicketNotifyFieldsFromEnrollment,
+  fixedTicketVerificationCode,
+} from '../mail/fixed-ticket-notify.util';
 
 @Injectable()
 export class UpcomingEventsWebhookService {
@@ -212,6 +219,10 @@ export class UpcomingEventsWebhookService {
       eventSlug: string | null;
 
       ticketNumber?: number;
+
+      verificationCode?: string;
+
+      packageTitle?: string | null;
     };
   }> {
     const enrollment =
@@ -262,6 +273,12 @@ export class UpcomingEventsWebhookService {
         eventName: refreshed.event.eventType.name,
 
         eventSlug: refreshed.event.slug,
+
+        verificationCode: fixedTicketVerificationCode(refreshed.id),
+
+        ...(refreshed.packageTitle?.trim()
+          ? { packageTitle: refreshed.packageTitle.trim() }
+          : {}),
 
         ...(refreshed.ticketNumber != null
           ? { ticketNumber: refreshed.ticketNumber }
@@ -691,6 +708,17 @@ export class UpcomingEventsWebhookService {
       enrollment.eventId,
     );
 
+    let fixedTicketCapacity = venueConfig?.fixedTicketCapacity ?? null;
+    if (enrollment.packageId) {
+      const pkg = await this.repository
+        .asPrisma()
+        .upcomingFixedEventPackage.findUnique({
+          where: { id: enrollment.packageId },
+          select: { capacity: true },
+        });
+      if (pkg) fixedTicketCapacity = pkg.capacity;
+    }
+
     let paidEnrollment:
       | (typeof enrollment & { ticketNumber: number | null })
       | null = null;
@@ -708,7 +736,7 @@ export class UpcomingEventsWebhookService {
 
           paymentMethodLast4: paymentDetails.paymentMethodLast4,
 
-          fixedTicketCapacity: venueConfig?.fixedTicketCapacity ?? null,
+          fixedTicketCapacity,
         },
       );
     } catch (err) {
@@ -733,20 +761,17 @@ export class UpcomingEventsWebhookService {
 
         await this.adminPaymentNotify.notifyPaymentOutcome({
           outcome: 'PAID',
-
           flow: 'FIXED_TICKET',
-
           customerName: enrollment.customerName,
-
           customerEmail: enrollment.customerEmail,
-
+          customerPhone: enrollment.customerPhone,
           amount: Number(enrollment.amount),
-
           currency: enrollment.currency,
-
-          contextLabel: `${enrollment.event.eventType.name} ? PAID but ticket # not assigned (sold out)`,
-
-          reference: enrollment.id.slice(0, 8).toUpperCase(),
+          contextLabel: `${enrollment.event.eventType.name}${enrollment.packageTitle ? ` — Package: ${enrollment.packageTitle}` : ''} — PAID but ticket # not assigned (sold out)`,
+          reference: fixedTicketVerificationCode(enrollment.id),
+          detailsLines: buildFixedTicketAdminDetailsLines({
+            package: packageSnapshotFromEnrollment(enrollment),
+          }),
         });
 
         throw new InternalServerErrorException(
@@ -810,22 +835,19 @@ export class UpcomingEventsWebhookService {
     }
 
     if (!enrollment.adminNotifySentAt) {
+      const eventDateLabel =
+        venueConfig?.reservationEventLabel?.trim() ||
+        (venueConfig?.reservationEventDate
+          ? venueConfig.reservationEventDate.toISOString()
+          : null);
+      const notify = fixedTicketNotifyFieldsFromEnrollment(
+        enrollment,
+        eventDateLabel,
+      );
       await this.adminPaymentNotify.notifyPaymentOutcome({
         outcome: 'PAID',
-
         flow: 'FIXED_TICKET',
-
-        customerName: enrollment.customerName,
-
-        customerEmail: enrollment.customerEmail,
-
-        amount: Number(enrollment.amount),
-
-        currency: enrollment.currency,
-
-        contextLabel: `${enrollment.event.eventType.name}${enrollment.ticketNumber != null ? ` ? Ticket #${enrollment.ticketNumber}` : ''}`,
-
-        reference: enrollment.id.slice(0, 8).toUpperCase(),
+        ...notify,
       });
 
       await this.repository.stampFixedEnrollmentAdminNotifySent(enrollmentId);
@@ -849,25 +871,27 @@ export class UpcomingEventsWebhookService {
 
     await this.adminPaymentNotify.notifyPaymentOutcome({
       outcome: 'EXPIRED',
-
       flow: 'FIXED_TICKET',
-
       customerName: enrollment.customerName,
-
       customerEmail: enrollment.customerEmail,
-
+      customerPhone: enrollment.customerPhone,
       amount: Number(enrollment.amount),
-
       currency: enrollment.currency,
-
-      contextLabel: enrollment.event.eventType.name,
-
-      reference: enrollment.id.slice(0, 8).toUpperCase(),
+      contextLabel: buildFixedTicketAdminContextLabel({
+        eventName: enrollment.event.eventType.name,
+        packageTitle: enrollment.packageTitle,
+      }),
+      reference: fixedTicketVerificationCode(enrollment.id),
+      detailsLines: buildFixedTicketAdminDetailsLines({
+        package: packageSnapshotFromEnrollment(enrollment),
+      }),
     });
   }
 
   private async sendFixedTicketConfirmation(
     enrollment: {
+      id: string;
+
       customerName: string;
 
       customerEmail: string;
@@ -877,6 +901,12 @@ export class UpcomingEventsWebhookService {
       currency: string;
 
       ticketNumber: number;
+
+      packageTitle?: string | null;
+
+      packageArrivalLabel?: string | null;
+
+      packageInclusions?: unknown;
 
       event: { eventType: { name: string } };
     },
@@ -898,6 +928,7 @@ export class UpcomingEventsWebhookService {
         : 'See event details');
 
     const branding = emailBrandingFromProcessEnv();
+    const pkgSnapshot = packageSnapshotFromEnrollment(enrollment);
 
     const { ok, errorText } = await this.mail.sendTransactional({
       to: enrollment.customerEmail,
@@ -917,7 +948,10 @@ export class UpcomingEventsWebhookService {
 
         amount,
 
+        verificationCode: enrollment.id,
+
         siteBaseUrl: branding.siteBaseUrl,
+        package: pkgSnapshot,
       }),
 
       html: buildFixedTicketConfirmationHtml({
@@ -931,7 +965,10 @@ export class UpcomingEventsWebhookService {
 
         amount,
 
+        verificationCode: enrollment.id,
+
         branding,
+        package: pkgSnapshot,
       }),
     });
 

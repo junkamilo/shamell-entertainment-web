@@ -1,6 +1,7 @@
 import { Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsInt,
   IsISO8601,
   IsNumber,
@@ -12,6 +13,7 @@ import {
   Min,
   ValidateIf,
 } from 'class-validator';
+import { FixedTicketMode } from '@prisma/client';
 
 export class UpsertVenueConfigDto {
   @IsOptional()
@@ -65,6 +67,10 @@ export class UpsertVenueConfigDto {
   @Min(1)
   @Max(99999)
   fixedTicketCapacity?: number | null;
+
+  @IsOptional()
+  @IsEnum(FixedTicketMode)
+  fixedTicketMode?: FixedTicketMode;
 
   /** @deprecated Full class package removed; cleared on RECURRING_WEEKLY save. */
   @IsOptional()
