@@ -43,4 +43,16 @@ describe("admin auth", () => {
       "Content-Type": "application/json",
     });
   });
+
+  it("returns null token and empty-ish headers when window is undefined", () => {
+    const original = globalThis.window;
+    // @ts-expect-error intentional SSR stub
+    delete globalThis.window;
+    expect(getAdminBearerToken()).toBeNull();
+    expect(getAdminAuthHeaders()).toEqual({
+      "Content-Type": "application/json",
+    });
+    expect(getAdminAuthHeaders(false)).toEqual({});
+    globalThis.window = original;
+  });
 });

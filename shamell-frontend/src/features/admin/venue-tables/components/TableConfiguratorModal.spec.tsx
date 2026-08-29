@@ -29,8 +29,13 @@ const mockConfigurator = {
   save: vi.fn(),
 };
 
+let capturedOnDone: (() => void) | null = null;
+
 vi.mock("../hooks/useTableConfigurator", () => ({
-  useTableConfigurator: () => mockConfigurator,
+  useTableConfigurator: (_editing: unknown, onDone: () => void) => {
+    capturedOnDone = onDone;
+    return mockConfigurator;
+  },
 }));
 
 vi.mock("motion/react", () => ({
@@ -82,6 +87,9 @@ describe("TableConfiguratorModal", () => {
     mockConfigurator.saving = false;
     mockConfigurator.fieldErrors = [];
     mockConfigurator.quantity = 1;
+    mockConfigurator.canIncrementQuantity = true;
+    mockConfigurator.canDecrementQuantity = false;
+    capturedOnDone = null;
     vi.clearAllMocks();
   });
 
@@ -104,20 +112,73 @@ describe("TableConfiguratorModal", () => {
     expect(
       screen.getByRole("button", { name: "Save configuration" }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Table type")).toBeInTheDocument();
   });
 
-  it("calls onClose from Cancel", async () => {
+  it("calls onClose from Cancel, backdrop, and header close", async () => {
     const user = userEvent.setup();
     const { props } = renderModal();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(props.onClose).toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(props.onClose).toHaveBeenCalledTimes(2);
+
+    const xButton = screen.getByRole("dialog").querySelector("header button")!;
+    await user.click(xButton);
+    expect(props.onClose).toHaveBeenCalledTimes(3);
   });
 
-  it("calls save from primary action", async () => {
+  it("calls save from primary action and notifies onDone", async () => {
     const user = userEvent.setup();
-    renderModal();
+    const { props } = renderModal();
     await user.click(screen.getByRole("button", { name: "Create table" }));
     expect(mockConfigurator.save).toHaveBeenCalled();
+    capturedOnDone?.();
+    expect(props.onSaved).toHaveBeenCalled();
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it("adjusts quantity from stepper and input", async () => {
+    const user = userEvent.setup();
+    mockConfigurator.canDecrementQuantity = true;
+    renderModal();
+    await user.click(screen.getByRole("button", { name: "Increase quantity" }));
+    expect(mockConfigurator.incrementQuantity).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Decrease quantity" }));
+    expect(mockConfigurator.decrementQuantity).toHaveBeenCalled();
+
+    const input = screen.getByRole("spinbutton");
+    await user.clear(input);
+    await user.type(input, "4");
+    expect(mockConfigurator.setQuantity).toHaveBeenCalled();
+  });
+
+  it("ignores non-numeric quantity input", async () => {
+    const user = userEvent.setup();
+    renderModal();
+    const input = screen.getByRole("spinbutton");
+    await user.clear(input);
+    await user.type(input, "abc");
+    const numericCalls = mockConfigurator.setQuantity.mock.calls.filter(
+      ([value]) => typeof value === "number" && !Number.isNaN(value),
+    );
+    expect(numericCalls.length).toBe(0);
+  });
+
+  it("shows bulk create label, field errors, and saving state", () => {
+    mockConfigurator.quantity = 3;
+    mockConfigurator.fieldErrors = ["Bundle price is required"];
+    mockConfigurator.saving = true;
+    renderModal();
+    expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+    expect(screen.getByText("Bundle price is required")).toBeInTheDocument();
+  });
+
+  it("labels create with quantity when not saving", () => {
+    mockConfigurator.quantity = 3;
+    renderModal();
+    expect(screen.getByRole("button", { name: "Create 3 tables" })).toBeInTheDocument();
   });
 
   it("does not render when closed", () => {

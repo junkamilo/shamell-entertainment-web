@@ -45,6 +45,14 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    files: ["src/test/**/*.{ts,tsx}"],
+    rules: {
+      // Test R3F DOM stubs assign forwarded refs like real Three hosts.
+      "react-hooks/refs": "off",
+      "react-hooks/immutability": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

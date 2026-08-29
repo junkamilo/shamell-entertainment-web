@@ -18,13 +18,14 @@ describe("VenueSceneLegend", () => {
       <VenueSceneLegend
         palette={{
           ...paletteBase,
-          tablesBySize: { LARGE: 2, MEDIUM: 1, SMALL: 0 },
+          tablesBySize: { LARGE: 2, MEDIUM: 1, SMALL: 4 },
           standaloneChairsAvailable: 3,
         }}
       />,
     );
     expect(screen.getByText("Large")).toBeInTheDocument();
     expect(screen.getByText("Medium")).toBeInTheDocument();
+    expect(screen.getByText("Small")).toBeInTheDocument();
     expect(screen.getByText(/2 available/)).toBeInTheDocument();
   });
 
@@ -38,5 +39,20 @@ describe("VenueSceneLegend", () => {
   it("shows reservation key when enabled", () => {
     render(<VenueSceneLegend showReservationKey />);
     expect(screen.getByText(/Sold \(paid\)/)).toBeInTheDocument();
+  });
+
+  it("shows placed counts, editor hints, and the mobile tap hint", () => {
+    render(
+      <VenueSceneLegend
+        placedSummary={{ large: 1, medium: 1, small: 1, chairs: 2 }}
+        showEditorHints
+        showReservationKey
+        layoutTopOnNarrow
+        showMobileLabelHint
+      />,
+    );
+    expect(screen.getAllByText(/1 placed/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Drag a table or chair to move it/)).toBeInTheDocument();
+    expect(screen.getByText(/Tap a table or chair for details/)).toBeInTheDocument();
   });
 });

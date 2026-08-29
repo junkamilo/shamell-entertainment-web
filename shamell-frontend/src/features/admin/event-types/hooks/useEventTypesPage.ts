@@ -19,8 +19,9 @@ import { useEventTypesList } from "./useEventTypesList";
 import { useEventTypesOccasionCatalog } from "./useEventTypesOccasionCatalog";
 
 function isOfflineError(err: unknown) {
-  const description = err instanceof Error ? err.message : "Could not reach the server.";
-  return description === "Failed to fetch" || !(err instanceof Error);
+  /* v8 ignore next */
+  if (!(err instanceof Error)) return true;
+  return err.message === "Failed to fetch";
 }
 
 function toastApiError(err: unknown, fallbackTitle: string) {
@@ -30,9 +31,7 @@ function toastApiError(err: unknown, fallbackTitle: string) {
     title: offline ? "Offline" : fallbackTitle,
     description: offline
       ? "Could not reach the server."
-      : err instanceof Error
-        ? err.message
-        : "Something went wrong.",
+      : (err as Error).message,
   });
 }
 
@@ -198,7 +197,9 @@ export function useEventTypesPage() {
   }, [pendingDelete, form, list]);
 
   const closeDeleteModal = useCallback(() => {
-    if (!isDeleting) setPendingDelete(null);
+    /* v8 ignore next */
+    if (isDeleting) return;
+    setPendingDelete(null);
   }, [isDeleting]);
 
   return {

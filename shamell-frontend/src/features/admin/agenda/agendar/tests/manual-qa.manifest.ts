@@ -5,7 +5,8 @@
  * Automated verification:
  * - npm run test:agendar — Vitest for agendar (co-located lib/hooks/components + services unit; e2e excluded)
  * - npm test — full frontend Vitest suite
- * - npm run test:e2e:agendar — config OK; 7 skipped without E2E_ADMIN_* (run with server + creds)
+ * - npm run test:e2e:agendar — Playwright under e2e/; skipped without E2E_ADMIN_* (run with server + creds)
+ * - npm run test:e2e:public — CI public flows (home, hub, contacto, returns)
  * - npm run smoke:agendar — requires npm run build && npm run start
  */
 export const AUTOMATED_VERIFICATION = {

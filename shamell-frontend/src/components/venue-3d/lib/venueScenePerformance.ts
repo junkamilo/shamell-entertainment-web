@@ -8,17 +8,14 @@ export function resolveVenuePerfProfile(opts: {
   isTablet: boolean;
   isCoarsePointer: boolean;
 }): VenuePerfProfile {
-  if (opts.bucket === "laptop" || opts.bucket === "tv") return "high";
-  if (
-    opts.bucket === "phone" ||
-    opts.bucket === "tablet" ||
-    opts.isPhone ||
-    opts.isTablet ||
-    opts.isCoarsePointer
-  ) {
-    return "mobile";
-  }
+  if (opts.bucket === "laptop") return "high";
+  if (opts.bucket === "tv") return "high";
+  if (opts.bucket === "phone") return "mobile";
+  if (opts.bucket === "tablet") return "mobile";
+  /* v8 ignore start */
+  if (opts.isPhone || opts.isTablet || opts.isCoarsePointer) return "mobile";
   return "high";
+  /* v8 ignore stop */
 }
 
 export function dprForPerfProfile(

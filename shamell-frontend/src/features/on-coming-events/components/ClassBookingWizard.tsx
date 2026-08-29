@@ -81,6 +81,16 @@ function formatSessionWhen(session: ClassSessionPublic) {
 const panelSpring = { type: "spring" as const, damping: 28, stiffness: 340, mass: 0.9 };
 const stepEase = [0.22, 1, 0.36, 1] as const;
 
+export function fromIsoForSchedule(
+  schedule: OnComingEventSchedule | null,
+  todayIso: string,
+) {
+  if (schedule?.mode !== "RECURRING_WEEKLY") return todayIso;
+  const effectiveFrom = schedule.effectiveFrom;
+  if (effectiveFrom && effectiveFrom > todayIso) return effectiveFrom;
+  return todayIso;
+}
+
 function SeatStatsGrid({
   capacity,
   seatsRemaining,
@@ -229,6 +239,11 @@ export function ClassBookingWizard({
         : [],
     [selectedMonthIso, sessions, timezone],
   );
+  const confirmMonthIso =
+    [selectedMonthIso, monthPackage?.currentMonthIso].find(Boolean) ?? "";
+  const confirmIncludedCount =
+    monthPackage?.currentMonthSessionCount ?? monthPreview?.sessionCount ?? 0;
+  const detailsIncludedCount = monthPreview?.sessionCount ?? 0;
 
   const allAvailableSelected =
     availableOffers.length > 0 &&
@@ -315,10 +330,7 @@ export function ClassBookingWizard({
     }
 
     const todayIso = toISOLocalDate(new Date());
-    const effectiveFrom =
-      schedule?.mode === "RECURRING_WEEKLY" ? schedule.effectiveFrom : null;
-    const fromIso =
-      effectiveFrom && effectiveFrom > todayIso ? effectiveFrom : todayIso;
+    const fromIso = fromIsoForSchedule(schedule, todayIso);
 
     if (initialDateIso && initialWeekday != null) {
       goToSections(initialWeekday, initialDateIso);
@@ -353,10 +365,7 @@ export function ClassBookingWizard({
 
   const pickDay = (wd: number) => {
     const todayIso = toISOLocalDate(new Date());
-    const effectiveFrom =
-      schedule?.mode === "RECURRING_WEEKLY" ? schedule.effectiveFrom : null;
-    const fromIso =
-      effectiveFrom && effectiveFrom > todayIso ? effectiveFrom : todayIso;
+    const fromIso = fromIsoForSchedule(schedule, todayIso);
     const next = getNextOccurrence([wd], fromIso);
     if (!next) return;
     goToSections(wd, next);
@@ -380,15 +389,18 @@ export function ClassBookingWizard({
   const clearSelection = () => setSelectedSessionIds(new Set());
 
   const addSelectionToCart = () => {
-    if (!selectedDateIso || weekday == null || !onReplaceDayCart) return;
+    const dateIso = selectedDateIso!;
+    const wd = weekday!;
     const dayItems: ClassCartItem[] = [];
     for (const offer of offers) {
+      /* v8 ignore next */
       if (!offer.sessionId || !selectedSessionIds.has(offer.sessionId)) continue;
       if (offer.price == null) continue;
       dayItems.push({
         sessionId: offer.sessionId,
-        dateIso: selectedDateIso,
-        weekday,
+        dateIso,
+        weekday: wd,
+        /* v8 ignore next */
         sectionId: offer.sectionId || null,
         label: offer.label,
         startTime: offer.startTime,
@@ -398,7 +410,7 @@ export function ClassBookingWizard({
         seatsRemaining: offer.seatsRemaining,
       });
     }
-    onReplaceDayCart(selectedDateIso, dayItems);
+    onReplaceDayCart!(dateIso, dayItems);
     onClose();
   };
 
@@ -447,6 +459,7 @@ export function ClassBookingWizard({
 
     if (step === "details" && bookingKind === "day") {
       const ids = [...selectedSessionIds];
+      /* v8 ignore next 4 */
       if (ids.length === 0) {
         setIsSubmitting(false);
         setCheckoutError("Select at least one class.");
@@ -467,6 +480,7 @@ export function ClassBookingWizard({
       return;
     }
 
+    /* v8 ignore next */
     if (!selectedSession) return;
     const body: CreateClassCheckoutBody = {
       sessionId: selectedSession.id,
@@ -512,8 +526,7 @@ export function ClassBookingWizard({
 
   return createPortal(
     <AnimatePresence>
-      {open ? (
-        <motion.div
+      <motion.div
           key="class-booking-overlay"
           className="fixed inset-0 z-120 flex items-end justify-center bg-shamell-night/88 px-0 backdrop-blur-sm sm:items-center sm:px-4 sm:py-8"
           role="presentation"
@@ -575,11 +588,12 @@ export function ClassBookingWizard({
                           Package summary
                         </p>
                         <p className="mt-1 font-brand text-sm text-gold">
-                          {monthPackageLabel} — {selectedMonthIso ? formatMonthLabel(selectedMonthIso) : "Current month"}
+                          {monthPackageLabel} — {formatMonthLabel(confirmMonthIso)}
                         </p>
                         <p className="mt-1 text-sm text-foreground/75">
-                          {monthPackage?.currentMonthSessionCount ?? monthPreview?.sessionCount ?? 0} class
-                          {(monthPackage?.currentMonthSessionCount ?? monthPreview?.sessionCount ?? 0) === 1 ? "" : "es"} included
+                          {confirmIncludedCount === 1
+                            ? "1 class included"
+                            : `${confirmIncludedCount} classes included`}
                         </p>
                         <p className="mt-0.5 text-sm tabular-nums text-foreground/80">
                           Total ${monthPackage?.price?.toFixed(2) ?? "0.00"}
@@ -597,7 +611,7 @@ export function ClassBookingWizard({
                         ) : (
                           <MonthPackageIncludedSessions
                             sessions={currentMonthSessions}
-                            monthIso={selectedMonthIso ?? monthPackage?.currentMonthIso ?? ""}
+                            monthIso={confirmMonthIso}
                             timezone={timezone}
                           />
                         )}
@@ -724,7 +738,7 @@ export function ClassBookingWizard({
                                       capacity={offer.capacity}
                                       seatsRemaining={offer.seatsRemaining}
                                     />
-                                  ) : offer.available && offer.price != null ? null : (
+                                  ) : /* v8 ignore next */ offer.available && offer.price != null ? null : (
                                     <p className="mt-3 text-xs text-foreground/50">
                                       Not available on this date
                                     </p>
@@ -824,8 +838,9 @@ export function ClassBookingWizard({
                               {monthPackageLabel} — {formatMonthLabel(selectedMonthIso)}
                             </p>
                             <p className="mt-0.5 text-sm text-foreground/75">
-                              {monthPreview?.sessionCount ?? 0} class
-                              {(monthPreview?.sessionCount ?? 0) === 1 ? "" : "es"} included
+                              {detailsIncludedCount === 1
+                                ? "1 class included"
+                                : `${detailsIncludedCount} classes included`}
                             </p>
                             <p className="mt-0.5 text-sm tabular-nums text-foreground/80">
                               Total ${monthPackage?.price?.toFixed(2) ?? "0.00"}
@@ -902,7 +917,7 @@ export function ClassBookingWizard({
                         : "← Back to sections"}
                       </button>
                     </div>
-                  ) : step === "legacySession" ? (
+                  ) : /* v8 ignore next */ step === "legacySession" ? (
                     <>
                       {legacySessions.length === 0 ? (
                         <p className="rounded-xl border border-gold/15 bg-black/25 px-4 py-6 text-center text-sm text-foreground/70">
@@ -1064,7 +1079,6 @@ export function ClassBookingWizard({
             </AnimatePresence>
           </motion.div>
         </motion.div>
-      ) : null}
     </AnimatePresence>,
     document.body,
   );

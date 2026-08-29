@@ -26,6 +26,7 @@ export default function StageZoneLights() {
 
   useLayoutEffect(() => {
     const spot = spotRef.current;
+    /* v8 ignore next */
     if (!spot) return;
     spot.target = target;
   }, [target]);

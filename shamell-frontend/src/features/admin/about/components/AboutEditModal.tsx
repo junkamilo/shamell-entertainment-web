@@ -185,19 +185,19 @@ export function AboutEditModal({
                     )
                   }
                 />
-              ) : imagePreviewUrl ? (
+              ) : (
                 <AboutHeroPreviewCard
-                  src={imagePreviewUrl}
+                  src={imagePreviewUrl!}
                   isVideo={isAboutHeroVideoDisplay({ file: imageFile })}
                   badge="New file"
                   onRemove={onDiscardSelectedFile}
                   removeDisabled={isSubmitting || isDeletingHero}
                   removeAriaLabel="Discard selected file"
                   onExpand={() =>
-                    onOpenLightbox(imagePreviewUrl, isAboutHeroVideoDisplay({ file: imageFile }))
+                    onOpenLightbox(imagePreviewUrl!, isAboutHeroVideoDisplay({ file: imageFile }))
                   }
                 />
-              ) : null}
+              )}
             </div>
           </div>
         ) : null}

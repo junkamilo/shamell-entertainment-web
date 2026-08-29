@@ -13,6 +13,8 @@ import {
   makeFixedPublicCheckoutVenueStub,
   makeFixedTicketEventStub,
   makeMonthPackageVenueEnabledStub,
+  futureDifferentCalendarDaySessions,
+  futureSameCalendarDaySessions,
 } from '../__mocks__/upcoming-events.fixtures';
 import {
   createUpcomingEventsCheckoutServiceTestModule,
@@ -232,8 +234,8 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
       return [
         makeCheckoutClassSessionStub({
           id: 'session-1',
-          startsAt,
-          endsAt,
+          startsAt: first.startsAt,
+          endsAt: first.endsAt,
           price: 40,
         }),
         makeCheckoutClassSessionStub({

@@ -10,6 +10,7 @@ import {
 } from "../test/fixtures/gallery.fixture";
 import {
   FIXTURE_CATEGORY_ID,
+  FIXTURE_CATEGORY_ID_2,
   FIXTURE_PHOTO_ID,
   FIXTURE_PHOTO_ID_2,
 } from "../test/fixtures/uuids.fixture";
@@ -109,6 +110,14 @@ describe("useGalleryPage", () => {
     expect(toastMock).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Visible on site" }),
     );
+
+    const active = result.current.catalog.photos.find((p) => p.isActive);
+    await act(async () => {
+      await result.current.onTogglePhotoActive(active!);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Hidden on site" }),
+    );
   });
 
   it("onDisablePhoto removes media via MSW", async () => {
@@ -164,5 +173,140 @@ describe("useGalleryPage", () => {
       expect.objectContaining({ title: "Upload complete" }),
     );
     expect(result.current.isPhotoModalOpen).toBe(false);
+  });
+
+  it("validates photo submit and edits media", async () => {
+    const { result } = renderHook(() => useGalleryPage());
+    await waitFor(() => expect(result.current.catalog.isLoading).toBe(false));
+    const event = { preventDefault: vi.fn() } as unknown as React.FormEvent<HTMLFormElement>;
+
+    act(() => {
+      result.current.openPhotoModalForCreate();
+      result.current.closePhotoModal();
+    });
+    expect(result.current.isPhotoModalOpen).toBe(false);
+
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onSubmitPhoto(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Sign-in required" }),
+    );
+
+    getTokenMock.mockReturnValue("token-1");
+    act(() => {
+      result.current.openPhotoModalForCreate();
+      result.current.form.setSelectedCategoryId("");
+    });
+    await act(async () => {
+      await result.current.onSubmitPhoto(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Choose category" }),
+    );
+
+    act(() => {
+      result.current.openUploadToCategory(FIXTURE_CATEGORY_ID);
+    });
+    await act(async () => {
+      await result.current.onSubmitPhoto(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "File required" }),
+    );
+
+    act(() => {
+      result.current.form.setImageFiles(
+        Array.from({ length: 21 }, (_, i) => new File(["x"], `${i}.jpg`, { type: "image/jpeg" })),
+      );
+    });
+    await act(async () => {
+      await result.current.onSubmitPhoto(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Too many files" }),
+    );
+
+    const photo = result.current.catalog.photos[0]!;
+    act(() => {
+      result.current.startPhotoEdit(photo);
+    });
+    await act(async () => {
+      await result.current.onSubmitPhoto(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "No changes" }),
+    );
+
+    act(() => {
+      result.current.startPhotoEdit(photo);
+      result.current.form.setSelectedCategoryId(FIXTURE_CATEGORY_ID_2);
+    });
+    await act(async () => {
+      await result.current.onSubmitPhoto(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Media updated" }),
+    );
+  });
+
+  it("toasts empty batch and photo errors", async () => {
+    server.use(
+      http.post("*/api/v1/gallery/admin/photos", () => HttpResponse.json({ items: [] })),
+    );
+    const { result } = renderHook(() => useGalleryPage());
+    await waitFor(() => expect(result.current.catalog.isLoading).toBe(false));
+    const event = { preventDefault: vi.fn() } as unknown as React.FormEvent<HTMLFormElement>;
+
+    act(() => {
+      result.current.openUploadToCategory(FIXTURE_CATEGORY_ID);
+      result.current.form.setImageFiles([
+        new File(["x"], "a.jpg", { type: "image/jpeg" }),
+      ]);
+    });
+    await act(async () => {
+      await result.current.onSubmitPhoto(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining("The file was saved"),
+      }),
+    );
+
+    server.use(http.post("*/api/v1/gallery/admin/photos", () => HttpResponse.error()));
+    act(() => {
+      result.current.openUploadToCategory(FIXTURE_CATEGORY_ID);
+      result.current.form.setImageFiles([
+        new File(["x"], "a.jpg", { type: "image/jpeg" }),
+      ]);
+    });
+    await act(async () => {
+      await result.current.onSubmitPhoto(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Offline" }));
+
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onTogglePhotoActive(result.current.catalog.photos[0]!);
+      await result.current.onDisablePhoto(FIXTURE_PHOTO_ID);
+    });
+
+    getTokenMock.mockReturnValue("token-1");
+    server.use(
+      http.patch("*/api/v1/gallery/admin/photos/:id", () =>
+        HttpResponse.json({ message: "Nope" }, { status: 500 }),
+      ),
+      http.delete("*/api/v1/gallery/admin/photos/:id", () => HttpResponse.error()),
+    );
+    await act(async () => {
+      await result.current.onDisablePhoto(FIXTURE_PHOTO_ID);
+    });
+    const activePhoto = result.current.catalog.photos.find((p) => p.isActive);
+    if (activePhoto) {
+      await act(async () => {
+        await result.current.onTogglePhotoActive(activePhoto);
+      });
+    }
   });
 });

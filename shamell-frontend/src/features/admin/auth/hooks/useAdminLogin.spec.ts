@@ -8,13 +8,13 @@ import {
   FIXTURE_ADMIN_PASSWORD,
 } from "../test/fixtures/uuids.fixture";
 import {
-  makeLoginActionFailure,
-  makeLoginActionSuccess,
+  makeAdminLoginSuccessResponse,
+  makeAdminLoginUser,
 } from "../test/fixtures/auth.fixture";
 import { ADMIN_ACCESS_TOKEN_KEY } from "@/lib/admin/session";
 
 const push = vi.fn();
-const loginAdminActionMock = vi.fn();
+const postAdminLoginMock = vi.fn();
 const notifyAdminSessionChangedMock = vi.fn();
 const persistAdminSessionUserMock = vi.fn();
 
@@ -22,8 +22,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
-vi.mock("../actions/authActions", () => ({
-  loginAdminAction: (...args: unknown[]) => loginAdminActionMock(...args),
+vi.mock("../services/postAdminLogin", () => ({
+  postAdminLogin: (...args: unknown[]) => postAdminLoginMock(...args),
 }));
 
 vi.mock("@/lib/admin/session", async (importOriginal) => {
@@ -47,7 +47,7 @@ describe("useAdminLogin", () => {
   beforeEach(() => {
     localStorage.clear();
     push.mockClear();
-    loginAdminActionMock.mockReset();
+    postAdminLoginMock.mockReset();
     notifyAdminSessionChangedMock.mockClear();
     persistAdminSessionUserMock.mockClear();
   });
@@ -62,11 +62,11 @@ describe("useAdminLogin", () => {
     expect(result.current.isSubmitting).toBe(false);
   });
 
-  it("onSubmit failure sets error from result.message", async () => {
-    const failure = makeLoginActionFailure({
-      message: "Invalid admin credentials.",
+  it("onSubmit failure sets error from API message", async () => {
+    postAdminLoginMock.mockResolvedValue({
+      response: { ok: false, status: 401 },
+      data: { message: "Invalid admin credentials." },
     });
-    loginAdminActionMock.mockResolvedValue(failure);
 
     const { result } = renderHook(() => useAdminLogin());
 
@@ -89,8 +89,14 @@ describe("useAdminLogin", () => {
   });
 
   it("onSubmit success stores token in localStorage, sets message, calls router.push(\"/admin\")", async () => {
-    const success = makeLoginActionSuccess();
-    loginAdminActionMock.mockResolvedValue(success);
+    const user = makeAdminLoginUser();
+    postAdminLoginMock.mockResolvedValue({
+      response: { ok: true, status: 200 },
+      data: makeAdminLoginSuccessResponse({
+        accessToken: FIXTURE_ACCESS_TOKEN,
+        user,
+      }),
+    });
 
     const { result } = renderHook(() => useAdminLogin());
 
@@ -111,7 +117,7 @@ describe("useAdminLogin", () => {
     expect(localStorage.getItem(ADMIN_ACCESS_TOKEN_KEY)).toBe(
       FIXTURE_ACCESS_TOKEN,
     );
-    expect(persistAdminSessionUserMock).toHaveBeenCalledWith(success.user);
+    expect(persistAdminSessionUserMock).toHaveBeenCalledWith(user);
     expect(notifyAdminSessionChangedMock).toHaveBeenCalled();
     expect(push).toHaveBeenCalledWith("/admin");
     expect(result.current.error).toBeNull();

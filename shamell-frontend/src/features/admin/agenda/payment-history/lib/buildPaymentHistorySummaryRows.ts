@@ -140,6 +140,7 @@ export function buildPurchaseRows(
   const extra = purchaseDetailRows(detail?.purchaseDetails);
   for (const r of extra) {
     const exists = rows.some((x) => x.label === r.label);
+    /* v8 ignore next -- purchase labels do not collide with FLOW/CONTEXT */
     if (!exists) rows.push(r);
   }
   return rows;

@@ -167,4 +167,77 @@ describe("useGalleryCategoriesPage", () => {
       expect.objectContaining({ title: "Category updated" }),
     );
   });
+
+  it("validates category submit and toasts errors", async () => {
+    const { result } = renderHook(() => useGalleryCategoriesPage());
+    await waitFor(() => expect(result.current.catalog.isLoading).toBe(false));
+    const event = { preventDefault: vi.fn() } as unknown as React.FormEvent<HTMLFormElement>;
+
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onSubmitCategory(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Sign-in required" }),
+    );
+
+    getTokenMock.mockReturnValue("token-1");
+    act(() => {
+      result.current.form.openCategoryCreate();
+      result.current.form.setCategoryName("   ");
+    });
+    await act(async () => {
+      await result.current.onSubmitCategory(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Check the form" }),
+    );
+
+    server.use(
+      http.post("*/api/v1/gallery/admin/categories", () => HttpResponse.error()),
+    );
+    act(() => {
+      result.current.form.setCategoryName("Offline album");
+    });
+    await act(async () => {
+      await result.current.onSubmitCategory(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Offline" }));
+
+    server.use(
+      http.post("*/api/v1/gallery/admin/categories", () =>
+        HttpResponse.json({ message: "Nope" }, { status: 500 }),
+      ),
+    );
+    await act(async () => {
+      await result.current.onSubmitCategory(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Error" }));
+
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onToggleCategoryActive(result.current.catalog.categories[0]!);
+    });
+    getTokenMock.mockReturnValue("token-1");
+    server.use(
+      http.patch("*/api/v1/gallery/admin/categories/:id", () =>
+        HttpResponse.json({ message: "Nope" }, { status: 500 }),
+      ),
+    );
+    const active = result.current.catalog.categories.find((c) => c.id === FIXTURE_CATEGORY_ID)!;
+    await act(async () => {
+      await result.current.onToggleCategoryActive(active);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Error" }));
+
+    server.use(
+      http.patch("*/api/v1/gallery/admin/categories/:id", () => HttpResponse.json({ ok: true })),
+    );
+    await act(async () => {
+      await result.current.onToggleCategoryActive(active);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Category hidden" }),
+    );
+  });
 });

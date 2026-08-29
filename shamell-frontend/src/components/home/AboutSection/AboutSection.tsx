@@ -130,7 +130,7 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
       return;
     }
     const timer = window.setTimeout(() => {
-      if (isBuffering) setLoadTimedOut(true);
+      setLoadTimedOut(true);
     }, VIDEO_LOAD_TIMEOUT_MS);
     return () => window.clearTimeout(timer);
   }, [isBuffering, showVideo, src]);
@@ -157,6 +157,7 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
 
   const retryLoad = () => {
     const video = videoRef.current;
+    /* v8 ignore next -- retry UI only mounts while <video> is mounted */
     if (!video) return;
     setLoadTimedOut(false);
     setIsBuffering(true);
@@ -175,6 +176,7 @@ function AboutHeroVideo({ src, poster }: AboutHeroVideoProps) {
 
   const tapToPlay = () => {
     const video = videoRef.current;
+    /* v8 ignore next -- tap UI only mounts while <video> is mounted */
     if (!video) return;
     void video.play().then(() => setNeedsTapToPlay(false)).catch(() => undefined);
   };

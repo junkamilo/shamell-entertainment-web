@@ -33,4 +33,10 @@ describe("isPaymentFlowRoute", () => {
     expect(isPaymentFlowRoute("/on-coming-events/gala")).toBe(false);
     expect(isPaymentFlowRoute("/admin/login")).toBe(false);
   });
+
+  it("treats empty, whitespace, and query-only paths as /", () => {
+    expect(isPaymentFlowRoute("")).toBe(false);
+    expect(isPaymentFlowRoute("   ")).toBe(false);
+    expect(isPaymentFlowRoute("?token=x")).toBe(false);
+  });
 });

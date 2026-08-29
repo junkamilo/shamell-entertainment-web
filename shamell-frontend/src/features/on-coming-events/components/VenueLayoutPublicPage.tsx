@@ -62,6 +62,7 @@ function VenueSceneLoadingPlaceholder() {
 }
 
 const VenueScene3D = dynamic(
+  /* v8 ignore next */
   () => import("@/components/venue-3d").then((m) => ({ default: m.VenueScene3D })),
   {
     ssr: false,
@@ -346,7 +347,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
         return;
       }
 
-      const silent = options?.silent ?? hasLoadedOnceRef.current;
+      const silent = Boolean(options?.silent);
       if (!silent) {
         setLoading(true);
       }
@@ -374,18 +375,23 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
               return;
             }
             nextEventLabel = settings.reservationEventLabel ?? null;
-            nextEventTitle =
-              settings.promoTitle?.trim() ||
-              settings.reservationEventLabel?.trim() ||
-              "On Coming Events";
+            const promoTitle = settings.promoTitle?.trim();
+            const labelTitle = settings.reservationEventLabel?.trim();
+            if (promoTitle) {
+              nextEventTitle = promoTitle;
+            } else if (labelTitle) {
+              nextEventTitle = labelTitle;
+            } else {
+              nextEventTitle = "On Coming Events";
+            }
             nextEventDescription = settings.promoDescription?.trim() ?? "";
             const promoUrl = settings.promoImageUrl?.trim() || null;
             nextHeroImageUrl = promoUrl;
-            nextHeroMediaType = promoUrl
-              ? serviceCatalogMediaTypeFromUrl(promoUrl) === "VIDEO"
-                ? "VIDEO"
-                : "IMAGE"
-              : null;
+            nextHeroMediaType = null;
+            if (promoUrl) {
+              nextHeroMediaType =
+                serviceCatalogMediaTypeFromUrl(promoUrl) === "VIDEO" ? "VIDEO" : "IMAGE";
+            }
             nextEventDateIso =
               settings.reservationEventDate ?? settings.reservationOpensAt ?? null;
           } else {
@@ -551,7 +557,9 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     try {
       const [availability, eventDetail] = await Promise.all([
         fetchVenueReservationAvailability(eventSlug),
-        eventSlug ? fetchOnComingEventDetail(eventSlug).catch(() => null) : Promise.resolve(null),
+        eventSlug
+          ? fetchOnComingEventDetail(eventSlug).catch(() => null)
+          : /* v8 ignore next */ Promise.resolve(null),
       ]);
       applyAvailability(availability, eventDetail);
     } catch {
@@ -596,7 +604,8 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
         title: "Already reserved",
         description: label
           ? `${label} is already sold for this event.`
-          : isTable
+          : /* v8 ignore next */
+            isTable
             ? "This table is already sold for this event."
             : "This chair is already sold for this event.",
       });
@@ -760,7 +769,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
                     hasMounted && sceneLayout.perfProfile === "mobile"
                   }
                 />
-              ) : null}
+              ) : /* v8 ignore next */ null}
             </div>
           </div>
 

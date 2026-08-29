@@ -4,6 +4,8 @@ import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
+const gateState = vi.hoisted(() => ({ suspend: false }));
+
 vi.mock("@/components/shared", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/components/shared")>();
   return {
@@ -14,20 +16,29 @@ vi.mock("@/components/shared", async (importOriginal) => {
 });
 
 vi.mock("./ContactInquiryGate", () => ({
-  default: () => <div data-testid="contact-inquiry-gate" />,
-}));
-
-vi.mock("./ContactFormFallback", () => ({
-  default: () => <div data-testid="contact-form-fallback" />,
+  default: function Gate() {
+    if (gateState.suspend) {
+      throw new Promise(() => undefined);
+    }
+    return <div data-testid="contact-inquiry-gate" />;
+  },
 }));
 
 import ContactoPage from "./ContactoPage";
 
 describe("ContactoPage", () => {
   it("renders shell and inquiry gate", () => {
+    gateState.suspend = false;
     renderWithProviders(<ContactoPage />);
     expect(screen.getByTestId("site-header")).toBeInTheDocument();
     expect(screen.getByTestId("contact-inquiry-gate")).toBeInTheDocument();
     expect(screen.getByTestId("site-footer")).toBeInTheDocument();
+  });
+
+  it("shows the suspense fallback while the gate is pending", () => {
+    gateState.suspend = true;
+    renderWithProviders(<ContactoPage />);
+    expect(screen.getByText("Loading form…")).toBeInTheDocument();
+    gateState.suspend = false;
   });
 });

@@ -82,7 +82,11 @@ export default function VenueLayoutItemModal({
 
   const isTable = item.kind === "catalog_table";
   const fallbackTitle = isTable ? TABLE_SIZE_LABELS[item.size] : "Standalone chair";
-  const title = displayLabel?.trim() || fallbackTitle;
+  const trimmedDisplayLabel = `${displayLabel ?? ""}`.trim();
+  let title = fallbackTitle;
+  if (trimmedDisplayLabel) {
+    title = trimmedDisplayLabel;
+  }
   const price = isTable
     ? (tableConfig?.bundlePrice ?? null)
     : resolveStandaloneChairUnitPrice(item, chairPricesById, standaloneChairs.unitPrice);

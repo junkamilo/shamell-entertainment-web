@@ -25,13 +25,18 @@ describe("ContactInquiryPhaseContact", () => {
       <ContactInquiryPhaseContact
         {...createMockContactInquiryPhaseProps({
           currentPhase: "contact",
-          data: makeWizardData({ fullName: "", email: "" }),
+          data: makeWizardData({ fullName: "", email: "", phone: "" }),
           update,
         })}
       />,
     );
     expect(screen.getByLabelText(/full name/i)).toBeInTheDocument();
-    await user.type(screen.getByLabelText(/full name/i), "Ada");
+    expect(screen.getByText(/optional — include country code/i)).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/full name/i), "A");
     expect(update).toHaveBeenCalledWith("fullName", expect.any(String));
+    await user.type(screen.getByLabelText(/^email/i), "a");
+    expect(update).toHaveBeenCalledWith("email", expect.any(String));
+    await user.type(screen.getByLabelText(/^phone/i), "1");
+    expect(update).toHaveBeenCalledWith("phone", expect.any(String));
   });
 });

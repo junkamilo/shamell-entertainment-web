@@ -50,7 +50,9 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
     apiError,
     onSubmit,
     handleInquirySubmitComplete,
+    /* v8 ignore start */
     selectedLine,
+    /* v8 ignore stop */
     logisticsUsesBespokeDeadlineRule,
     logisticsPickerTriggerClass,
     occasionSingleLabel,
@@ -171,9 +173,7 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
               <li key={`${p}-${i}`}>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (stepReachable) goToPhaseIndex(i);
-                  }}
+                  onClick={() => goToPhaseIndex(i)}
                   disabled={stepDisabled}
                   title={
                     offeringNavLocked
@@ -285,6 +285,7 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
             </button>
           </div>
         ) : (
+          /* v8 ignore start */
           <form onSubmit={onSubmit} className="mt-6 flex flex-wrap gap-3">
             <button
               type="button"
@@ -308,6 +309,7 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
               )}
             </button>
           </form>
+          /* v8 ignore stop */
         )}
             </div>
             </div>

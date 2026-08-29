@@ -16,6 +16,9 @@ import {
   makeFutureClassSessionStub,
   makeMonthPackageVenueConfigStub,
   makeUpcomingClassSessionStub,
+  futureDifferentCalendarDaySessions,
+  futureSameCalendarDaySessions,
+  futureSessionUtcWindow,
 } from '../__mocks__/upcoming-events.fixtures';
 import { currentCalendarMonthIso } from '../utils/class-month-package.util';
 import {
@@ -955,10 +958,12 @@ describe('AdminClassEnrollmentService', () => {
       jest.useFakeTimers();
       jest.setSystemTime(new Date('2026-08-10T12:00:00.000Z'));
       const currentMonthIso = currentCalendarMonthIso(NY_TIMEZONE);
+      const monthSession1Window = futureSessionUtcWindow(1, 14, 2);
+      const monthSession2Window = futureSessionUtcWindow(2, 14, 2);
       const monthSession1 = makeFutureClassSessionStub({
         id: 'month-s1',
-        startsAt: new Date('2026-08-20T14:00:00.000Z'),
-        endsAt: new Date('2026-08-20T16:00:00.000Z'),
+        startsAt: monthSession1Window.startsAt,
+        endsAt: monthSession1Window.endsAt,
         section: null,
         weekday: 4,
         price: 50,
@@ -967,8 +972,8 @@ describe('AdminClassEnrollmentService', () => {
       });
       const monthSession2 = makeFutureClassSessionStub({
         id: 'month-s2',
-        startsAt: new Date('2026-08-27T14:00:00.000Z'),
-        endsAt: new Date('2026-08-27T16:00:00.000Z'),
+        startsAt: monthSession2Window.startsAt,
+        endsAt: monthSession2Window.endsAt,
         section: null,
         weekday: 4,
         price: 50,

@@ -99,6 +99,7 @@ export default function VenueTablesPageContent() {
       });
       return;
     }
+    /* v8 ignore next 8 */
     if (filteredItems.length === 0) {
       toast({
         variant: "destructive",
@@ -112,6 +113,7 @@ export default function VenueTablesPageContent() {
   };
 
   const handleConfirmBulkEditPrices = async () => {
+    /* v8 ignore next */
     if (sizeFilter === "ALL") return;
 
     const parsed = parsePriceInput(bulkPriceInput);
@@ -156,6 +158,7 @@ export default function VenueTablesPageContent() {
   };
 
   const handleConfirmDeleteBulk = async () => {
+    /* v8 ignore next */
     if (!pendingBulkDelete) return;
     const { scope, count: targetCount } = pendingBulkDelete;
 

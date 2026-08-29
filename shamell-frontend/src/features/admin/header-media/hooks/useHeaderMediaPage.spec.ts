@@ -138,4 +138,93 @@ describe("useHeaderMediaPage", () => {
       expect.objectContaining({ title: "Item removed" }),
     );
   });
+
+  it("validates upload and toasts errors", async () => {
+    const { result } = renderHook(() => useHeaderMediaPage());
+    await waitFor(() => expect(result.current.library.isLoading).toBe(false));
+    const event = { preventDefault: vi.fn() } as unknown as React.FormEvent;
+
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+
+    getTokenMock.mockReturnValue("token-1");
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "File required" }),
+    );
+
+    act(() => {
+      result.current.upload.mergeFiles([
+        new File(["x"], "a.jpg", { type: "image/jpeg" }),
+      ]);
+    });
+    server.use(
+      http.post("*/api/v1/header-media/admin/photos", () =>
+        HttpResponse.json({ message: "Nope" }, { status: 500 }),
+      ),
+    );
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Error" }));
+
+    act(() => {
+      result.current.upload.mergeFiles([
+        new File(["x"], "a.jpg", { type: "image/jpeg" }),
+      ]);
+    });
+    server.use(http.post("*/api/v1/header-media/admin/photos", () => HttpResponse.error()));
+    await act(async () => {
+      await result.current.onSubmit(event);
+    });
+
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onToggle(result.current.library.photos[0]!);
+    });
+    getTokenMock.mockReturnValue("token-1");
+    server.use(
+      http.patch("*/api/v1/header-media/admin/photos/:id", () =>
+        HttpResponse.json({ message: "Nope" }, { status: 500 }),
+      ),
+    );
+    await act(async () => {
+      await result.current.onToggle(result.current.library.photos[0]!);
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Error" }));
+
+    await act(async () => {
+      await result.current.onConfirmDelete();
+    });
+    act(() => {
+      result.current.openDeleteConfirm(result.current.library.photos[0]!);
+      result.current.closeDeleteModal();
+    });
+    expect(result.current.pendingDelete).toBeNull();
+
+    act(() => {
+      result.current.openDeleteConfirm(result.current.library.photos[0]!);
+    });
+    getTokenMock.mockReturnValue(null);
+    await act(async () => {
+      await result.current.onConfirmDelete();
+    });
+    expect(toastMock).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Sign-in required" }),
+    );
+    getTokenMock.mockReturnValue("token-1");
+    server.use(
+      http.delete("*/api/v1/header-media/admin/photos/:id", () =>
+        HttpResponse.json({ message: "Nope" }, { status: 500 }),
+      ),
+    );
+    await act(async () => {
+      await result.current.onConfirmDelete();
+    });
+    expect(toastMock).toHaveBeenCalledWith(expect.objectContaining({ title: "Error" }));
+  });
 });

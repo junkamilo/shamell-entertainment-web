@@ -71,4 +71,11 @@ describe("stage piece smoke", () => {
     );
     expect(() => render(<StageZoneLights />)).not.toThrow();
   });
+
+  it("StageBackdropSignage mounts", async () => {
+    const { default: StageBackdropSignage } = await import(
+      "./StageBackdropSignage/StageBackdropSignage"
+    );
+    expect(() => render(<StageBackdropSignage />)).not.toThrow();
+  });
 });

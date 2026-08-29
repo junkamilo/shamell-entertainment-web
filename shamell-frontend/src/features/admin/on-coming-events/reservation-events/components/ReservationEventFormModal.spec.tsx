@@ -48,12 +48,40 @@ vi.mock("./ReservationEventScheduleSections", () => ({
     eventDate: "2030-08-01",
     eventStartTime: "20:00",
     eventEndTime: "23:00",
-    weekdays: [],
-    recurringStartTime: "10:00",
-    recurringEndTime: "12:00",
+    weekdays: [{ weekday: 1, isActive: true }],
+    recurringStartTime: "19:00",
+    recurringEndTime: "21:00",
     classSections: [],
   }),
-  ReservationEventScheduleSections: () => <div data-testid="schedule-sections" />,
+  ReservationEventScheduleSections: ({
+    onChange,
+    value,
+  }: {
+    onChange: (next: typeof value) => void;
+    value: {
+      scheduleMode: string;
+      weekdays: unknown[];
+      recurringStartTime: string;
+      recurringEndTime: string;
+    };
+  }) => (
+    <div data-testid="schedule-sections">
+      <button
+        type="button"
+        onClick={() =>
+          onChange({
+            ...value,
+            scheduleMode: "RECURRING_WEEKLY",
+            weekdays: [{ weekday: 1, isActive: true }],
+            recurringStartTime: "19:00",
+            recurringEndTime: "21:00",
+          })
+        }
+      >
+        make-recurring
+      </button>
+    </div>
+  ),
 }));
 
 import { ReservationEventFormModal } from "./ReservationEventFormModal";
@@ -119,5 +147,60 @@ describe("ReservationEventFormModal", () => {
   it("does not render when closed", () => {
     renderModal({ isOpen: false });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("submits recurring schedule body after stub switch", async () => {
+    const user = userEvent.setup();
+    const { props } = renderModal();
+    await user.click(screen.getByRole("button", { name: "make-recurring" }));
+    await user.click(screen.getByRole("button", { name: "Create" }));
+    expect(props.onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scheduleMode: "RECURRING_WEEKLY",
+        weekdays: [{ weekday: 1, isActive: true }],
+        recurringStartTime: "19:00",
+        recurringEndTime: "21:00",
+      }),
+    );
+  });
+
+  it("resets create form when reopened without editing", async () => {
+    const user = userEvent.setup();
+    const { rerender, props } = renderModal();
+    await user.type(
+      screen.getByPlaceholderText("Friday Lounge — Spring"),
+      "Temp",
+    );
+    rerender(
+      <ReservationEventFormModal
+        isOpen={false}
+        editing={null}
+        isSubmitting={false}
+        onClose={props.onClose}
+        onSubmit={props.onSubmit}
+      />,
+    );
+    rerender(
+      <ReservationEventFormModal
+        isOpen
+        editing={null}
+        isSubmitting={false}
+        onClose={props.onClose}
+        onSubmit={props.onSubmit}
+      />,
+    );
+    expect(screen.getByPlaceholderText("Friday Lounge — Spring")).toHaveValue("");
+  });
+
+  it("hydrates from editing template on open", () => {
+    renderModal({
+      editing: makeReservationEventTemplate({
+        name: "Saturday Gala",
+        scheduleMode: "RECURRING_WEEKLY",
+      }),
+    });
+    expect(screen.getByPlaceholderText("Friday Lounge — Spring")).toHaveValue(
+      "Saturday Gala",
+    );
   });
 });

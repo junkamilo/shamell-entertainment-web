@@ -35,4 +35,11 @@ describe("room smoke", () => {
     );
     expect(() => render(<VenueWallSconces />)).not.toThrow();
   });
+
+  it("VenueWallSconces mounts mobile without lights", async () => {
+    const { default: VenueWallSconces } = await import(
+      "./VenueWallSconces/VenueWallSconces"
+    );
+    expect(() => render(<VenueWallSconces perfProfile="mobile" />)).not.toThrow();
+  });
 });

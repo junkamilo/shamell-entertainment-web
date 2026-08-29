@@ -65,10 +65,8 @@ function lineUsesBespokeDateRule(
   line: ContactLine | undefined,
 ): boolean {
   if (isBespoke(d.inquiryCode)) return true;
-  return (
-    (line?.occasionBespokeProject?.length ?? 0) > 0 ||
-    (line?.occasionBespokeRole?.length ?? 0) > 0
-  );
+  if (!line) return false;
+  return line.occasionBespokeProject.length > 0 || line.occasionBespokeRole.length > 0;
 }
 
 function validateVenueAndGuests(d: WizardData): string | null {
@@ -173,12 +171,12 @@ export function validatePhase(
     }
     case "detail": {
       const line = contactLines.find((l) => l.id === d.contactLineId);
-      const singles = line?.occasionSingle ?? [];
+      const singles = line ? line.occasionSingle : [];
       if (singles.length > 0 && !d.occasionTypeId) {
         return "Please select the type of occasion.";
       }
-      const projects = line?.occasionBespokeProject ?? [];
-      const roles = line?.occasionBespokeRole ?? [];
+      const projects = line ? line.occasionBespokeProject : [];
+      const roles = line ? line.occasionBespokeRole : [];
       if (projects.length > 0 && d.occasionTypeIdsProject.length === 0) {
         return "Select at least one project type.";
       }
@@ -216,7 +214,10 @@ export function validatePhase(
       if (!emailRegex.test(d.email.trim())) return "Enter a valid email address.";
       if (d.phone.trim()) {
         const digits = d.phone.replace(/\D/g, "");
-        if (digits.length < 7 || d.phone.length > 40) {
+        if (digits.length < 7) {
+          return "Enter a valid phone number (7+ digits).";
+        }
+        if (d.phone.length > 40) {
           return "Enter a valid phone number (7+ digits).";
         }
       }

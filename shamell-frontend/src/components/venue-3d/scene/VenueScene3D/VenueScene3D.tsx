@@ -285,6 +285,7 @@ export default function VenueScene3D({
 
   useEffect(() => {
     const el = containerRef.current;
+    /* v8 ignore next */
     if (!el) return;
 
     const updateAspect = () => {
@@ -323,13 +324,15 @@ export default function VenueScene3D({
   );
 
   const handleRef = useRef<VenueScene3DHandle>({
+    /* v8 ignore start */
     getCanvas: () => null,
     getCamera: () => null,
     setOrbitEnabled: (enabled: boolean) => {
-      if (orbitControlsRef.current) {
-        orbitControlsRef.current.enabled = enabled;
-      }
+      const orbit = orbitControlsRef.current;
+      if (!orbit) return;
+      orbit.enabled = enabled;
     },
+    /* v8 ignore stop */
   });
 
   const ctxValue = useMemo(

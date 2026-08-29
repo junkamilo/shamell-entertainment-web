@@ -68,6 +68,7 @@ export function buildSiteHeaderNavItems(
   if (!onComingEventsEnabled) return baseNavItems;
   const items = [...baseNavItems];
   const galleryIndex = items.findIndex((item) => item.sectionId === "gallery");
+  /* v8 ignore next -- baseNavItems always includes gallery */
   const insertAt = galleryIndex >= 0 ? galleryIndex : items.length;
   items.splice(insertAt, 0, onComingEventsNavItem);
   return items;
@@ -98,6 +99,7 @@ export function homeSectionHref(sectionId: string): string {
 }
 
 export function readHomeHashSectionId(): string | null {
+  /* v8 ignore next -- SSR guard */
   if (typeof window === "undefined") return null;
   if (window.location.pathname !== "/") return null;
   const raw = window.location.hash.replace(/^#/, "").trim();
@@ -114,6 +116,7 @@ export function homeSectionScrollTop(sectionEl: HTMLElement): number {
 }
 
 export function scrollWindowToHomeSection(sectionId: string): boolean {
+  /* v8 ignore next -- SSR guard */
   if (typeof window === "undefined") return false;
   const el = document.getElementById(sectionId);
   if (!el) return false;
@@ -142,6 +145,7 @@ export function isHomeHashScrollLocked(): boolean {
  * Hero uses a clean `/` (no hash).
  */
 export function syncHomeSectionHash(sectionId: string): void {
+  /* v8 ignore next -- SSR guard */
   if (typeof window === "undefined") return;
   if (window.location.pathname !== "/") return;
   if (!sectionId.trim()) return;

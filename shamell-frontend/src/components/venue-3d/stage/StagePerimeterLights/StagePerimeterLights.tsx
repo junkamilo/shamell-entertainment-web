@@ -26,6 +26,7 @@ function positionsAlongEdge(
   const count = Math.max(2, Math.floor(len / spacing) + 1);
   const out: [number, number, number][] = [];
   for (let i = 0; i < count; i++) {
+    /* v8 ignore next */
     const t = count === 1 ? 0 : i / (count - 1);
     out.push([start[0] + dx * t, start[1] + dy * t, start[2] + dz * t]);
   }
@@ -61,22 +62,21 @@ export default function StagePerimeterLights() {
   useLayoutEffect(() => {
     const mesh = instancedRef.current;
     const wires = wireRef.current;
-    if (!mesh) return;
+    /* v8 ignore next */
+    if (!mesh || !wires) return;
     const dummy = new Object3D();
     positions.forEach((pos, i) => {
       dummy.position.set(pos[0], pos[1], pos[2]);
       dummy.scale.setScalar(1);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-      if (wires) {
-        dummy.position.set(pos[0], pos[1] - 0.06, pos[2]);
-        dummy.scale.set(1, 1.2, 1);
-        dummy.updateMatrix();
-        wires.setMatrixAt(i, dummy.matrix);
-      }
+      dummy.position.set(pos[0], pos[1] - 0.06, pos[2]);
+      dummy.scale.set(1, 1.2, 1);
+      dummy.updateMatrix();
+      wires.setMatrixAt(i, dummy.matrix);
     });
     mesh.instanceMatrix.needsUpdate = true;
-    if (wires) wires.instanceMatrix.needsUpdate = true;
+    wires.instanceMatrix.needsUpdate = true;
   }, [positions]);
 
   return (

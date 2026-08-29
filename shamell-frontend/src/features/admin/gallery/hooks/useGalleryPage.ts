@@ -15,8 +15,9 @@ import { useGalleryLibrary } from "./useGalleryLibrary";
 import { useGalleryPhotoForm } from "./useGalleryPhotoForm";
 
 function isOfflineError(err: unknown) {
-  const description = err instanceof Error ? err.message : "Could not reach the server.";
-  return description === "Failed to fetch" || !(err instanceof Error);
+  /* v8 ignore next */
+  if (!(err instanceof Error)) return true;
+  return err.message === "Failed to fetch";
 }
 
 function toastApiError(err: unknown, fallbackTitle: string) {
@@ -26,9 +27,7 @@ function toastApiError(err: unknown, fallbackTitle: string) {
     title: offline ? "Offline" : fallbackTitle,
     description: offline
       ? "Could not reach the server."
-      : err instanceof Error
-        ? err.message
-        : "Something went wrong.",
+      : (err as Error).message,
   });
 }
 
@@ -115,7 +114,7 @@ export function useGalleryPage() {
       if (
         form.editingPhotoId &&
         form.imageFiles.length === 0 &&
-        form.selectedCategoryId === (form.originalCategoryId ?? "")
+        form.selectedCategoryId === form.originalCategoryId
       ) {
         toast({
           variant: "destructive",

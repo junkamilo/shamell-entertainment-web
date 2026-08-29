@@ -17,6 +17,13 @@ describe("chairSharedGeometries", () => {
   it("builds table geometries and disposes safely", () => {
     const geo = getTableSharedGeometries(0.5, 0.4, "mobile");
     expect(geo.top).toBeTruthy();
+    expect(getTableSharedGeometries(0.5, 0.4, "mobile")).toBe(geo);
+    expect(getTableSharedGeometries(0.5, 0.4, "high").accent).toBeTruthy();
     expect(() => disposeGeometry(geo.top)).not.toThrow();
+  });
+
+  it("reuses cached chair geometries per profile", () => {
+    expect(getChairSharedGeometries("high")).toBe(getChairSharedGeometries("high"));
+    expect(getChairSharedGeometries("mobile")).toBe(getChairSharedGeometries("mobile"));
   });
 });

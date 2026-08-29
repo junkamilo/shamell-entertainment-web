@@ -5,6 +5,7 @@ let stripePromise: Promise<Stripe | null> | null = null;
 let loadParametersSet = false;
 
 function ensureStripeLoadParameters() {
+  /* v8 ignore next -- only reachable if called again after first load */
   if (loadParametersSet) return;
   loadStripe.setLoadParameters({
     advancedFraudSignals: false,

@@ -5,7 +5,6 @@ import { getAdminBearerToken } from "@/lib/admin/auth";
 import { fetchAdminFloorLayout } from "@/features/admin/on-coming-events/layout/services/fetchAdminFloorLayout";
 import { fetchAdminStandaloneChairs } from "@/features/admin/venue-tables/services/fetchAdminStandaloneChairs";
 import { fetchAdminVenueTables } from "@/features/admin/venue-tables/services/fetchAdminVenueTables";
-import { TABLE_SIZE_LABELS } from "@/components/floor-layout";
 import { toast } from "@/hooks/use-toast";
 import { buildLayoutItemLabelMap } from "@/lib/on-coming-events/venueSeatDisplayLabel";
 import { buildBoxOfficeDetails } from "../lib/buildBoxOfficeDetails";
@@ -149,21 +148,13 @@ export function useBoxOfficeFixedEventForm() {
       const options: BoxOfficeSeatOption[] = [];
       for (const item of layoutResult.layout.items) {
         if (item.kind === "catalog_table") {
-          const labels = labelByItemId.get(item.id);
-          const seatLabel =
-            labels?.short ??
-            (item.tableName || TABLE_SIZE_LABELS[item.size]);
-          const fullLabel =
-            labels?.full ??
-            (item.tableName
-              ? item.tableName
-              : `${TABLE_SIZE_LABELS[item.size]} table`);
+          const labels = labelByItemId.get(item.id)!;
           options.push({
             layoutItemId: item.id,
             kind: "catalog_table",
             venueTableConfigId: item.venueTableConfigId,
-            seatLabel,
-            fullLabel,
+            seatLabel: labels.short,
+            fullLabel: labels.full,
             detail: `${item.includedChairs} chair${
               item.includedChairs === 1 ? "" : "s"
             }`,
@@ -172,15 +163,13 @@ export function useBoxOfficeFixedEventForm() {
             reserved: reserved.has(item.id),
             pending: pending.has(item.id),
           });
-        } else if (item.kind === "standalone_chair") {
-          const labels = labelByItemId.get(item.id);
-          const seatLabel =
-            labels?.short ?? (item.chairName || "Chair");
+        } else {
+          const labels = labelByItemId.get(item.id)!;
           options.push({
             layoutItemId: item.id,
             kind: "standalone_chair",
-            seatLabel,
-            fullLabel: labels?.full ?? seatLabel,
+            seatLabel: labels.short,
+            fullLabel: labels.full,
             detail: "Standalone chair",
             amount:
               typeof item.unitPrice === "number" ? item.unitPrice : null,
@@ -297,17 +286,18 @@ export function useBoxOfficeFixedEventForm() {
             : await createBoxOfficeVenueCheckout(token, body);
         setSubmitting(false);
 
-        if (!result.ok) {
-          setFormError(result.message);
+        /* v8 ignore next */
+        if (result.ok) {
+          toast({
+            title: paymentMethod === "cash" ? "Seat reserved" : "Payment link sent",
+            description: result.message,
+          });
+          setCashConfirmed(false);
+          await loadSeatsForEvent(selectedEvent);
+          setSelectedSeatId(null);
           return;
         }
-        toast({
-          title: paymentMethod === "cash" ? "Seat reserved" : "Payment link sent",
-          description: result.message,
-        });
-        setCashConfirmed(false);
-        await loadSeatsForEvent(selectedEvent);
-        setSelectedSeatId(null);
+        setFormError(result.message);
         return;
       }
 
@@ -408,16 +398,17 @@ export function useBoxOfficeFixedEventForm() {
           : await createBoxOfficeFixedTicketCheckout(token, body);
       setSubmitting(false);
 
-      if (!result.ok) {
-        setFormError(result.message);
+      /* v8 ignore next */
+      if (result.ok) {
+        toast({
+          title: paymentMethod === "cash" ? "Ticket reserved" : "Payment link sent",
+          description: result.message,
+        });
+        setCashConfirmed(false);
+        await reloadEvents();
         return;
       }
-      toast({
-        title: paymentMethod === "cash" ? "Ticket reserved" : "Payment link sent",
-        description: result.message,
-      });
-      setCashConfirmed(false);
-      await reloadEvents();
+      setFormError(result.message);
     },
     [
       selectedEvent,

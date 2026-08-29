@@ -49,6 +49,9 @@ describe("ClassPaymentConfirmationPanel", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Large 1")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /home/i })).toHaveAttribute("href", "/");
+    expect(screen.getByTestId("payment-confirmation-panel")).toBeInTheDocument();
+    expect(screen.getByTestId("payment-confirmation-paid")).toBeInTheDocument();
+    expect(screen.getByTestId("payment-confirmation-home")).toBeInTheDocument();
   });
 
   it("renders loading state", () => {
@@ -60,5 +63,6 @@ describe("ClassPaymentConfirmationPanel", () => {
       />,
     );
     expect(screen.getByText(/confirming your booking/i)).toBeInTheDocument();
+    expect(screen.getByTestId("payment-confirmation-loading")).toBeInTheDocument();
   });
 });

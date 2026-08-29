@@ -42,8 +42,28 @@ vi.mock("./GalleryCategoriesLibrarySection", () => ({
 }));
 
 vi.mock("./GalleryCategoriesFormModal", () => ({
-  default: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="form-modal" /> : null,
+  default: ({
+    isOpen,
+    onSubmit,
+    onClose,
+  }: {
+    isOpen: boolean;
+    onSubmit: (event: { preventDefault: () => void }) => void;
+    onClose: () => void;
+  }) =>
+    isOpen ? (
+      <div data-testid="form-modal">
+        <button
+          type="button"
+          onClick={() => onSubmit({ preventDefault: () => undefined })}
+        >
+          stub-submit
+        </button>
+        <button type="button" onClick={onClose}>
+          stub-close
+        </button>
+      </div>
+    ) : null,
 }));
 
 import GalleryCategoriesPageContent from "./GalleryCategoriesPageContent";
@@ -75,11 +95,16 @@ describe("GalleryCategoriesPageContent", () => {
     expect(state.form.openCategoryCreate).toHaveBeenCalled();
   });
 
-  it("shows form modal when open", () => {
+  it("shows form modal when open", async () => {
+    const user = userEvent.setup();
     state = createMockGalleryCategoriesPageState({
       form: { isCategoryModalOpen: true },
     });
     renderWithProviders(<GalleryCategoriesPageContent state={state as never} />);
     expect(screen.getByTestId("form-modal")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "stub-submit" }));
+    expect(state.onSubmitCategory).toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "stub-close" }));
+    expect(state.form.closeCategoryModal).toHaveBeenCalled();
   });
 });

@@ -136,6 +136,7 @@ function PickerButton({
       <span className={`${fieldLabelClass} block`}>{label}</span>
       <button
         type="button"
+        /* v8 ignore next -- PickerButton is never rendered disabled */
         disabled={disabled}
         onClick={onClick}
         className={logisticsPickerTriggerClass}
@@ -611,20 +612,19 @@ export function ReservationEventScheduleSections({
             const { weekday, sortOrder, field } = sectionTimePick;
             if (weekday === BULK_SECTION_WEEKDAY) {
               setBulkBlueprint((prev) =>
-                prev.map((s) =>
-                  s.sortOrder === sortOrder
-                    ? field === "start"
-                      ? { ...s, startTime: hhmm }
-                      : { ...s, endTime: hhmm }
-                    : s,
-                ),
+                prev.map((s) => {
+                  if (s.sortOrder !== sortOrder) return s;
+                  const timeKey = `${field}Time` as "startTime" | "endTime";
+                  return { ...s, [timeKey]: hhmm };
+                }),
               );
               setSectionTimePick(null);
               return;
             }
             const next = value.classSections.map((s) => {
               if (s.weekday !== weekday || s.sortOrder !== sortOrder) return s;
-              return field === "start" ? { ...s, startTime: hhmm } : { ...s, endTime: hhmm };
+              const timeKey = `${field}Time` as "startTime" | "endTime";
+              return { ...s, [timeKey]: hhmm };
             });
             const first = next[0];
             patch({

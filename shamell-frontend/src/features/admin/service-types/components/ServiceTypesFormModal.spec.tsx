@@ -102,4 +102,11 @@ describe("ServiceTypesFormModal", () => {
     renderModal({ isOpen: false });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
+
+  it("submits when Create service type is clicked", async () => {
+    const user = userEvent.setup();
+    const { props } = renderModal({ name: "Weddings", canSubmit: true });
+    await user.click(screen.getByRole("button", { name: "Create service type" }));
+    expect(props.onSubmit).toHaveBeenCalledOnce();
+  });
 });
