@@ -34,6 +34,7 @@ export function useBoxOfficeFixedEventForm() {
   const [seats, setSeats] = useState<BoxOfficeSeatOption[]>([]);
   const [seatsLoading, setSeatsLoading] = useState(false);
   const [selectedSeatId, setSelectedSeatId] = useState<string | null>(null);
+  const [selectedPackageId, setSelectedPackageId] = useState("");
 
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -51,6 +52,11 @@ export function useBoxOfficeFixedEventForm() {
   const selectedSeat = useMemo(
     () => seats.find((s) => s.layoutItemId === selectedSeatId) ?? null,
     [seats, selectedSeatId],
+  );
+  const selectedPackage = useMemo(
+    () =>
+      selectedEvent?.packages.find((p) => p.id === selectedPackageId) ?? null,
+    [selectedEvent, selectedPackageId],
   );
 
   const reloadEvents = useCallback(async () => {
@@ -193,20 +199,39 @@ export function useBoxOfficeFixedEventForm() {
     if (!selectedEvent) {
       setSeats([]);
       setSelectedSeatId(null);
+      setSelectedPackageId("");
       return;
     }
     if (selectedEvent.purchaseKind === "venue_seating") {
+      setSelectedPackageId("");
       void loadSeatsForEvent(selectedEvent);
-    } else {
-      setSeats([]);
-      setSelectedSeatId(null);
+      return;
     }
+    setSeats([]);
+    setSelectedSeatId(null);
+    if (selectedEvent.ticketMode !== "PACKAGES") {
+      setSelectedPackageId("");
+      return;
+    }
+    setSelectedPackageId((prev) => {
+      if (selectedEvent.packages.some((p) => p.id === prev)) return prev;
+      if (selectedEvent.packages.length === 1) {
+        return selectedEvent.packages[0]!.id;
+      }
+      return "";
+    });
   }, [selectedEvent, loadSeatsForEvent]);
 
   const onSelectEvent = useCallback((id: string) => {
     setEventId(id);
+    setSelectedPackageId("");
     setFormError(null);
     setCashConfirmed(false);
+  }, []);
+
+  const onSelectPackage = useCallback((id: string) => {
+    setSelectedPackageId(id);
+    setFormError(null);
   }, []);
 
   const onSubmit = useCallback(
@@ -286,6 +311,64 @@ export function useBoxOfficeFixedEventForm() {
         return;
       }
 
+      if (selectedEvent.ticketMode === "PACKAGES") {
+        if (!selectedPackage) {
+          setFormError("Select a ticket package.");
+          return;
+        }
+        if (selectedPackage.remaining <= 0) {
+          setFormError("Selected package is sold out.");
+          return;
+        }
+        if (selectedPackage.price < 0.5) {
+          setFormError("Selected package has no valid price.");
+          return;
+        }
+
+        const boxOfficeDetails = buildBoxOfficeDetails({
+          purchaseKind: "fixed_ticket",
+          upcomingEventId: selectedEvent.id,
+          paymentMethod,
+          customerName,
+          customerEmail,
+          customerPhone,
+          seat: null,
+          ticketAmount: selectedPackage.price,
+          ticketCurrency: selectedEvent.currency,
+          packageId: selectedPackage.id,
+          packageTitle: selectedPackage.title,
+        });
+
+        const body = {
+          upcomingEventId: selectedEvent.id,
+          customerName: customerName.trim(),
+          customerEmail: customerEmail.trim(),
+          customerPhone: customerPhone.trim() || undefined,
+          packageId: selectedPackage.id,
+          boxOfficeDetails,
+        };
+
+        setSubmitting(true);
+        const result =
+          paymentMethod === "cash"
+            ? await createBoxOfficeFixedTicketCash(token, body)
+            : await createBoxOfficeFixedTicketCheckout(token, body);
+        setSubmitting(false);
+
+        if (!result.ok) {
+          setFormError(result.message);
+          return;
+        }
+        toast({
+          title:
+            paymentMethod === "cash" ? "Ticket reserved" : "Payment link sent",
+          description: result.message,
+        });
+        setCashConfirmed(false);
+        await reloadEvents();
+        return;
+      }
+
       if (selectedEvent.price == null || selectedEvent.price < 0.5) {
         setFormError("Event ticket price is not configured.");
         return;
@@ -344,6 +427,7 @@ export function useBoxOfficeFixedEventForm() {
       paymentMethod,
       cashConfirmed,
       selectedSeat,
+      selectedPackage,
       loadSeatsForEvent,
       reloadEvents,
     ],
@@ -361,6 +445,9 @@ export function useBoxOfficeFixedEventForm() {
     selectedSeatId,
     setSelectedSeatId,
     selectedSeat,
+    selectedPackageId,
+    onSelectPackage,
+    selectedPackage,
     customerName,
     setCustomerName,
     customerEmail,

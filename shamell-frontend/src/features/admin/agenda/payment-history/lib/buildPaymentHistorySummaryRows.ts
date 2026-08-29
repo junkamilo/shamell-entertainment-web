@@ -96,8 +96,20 @@ function purchaseDetailRows(
       if (detail.eventDate) {
         pushRow(rows, "EVENT DATE", formatPaymentDate(detail.eventDate));
       }
+      if (detail.packageTitle) {
+        pushRow(rows, "PACKAGE", detail.packageTitle);
+      }
+      if (detail.packageArrivalLabel) {
+        pushRow(rows, "ARRIVAL", detail.packageArrivalLabel);
+      }
+      if (detail.packageIncludes?.length) {
+        pushRow(rows, "INCLUDES", detail.packageIncludes.join(", "));
+      }
       if (detail.ticketNumber != null) {
         pushRow(rows, "TICKET #", String(detail.ticketNumber));
+      }
+      if (detail.verificationCode) {
+        pushRow(rows, "VERIFICATION CODE", detail.verificationCode);
       }
       break;
   }

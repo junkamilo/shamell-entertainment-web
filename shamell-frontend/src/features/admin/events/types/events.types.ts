@@ -47,6 +47,7 @@ export type EventFormSnapshot = {
   experienceMode?: UpcomingExperienceMode;
   scheduleKey?: string;
   enableVenueSeating?: boolean;
+  enablePackages?: boolean;
   fixedTicketCapacityInput?: string;
   monthPackageEnabled?: boolean;
   monthPackagePrice?: string;

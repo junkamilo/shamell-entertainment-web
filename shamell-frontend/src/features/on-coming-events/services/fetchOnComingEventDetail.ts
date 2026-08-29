@@ -48,6 +48,35 @@ export type MonthPackageOffer = {
   purchasableMonths: string[];
 };
 
+export type FixedEventActivityPublic = {
+  id: string;
+  title: string;
+  description: string | null;
+  mediaUrl: string | null;
+  mediaType: "IMAGE" | "VIDEO" | null;
+  accentColor: string | null;
+  showText?: boolean;
+  displayOrder: number;
+};
+
+export type FixedEventPackagePublic = {
+  id: string;
+  title: string;
+  description: string | null;
+  badge: string | null;
+  price: number;
+  priceCents: number;
+  arrivalLabel: string;
+  inclusionSummary: string;
+  activities: FixedEventActivityPublic[];
+  displayOrder: number;
+  capacity: number;
+  ticketsRemaining: number;
+  ticketsSold: number;
+  soldOut: boolean;
+  isActive: boolean;
+};
+
 export type OnComingEventDetail = {
   id: string;
   slug: string | null;
@@ -64,6 +93,7 @@ export type OnComingEventDetail = {
   salesOpen: boolean;
   purchasable: boolean;
   purchaseMode: UpcomingPurchaseMode;
+  ticketMode?: "SINGLE" | "PACKAGES";
   sessions: ClassSessionPublic[];
   monthPackage?: MonthPackageOffer;
   ticketsRemaining?: number;
@@ -73,6 +103,8 @@ export type OnComingEventDetail = {
   tableCapacity?: number;
   tablesRemaining?: number;
   tablesSold?: number;
+  activities?: FixedEventActivityPublic[];
+  packages?: FixedEventPackagePublic[];
 };
 
 export async function fetchOnComingEventDetail(slug: string): Promise<OnComingEventDetail> {

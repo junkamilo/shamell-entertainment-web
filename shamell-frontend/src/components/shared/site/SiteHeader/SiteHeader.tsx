@@ -12,6 +12,7 @@ import {
 } from "@/lib/admin/session";
 import { cn } from "@/lib/utils";
 import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
+import type { OnComingEventsPromo } from "@/hooks/use-on-coming-events-settings";
 import { useHeaderNavOverflow } from "@/hooks/use-header-nav-fits";
 import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/on-coming-events/onComingEventsRoutes";
 import { CONTACTO_PATH } from "@/lib/contacto/contactInquiryConstants";
@@ -135,9 +136,15 @@ function DesktopNavLink({
   );
 }
 
-export default function SiteHeader() {
+export default function SiteHeader({
+  initialOnComingSettings,
+}: {
+  initialOnComingSettings?: OnComingEventsPromo | null;
+} = {}) {
   const pathname = usePathname();
-  const { clientEnabled: onComingEventsEnabled } = useOnComingEventsSettings();
+  const { clientEnabled: onComingEventsEnabled } = useOnComingEventsSettings(
+    initialOnComingSettings,
+  );
   const navItems = useMemo(
     () => buildSiteHeaderNavItems(onComingEventsEnabled),
     [onComingEventsEnabled],

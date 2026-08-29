@@ -10,6 +10,10 @@ import { UpcomingClassSessionsPanel } from "@/features/admin/on-coming-events/co
 import { cn } from "@/lib/utils";
 import { MAX_CATALOG_IMAGES } from "../lib/eventsConstants";
 import { isVideoCatalogItem, isVideoFile } from "../lib/eventsMedia";
+import { FixedEventPackagesSection } from "./FixedEventPackagesSection";
+import { EventActivitiesEditor } from "./EventActivitiesEditor";
+import { getEventsBearerToken } from "../lib/eventsAuth";
+import type { EventActivityForm } from "@/features/admin/on-coming-events/fixed-packages/types/fixedEventPackage.types";
 import type {
   CatalogImage,
   EventsEventTypeOption,
@@ -52,6 +56,10 @@ type Props = {
   onScheduleChange?: Dispatch<SetStateAction<ScheduleFormState>>;
   enableVenueSeating?: boolean;
   onEnableVenueSeatingChange?: (enabled: boolean) => void;
+  enablePackages?: boolean;
+  onEnablePackagesChange?: (enabled: boolean) => void;
+  activities?: EventActivityForm[];
+  onActivitiesChange?: (activities: EventActivityForm[]) => void;
   fixedTicketCapacityInput?: string;
   onFixedTicketCapacityInputChange?: (value: string) => void;
   monthPackageEnabled?: boolean;
@@ -98,6 +106,10 @@ export default function EventsFormModal({
   onScheduleChange,
   enableVenueSeating = false,
   onEnableVenueSeatingChange,
+  enablePackages = false,
+  onEnablePackagesChange,
+  activities = [],
+  onActivitiesChange,
   fixedTicketCapacityInput = "",
   onFixedTicketCapacityInputChange,
   monthPackageEnabled = false,
@@ -157,6 +169,8 @@ export default function EventsFormModal({
             }
             enableVenueSeating={enableVenueSeating}
             onEnableVenueSeatingChange={onEnableVenueSeatingChange}
+            enablePackages={enablePackages}
+            onEnablePackagesChange={onEnablePackagesChange}
             fixedTicketCapacityInput={fixedTicketCapacityInput}
             onFixedTicketCapacityInputChange={onFixedTicketCapacityInputChange}
             monthPackageEnabled={monthPackageEnabled}
@@ -166,6 +180,42 @@ export default function EventsFormModal({
             monthPackageLabel={monthPackageLabel}
             onMonthPackageLabelChange={onMonthPackageLabelChange}
           />
+        ) : null}
+
+        {lockPublicSection && experienceMode === "FIXED_EVENT" && enablePackages ? (
+          <div className="space-y-4 rounded-lg border border-gold/15 bg-black/20 p-4">
+            {(() => {
+              const token = getEventsBearerToken();
+              return onActivitiesChange ? (
+                <EventActivitiesEditor
+                  eventId={editingId}
+                  token={token}
+                  activities={activities}
+                  onActivitiesChange={onActivitiesChange}
+                  disabled={isSubmitting}
+                />
+              ) : null;
+            })()}
+            {(() => {
+              const token = getEventsBearerToken();
+              const hasActivities = activities.some((a) => a.title.trim());
+              if (!editingId) {
+                return hasActivities ? (
+                  <p className="text-xs text-foreground/55">
+                    After you create the event, this form will reopen so you can add ticket packages.
+                  </p>
+                ) : null;
+              }
+              return token && hasActivities ? (
+                <FixedEventPackagesSection
+                  eventId={editingId}
+                  token={token}
+                  activities={activities}
+                  onActivitiesChange={onActivitiesChange}
+                />
+              ) : null;
+            })()}
+          </div>
         ) : null}
 
         {lockPublicSection && editingId && experienceMode === "RECURRING_WEEKLY" ? (
@@ -230,13 +280,15 @@ export default function EventsFormModal({
         </label>
 
         <label className="block">
-          <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">LINE ITEMS (ONE PER LINE)</span>
+          <span className="font-brand text-[11px] tracking-[0.2em] text-gold/95">
+            LINE ITEMS (ONE PER LINE) (OPTIONAL)
+          </span>
           <textarea
             value={itemsText}
             onChange={(event) => onItemsTextChange(event.target.value)}
             rows={5}
             className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
-            placeholder={"Line 1\nLine 2\nLine 3"}
+            placeholder={"Optional bullet\nAnother optional line"}
           />
         </label>
 
@@ -247,8 +299,13 @@ export default function EventsFormModal({
             inputMode="decimal"
             value={priceInput}
             onChange={(event) => onPriceInputChange(event.target.value)}
-            className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold"
-            placeholder="e.g. 2500 or 2500.50"
+            disabled={enablePackages && experienceMode === "FIXED_EVENT"}
+            className="mt-2 w-full rounded-xl border border-gold/30 px-4 py-3 text-sm text-foreground outline-none focus:border-gold disabled:cursor-not-allowed disabled:opacity-60"
+            placeholder={
+              enablePackages && experienceMode === "FIXED_EVENT"
+                ? "From lowest package (derived on save)"
+                : "e.g. 2500 or 2500.50"
+            }
             autoComplete="off"
           />
         </label>

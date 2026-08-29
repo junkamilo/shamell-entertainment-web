@@ -164,6 +164,8 @@ type Props = {
   onExperienceModeChange?: (mode: ScheduleExperienceMode) => void;
   enableVenueSeating?: boolean;
   onEnableVenueSeatingChange?: (enabled: boolean) => void;
+  enablePackages?: boolean;
+  onEnablePackagesChange?: (enabled: boolean) => void;
   fixedTicketCapacityInput?: string;
   onFixedTicketCapacityInputChange?: (value: string) => void;
   monthPackageEnabled?: boolean;
@@ -181,6 +183,8 @@ export function ReservationEventScheduleSections({
   onExperienceModeChange,
   enableVenueSeating = false,
   onEnableVenueSeatingChange,
+  enablePackages = false,
+  onEnablePackagesChange,
   fixedTicketCapacityInput = "",
   onFixedTicketCapacityInputChange,
   monthPackageEnabled = false,
@@ -349,10 +353,30 @@ export function ReservationEventScheduleSections({
             </label>
           ) : null}
 
+          {threeState && onEnablePackagesChange && !enableVenueSeating ? (
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gold/15 bg-black/20 p-3">
+              <input
+                type="checkbox"
+                checked={enablePackages}
+                onChange={(e) => onEnablePackagesChange(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-gold"
+              />
+              <span className="min-w-0">
+                <span className="block font-brand text-[10px] tracking-[0.12em] text-gold">
+                  SELL TICKET PACKAGES (PAQUETES)
+                </span>
+                <span className="mt-1 block text-xs text-foreground/60">
+                  Offer multiple ticket tiers with their own price, capacity, arrival window, and
+                  included activities.
+                </span>
+              </span>
+            </label>
+          ) : null}
+
           {threeState && onFixedTicketCapacityInputChange ? (
             <div
               className={`space-y-1.5 rounded-lg border border-gold/10 p-3 ${
-                enableVenueSeating ? "opacity-50" : ""
+                enableVenueSeating || enablePackages ? "opacity-50" : ""
               }`}
             >
               <label
@@ -368,7 +392,7 @@ export function ReservationEventScheduleSections({
                 max={99999}
                 step={1}
                 inputMode="numeric"
-                disabled={enableVenueSeating}
+                disabled={enableVenueSeating || enablePackages}
                 value={fixedTicketCapacityInput}
                 onChange={(e) => onFixedTicketCapacityInputChange(e.target.value)}
                 placeholder="e.g. 50"
@@ -377,7 +401,9 @@ export function ReservationEventScheduleSections({
               <p className="text-xs text-foreground/55">
                 {enableVenueSeating
                   ? "Seat/table inventory controls capacity."
-                  : "Required when table & seat sales are off. Checkout stops when this count is reached."}
+                  : enablePackages
+                    ? "Managed per package."
+                    : "Required when table & seat sales are off. Checkout stops when this count is reached."}
               </p>
             </div>
           ) : null}

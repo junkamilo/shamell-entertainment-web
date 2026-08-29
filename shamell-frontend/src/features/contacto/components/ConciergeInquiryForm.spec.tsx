@@ -1,8 +1,7 @@
 /** @vitest-environment jsdom */
 
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
 const routerReplace = vi.hoisted(() => vi.fn());
@@ -45,6 +44,10 @@ vi.mock("./InquirySubmitFeedbackLayer", () => ({
 
 import ConciergeInquiryForm from "./ConciergeInquiryForm";
 
+function fillField(label: RegExp, value: string) {
+  fireEvent.change(screen.getByLabelText(label), { target: { value } });
+}
+
 describe("ConciergeInquiryForm", () => {
   it("renders concierge inquiry heading", () => {
     renderWithProviders(<ConciergeInquiryForm />);
@@ -55,12 +58,11 @@ describe("ConciergeInquiryForm", () => {
     expect(screen.queryByRole("link", { name: /back to inquiry options/i })).not.toBeInTheDocument();
   });
 
-  it("validates required fields on submit", async () => {
-    const user = userEvent.setup();
+  it("validates required fields on submit", () => {
     const { container } = renderWithProviders(<ConciergeInquiryForm />);
-    await user.type(screen.getByLabelText(/full name/i), "A");
-    await user.type(screen.getByLabelText(/^email/i), "ada@example.com");
-    await user.type(screen.getByLabelText(/tell us what you have in mind/i), "Too short");
+    fillField(/full name/i, "A");
+    fillField(/^email/i, "ada@example.com");
+    fillField(/tell us what you have in mind/i, "Too short");
     fireEvent.submit(container.querySelector("form")!);
     expect(screen.getByRole("alert")).toHaveTextContent(/full name|little more/i);
     expect(submitConciergeInquiry).not.toHaveBeenCalled();
@@ -68,24 +70,23 @@ describe("ConciergeInquiryForm", () => {
 
   it("submits concierge inquiry when form is valid", async () => {
     submitConciergeInquiry.mockResolvedValue({ ok: true });
-    const user = userEvent.setup();
-    renderWithProviders(<ConciergeInquiryForm />);
+    const { container } = renderWithProviders(<ConciergeInquiryForm />);
 
-    await user.type(screen.getByLabelText(/full name/i), "Ada Lovelace");
-    await user.type(screen.getByLabelText(/^email/i), "ada@example.com");
-    await user.type(
-      screen.getByLabelText(/tell us what you have in mind/i),
+    fillField(/full name/i, "Ada Lovelace");
+    fillField(/^email/i, "ada@example.com");
+    fillField(
+      /tell us what you have in mind/i,
       "We are planning a private celebration in Miami.",
     );
-    await user.click(
-      screen.getByRole("button", { name: /send concierge inquiry/i }),
-    );
+    fireEvent.submit(container.querySelector("form")!);
 
-    expect(submitConciergeInquiry).toHaveBeenCalledWith(
-      expect.objectContaining({
-        fullName: "Ada Lovelace",
-        email: "ada@example.com",
-      }),
+    await waitFor(() =>
+      expect(submitConciergeInquiry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fullName: "Ada Lovelace",
+          email: "ada@example.com",
+        }),
+      ),
     );
   });
 });

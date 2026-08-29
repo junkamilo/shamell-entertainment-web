@@ -20,6 +20,9 @@ import {
   fetchAdminVenueConfig,
   patchAdminVenueConfig,
 } from "@/features/admin/on-coming-events/services/patchAdminVenueConfig";
+import { fetchAdminEvents } from "../services/fetchAdminEvents";
+import { fetchEventActivities } from "@/features/admin/on-coming-events/fixed-packages/services/fixedEventPackagesApi";
+import { persistEventActivities } from "@/features/admin/on-coming-events/fixed-packages/services/persistEventActivities";
 import { postAdminRegenerateClassSessions } from "@/features/admin/on-coming-events/services/postAdminRegenerateClassSessions";
 import { fetchAdminReservationEventTemplates } from "@/features/admin/on-coming-events/reservation-events/services/fetchAdminReservationEventTemplates";
 import { createAdminReservationEventTemplate } from "@/features/admin/on-coming-events/reservation-events/services/createAdminReservationEventTemplate";
@@ -170,6 +173,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
         reservationEventTemplateId: string;
         clientEnabled?: boolean;
         fixedTicketCapacity?: number | null;
+        fixedTicketMode?: "SINGLE" | "PACKAGES";
         classPackageEnabled?: boolean;
         classPackagePrice?: number | null;
         classPackageLabel?: string | null;
@@ -191,13 +195,27 @@ export function useEventsPage(options?: UseEventsPageOptions) {
       }
 
       if (form.experienceMode === "FIXED_EVENT") {
+        if (form.enablePackages && form.activities.length > 0) {
+          const actResult = await persistEventActivities(
+            token,
+            eventId,
+            form.activities,
+          );
+          if (!actResult.ok) {
+            throw new Error(actResult.message ?? "Could not save activities.");
+          }
+          form.setActivities(actResult.activities);
+        }
+
         venueConfigBody.clientEnabled = form.enableVenueSeating;
-        venueConfigBody.fixedTicketCapacity = form.enableVenueSeating
-          ? null
-          : (() => {
-              const capacity = Number.parseInt(form.fixedTicketCapacityInput.trim(), 10);
-              return Number.isFinite(capacity) && capacity >= 1 ? capacity : null;
-            })();
+        venueConfigBody.fixedTicketMode = form.enablePackages ? "PACKAGES" : "SINGLE";
+        venueConfigBody.fixedTicketCapacity =
+          form.enableVenueSeating || form.enablePackages
+            ? null
+            : (() => {
+                const capacity = Number.parseInt(form.fixedTicketCapacityInput.trim(), 10);
+                return Number.isFinite(capacity) && capacity >= 1 ? capacity : null;
+              })();
       }
 
       const linkResult = await patchAdminVenueConfig(token, eventId, venueConfigBody);
@@ -218,6 +236,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
       if (
         form.experienceMode === "FIXED_EVENT" &&
         !form.enableVenueSeating &&
+        !form.enablePackages &&
         venueConfigBody.fixedTicketCapacity != null &&
         linkResult.config?.fixedTicketCapacity !== venueConfigBody.fixedTicketCapacity
       ) {
@@ -227,6 +246,78 @@ export function useEventsPage(options?: UseEventsPageOptions) {
       }
     },
     [form],
+  );
+
+  const startEdit = useCallback(
+    async (item: AdminEvent) => {
+      let linkedTemplate = null;
+      let venueClientEnabled = false;
+      let venueFixedTicketCapacity: number | null = null;
+      let venueFixedTicketMode: "SINGLE" | "PACKAGES" = "SINGLE";
+      let initialActivities: import("@/features/admin/on-coming-events/fixed-packages/types/fixedEventPackage.types").EventActivityForm[] =
+        [];
+      let venueMonthPackage: {
+        enabled: boolean;
+        price: number | null;
+        label: string | null;
+      } | null = null;
+      if (isUpcomingAdminRoute) {
+        const token = getEventsBearerToken();
+        if (token) {
+          const configResult = await fetchAdminVenueConfig(token, item.id);
+          linkedTemplate = configResult.config?.reservationEventTemplate ?? null;
+          venueClientEnabled = configResult.config?.clientEnabled ?? false;
+          venueFixedTicketCapacity = configResult.config?.fixedTicketCapacity ?? null;
+          venueFixedTicketMode =
+            configResult.config?.fixedTicketMode === "PACKAGES" ? "PACKAGES" : "SINGLE";
+          const actResult = await fetchEventActivities(token, item.id);
+          if (actResult.ok) {
+            initialActivities = actResult.activities.map((a) => ({
+              id: a.id,
+              title: a.title,
+              description: a.description ?? "",
+              accentColor: a.accentColor ?? "",
+              showText: a.showText !== false,
+              displayOrder: a.displayOrder,
+              mediaUrl: a.mediaUrl ?? null,
+              mediaType: a.mediaType ?? null,
+              pendingMediaFile: null,
+            }));
+          }
+          venueMonthPackage = configResult.config
+            ? {
+                enabled: configResult.config.classPackageEnabled,
+                price: configResult.config.classPackagePrice,
+                label: configResult.config.classPackageLabel,
+              }
+            : null;
+
+          if (!linkedTemplate) {
+            const templatesResult = await fetchAdminReservationEventTemplates(token);
+            if (templatesResult.ok) {
+              const eventName = item.eventTypeName.trim().toLowerCase();
+              linkedTemplate =
+                templatesResult.templates.find((template) => {
+                  if (template.name.trim().toLowerCase() !== eventName) return false;
+                  const linkedIds = template.linkedEventIds ?? [];
+                  return linkedIds.length === 0 || linkedIds.includes(item.id);
+                }) ?? null;
+            }
+          }
+        }
+      }
+      form.startEdit(
+        item,
+        linkedTemplate,
+        venueClientEnabled,
+        venueFixedTicketCapacity,
+        venueMonthPackage,
+        venueFixedTicketMode,
+        initialActivities,
+      );
+      setIsModalOpen(true);
+    },
+    [form, isUpcomingAdminRoute],
   );
 
   const onSubmit = useCallback(
@@ -272,6 +363,32 @@ export function useEventsPage(options?: UseEventsPageOptions) {
         }
 
         const wasEditing = Boolean(form.editingId);
+        const reopenForPackages =
+          !wasEditing &&
+          Boolean(savedId) &&
+          form.enablePackages &&
+          form.experienceMode === "FIXED_EVENT";
+
+        if (savedId && pendingMediaFiles.length > 0) {
+          queueCatalogMediaUpload(token, savedId, pendingMediaFiles);
+        }
+
+        if (reopenForPackages && savedId) {
+          await catalog.loadAllData();
+          const items = await fetchAdminEvents(token, {
+            publicSection: catalogPublicSection,
+          });
+          const created = items.find((item) => item.id === savedId);
+          toast({
+            title: "Event created",
+            description: "Add ticket packages below. Activities were saved with the event.",
+          });
+          if (created) {
+            await startEdit(created);
+            return;
+          }
+        }
+
         setIsModalOpen(false);
         form.resetForm();
         toast({
@@ -280,9 +397,6 @@ export function useEventsPage(options?: UseEventsPageOptions) {
             ? "Event changes were saved successfully."
             : "The new event was created successfully.",
         });
-        if (savedId && pendingMediaFiles.length > 0) {
-          queueCatalogMediaUpload(token, savedId, pendingMediaFiles);
-        }
         void catalog.loadAllData();
       } catch (err) {
         toastApiError(err, "Error");
@@ -297,58 +411,9 @@ export function useEventsPage(options?: UseEventsPageOptions) {
       queueCatalogMediaUpload,
       syncUpcomingSchedule,
       catalog,
+      catalogPublicSection,
+      startEdit,
     ],
-  );
-
-  const startEdit = useCallback(
-    async (item: AdminEvent) => {
-      let linkedTemplate = null;
-      let venueClientEnabled = false;
-      let venueFixedTicketCapacity: number | null = null;
-      let venueMonthPackage: {
-        enabled: boolean;
-        price: number | null;
-        label: string | null;
-      } | null = null;
-      if (isUpcomingAdminRoute) {
-        const token = getEventsBearerToken();
-        if (token) {
-          const configResult = await fetchAdminVenueConfig(token, item.id);
-          linkedTemplate = configResult.config?.reservationEventTemplate ?? null;
-          venueClientEnabled = configResult.config?.clientEnabled ?? false;
-          venueFixedTicketCapacity = configResult.config?.fixedTicketCapacity ?? null;
-          venueMonthPackage = configResult.config
-            ? {
-                enabled: configResult.config.classPackageEnabled,
-                price: configResult.config.classPackagePrice,
-                label: configResult.config.classPackageLabel,
-              }
-            : null;
-
-          if (!linkedTemplate) {
-            const templatesResult = await fetchAdminReservationEventTemplates(token);
-            if (templatesResult.ok) {
-              const eventName = item.eventTypeName.trim().toLowerCase();
-              linkedTemplate =
-                templatesResult.templates.find((template) => {
-                  if (template.name.trim().toLowerCase() !== eventName) return false;
-                  const linkedIds = template.linkedEventIds ?? [];
-                  return linkedIds.length === 0 || linkedIds.includes(item.id);
-                }) ?? null;
-            }
-          }
-        }
-      }
-      form.startEdit(
-        item,
-        linkedTemplate,
-        venueClientEnabled,
-        venueFixedTicketCapacity,
-        venueMonthPackage,
-      );
-      setIsModalOpen(true);
-    },
-    [form, isUpcomingAdminRoute],
   );
 
   const removeExistingCatalogImage = useCallback(

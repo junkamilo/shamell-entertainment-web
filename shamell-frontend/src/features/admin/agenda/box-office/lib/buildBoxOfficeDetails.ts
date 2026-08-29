@@ -15,6 +15,8 @@ export function buildBoxOfficeDetails(args: {
   seat: BoxOfficeSeatOption | null;
   ticketAmount: number | null;
   ticketCurrency: string;
+  packageId?: string | null;
+  packageTitle?: string | null;
 }): BoxOfficeDetailsPayload {
   const customer = {
     fullName: args.customerName.trim(),
@@ -43,6 +45,10 @@ export function buildBoxOfficeDetails(args: {
       amount: args.ticketAmount,
       currency: args.ticketCurrency,
     };
+    if (args.packageId) {
+      selection.packageId = args.packageId;
+      selection.packageTitle = args.packageTitle ?? null;
+    }
   }
 
   return {

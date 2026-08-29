@@ -6,6 +6,7 @@ export type BoxOfficeFixedTicketBody = {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
+  packageId?: string;
   boxOfficeDetails: BoxOfficeDetailsPayload;
 };
 

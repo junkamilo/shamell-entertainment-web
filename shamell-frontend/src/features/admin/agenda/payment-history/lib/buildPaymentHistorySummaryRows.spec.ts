@@ -57,16 +57,24 @@ describe("buildPaymentHistorySummaryRows", () => {
     expect(rows.find((r) => r.label === "QUOTE TOTAL")?.value).toBe("$500.00");
   });
 
-  it("maps venue seat kind to Chair/Table", () => {
-    const rows = buildPurchaseRows(row({ flow: "VENUE_SEAT" }), {
+  it("builds purchase rows for fixed ticket package details", () => {
+    const rows = buildPurchaseRows(row({ flow: "FIXED_TICKET" }), {
       purchaseDetails: {
-        flow: "VENUE_SEAT",
-        eventName: "Night",
-        seatKind: "CHAIR",
-        tableName: "T1",
+        flow: "FIXED_TICKET",
+        eventName: "Rhythm Night",
+        eventDate: "2026-09-01T00:00:00.000Z",
+        ticketNumber: 7,
+        packageTitle: "VIP Early Entry",
+        packageArrivalLabel: "7:00 PM",
+        packageIncludes: ["Workshop", "Show"],
+        verificationCode: "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
       },
     } as AdminStripePaymentDetail);
-    expect(rows.find((r) => r.label === "SEAT TYPE")?.value).toBe("Chair");
+    expect(rows.find((r) => r.label === "PACKAGE")?.value).toBe("VIP Early Entry");
+    expect(rows.find((r) => r.label === "INCLUDES")?.value).toBe("Workshop, Show");
+    expect(rows.find((r) => r.label === "VERIFICATION CODE")?.value).toBe(
+      "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    );
   });
 
   it("builds payment rows and includes expires only while pending", () => {

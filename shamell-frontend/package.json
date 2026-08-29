@@ -6,8 +6,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "next dev --webpack",
-    "dev:turbopack": "next dev --turbopack",
+    "dev": "node scripts/banner.mjs && next dev --webpack",
+    "dev:turbopack": "node scripts/banner.mjs && next dev --turbopack",
     "clean": "node -e \"const fs=require('fs');try{fs.rmSync('.next',{recursive:true,force:true});}catch(e){}\"",
     "prebuild": "npm run clean",
     "build": "next build",

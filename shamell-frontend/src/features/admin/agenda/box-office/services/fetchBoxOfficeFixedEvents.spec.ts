@@ -19,20 +19,87 @@ describe("fetchBoxOfficeFixedEvents", () => {
       name: "Gala Night",
       slug: "gala-night",
       purchaseKind: "venue_seating",
+      ticketMode: "SINGLE",
       price: null,
       currency: "usd",
       ticketsRemaining: null,
+      packages: [],
     });
     expect(events[1]).toMatchObject({
       id: FIXTURE_FIXED_EVENT_ID,
       name: "Showcase",
       slug: "showcase",
       purchaseKind: "fixed_ticket",
+      ticketMode: "SINGLE",
       price: 45,
       currency: "usd",
       ticketsRemaining: 12,
       fixedTicketCapacity: 100,
+      packages: [],
     });
+  });
+
+  it("maps PACKAGES ticketMode and package inventory", async () => {
+    server.use(
+      http.get(ROUTE, () =>
+        HttpResponse.json({
+          events: [
+            {
+              id: FIXTURE_FIXED_EVENT_ID,
+              name: "Showcase",
+              slug: "showcase",
+              purchaseKind: "fixed_ticket",
+              ticketMode: "PACKAGES",
+              price: 85,
+              currency: "usd",
+              ticketsRemaining: 35,
+              fixedTicketCapacity: null,
+              packages: [
+                {
+                  id: "pkg-1",
+                  title: "VIP",
+                  price: 85,
+                  capacity: 40,
+                  sold: 5,
+                  remaining: 35,
+                },
+              ],
+              floorLayoutId: null,
+              eventDateIso: null,
+              eventLabel: null,
+            },
+          ],
+        }),
+      ),
+    );
+
+    const events = await fetchBoxOfficeFixedEvents("token-1");
+    expect(events).toEqual([
+      {
+        id: FIXTURE_FIXED_EVENT_ID,
+        name: "Showcase",
+        slug: "showcase",
+        purchaseKind: "fixed_ticket",
+        ticketMode: "PACKAGES",
+        price: 85,
+        currency: "usd",
+        ticketsRemaining: 35,
+        fixedTicketCapacity: null,
+        packages: [
+          {
+            id: "pkg-1",
+            title: "VIP",
+            price: 85,
+            capacity: 40,
+            sold: 5,
+            remaining: 35,
+          },
+        ],
+        floorLayoutId: null,
+        eventDateIso: null,
+        eventLabel: null,
+      },
+    ]);
   });
 
   it("coerces a numeric-string price and defaults an unknown purchaseKind to venue_seating", async () => {
@@ -64,10 +131,12 @@ describe("fetchBoxOfficeFixedEvents", () => {
         name: "Weird Row",
         slug: null,
         purchaseKind: "venue_seating",
+        ticketMode: "SINGLE",
         price: 45.5,
         currency: "usd",
         ticketsRemaining: null,
         fixedTicketCapacity: null,
+        packages: [],
         floorLayoutId: null,
         eventDateIso: null,
         eventLabel: null,

@@ -6,6 +6,7 @@ export type AdminVenueConfig = {
   eventId: string;
   clientEnabled: boolean;
   fixedTicketCapacity: number | null;
+  fixedTicketMode?: "SINGLE" | "PACKAGES";
   classPackageEnabled: boolean;
   classPackagePrice: number | null;
   classPackageLabel: string | null;
@@ -23,6 +24,7 @@ export async function patchAdminVenueConfig(
     reservationEventTemplateId?: string | null;
     clientEnabled?: boolean;
     fixedTicketCapacity?: number | null;
+    fixedTicketMode?: "SINGLE" | "PACKAGES";
     classPackageEnabled?: boolean;
     classPackagePrice?: number | null;
     classPackageLabel?: string | null;

@@ -23,6 +23,8 @@ type SessionStatusResponse = {
     customerEmail?: string;
     eventName?: string;
     eventSlug?: string | null;
+    verificationCode?: string;
+    packageTitle?: string | null;
   };
 };
 
@@ -43,6 +45,8 @@ function FixedTicketReturnInner({ slug }: { slug: string }) {
   const sessionId = searchParams.get("session_id");
   const [status, setStatus] = useState<ConfirmationStatus>("loading");
   const [ticketNumber, setTicketNumber] = useState<number | null>(null);
+  const [verificationCode, setVerificationCode] = useState<string | null>(null);
+  const [packageTitle, setPackageTitle] = useState<string | null>(null);
 
   useEffect(() => {
     if (!sessionId) {
@@ -62,6 +66,12 @@ function FixedTicketReturnInner({ slug }: { slug: string }) {
           const enrollment = data.enrollment;
           if (typeof enrollment?.ticketNumber === "number") {
             setTicketNumber(enrollment.ticketNumber);
+          }
+          if (enrollment?.verificationCode?.trim()) {
+            setVerificationCode(enrollment.verificationCode.trim());
+          }
+          if (enrollment?.packageTitle?.trim()) {
+            setPackageTitle(enrollment.packageTitle.trim());
           }
           const stripeStatus = data.stripeStatus;
           const enStatus = enrollment?.status;
@@ -91,10 +101,28 @@ function FixedTicketReturnInner({ slug }: { slug: string }) {
   const ticketExtra =
     status === "paid" ? (
       <div className="space-y-3">
+        {packageTitle ? (
+          <p className="font-body text-sm text-foreground/75">
+            Package: <span className="text-gold">{packageTitle}</span>
+          </p>
+        ) : null}
         {ticketNumber != null ? (
           <p className="font-brand text-sm tracking-[0.12em] text-gold">
             Your ticket number is #{ticketNumber}
           </p>
+        ) : null}
+        {verificationCode ? (
+          <div className="rounded-xl border border-gold/35 bg-gold/10 px-4 py-3 text-left">
+            <p className="font-brand text-[10px] tracking-[0.16em] text-gold/85">
+              VERIFICATION CODE
+            </p>
+            <p className="mt-2 break-all font-mono text-sm text-foreground">
+              {verificationCode}
+            </p>
+            <p className="mt-2 font-body text-xs text-foreground/55">
+              Show this code at the door. The same code was emailed to you and to Shamell.
+            </p>
+          </div>
         ) : null}
         {slug ? (
           <Link

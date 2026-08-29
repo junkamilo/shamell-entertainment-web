@@ -4,6 +4,7 @@ export type CreateFixedEventCheckoutBody = {
   customerName: string;
   customerEmail: string;
   customerPhone?: string;
+  packageId?: string;
 };
 
 export async function createFixedEventCheckoutSession(

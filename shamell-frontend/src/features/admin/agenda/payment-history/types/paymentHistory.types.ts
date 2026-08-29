@@ -89,6 +89,10 @@ export type FixedPurchaseDetails = {
   eventName: string;
   eventDate: string | null;
   ticketNumber: number | null;
+  packageTitle: string | null;
+  packageArrivalLabel: string | null;
+  packageIncludes: string[];
+  verificationCode: string;
 };
 
 export type AdminPaymentPurchaseDetails =

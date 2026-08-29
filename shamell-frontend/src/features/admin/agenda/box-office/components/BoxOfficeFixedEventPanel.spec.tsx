@@ -5,9 +5,13 @@ import { screen } from "@testing-library/react";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 import {
   makeFixedTicketEvent,
+  makePackagesFixedTicketEvent,
   makeVenueFixedEvent,
 } from "../test/fixtures/boxOffice.fixture";
-import { FIXTURE_FIXED_EVENT_ID } from "../test/fixtures/uuids.fixture";
+import {
+  FIXTURE_FIXED_EVENT_ID,
+  FIXTURE_PACKAGE_ID,
+} from "../test/fixtures/uuids.fixture";
 
 const useBoxOfficeFixedEventFormMock = vi.fn();
 
@@ -30,6 +34,9 @@ function makeForm(overrides: Record<string, unknown> = {}) {
     selectedSeatId: null,
     setSelectedSeatId: vi.fn(),
     selectedSeat: null,
+    selectedPackageId: "",
+    onSelectPackage: vi.fn(),
+    selectedPackage: null,
     customerName: "",
     setCustomerName: vi.fn(),
     customerEmail: "",
@@ -85,10 +92,33 @@ describe("BoxOfficeFixedEventPanel", () => {
     expect(screen.getAllByText(fixedEvent.name).length).toBeGreaterThan(0);
     expect(screen.getByText(/\$45/)).toBeInTheDocument();
     expect(screen.getByText(/remaining: 12/i)).toBeInTheDocument();
+    expect(screen.queryByText("TICKET PACKAGE")).not.toBeInTheDocument();
     expect(screen.getByLabelText(/full name/i)).toHaveValue("Jane Doe");
     expect(
       screen.getByRole("button", { name: /confirm ticket reservation/i }),
     ).toBeInTheDocument();
+  });
+
+  it("shows the package selector for a PACKAGES event", () => {
+    const packagesEvent = makePackagesFixedTicketEvent();
+    const selectedPackage = packagesEvent.packages[0]!;
+    useBoxOfficeFixedEventFormMock.mockReturnValue(
+      makeForm({
+        events: [packagesEvent],
+        eventId: FIXTURE_FIXED_EVENT_ID,
+        selectedEvent: packagesEvent,
+        selectedPackageId: FIXTURE_PACKAGE_ID,
+        selectedPackage,
+        customerName: "Jane Doe",
+        customerEmail: "jane@example.com",
+      }),
+    );
+    renderWithProviders(<BoxOfficeFixedEventPanel />);
+
+    expect(screen.getByText("TICKET PACKAGE")).toBeInTheDocument();
+    expect(screen.getByText(selectedPackage.title)).toBeInTheDocument();
+    expect(screen.getAllByText(/\$85/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/remaining: 35/i)).toBeInTheDocument();
   });
 
   it("shows the seat picker and venue-seating submit label for a venue event", () => {
