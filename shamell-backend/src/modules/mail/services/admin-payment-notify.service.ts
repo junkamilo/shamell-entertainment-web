@@ -60,9 +60,11 @@ export class AdminPaymentNotifyService {
       flowLabel,
       customerName: input.customerName,
       customerEmail: input.customerEmail,
+      customerPhone: input.customerPhone,
       amountUsd,
       contextLabel: input.contextLabel,
       reference: input.reference,
+      detailsLines: input.detailsLines,
       stageLabel,
     };
 

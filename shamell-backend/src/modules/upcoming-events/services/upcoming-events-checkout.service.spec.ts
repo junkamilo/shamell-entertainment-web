@@ -29,6 +29,7 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
   let harness: UpcomingEventsCheckoutServiceTestHarness;
   let service: UpcomingEventsCheckoutServiceTestHarness['service'];
   let repository: UpcomingEventsCheckoutServiceTestHarness['repository'];
+  let packagesRepository: UpcomingEventsCheckoutServiceTestHarness['packagesRepository'];
   let stripe: UpcomingEventsCheckoutServiceTestHarness['stripe'];
 
   const classDto: CreateClassCheckoutDto = {
@@ -59,6 +60,7 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
     harness = await createUpcomingEventsCheckoutServiceTestModule();
     service = harness.service;
     repository = harness.repository;
+    packagesRepository = harness.packagesRepository;
     stripe = harness.stripe;
     repository.seatsRemaining.mockResolvedValue(10);
   });
@@ -224,8 +226,9 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
 
   describe('createClassBundleCheckout', () => {
     function twoSameDaySessions() {
-      const startsAt = new Date('2026-08-15T15:00:00.000Z');
-      const endsAt = new Date('2026-08-15T16:00:00.000Z');
+      const dayStart = Date.now() + 7 * 86_400_000;
+      const startsAt = new Date(dayStart);
+      const endsAt = new Date(dayStart + 3_600_000);
       return [
         makeCheckoutClassSessionStub({
           id: 'session-1',
@@ -235,8 +238,8 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
         }),
         makeCheckoutClassSessionStub({
           id: 'session-2',
-          startsAt: new Date('2026-08-15T17:00:00.000Z'),
-          endsAt: new Date('2026-08-15T18:00:00.000Z'),
+          startsAt: new Date(dayStart + 2 * 3_600_000),
+          endsAt: new Date(dayStart + 3 * 3_600_000),
           price: 40,
           weekday: 1,
         }),
@@ -319,19 +322,21 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
     });
 
     it('rejects sessions on different calendar days', async () => {
+      const day1 = Date.now() + 7 * 86_400_000;
+      const day2 = day1 + 86_400_000;
       repository.findPublicUpcomingBySlug.mockResolvedValue(
         makeClassesPublicEventStub(),
       );
       repository.findActiveClassSessionsByIdsForEvent.mockResolvedValue([
         makeCheckoutClassSessionStub({
           id: 'session-1',
-          startsAt: new Date('2026-08-15T15:00:00.000Z'),
-          endsAt: new Date('2026-08-15T16:00:00.000Z'),
+          startsAt: new Date(day1),
+          endsAt: new Date(day1 + 3_600_000),
         }),
         makeCheckoutClassSessionStub({
           id: 'session-2',
-          startsAt: new Date('2026-08-16T15:00:00.000Z'),
-          endsAt: new Date('2026-08-16T16:00:00.000Z'),
+          startsAt: new Date(day2),
+          endsAt: new Date(day2 + 3_600_000),
         }),
       ]);
       await expect(
@@ -340,6 +345,7 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
     });
 
     it('rejects invalid bundle total', async () => {
+      const dayStart = Date.now() + 7 * 86_400_000;
       repository.findPublicUpcomingBySlug.mockResolvedValue(
         makeClassesPublicEventStub(),
       );
@@ -347,14 +353,14 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
         makeCheckoutClassSessionStub({
           id: 'session-1',
           price: 0.1,
-          startsAt: new Date('2026-08-15T15:00:00.000Z'),
-          endsAt: new Date('2026-08-15T16:00:00.000Z'),
+          startsAt: new Date(dayStart),
+          endsAt: new Date(dayStart + 3_600_000),
         }),
         makeCheckoutClassSessionStub({
           id: 'session-2',
           price: 0.1,
-          startsAt: new Date('2026-08-15T17:00:00.000Z'),
-          endsAt: new Date('2026-08-15T18:00:00.000Z'),
+          startsAt: new Date(dayStart + 2 * 3_600_000),
+          endsAt: new Date(dayStart + 3 * 3_600_000),
         }),
       ]);
       await expect(
@@ -387,18 +393,20 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
     };
 
     function twoDifferentDaySessions() {
+      const day1 = Date.now() + 7 * 86_400_000;
+      const day2 = day1 + 86_400_000;
       return [
         makeCheckoutClassSessionStub({
           id: 'session-1',
-          startsAt: new Date('2026-08-18T12:00:00.000Z'),
-          endsAt: new Date('2026-08-18T13:00:00.000Z'),
+          startsAt: new Date(day1),
+          endsAt: new Date(day1 + 3_600_000),
           price: 25,
           weekday: 2,
         }),
         makeCheckoutClassSessionStub({
           id: 'session-2',
-          startsAt: new Date('2026-08-19T12:00:00.000Z'),
-          endsAt: new Date('2026-08-19T13:00:00.000Z'),
+          startsAt: new Date(day2),
+          endsAt: new Date(day2 + 3_600_000),
           price: 25,
           weekday: 3,
         }),
@@ -667,7 +675,7 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
 
     it('creates PENDING fixed enrollment', async () => {
       stubFixedOpen();
-      repository.createPendingFixedEventEnrollment.mockResolvedValue({
+      repository.createPendingFixedEventEnrollmentLocked.mockResolvedValue({
         id: 'fixed-enroll-1',
       });
 
@@ -733,10 +741,7 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
 
     it('rejects sold out tickets', async () => {
       stubFixedOpen();
-      jest
-        .spyOn(fixedTicketUtil, 'fixedTicketsRemaining')
-        .mockResolvedValueOnce(10)
-        .mockResolvedValueOnce(0);
+      jest.spyOn(fixedTicketUtil, 'fixedTicketsRemaining').mockResolvedValue(0);
       await expect(
         service.createFixedEventCheckout('gala-night', fixedDto),
       ).rejects.toBeInstanceOf(ConflictException);
@@ -776,6 +781,93 @@ describe('UpcomingEventsCheckoutService (money matrix)', () => {
       await expect(
         service.createFixedEventCheckout('gala-night', fixedDto),
       ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('creates PENDING enrollment for PACKAGES with packageId', async () => {
+      const event = makeFixedTicketEventStub({
+        id: 'fixed-event-1',
+        slug: 'gala-night',
+        price: 75,
+        eventType: { name: 'Gala Night' },
+      });
+      repository.findPublicUpcomingBySlug.mockResolvedValue(event);
+      repository.findVenueConfigWithReservationTemplate.mockResolvedValue(
+        makeFixedPublicCheckoutVenueStub({
+          fixedTicketMode: 'PACKAGES',
+          fixedTicketCapacity: null,
+        }),
+      );
+      packagesRepository.findPackageById.mockResolvedValue({
+        id: 'pkg-1',
+        eventId: 'fixed-event-1',
+        title: 'VIP Early Entry',
+        description: null,
+        badge: null,
+        priceCents: 8500,
+        capacity: 40,
+        arrivalStartTime: new Date(Date.UTC(1970, 0, 1, 18, 0)),
+        arrivalEndTime: null,
+        displayOrder: 0,
+        isActive: true,
+        activityLinks: [
+          {
+            activity: {
+              id: 'act-1',
+              title: 'Welcome drink',
+              description: null,
+              showText: true,
+              mediaType: null,
+              mediaUrl: null,
+              mediaPublicId: null,
+              displayOrder: 0,
+            },
+          },
+        ],
+      });
+      jest.spyOn(fixedTicketUtil, 'getFixedTicketInventory').mockResolvedValue({
+        total: { capacity: 40, blocking: 0, remaining: 40, sold: 0 },
+        byPackage: new Map([
+          ['pkg-1', { capacity: 40, blocking: 0, remaining: 40, sold: 0 }],
+        ]),
+      } as Awaited<ReturnType<typeof fixedTicketUtil.getFixedTicketInventory>>);
+      repository.createPendingFixedEventEnrollmentLocked.mockResolvedValue({
+        id: 'fixed-enroll-pkg-1',
+      });
+
+      await expect(
+        service.createFixedEventCheckout('gala-night', {
+          ...fixedDto,
+          packageId: 'pkg-1',
+        }),
+      ).resolves.toEqual({
+        clientSecret: 'sec_1',
+        enrollmentId: 'fixed-enroll-pkg-1',
+      });
+
+      expect(packagesRepository.findPackageById).toHaveBeenCalledWith(
+        'pkg-1',
+        'fixed-event-1',
+      );
+      expect(
+        repository.createPendingFixedEventEnrollmentLocked,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          packageId: 'pkg-1',
+          packageTitle: 'VIP Early Entry',
+          packagePriceCents: 8500,
+          amount: 85,
+        }),
+        expect.objectContaining({
+          mode: 'PACKAGES',
+          packageId: 'pkg-1',
+          packageCapacity: 40,
+        }),
+      );
+      const createCalls = stripe.client.checkout.sessions.create.mock.calls as [
+        [{ metadata?: { package_id?: string; flow?: string } }],
+      ];
+      expect(createCalls[0][0].metadata?.package_id).toBe('pkg-1');
+      expect(createCalls[0][0].metadata?.flow).toBe('fixed_event_ticket');
     });
   });
 });

@@ -157,6 +157,17 @@ export function assertDateNotBeforeToday(
   }
 }
 
+function assertDateNotBeforeTodayUnlessUnchanged(
+  date: Date,
+  field: string,
+  timezone: string,
+  previousIso?: string | null,
+): void {
+  const iso = date.toISOString().slice(0, 10);
+  if (previousIso && iso === previousIso) return;
+  assertDateNotBeforeToday(date, field, timezone);
+}
+
 export function validateWeekdaysActive(weekdays: WeekdayInput[]): void {
   if (!Array.isArray(weekdays) || weekdays.length !== 7) {
     throw new BadRequestException('weekdays must include 7 entries (0–6).');
@@ -202,6 +213,12 @@ export function validateTemplatePayload(input: {
     defaultPrice?: number | null;
     isActive?: boolean;
   }>;
+  /** When updating, unchanged past dates are allowed (sales already open). */
+  existingFixedDates?: {
+    salesStartDate?: string | null;
+    salesEndDate?: string | null;
+    eventDate?: string | null;
+  };
 }): ValidatedTemplatePayload {
   const name = input.name.trim();
   if (name.length < 2 || name.length > 120) {
@@ -230,9 +247,25 @@ export function validateTemplatePayload(input: {
     const salesEndDate = parseISODateOnly(input.salesEndDate, 'salesEndDate');
     const eventDate = parseISODateOnly(input.eventDate, 'eventDate');
 
-    assertDateNotBeforeToday(salesStartDate, 'salesStartDate', timezone);
-    assertDateNotBeforeToday(salesEndDate, 'salesEndDate', timezone);
-    assertDateNotBeforeToday(eventDate, 'eventDate', timezone);
+    const previous = input.existingFixedDates;
+    assertDateNotBeforeTodayUnlessUnchanged(
+      salesStartDate,
+      'salesStartDate',
+      timezone,
+      previous?.salesStartDate,
+    );
+    assertDateNotBeforeTodayUnlessUnchanged(
+      salesEndDate,
+      'salesEndDate',
+      timezone,
+      previous?.salesEndDate,
+    );
+    assertDateNotBeforeTodayUnlessUnchanged(
+      eventDate,
+      'eventDate',
+      timezone,
+      previous?.eventDate,
+    );
 
     if (salesEndDate.getTime() < salesStartDate.getTime()) {
       throw new BadRequestException(

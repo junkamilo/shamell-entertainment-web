@@ -10,9 +10,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import {
   CurrentAdmin,
@@ -28,6 +33,13 @@ import { CreateFixedEventCheckoutDto } from '../dto/create-fixed-event-checkout.
 import { UpsertClassSessionDto } from '../dto/upsert-class-session.dto';
 import { UpsertVenueConfigDto } from '../dto/upsert-venue-config.dto';
 import { CreateAdminFixedEventEnrollmentDto } from '../dto/create-admin-fixed-event-enrollment.dto';
+import { UpsertEventActivitiesDto } from '../packages/dto/upsert-event-activities.dto';
+import { UPCOMING_ACTIVITY_UPLOAD_MAX_FILE_SIZE_BYTES } from '../packages/constants/upcoming-activities.constants';
+import {
+  CreateFixedEventPackageDto,
+  ReorderFixedEventPackagesDto,
+  UpdateFixedEventPackageDto,
+} from '../packages/dto/fixed-event-package.dto';
 import { UpcomingEventsService } from '../services/upcoming-events.service';
 import { AdminClassEnrollmentService } from '../services/admin-class-enrollment.service';
 import { AdminFixedEventEnrollmentService } from '../services/admin-fixed-event-enrollment.service';
@@ -114,6 +126,8 @@ export class UpcomingEventsController {
       eventName: string;
       eventSlug: string | null;
       ticketNumber?: number;
+      verificationCode?: string;
+      packageTitle?: string | null;
     };
   }> {
     if (!sessionId?.trim()) {
@@ -257,6 +271,117 @@ export class UpcomingEventsController {
     @Body() dto: UpsertVenueConfigDto,
   ) {
     return this.upcomingEventsService.upsertAdminVenueConfig(eventId, dto);
+  }
+
+  @Get('upcoming-events/admin/events/:eventId/activities')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  listEventActivities(@Param('eventId', new ParseUUIDPipe()) eventId: string) {
+    return this.upcomingEventsService.listEventActivities(eventId);
+  }
+
+  @Put('upcoming-events/admin/events/:eventId/activities')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  replaceEventActivities(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Body() dto: UpsertEventActivitiesDto,
+  ) {
+    return this.upcomingEventsService.replaceEventActivities(eventId, dto);
+  }
+
+  @Post('upcoming-events/admin/events/:eventId/activities/:activityId/media')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  @UseInterceptors(
+    FileInterceptor('media', {
+      storage: memoryStorage(),
+      limits: { fileSize: UPCOMING_ACTIVITY_UPLOAD_MAX_FILE_SIZE_BYTES },
+    }),
+  )
+  uploadEventActivityMedia(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Param('activityId', new ParseUUIDPipe()) activityId: string,
+    @UploadedFile() mediaFile?: Express.Multer.File,
+  ) {
+    if (!mediaFile?.buffer) {
+      throw new BadRequestException('Media file is required.');
+    }
+    return this.upcomingEventsService.uploadEventActivityMedia(
+      eventId,
+      activityId,
+      mediaFile,
+    );
+  }
+
+  @Delete('upcoming-events/admin/events/:eventId/activities/:activityId/media')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  deleteEventActivityMedia(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Param('activityId', new ParseUUIDPipe()) activityId: string,
+  ) {
+    return this.upcomingEventsService.deleteEventActivityMedia(
+      eventId,
+      activityId,
+    );
+  }
+
+  @Get('upcoming-events/admin/events/:eventId/fixed-packages')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  listFixedEventPackages(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+  ) {
+    return this.upcomingEventsService.listFixedEventPackages(eventId);
+  }
+
+  @Post('upcoming-events/admin/events/:eventId/fixed-packages')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(AdminJwtGuard)
+  createFixedEventPackage(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Body() dto: CreateFixedEventPackageDto,
+  ) {
+    return this.upcomingEventsService.createFixedEventPackage(eventId, dto);
+  }
+
+  @Patch('upcoming-events/admin/events/:eventId/fixed-packages/reorder')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  reorderFixedEventPackages(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Body() dto: ReorderFixedEventPackagesDto,
+  ) {
+    return this.upcomingEventsService.reorderFixedEventPackages(eventId, dto);
+  }
+
+  @Patch('upcoming-events/admin/events/:eventId/fixed-packages/:packageId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  updateFixedEventPackage(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Param('packageId', new ParseUUIDPipe()) packageId: string,
+    @Body() dto: UpdateFixedEventPackageDto,
+  ) {
+    return this.upcomingEventsService.updateFixedEventPackage(
+      eventId,
+      packageId,
+      dto,
+    );
+  }
+
+  @Delete('upcoming-events/admin/events/:eventId/fixed-packages/:packageId')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(AdminJwtGuard)
+  deleteFixedEventPackage(
+    @Param('eventId', new ParseUUIDPipe()) eventId: string,
+    @Param('packageId', new ParseUUIDPipe()) packageId: string,
+  ) {
+    return this.upcomingEventsService.deleteFixedEventPackage(
+      eventId,
+      packageId,
+    );
   }
 
   @Get('upcoming-events/:slug')

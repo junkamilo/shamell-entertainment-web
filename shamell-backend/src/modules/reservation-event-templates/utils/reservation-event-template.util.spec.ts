@@ -55,6 +55,37 @@ describe('reservation-event-template.util', () => {
       ).toThrow(BadRequestException);
     });
 
+    it('allows unchanged past sales dates on update', () => {
+      const pastStart = '2020-01-01';
+      const pastEnd = '2020-01-15';
+      const eventDate = '2020-02-01';
+
+      expect(() =>
+        validateTemplatePayload({
+          ...makeFixedCreateDto({
+            salesStartDate: pastStart,
+            salesEndDate: pastEnd,
+            eventDate,
+          }),
+          existingFixedDates: {
+            salesStartDate: pastStart,
+            salesEndDate: pastEnd,
+            eventDate,
+          },
+        }),
+      ).not.toThrow();
+
+      expect(() =>
+        validateTemplatePayload(
+          makeFixedCreateDto({
+            salesStartDate: pastStart,
+            salesEndDate: pastEnd,
+            eventDate,
+          }),
+        ),
+      ).toThrow(BadRequestException);
+    });
+
     it('validates recurring with class sections', () => {
       const result = validateTemplatePayload(makeRecurringCreateDto());
       expect(result.scheduleMode).toBe(

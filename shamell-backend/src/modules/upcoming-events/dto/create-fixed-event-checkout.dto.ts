@@ -2,6 +2,7 @@ import {
   IsEmail,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -20,4 +21,8 @@ export class CreateFixedEventCheckoutDto {
   @IsString()
   @MaxLength(40)
   customerPhone?: string;
+
+  @IsOptional()
+  @IsUUID('4')
+  packageId?: string;
 }

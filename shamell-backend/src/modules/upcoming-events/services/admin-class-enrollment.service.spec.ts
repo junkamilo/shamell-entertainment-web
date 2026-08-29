@@ -57,6 +57,10 @@ describe('AdminClassEnrollmentService', () => {
       .mockResolvedValue({ id: 'cs_admin' });
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   function mockSessionCashCreate(
     session: ReturnType<typeof makeFutureClassSessionStub>,
   ) {
@@ -76,10 +80,11 @@ describe('AdminClassEnrollmentService', () => {
   }
 
   function makeSameDayBundleSessions() {
+    const dayStart = Date.now() + 7 * 86_400_000;
     const session1 = makeFutureClassSessionStub({
       id: 'session-a',
-      startsAt: new Date('2026-08-15T14:00:00.000Z'),
-      endsAt: new Date('2026-08-15T15:00:00.000Z'),
+      startsAt: new Date(dayStart),
+      endsAt: new Date(dayStart + 3_600_000),
       section: null,
       weekday: 5,
       price: 50,
@@ -88,8 +93,8 @@ describe('AdminClassEnrollmentService', () => {
     });
     const session2 = makeFutureClassSessionStub({
       id: 'session-b',
-      startsAt: new Date('2026-08-15T18:00:00.000Z'),
-      endsAt: new Date('2026-08-15T19:00:00.000Z'),
+      startsAt: new Date(dayStart + 4 * 3_600_000),
+      endsAt: new Date(dayStart + 5 * 3_600_000),
       section: null,
       weekday: 5,
       price: 50,
@@ -794,10 +799,12 @@ describe('AdminClassEnrollmentService', () => {
     });
 
     it('createAdminClassCashEnrollment throws BadRequest when day_bundle sessions span days', async () => {
+      const day1 = Date.now() + 7 * 86_400_000;
+      const day2 = day1 + 86_400_000;
       const session1 = makeFutureClassSessionStub({
         id: 'session-a',
-        startsAt: new Date('2026-08-15T14:00:00.000Z'),
-        endsAt: new Date('2026-08-15T15:00:00.000Z'),
+        startsAt: new Date(day1),
+        endsAt: new Date(day1 + 3_600_000),
         section: null,
         weekday: 5,
         price: 50,
@@ -806,8 +813,8 @@ describe('AdminClassEnrollmentService', () => {
       });
       const session2 = makeFutureClassSessionStub({
         id: 'session-b',
-        startsAt: new Date('2026-08-16T14:00:00.000Z'),
-        endsAt: new Date('2026-08-16T15:00:00.000Z'),
+        startsAt: new Date(day2),
+        endsAt: new Date(day2 + 3_600_000),
         section: null,
         weekday: 6,
         price: 50,
@@ -835,10 +842,12 @@ describe('AdminClassEnrollmentService', () => {
 
   describe('session_cart cash enrollment', () => {
     it('createAdminClassCashEnrollment allows sessions across multiple days', async () => {
+      const day1 = Date.now() + 7 * 86_400_000;
+      const day2 = day1 + 86_400_000;
       const session1 = makeFutureClassSessionStub({
         id: 'session-a',
-        startsAt: new Date('2026-08-15T14:00:00.000Z'),
-        endsAt: new Date('2026-08-15T15:00:00.000Z'),
+        startsAt: new Date(day1),
+        endsAt: new Date(day1 + 3_600_000),
         section: null,
         weekday: 5,
         price: 40,
@@ -847,8 +856,8 @@ describe('AdminClassEnrollmentService', () => {
       });
       const session2 = makeFutureClassSessionStub({
         id: 'session-b',
-        startsAt: new Date('2026-08-16T14:00:00.000Z'),
-        endsAt: new Date('2026-08-16T15:00:00.000Z'),
+        startsAt: new Date(day2),
+        endsAt: new Date(day2 + 3_600_000),
         section: null,
         weekday: 6,
         price: 60,
@@ -943,6 +952,8 @@ describe('AdminClassEnrollmentService', () => {
     });
 
     it('createAdminClassCashEnrollment creates PAID package for current month sessions', async () => {
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2026-08-10T12:00:00.000Z'));
       const currentMonthIso = currentCalendarMonthIso(NY_TIMEZONE);
       const monthSession1 = makeFutureClassSessionStub({
         id: 'month-s1',
@@ -1001,6 +1012,7 @@ describe('AdminClassEnrollmentService', () => {
       const notifyCalls = harness.adminPaymentNotify.notifyPaymentOutcome.mock
         .calls as [[{ flow: string }]];
       expect(notifyCalls[0][0].flow).toBe('CLASS_PACKAGE');
+      jest.useRealTimers();
     });
   });
 

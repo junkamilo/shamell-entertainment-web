@@ -60,6 +60,7 @@ export type UpcomingEventsRepositoryMock = {
   findActiveUpcomingEventWithVenueConfig: JestFn;
   createPaidFixedEnrollmentWithTicket: JestFn;
   createPendingFixedEventEnrollment: JestFn;
+  createPendingFixedEventEnrollmentLocked: JestFn;
   listClassSessionsForAdmin: JestFn;
   createClassSession: JestFn;
   findClassSessionForEvent: JestFn;
@@ -415,6 +416,11 @@ export function createUpcomingEventsRepositoryMock(): UpcomingEventsRepositoryMo
     ),
 
     createPendingFixedEventEnrollment: jest.fn(async (data) => {
+      const prisma = asPrisma();
+      return prisma.upcomingFixedEventEnrollment.create({ data });
+    }),
+
+    createPendingFixedEventEnrollmentLocked: jest.fn(async (data) => {
       const prisma = asPrisma();
       return prisma.upcomingFixedEventEnrollment.create({ data });
     }),

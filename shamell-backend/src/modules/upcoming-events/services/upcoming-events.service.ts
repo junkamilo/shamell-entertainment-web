@@ -14,6 +14,16 @@ import { UpcomingEventsCheckoutService } from './upcoming-events-checkout.servic
 import { UpcomingEventsWebhookService } from './upcoming-events-webhook.service';
 import { UpcomingEventsAdminSessionsService } from './upcoming-events-admin-sessions.service';
 import { UpcomingEventsVenueConfigService } from './upcoming-events-venue-config.service';
+import {
+  UpcomingEventActivitiesService,
+  UpcomingFixedEventPackagesService,
+} from '../packages/upcoming-fixed-event-packages.service';
+import { UpsertEventActivitiesDto } from '../packages/dto/upsert-event-activities.dto';
+import {
+  CreateFixedEventPackageDto,
+  ReorderFixedEventPackagesDto,
+  UpdateFixedEventPackageDto,
+} from '../packages/dto/fixed-event-package.dto';
 
 @Injectable()
 export class UpcomingEventsService {
@@ -23,6 +33,8 @@ export class UpcomingEventsService {
     private readonly webhookService: UpcomingEventsWebhookService,
     private readonly adminSessionsService: UpcomingEventsAdminSessionsService,
     private readonly venueConfigService: UpcomingEventsVenueConfigService,
+    private readonly activitiesService: UpcomingEventActivitiesService,
+    private readonly packagesService: UpcomingFixedEventPackagesService,
     @Inject(forwardRef(() => AdminClassEnrollmentService))
     private readonly adminClassEnrollment: AdminClassEnrollmentService,
   ) {}
@@ -228,5 +240,56 @@ export class UpcomingEventsService {
 
   getVenueConfigForEvent(eventId: string) {
     return this.venueConfigService.getVenueConfigForEvent(eventId);
+  }
+
+  listEventActivities(eventId: string) {
+    return this.activitiesService.listActivities(eventId);
+  }
+
+  replaceEventActivities(eventId: string, dto: UpsertEventActivitiesDto) {
+    return this.activitiesService.replaceActivities(eventId, dto);
+  }
+
+  uploadEventActivityMedia(
+    eventId: string,
+    activityId: string,
+    mediaFile: Express.Multer.File,
+  ) {
+    return this.activitiesService.uploadActivityMedia(
+      eventId,
+      activityId,
+      mediaFile,
+    );
+  }
+
+  deleteEventActivityMedia(eventId: string, activityId: string) {
+    return this.activitiesService.deleteActivityMedia(eventId, activityId);
+  }
+
+  listFixedEventPackages(eventId: string) {
+    return this.packagesService.listPackages(eventId);
+  }
+
+  createFixedEventPackage(eventId: string, dto: CreateFixedEventPackageDto) {
+    return this.packagesService.createPackage(eventId, dto);
+  }
+
+  updateFixedEventPackage(
+    eventId: string,
+    packageId: string,
+    dto: UpdateFixedEventPackageDto,
+  ) {
+    return this.packagesService.updatePackage(eventId, packageId, dto);
+  }
+
+  deleteFixedEventPackage(eventId: string, packageId: string) {
+    return this.packagesService.deletePackage(eventId, packageId);
+  }
+
+  reorderFixedEventPackages(
+    eventId: string,
+    dto: ReorderFixedEventPackagesDto,
+  ) {
+    return this.packagesService.reorderPackages(eventId, dto.orderedIds);
   }
 }

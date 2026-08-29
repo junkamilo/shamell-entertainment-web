@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import { GalleryModule } from '../gallery/gallery.module';
 import { MailModule } from '../mail/mail.module';
 import { ReservationEventTemplatesModule } from '../reservation-event-templates/reservation-event-templates.module';
 import { StripeModule } from '../stripe/stripe.module';
@@ -13,12 +14,25 @@ import { UpcomingEventsCheckoutService } from './services/upcoming-events-checko
 import { UpcomingEventsWebhookService } from './services/upcoming-events-webhook.service';
 import { UpcomingEventsAdminSessionsService } from './services/upcoming-events-admin-sessions.service';
 import { UpcomingEventsVenueConfigService } from './services/upcoming-events-venue-config.service';
+import { UpcomingFixedEventPackagesRepository } from './packages/upcoming-fixed-event-packages.repository';
+import {
+  UpcomingEventActivitiesService,
+  UpcomingFixedEventPackagesService,
+} from './packages/upcoming-fixed-event-packages.service';
 
 @Module({
-  imports: [ReservationEventTemplatesModule, StripeModule, MailModule],
+  imports: [
+    GalleryModule,
+    ReservationEventTemplatesModule,
+    StripeModule,
+    MailModule,
+  ],
   controllers: [UpcomingEventsController],
   providers: [
     UpcomingEventsRepository,
+    UpcomingFixedEventPackagesRepository,
+    UpcomingEventActivitiesService,
+    UpcomingFixedEventPackagesService,
     UpcomingEventsVenueConfigService,
     UpcomingEventsPublicService,
     UpcomingEventsCheckoutService,

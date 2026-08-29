@@ -436,10 +436,7 @@ describe('UpcomingEventsService', () => {
     };
 
     it('throws ConflictException when fixed tickets are sold out', async () => {
-      mockFixedTicketContext({ capacity: 10, blockingCount: 9 });
-      prisma.upcomingFixedEventEnrollment.count
-        .mockResolvedValueOnce(9)
-        .mockResolvedValueOnce(10);
+      mockFixedTicketContext({ capacity: 10, blockingCount: 10 });
       await expect(
         service.createFixedEventCheckout('fixed-gala', fixedDto),
       ).rejects.toBeInstanceOf(ConflictException);

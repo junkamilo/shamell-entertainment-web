@@ -69,13 +69,22 @@ describe('admin-payments-mapper.util', () => {
   });
 
   it('maps fixed ticket row and detail', () => {
-    const enrollment = makeFixedRow();
+    const enrollment = makeFixedRow({
+      packageTitle: 'VIP Early Entry',
+      packageArrivalLabel: '7:00 PM',
+      packageInclusions: [{ title: 'Workshop' }, { title: 'Show' }],
+    });
     const row = mapFixedEnrollment(enrollment);
     expect(row.contextLabel).toContain('Ticket #12');
+    expect(row.contextLabel).toContain('VIP Early Entry');
     const detail = mapFixedEnrollmentDetail(enrollment);
     expect(detail.purchaseDetails).toMatchObject({
       flow: 'FIXED_TICKET',
       ticketNumber: 12,
+      packageTitle: 'VIP Early Entry',
+      packageArrivalLabel: '7:00 PM',
+      packageIncludes: ['Workshop', 'Show'],
+      verificationCode: enrollment.id.toLowerCase(),
     });
   });
 

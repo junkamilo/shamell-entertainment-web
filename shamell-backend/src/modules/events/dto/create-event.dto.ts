@@ -1,6 +1,5 @@
 import { Transform, Type } from 'class-transformer';
 import {
-  ArrayMinSize,
   IsEnum,
   IsArray,
   IsBoolean,
@@ -40,7 +39,6 @@ export class CreateEventDto {
   description!: string;
 
   @IsArray()
-  @ArrayMinSize(1)
   @IsString({ each: true })
   @Transform(({ value }) =>
     Array.isArray(value)

@@ -38,10 +38,14 @@ export type NotifyAdminPaymentInput = {
     | 'FIXED_TICKET';
   customerName: string;
   customerEmail: string;
+  customerPhone?: string | null;
   amount: number;
   currency?: string;
   contextLabel: string;
+  /** Full verification UUID for fixed tickets (same code emailed to the customer). */
   reference?: string;
+  /** Extra ops lines (package, includes, phone, etc.). */
+  detailsLines?: string[];
   stage?: 'FULL' | 'DEPOSIT' | 'BALANCE' | null;
 };
 

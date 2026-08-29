@@ -1,4 +1,5 @@
 import {
+  FixedTicketMode,
   GalleryMediaType,
   Prisma,
   UpcomingExperienceType,
@@ -167,6 +168,7 @@ export function mapVenueConfig(config: {
   reservationTimezone: string;
   floorLayoutId: string | null;
   fixedTicketCapacity?: number | null;
+  fixedTicketMode?: FixedTicketMode;
   classPackageEnabled?: boolean;
   classPackagePrice?: unknown;
   classPackageLabel?: string | null;
@@ -190,6 +192,7 @@ export function mapVenueConfig(config: {
     reservationTimezone: config.reservationTimezone,
     floorLayoutId: config.floorLayoutId,
     fixedTicketCapacity: config.fixedTicketCapacity ?? null,
+    fixedTicketMode: config.fixedTicketMode ?? FixedTicketMode.SINGLE,
     classPackageEnabled: config.classPackageEnabled ?? false,
     classPackagePrice:
       config.classPackagePrice != null

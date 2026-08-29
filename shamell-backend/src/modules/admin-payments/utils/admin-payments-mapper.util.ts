@@ -213,6 +213,9 @@ export function mapClassEnrollment(e: ClassRow): AdminStripePaymentRow {
 export function mapFixedEnrollment(e: FixedRow): AdminStripePaymentRow {
   const event = e.event;
   const ticket = e.ticketNumber != null ? ` — Ticket #${e.ticketNumber}` : '';
+  const pkg = e.packageTitle?.trim()
+    ? ` — Package: ${e.packageTitle.trim()}`
+    : '';
   return {
     id: e.id,
     flow: 'FIXED_TICKET',
@@ -222,7 +225,7 @@ export function mapFixedEnrollment(e: FixedRow): AdminStripePaymentRow {
     currency: e.currency,
     customerName: e.customerName,
     customerEmail: e.customerEmail,
-    contextLabel: `${event.eventType.name}${ticket}`,
+    contextLabel: `${event.eventType.name}${pkg}${ticket}`,
     bookingId: null,
     eventSlug: event.slug ?? null,
     eventId: event.id,
@@ -324,11 +327,20 @@ export function mapFixedEnrollmentDetail(
 ): AdminStripePaymentDetail {
   const base = mapFixedEnrollment(e);
   const event = e.event;
+  const inclusions = Array.isArray(e.packageInclusions)
+    ? (e.packageInclusions as { title?: string }[])
+        .map((item) => item.title?.trim())
+        .filter((title): title is string => Boolean(title))
+    : [];
   const purchaseDetails: FixedPurchaseDetails = {
     flow: 'FIXED_TICKET',
     eventName: event.eventType.name,
     eventDate: fixedEventStartsAtIso(event.venueConfig?.reservationEventDate),
     ticketNumber: e.ticketNumber ?? null,
+    packageTitle: e.packageTitle?.trim() || null,
+    packageArrivalLabel: e.packageArrivalLabel?.trim() || null,
+    packageIncludes: inclusions,
+    verificationCode: e.id.trim().toLowerCase(),
   };
   return {
     ...base,

@@ -2,8 +2,10 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import {
+  FixedTicketMode,
   ReservationEventScheduleMode,
   UpcomingExperienceType,
 } from '@prisma/client';
@@ -19,12 +21,18 @@ import { syncVenueSeatReservationEventDates } from '../../venue-reservations/uti
 import { normalizeFixedTicketCapacity } from '../utils/upcoming-fixed-ticket.util';
 import { countBlockingFixedEventEnrollments } from '../utils/upcoming-fixed-ticket.util';
 import { mapVenueConfig } from '../utils/upcoming-events-mapper.util';
+import { UpcomingFixedEventPackagesRepository } from '../packages/upcoming-fixed-event-packages.repository';
+import {
+  FIXED_EVENT_PACKAGE_ERROR_CODES,
+  packageErrorBody,
+} from '../packages/util/fixed-event-package-errors';
 
 @Injectable()
 export class UpcomingEventsVenueConfigService {
   constructor(
     private readonly repository: UpcomingEventsRepository,
     private readonly reservationTemplates: ReservationEventTemplatesService,
+    private readonly packagesRepository: UpcomingFixedEventPackagesRepository,
   ) {}
 
   private get prisma() {
@@ -121,10 +129,40 @@ export class UpcomingEventsVenueConfigService {
       (resolvedClientEnabled ?? existingConfig?.clientEnabled ?? false) ===
       true;
 
+    let resolvedFixedTicketMode: FixedTicketMode =
+      existingConfig?.fixedTicketMode ?? FixedTicketMode.SINGLE;
+    if (dto.fixedTicketMode !== undefined) {
+      resolvedFixedTicketMode = dto.fixedTicketMode;
+    }
+    if (seatingEnabled) {
+      if (resolvedFixedTicketMode === FixedTicketMode.PACKAGES) {
+        throw new UnprocessableEntityException(
+          packageErrorBody(
+            FIXED_EVENT_PACKAGE_ERROR_CODES.PACKAGES_SEATING_CONFLICT,
+            'Ticket packages cannot be enabled with table and seat sales.',
+          ),
+        );
+      }
+      resolvedFixedTicketMode = FixedTicketMode.SINGLE;
+    }
+
     let resolvedFixedTicketCapacity: number | null | undefined;
     if (linkedScheduleMode === ReservationEventScheduleMode.FIXED_EVENT) {
       if (seatingEnabled) {
         resolvedFixedTicketCapacity = null;
+      } else if (resolvedFixedTicketMode === FixedTicketMode.PACKAGES) {
+        // Allow PACKAGES with zero packages so admin can create the event first,
+        // then add packages. Sales stay blocked until active packages exist
+        // (purchaseMode / checkout / public UI).
+        resolvedFixedTicketCapacity = null;
+        const minCents =
+          await this.packagesRepository.minActivePackagePriceCents(eventId);
+        if (minCents != null) {
+          await this.repository.updateUpcomingEventPrice(
+            eventId,
+            minCents / 100,
+          );
+        }
       } else {
         const capacity =
           dtoFixedTicketCapacity !== undefined
@@ -147,6 +185,7 @@ export class UpcomingEventsVenueConfigService {
           );
         }
         resolvedFixedTicketCapacity = capacity;
+        resolvedFixedTicketMode = FixedTicketMode.SINGLE;
       }
     } else if (
       unlinking ||
@@ -200,6 +239,7 @@ export class UpcomingEventsVenueConfigService {
       floorLayoutId: dto.floorLayoutId ?? undefined,
       reservationEventTemplateId,
       fixedTicketCapacity: resolvedFixedTicketCapacity,
+      fixedTicketMode: resolvedFixedTicketMode,
       classPackageEnabled,
       classPackagePrice,
       classPackageLabel,
@@ -221,6 +261,7 @@ export class UpcomingEventsVenueConfigService {
         data.fixedTicketCapacity !== undefined
           ? data.fixedTicketCapacity
           : null,
+      fixedTicketMode: data.fixedTicketMode ?? FixedTicketMode.SINGLE,
       classPackageEnabled: data.classPackageEnabled ?? false,
       classPackagePrice: data.classPackagePrice ?? null,
       classPackageLabel: data.classPackageLabel ?? null,
@@ -265,6 +306,9 @@ export class UpcomingEventsVenueConfigService {
           : {}),
         ...(data.fixedTicketCapacity !== undefined
           ? { fixedTicketCapacity: data.fixedTicketCapacity }
+          : {}),
+        ...(data.fixedTicketMode !== undefined
+          ? { fixedTicketMode: data.fixedTicketMode }
           : {}),
         ...(data.classPackageEnabled !== undefined
           ? { classPackageEnabled: data.classPackageEnabled }

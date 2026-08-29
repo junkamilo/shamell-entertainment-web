@@ -3,6 +3,7 @@ import { createStripeServiceMock } from '../../stripe/__mocks__/stripe.service.m
 import { StripeService } from '../../stripe/services/stripe.service';
 import { createPrismaMock, type PrismaMock } from '../../../testing';
 import { createUpcomingEventsRepositoryMock } from '../__mocks__/upcoming-events.repository.mock';
+import { UpcomingFixedEventPackagesRepository } from '../packages/upcoming-fixed-event-packages.repository';
 import { UpcomingEventsCheckoutService } from '../services/upcoming-events-checkout.service';
 import { UpcomingEventsRepository } from '../services/upcoming-events.repository';
 
@@ -10,6 +11,13 @@ export type UpcomingEventsCheckoutServiceTestHarness = {
   moduleRef: TestingModule;
   service: UpcomingEventsCheckoutService;
   repository: ReturnType<typeof createUpcomingEventsRepositoryMock>;
+  packagesRepository: {
+    findPackageById: jest.Mock;
+    listPackagesByEvent: jest.Mock;
+    listActiveActivitiesByEvent: jest.Mock;
+    minActivePackagePriceCents: jest.Mock;
+    countActivePackagesByEvent: jest.Mock;
+  };
   prisma: PrismaMock;
   stripe: ReturnType<typeof createStripeServiceMock>;
 };
@@ -18,6 +26,13 @@ export async function createUpcomingEventsCheckoutServiceTestModule(): Promise<U
   const repository = createUpcomingEventsRepositoryMock();
   const prisma = createPrismaMock();
   const stripe = createStripeServiceMock();
+  const packagesRepository = {
+    findPackageById: jest.fn(),
+    listPackagesByEvent: jest.fn(),
+    listActiveActivitiesByEvent: jest.fn(),
+    minActivePackagePriceCents: jest.fn(),
+    countActivePackagesByEvent: jest.fn(),
+  };
 
   repository.asPrisma.mockReturnValue(prisma);
   repository.seatsRemaining.mockResolvedValue(10);
@@ -44,6 +59,10 @@ export async function createUpcomingEventsCheckoutServiceTestModule(): Promise<U
       UpcomingEventsCheckoutService,
       { provide: UpcomingEventsRepository, useValue: repository },
       { provide: StripeService, useValue: stripe },
+      {
+        provide: UpcomingFixedEventPackagesRepository,
+        useValue: packagesRepository,
+      },
     ],
   }).compile();
 
@@ -51,6 +70,7 @@ export async function createUpcomingEventsCheckoutServiceTestModule(): Promise<U
     moduleRef,
     service: moduleRef.get(UpcomingEventsCheckoutService),
     repository,
+    packagesRepository,
     prisma,
     stripe,
   };

@@ -5,6 +5,11 @@ import { ReservationEventTemplatesService } from '../../reservation-event-templa
 import { createStripeServiceMock } from '../../stripe/__mocks__/stripe.service.mock';
 import { StripeService } from '../../stripe/services/stripe.service';
 import { createUpcomingEventsRepositoryMock } from '../__mocks__/upcoming-events.repository.mock';
+import {
+  UpcomingEventActivitiesService,
+  UpcomingFixedEventPackagesService,
+} from '../packages/upcoming-fixed-event-packages.service';
+import { UpcomingFixedEventPackagesRepository } from '../packages/upcoming-fixed-event-packages.repository';
 import { AdminClassEnrollmentService } from '../services/admin-class-enrollment.service';
 import { UpcomingEventsRepository } from '../services/upcoming-events.repository';
 import { UpcomingEventsService } from '../services/upcoming-events.service';
@@ -50,6 +55,27 @@ export async function createUpcomingEventsServiceTestModule(): Promise<UpcomingE
   const reservationTemplates = {
     findByIdOrThrow: jest.fn(),
   };
+  const packagesRepository = {
+    findPackageById: jest.fn(),
+    listPackagesByEvent: jest.fn().mockResolvedValue([]),
+    listActiveActivitiesByEvent: jest.fn().mockResolvedValue([]),
+    listActivitiesByEvent: jest.fn().mockResolvedValue([]),
+    minActivePackagePriceCents: jest.fn().mockResolvedValue(null),
+    countActivePackagesByEvent: jest.fn().mockResolvedValue(0),
+  };
+  const activitiesService = {
+    listActivities: jest.fn(),
+    replaceActivities: jest.fn(),
+    uploadActivityMedia: jest.fn(),
+    deleteActivityMedia: jest.fn(),
+  };
+  const packagesService = {
+    listPackages: jest.fn(),
+    createPackage: jest.fn(),
+    updatePackage: jest.fn(),
+    deletePackage: jest.fn(),
+    reorderPackages: jest.fn(),
+  };
 
   stripe.client.checkout.sessions.create = jest.fn().mockResolvedValue({
     id: 'cs_test_created',
@@ -79,6 +105,18 @@ export async function createUpcomingEventsServiceTestModule(): Promise<UpcomingE
       {
         provide: AdminClassEnrollmentService,
         useValue: adminClassEnrollment,
+      },
+      {
+        provide: UpcomingFixedEventPackagesRepository,
+        useValue: packagesRepository,
+      },
+      {
+        provide: UpcomingEventActivitiesService,
+        useValue: activitiesService,
+      },
+      {
+        provide: UpcomingFixedEventPackagesService,
+        useValue: packagesService,
       },
     ],
   }).compile();
