@@ -27,15 +27,9 @@ function isValidEvent(item: EventsApiItem): item is EventsApiItem & {
   id: string;
   eventTypeName: string;
   description: string;
-  items: string[];
 } {
-  return Boolean(
-    item.id &&
-      item.eventTypeName &&
-      item.description &&
-      Array.isArray(item.items) &&
-      item.items.length > 0,
-  );
+  // `items` is optional in admin create/edit — do not require it for hub cards.
+  return Boolean(item.id && item.eventTypeName && item.description);
 }
 
 export function mapPublicUpcomingHubEvents(data: unknown): OnComingEventHubCardItem[] {

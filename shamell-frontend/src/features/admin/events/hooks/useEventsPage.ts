@@ -21,8 +21,15 @@ import {
   patchAdminVenueConfig,
 } from "@/features/admin/on-coming-events/services/patchAdminVenueConfig";
 import { fetchAdminEvents } from "../services/fetchAdminEvents";
-import { fetchEventActivities } from "@/features/admin/on-coming-events/fixed-packages/services/fixedEventPackagesApi";
+import {
+  createFixedEventPackage,
+  fetchEventActivities,
+} from "@/features/admin/on-coming-events/fixed-packages/services/fixedEventPackagesApi";
 import { persistEventActivities } from "@/features/admin/on-coming-events/fixed-packages/services/persistEventActivities";
+import type {
+  EventActivityForm,
+  FixedEventPackageForm,
+} from "@/features/admin/on-coming-events/fixed-packages/types/fixedEventPackage.types";
 import { postAdminRegenerateClassSessions } from "@/features/admin/on-coming-events/services/postAdminRegenerateClassSessions";
 import { fetchAdminReservationEventTemplates } from "@/features/admin/on-coming-events/reservation-events/services/fetchAdminReservationEventTemplates";
 import { createAdminReservationEventTemplate } from "@/features/admin/on-coming-events/reservation-events/services/createAdminReservationEventTemplate";
@@ -36,6 +43,50 @@ import { notifyOnComingEventsPublicDataChanged } from "@/lib/on-coming-events/on
 
 function notifyUpcomingPublicIfNeeded(isUpcoming: boolean) {
   if (isUpcoming) notifyOnComingEventsPublicDataChanged();
+}
+
+function resolveActivityIdsForDraftPackage(
+  draft: FixedEventPackageForm,
+  before: EventActivityForm[],
+  after: EventActivityForm[],
+): string[] {
+  const byClientKey = new Map<string, string>();
+  for (let i = 0; i < before.length; i += 1) {
+    const key = before[i]?.clientKey?.trim();
+    const id = after[i]?.id?.trim();
+    if (key && id) byClientKey.set(key, id);
+  }
+  const ids: string[] = [];
+  for (const ref of draft.activityRefs) {
+    const trimmed = ref.trim();
+    if (!trimmed) continue;
+    if (after.some((a) => a.id === trimmed)) {
+      ids.push(trimmed);
+      continue;
+    }
+    const mapped = byClientKey.get(trimmed);
+    if (mapped) ids.push(mapped);
+  }
+  return [...new Set(ids)];
+}
+
+function draftPackageToCreateBody(
+  draft: FixedEventPackageForm,
+  activityIds: string[],
+): Record<string, unknown> {
+  const price = Number.parseFloat(draft.priceInput);
+  const capacity = Number.parseInt(draft.capacityInput.trim(), 10);
+  return {
+    title: draft.title.trim(),
+    description: null,
+    badge: null,
+    priceCents: Math.round(price * 100),
+    capacity,
+    arrivalStartTime: draft.arrivalStartTime,
+    arrivalEndTime: draft.arrivalEndTime || null,
+    activityIds,
+    displayOrder: draft.displayOrder,
+  };
 }
 
 function isOfflineError(err: unknown) {
@@ -152,16 +203,26 @@ export function useEventsPage(options?: UseEventsPageOptions) {
   );
 
   const syncUpcomingSchedule = useCallback(
-    async (token: string, eventId: string) => {
+    async (
+      token: string,
+      eventId: string,
+    ): Promise<{
+      activitiesBefore: EventActivityForm[];
+      activitiesAfter: EventActivityForm[];
+    }> => {
+      const emptyMap = {
+        activitiesBefore: [] as EventActivityForm[],
+        activitiesAfter: form.activities,
+      };
       if (form.experienceMode === "NORMAL") {
-        if (!form.linkedTemplateId) return;
+        if (!form.linkedTemplateId) return emptyMap;
         const unlink = await patchAdminVenueConfig(token, eventId, {
           reservationEventTemplateId: null,
         });
         if (!unlink.ok) {
           throw new Error(unlink.message ?? "Could not detach the previous schedule.");
         }
-        return;
+        return emptyMap;
       }
 
       const templateBody = scheduleFormToTemplateBody(form.eventName, form.schedule);
@@ -198,17 +259,23 @@ export function useEventsPage(options?: UseEventsPageOptions) {
             : null;
       }
 
+      let activitiesBefore: EventActivityForm[] = [];
+      let activitiesAfter: EventActivityForm[] = form.activities;
+
       if (form.experienceMode === "FIXED_EVENT") {
-        if (form.enablePackages && form.activities.length > 0) {
+        const listedActivities = form.activities.filter((a) => a.title.trim());
+        if (form.enablePackages && listedActivities.length > 0) {
+          activitiesBefore = listedActivities;
           const actResult = await persistEventActivities(
             token,
             eventId,
-            form.activities,
+            listedActivities,
           );
           if (!actResult.ok) {
             throw new Error(actResult.message ?? "Could not save activities.");
           }
           form.setActivities(actResult.activities);
+          activitiesAfter = actResult.activities;
         }
 
         venueConfigBody.clientEnabled = form.enableVenueSeating;
@@ -248,6 +315,8 @@ export function useEventsPage(options?: UseEventsPageOptions) {
           `Expected ${venueConfigBody.fixedTicketCapacity} tickets but saved ${linkResult.config?.fixedTicketCapacity ?? "none"}. Try saving again.`,
         );
       }
+
+      return { activitiesBefore, activitiesAfter };
     },
     [form],
   );
@@ -356,6 +425,18 @@ export function useEventsPage(options?: UseEventsPageOptions) {
 
         const pendingMediaFiles = savedId ? [...form.pendingFiles] : [];
         const hasSchedule = Boolean(savedId) && isUpcomingAdminRoute;
+        const wasEditing = Boolean(form.editingId);
+        const createWithPackages =
+          !wasEditing &&
+          Boolean(savedId) &&
+          form.enablePackages &&
+          form.experienceMode === "FIXED_EVENT";
+        const draftPackagesSnapshot = [...form.draftPackages];
+
+        let scheduleResult: {
+          activitiesBefore: EventActivityForm[];
+          activitiesAfter: EventActivityForm[];
+        } = { activitiesBefore: [], activitiesAfter: form.activities };
 
         if (savedId && hasSchedule) {
           setSubmittingMessage(
@@ -363,35 +444,60 @@ export function useEventsPage(options?: UseEventsPageOptions) {
               ? "Saving schedule and class sessions…"
               : "Applying schedule…",
           );
-          await syncUpcomingSchedule(token, savedId);
+          scheduleResult = await syncUpcomingSchedule(token, savedId);
         }
 
-        const wasEditing = Boolean(form.editingId);
-        const reopenForPackages =
-          !wasEditing &&
-          Boolean(savedId) &&
-          form.enablePackages &&
-          form.experienceMode === "FIXED_EVENT";
+        if (createWithPackages && savedId) {
+          setSubmittingMessage("Creating ticket packages…");
+          try {
+            for (const draft of draftPackagesSnapshot) {
+              const activityIds = resolveActivityIdsForDraftPackage(
+                draft,
+                scheduleResult.activitiesBefore,
+                scheduleResult.activitiesAfter,
+              );
+              if (activityIds.length === 0) {
+                throw new Error(
+                  `Package "${draft.title}" could not link activities. Edit the event and try again.`,
+                );
+              }
+              const pkgResult = await createFixedEventPackage(
+                token,
+                savedId,
+                draftPackageToCreateBody(draft, activityIds),
+              );
+              if (!pkgResult.ok) {
+                throw new Error(
+                  pkgResult.message ?? `Could not create package "${draft.title}".`,
+                );
+              }
+            }
+          } catch (pkgErr) {
+            await catalog.loadAllData();
+            const items = await fetchAdminEvents(token, {
+              publicSection: catalogPublicSection,
+            });
+            const created = items.find((item) => item.id === savedId);
+            toast({
+              variant: "destructive",
+              title: "Event created, packages incomplete",
+              description:
+                pkgErr instanceof Error
+                  ? pkgErr.message
+                  : "Finish adding packages in edit mode.",
+            });
+            if (created) {
+              await startEdit(created);
+              form.setEnablePackages(true);
+              notifyUpcomingPublicIfNeeded(isUpcomingAdminRoute);
+              return;
+            }
+            throw pkgErr;
+          }
+        }
 
         if (savedId && pendingMediaFiles.length > 0) {
           queueCatalogMediaUpload(token, savedId, pendingMediaFiles);
-        }
-
-        if (reopenForPackages && savedId) {
-          await catalog.loadAllData();
-          const items = await fetchAdminEvents(token, {
-            publicSection: catalogPublicSection,
-          });
-          const created = items.find((item) => item.id === savedId);
-          toast({
-            title: "Event created",
-            description: "Add ticket packages below. Activities were saved with the event.",
-          });
-          if (created) {
-            await startEdit(created);
-            notifyUpcomingPublicIfNeeded(isUpcomingAdminRoute);
-            return;
-          }
         }
 
         setIsModalOpen(false);
@@ -400,7 +506,9 @@ export function useEventsPage(options?: UseEventsPageOptions) {
           title: wasEditing ? "Event updated" : "Event created",
           description: wasEditing
             ? "Event changes were saved successfully."
-            : "The new event was created successfully.",
+            : createWithPackages
+              ? "The event and ticket packages were created successfully."
+              : "The new event was created successfully.",
         });
         notifyUpcomingPublicIfNeeded(isUpcomingAdminRoute);
         void catalog.loadAllData();

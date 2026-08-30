@@ -36,6 +36,9 @@ const regenerateSessionsMock = vi.fn();
 const fetchTemplatesMock = vi.fn();
 const createTemplateMock = vi.fn();
 const patchTemplateMock = vi.fn();
+const fetchEventActivitiesMock = vi.fn();
+const createFixedEventPackageMock = vi.fn();
+const persistEventActivitiesMock = vi.fn();
 
 vi.mock("@/hooks/use-toast", () => ({
   toast: (...args: unknown[]) => toastMock(...args),
@@ -90,6 +93,22 @@ vi.mock(
     patchAdminReservationEventTemplate: (...args: unknown[]) => patchTemplateMock(...args),
   }),
 );
+vi.mock(
+  "@/features/admin/on-coming-events/fixed-packages/services/fixedEventPackagesApi",
+  () => ({
+    fetchEventActivities: (...args: unknown[]) => fetchEventActivitiesMock(...args),
+    createFixedEventPackage: (...args: unknown[]) => createFixedEventPackageMock(...args),
+  }),
+);
+vi.mock(
+  "@/features/admin/on-coming-events/fixed-packages/services/persistEventActivities",
+  () => ({
+    persistEventActivities: (...args: unknown[]) => persistEventActivitiesMock(...args),
+  }),
+);
+vi.mock("@/lib/on-coming-events/onComingEventsSettingsEvents", () => ({
+  notifyOnComingEventsPublicDataChanged: vi.fn(),
+}));
 
 import { useEventsPage } from "./useEventsPage";
 
@@ -176,6 +195,31 @@ describe("useEventsPage", () => {
       ok: true,
       template: { id: "tmpl-1" },
     });
+    fetchEventActivitiesMock.mockReset().mockResolvedValue({
+      ok: true,
+      activities: [],
+    });
+    createFixedEventPackageMock.mockReset().mockResolvedValue({
+      ok: true,
+      pkg: { id: "pkg-1" },
+    });
+    persistEventActivitiesMock.mockReset().mockImplementation(
+      async (_token: string, _eventId: string, next: Array<{ clientKey?: string; title: string }>) => ({
+        ok: true,
+        activities: next.map((a, i) => ({
+          id: `act-${i + 1}`,
+          clientKey: a.clientKey,
+          title: a.title,
+          description: "Desc",
+          accentColor: "",
+          showText: true,
+          displayOrder: i,
+          mediaUrl: null,
+          mediaType: null,
+          pendingMediaFile: null,
+        })),
+      }),
+    );
   });
 
   afterEach(() => {
@@ -491,6 +535,133 @@ describe("useEventsPage", () => {
       expect(toastMock).toHaveBeenCalledWith(
         expect.objectContaining({ title: "Event created" }),
       );
+    });
+
+    it("creates FIXED_EVENT with draft packages in one submit without reopen", async () => {
+      pathnameRef.current = "/admin/on-coming-events";
+      const { result } = renderHook(() => useEventsPage({ upcomingOnly: true }));
+      await waitFor(() => expect(result.current.catalog.isLoading).toBe(false));
+      act(() => result.current.openCreateModal());
+      fillValidGeneralForm(result);
+      act(() => {
+        result.current.form.setEventName("Package Gala");
+        result.current.form.setExperienceMode("FIXED_EVENT");
+        result.current.form.setSchedule(fixedScheduleForm());
+        result.current.form.setEnablePackages(true);
+        result.current.form.setActivities([
+          {
+            clientKey: "ck-act-1",
+            title: "Show A",
+            description: "Long enough activity description here",
+            accentColor: "",
+            showText: true,
+            displayOrder: 0,
+          },
+        ]);
+        result.current.form.setDraftPackages([
+          {
+            clientKey: "ck-pkg-1",
+            title: "VIP",
+            description: "",
+            badge: "",
+            priceInput: "40.00",
+            capacityInput: "40",
+            arrivalStartTime: "18:00",
+            arrivalEndTime: "20:00",
+            activityRefs: ["ck-act-1"],
+            displayOrder: 0,
+          },
+        ]);
+      });
+
+      await act(async () => {
+        await result.current.onSubmit(fakeSubmitEvent());
+      });
+
+      expect(persistEventActivitiesMock).toHaveBeenCalled();
+      expect(createFixedEventPackageMock).toHaveBeenCalledWith(
+        "token-1",
+        "new-event-id",
+        expect.objectContaining({
+          title: "VIP",
+          activityIds: ["act-1"],
+          priceCents: 4000,
+          capacity: 40,
+        }),
+      );
+      expect(result.current.isModalOpen).toBe(false);
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Event created",
+          description: expect.stringMatching(/packages/i),
+        }),
+      );
+    });
+
+    it("opens edit when package create fails after event create", async () => {
+      createFixedEventPackageMock.mockResolvedValue({
+        ok: false,
+        message: "Package boom",
+      });
+      server.use(
+        http.get("*/api/v1/events/admin", () =>
+          HttpResponse.json([
+            makeAdminEvent({
+              id: "new-event-id",
+              eventTypeName: "Package Gala Fail",
+              publicSection: "UPCOMING_EVENTS",
+            }),
+          ]),
+        ),
+      );
+      pathnameRef.current = "/admin/on-coming-events";
+      const { result } = renderHook(() => useEventsPage({ upcomingOnly: true }));
+      await waitFor(() => expect(result.current.catalog.isLoading).toBe(false));
+      act(() => result.current.openCreateModal());
+      fillValidGeneralForm(result);
+      act(() => {
+        result.current.form.setEventName("Package Gala Fail");
+        result.current.form.setExperienceMode("FIXED_EVENT");
+        result.current.form.setSchedule(fixedScheduleForm());
+        result.current.form.setEnablePackages(true);
+        result.current.form.setActivities([
+          {
+            clientKey: "ck-act-1",
+            title: "Show A",
+            description: "Long enough activity description here",
+            accentColor: "",
+            showText: true,
+            displayOrder: 0,
+          },
+        ]);
+        result.current.form.setDraftPackages([
+          {
+            clientKey: "ck-pkg-1",
+            title: "VIP",
+            description: "",
+            badge: "",
+            priceInput: "40.00",
+            capacityInput: "40",
+            arrivalStartTime: "18:00",
+            arrivalEndTime: "20:00",
+            activityRefs: ["ck-act-1"],
+            displayOrder: 0,
+          },
+        ]);
+      });
+
+      await act(async () => {
+        await result.current.onSubmit(fakeSubmitEvent());
+      });
+
+      expect(toastMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Event created, packages incomplete",
+          description: "Package boom",
+        }),
+      );
+      expect(result.current.isModalOpen).toBe(true);
+      expect(result.current.form.editingId).toBe("new-event-id");
     });
 
     it("creates RECURRING_WEEKLY with package and regenerates sessions", async () => {

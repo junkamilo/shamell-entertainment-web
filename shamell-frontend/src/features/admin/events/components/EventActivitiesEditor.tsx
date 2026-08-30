@@ -243,7 +243,16 @@ export function EventActivitiesEditor({
     const key = activityRowKey(activity, index);
     if (editingKey === key) resetDraft();
 
-    const next = activities.filter((_, i) => i !== index);
+    const confirmed = window.confirm(
+      activity.id
+        ? "Delete this activity? If it is included in any ticket packages, it will be removed from those packages and deleted from the database."
+        : "Remove this activity from the list?",
+    );
+    if (!confirmed) return;
+
+    const next = activities
+      .filter((_, i) => i !== index)
+      .map((row, i) => ({ ...row, displayOrder: i }));
 
     if (isDraftMode) {
       onActivitiesChange(next);
@@ -371,10 +380,15 @@ export function EventActivitiesEditor({
       <h3 className="font-brand text-[10px] tracking-[0.12em] text-gold">ACTIVITIES</h3>
       {isDraftMode ? (
         <p className="font-body text-xs text-foreground/55">
-          Add activities here. They are saved with the event when you click Create event.
-          Packages become available after the event is created.
+          Add activities here, then add packages below. Everything is saved when you click Create
+          event.
         </p>
-      ) : null}
+      ) : (
+        <p className="font-body text-xs text-foreground/55">
+          Use Add / Update / Delete here to save activities immediately to the database (not the
+          Save changes button at the bottom).
+        </p>
+      )}
 
       <div className="space-y-3 rounded-lg border border-gold/15 bg-black/25 p-4">
         <label className="block">

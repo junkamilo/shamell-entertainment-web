@@ -351,7 +351,7 @@ describe("EventsFormModal", () => {
     const user = userEvent.setup();
     const { props } = renderModal();
     await user.type(screen.getByPlaceholderText("Describe this event..."), "Hi");
-    await user.type(screen.getByPlaceholderText(/Line 1/), "Item");
+    await user.type(screen.getByPlaceholderText(/Optional bullet/), "Item");
     await user.type(screen.getByPlaceholderText("e.g. 2500 or 2500.50"), "9");
     expect(props.onDescriptionChange).toHaveBeenCalled();
     expect(props.onItemsTextChange).toHaveBeenCalled();
