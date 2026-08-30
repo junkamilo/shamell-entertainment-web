@@ -13,8 +13,15 @@ import { preload } from "react-dom";
 
 /** Home: `#services` / `#experiences` blocks; then `#about` before `#gallery` (matches header nav). */
 export default async function Home() {
-  const { about, headerPhotos, headerText, onComingSettings, upcomingEvents } =
-    await fetchHomeAboveFold();
+  const {
+    about,
+    headerPhotos,
+    headerText,
+    onComingSettings,
+    upcomingEvents,
+    services,
+    generalEvents,
+  } = await fetchHomeAboveFold();
   const heroPreload = heroLcpPreload(headerPhotos[0]);
   if (heroPreload) {
     preload(heroPreload.href, heroPreload.options);
@@ -29,8 +36,8 @@ export default async function Home() {
       <HomeSectionHashScroll />
       <SiteHeader initialOnComingSettings={onComingSettings} />
       <HeroSection initialPhotos={headerPhotos} initialHeaderText={headerText} />
-      <ExperiencesSection />
-      <ServicesSection />
+      <ExperiencesSection initialExperiences={services} />
+      <ServicesSection initialServices={generalEvents} />
       <AboutSection initialAbout={about} />
       <OnComingEventsPromoSection
         initialSettings={onComingSettings}

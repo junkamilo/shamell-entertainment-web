@@ -4,51 +4,28 @@ import { useEffect, useMemo, useState } from "react";
 import { EventCatalogCard, type EventCatalogItem } from "@/components/catalog";
 import { RevealOnView, CatalogCardCarousel } from "@/components/shared";
 import { useInViewLoad } from "@/hooks/use-in-view-load";
-import { serviceCatalogMediaTypeFromUrl } from "@/lib/services/serviceCatalogMedia";
+import { mapPublicGeneralEventsCatalog } from "@/lib/home/mapHomeCatalogSeeds";
 
-type EventsApiItem = {
-  id?: string;
-  eventTypeName?: string;
-  description?: string;
-  items?: string[];
-  price?: number | null;
-  images?: string[];
-  heroImageUrl?: string | null;
-  heroMediaType?: string | null;
-  heroPosterUrl?: string | null;
-  heroPosterUrlMobile?: string | null;
+type ServicesSectionProps = {
+  initialServices?: EventCatalogItem[] | null;
 };
 
-type ValidEventApiItem = Required<Pick<EventsApiItem, "id" | "eventTypeName" | "description" | "items">> &
-  Pick<
-    EventsApiItem,
-    | "price"
-    | "images"
-    | "heroImageUrl"
-    | "heroMediaType"
-    | "heroPosterUrl"
-    | "heroPosterUrlMobile"
-  >;
-
-const isValidEvent = (item: EventsApiItem): item is ValidEventApiItem =>
-  Boolean(
-    item.id &&
-      item.eventTypeName &&
-      item.description &&
-      Array.isArray(item.items) &&
-      item.items.length > 0,
-  );
-
-const ServicesSection = () => {
+const ServicesSection = ({ initialServices = null }: ServicesSectionProps) => {
+  const hasSeed = Array.isArray(initialServices) && initialServices.length > 0;
   const apiBaseUrl = useMemo(
     () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
     [],
   );
-  const { ref, inView } = useInViewLoad<HTMLElement>();
-  const [services, setServices] = useState<EventCatalogItem[]>([]);
+  const { ref, inView } = useInViewLoad<HTMLElement>({ enabled: !hasSeed });
+  const [services, setServices] = useState<EventCatalogItem[]>(hasSeed ? initialServices! : []);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
+    if (hasSeed) {
+      setServices(initialServices!);
+      setIsLoading(false);
+      return;
+    }
     if (!inView) return;
     let isCancelled = false;
     setIsLoading(true);
@@ -59,55 +36,8 @@ const ServicesSection = () => {
         return response.json();
       })
       .then((data: unknown) => {
-        if (isCancelled || !Array.isArray(data)) return;
-
-        const normalized = (data as EventsApiItem[])
-          .filter(isValidEvent)
-          .map((item) => {
-            const rawPrice = item.price;
-            const priceParsed =
-              rawPrice === null || rawPrice === undefined
-                ? null
-                : typeof rawPrice === "number"
-                  ? rawPrice
-                  : Number(rawPrice);
-            const imgs = Array.isArray(item.images) ? item.images.filter((u) => typeof u === "string" && u.trim()) : [];
-            const heroUrl =
-              typeof item.heroImageUrl === "string" && item.heroImageUrl.trim()
-                ? item.heroImageUrl.trim()
-                : imgs.length > 0
-                  ? imgs[0]
-                  : null;
-            const explicitMt =
-              typeof item.heroMediaType === "string" && item.heroMediaType.trim()
-                ? item.heroMediaType.trim().toUpperCase()
-                : "";
-            const heroMediaType: "IMAGE" | "VIDEO" =
-              explicitMt === "VIDEO"
-                ? "VIDEO"
-                : explicitMt === "IMAGE"
-                  ? "IMAGE"
-                  : serviceCatalogMediaTypeFromUrl(heroUrl) === "VIDEO"
-                    ? "VIDEO"
-                    : "IMAGE";
-            return {
-              id: item.id,
-              eventTypeName: item.eventTypeName,
-              description: item.description,
-              eventTypes: item.items,
-              price: Number.isFinite(priceParsed as number) ? (priceParsed as number) : null,
-              heroImageUrl: heroUrl,
-              heroMediaType,
-              heroPosterUrl:
-                typeof item.heroPosterUrl === "string" ? item.heroPosterUrl : null,
-              heroPosterUrlMobile:
-                typeof item.heroPosterUrlMobile === "string"
-                  ? item.heroPosterUrlMobile
-                  : null,
-            };
-          });
-
-        setServices(normalized);
+        if (isCancelled) return;
+        setServices(mapPublicGeneralEventsCatalog(data));
       })
       .catch(() => {
         if (!isCancelled) setServices([]);
@@ -119,7 +49,7 @@ const ServicesSection = () => {
     return () => {
       isCancelled = true;
     };
-  }, [apiBaseUrl, inView]);
+  }, [apiBaseUrl, hasSeed, inView, initialServices]);
 
   return (
     <section

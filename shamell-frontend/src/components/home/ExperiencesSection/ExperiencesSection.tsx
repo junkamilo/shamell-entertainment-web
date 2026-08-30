@@ -4,10 +4,16 @@ import { ExperienceCard } from "@/components/experiences";
 import { RevealOnView, CatalogCardCarousel } from "@/components/shared";
 import { useExperiences } from "@/hooks/use-experiences";
 import { useInViewLoad } from "@/hooks/use-in-view-load";
+import type { Experience } from "@/lib/services/experiencesData";
 
-const ExperiencesSection = () => {
-  const { ref, inView } = useInViewLoad<HTMLElement>();
-  const { experiences, isLoading } = useExperiences(inView);
+type ExperiencesSectionProps = {
+  initialExperiences?: Experience[] | null;
+};
+
+const ExperiencesSection = ({ initialExperiences = null }: ExperiencesSectionProps) => {
+  const hasSeed = Array.isArray(initialExperiences) && initialExperiences.length > 0;
+  const { ref, inView } = useInViewLoad<HTMLElement>({ enabled: !hasSeed });
+  const { experiences, isLoading } = useExperiences(hasSeed || inView, initialExperiences);
 
   return (
     <section

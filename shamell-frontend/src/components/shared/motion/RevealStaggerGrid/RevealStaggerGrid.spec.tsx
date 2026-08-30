@@ -70,15 +70,33 @@ describe("RevealStaggerGrid", () => {
     expect(screen.getByText("plain-text")).toBeInTheDocument();
   });
 
-  it("uses mobile item variants", () => {
+  it("renders static visible children on mobile (no hide-until-in-view)", () => {
     mediaState.mobile = true;
     inViewState.current = false;
     render(
-      <RevealStaggerGrid itemDuration={600}>
+      <RevealStaggerGrid itemDuration={600} itemClassNames={["cell-m"]}>
         <div>Mobile item</div>
       </RevealStaggerGrid>,
     );
     expect(screen.getByText("Mobile item")).toBeInTheDocument();
+    expect(screen.getByText("Mobile item").parentElement?.className).toContain("cell-m");
+    expect(screen.queryByTestId("motion-div")).toBeNull();
+  });
+
+  it("forces visible on desktop when inView never fires", () => {
+    vi.useFakeTimers();
+    inViewState.current = false;
+    render(
+      <RevealStaggerGrid>
+        <div>Fallback item</div>
+      </RevealStaggerGrid>,
+    );
+    expect(screen.getAllByTestId("motion-div").length).toBeGreaterThan(0);
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(screen.getByText("Fallback item")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("bumps key on bfcache pageshow", () => {

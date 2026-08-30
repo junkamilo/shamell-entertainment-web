@@ -94,6 +94,37 @@ export function makeHomeUpcomingEventApiItem(
   };
 }
 
+export function makeHomeServiceApiItem(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "home-svc-1",
+    serviceTypeName: "Fire Show",
+    description: "High-impact fire performance for approved venues.",
+    items: ["Safety officer", "Clear radius"],
+    imageUrl: "https://cdn.example.com/home/service.jpg",
+    heroMediaType: "IMAGE",
+    heroPosterUrl: null,
+    heroPosterUrlMobile: null,
+    contactInquiryCode: "fire",
+    ...overrides,
+  };
+}
+
+export function makeHomeGeneralEventApiItem(
+  overrides: Record<string, unknown> = {},
+) {
+  return {
+    id: "home-gen-1",
+    eventTypeName: "Private Gala",
+    description: "Elegant private gala package with full staging.",
+    items: ["Dance set", "Host"],
+    price: 2500,
+    images: ["https://cdn.example.com/home/gala.jpg"],
+    heroImageUrl: "https://cdn.example.com/home/gala.jpg",
+    heroMediaType: "IMAGE",
+    ...overrides,
+  };
+}
+
 export function makeHomeAboveFoldApiPayload(
   overrides: Record<string, unknown> = {},
 ) {
@@ -103,6 +134,8 @@ export function makeHomeAboveFoldApiPayload(
     headerText: makeHomeHeaderText(),
     onComingSettings: makeHomeOnComingSettings(),
     upcomingEvents: [makeHomeUpcomingEventApiItem()],
+    services: [makeHomeServiceApiItem()],
+    generalEvents: [makeHomeGeneralEventApiItem()],
     ...overrides,
   };
 }

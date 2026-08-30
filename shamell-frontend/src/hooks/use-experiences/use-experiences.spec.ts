@@ -34,6 +34,23 @@ describe("useExperiences", () => {
     expect(result.current.experiences).toEqual([]);
   });
 
+  it("uses seeded experiences without fetching", async () => {
+    const seed = [
+      {
+        id: "seed-1",
+        slug: "seeded",
+        title: "Seeded",
+        description: "From SSR",
+        items: ["A"],
+        image: "https://cdn.example.com/seed.jpg",
+        heroMediaType: "IMAGE" as const,
+      },
+    ];
+    const { result } = renderHook(() => useExperiences(true, seed));
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.experiences).toEqual(seed);
+  });
+
   it("filters invalid rows and recovers from API failure", async () => {
     server.use(
       experienceServicesHandler([

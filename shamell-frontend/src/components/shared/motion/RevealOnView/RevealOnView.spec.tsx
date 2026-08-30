@@ -76,10 +76,23 @@ describe("RevealOnView", () => {
     expect(screen.getByTestId("motion-div")).toHaveTextContent("Desktop");
   });
 
-  it("uses lite variants on mobile", () => {
+  it("renders static visible content on mobile (no hide-until-in-view)", () => {
     mediaState.mobile = true;
     render(<RevealOnView duration={600}>Mobile</RevealOnView>);
-    expect(screen.getByTestId("motion-div")).toHaveTextContent("Mobile");
+    expect(screen.getByText("Mobile")).toBeInTheDocument();
+    expect(screen.queryByTestId("motion-div")).toBeNull();
+  });
+
+  it("forces visible on desktop when inView never fires", () => {
+    vi.useFakeTimers();
+    inViewState.current = false;
+    render(<RevealOnView>Fallback</RevealOnView>);
+    expect(screen.getByTestId("motion-div")).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(800);
+    });
+    expect(screen.getByText("Fallback")).toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it("remounts on bfcache pageshow", () => {
