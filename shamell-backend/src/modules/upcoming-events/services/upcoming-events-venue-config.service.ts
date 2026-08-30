@@ -245,9 +245,23 @@ export class UpcomingEventsVenueConfigService {
       classPackageLabel,
     };
 
+    const createClientEnabled = data.clientEnabled ?? false;
+    const createCapacity =
+      data.fixedTicketCapacity !== undefined ? data.fixedTicketCapacity : null;
+    // Never persist SINGLE + null capacity (violates chk_capacity_by_mode).
+    // Draft / non-seating creates use PACKAGES + null until SINGLE capacity is set.
+    let createMode = data.fixedTicketMode ?? FixedTicketMode.SINGLE;
+    if (
+      !createClientEnabled &&
+      createCapacity == null &&
+      createMode === FixedTicketMode.SINGLE
+    ) {
+      createMode = FixedTicketMode.PACKAGES;
+    }
+
     const createData = {
       eventId,
-      clientEnabled: data.clientEnabled ?? false,
+      clientEnabled: createClientEnabled,
       promoTitle: data.promoTitle ?? null,
       promoDescription: data.promoDescription ?? null,
       reservationEventDate: data.reservationEventDate ?? null,
@@ -257,11 +271,8 @@ export class UpcomingEventsVenueConfigService {
       reservationTimezone: data.reservationTimezone ?? 'America/New_York',
       floorLayoutId: data.floorLayoutId ?? null,
       reservationEventTemplateId: data.reservationEventTemplateId ?? null,
-      fixedTicketCapacity:
-        data.fixedTicketCapacity !== undefined
-          ? data.fixedTicketCapacity
-          : null,
-      fixedTicketMode: data.fixedTicketMode ?? FixedTicketMode.SINGLE,
+      fixedTicketCapacity: createCapacity,
+      fixedTicketMode: createMode,
       classPackageEnabled: data.classPackageEnabled ?? false,
       classPackagePrice: data.classPackagePrice ?? null,
       classPackageLabel: data.classPackageLabel ?? null,

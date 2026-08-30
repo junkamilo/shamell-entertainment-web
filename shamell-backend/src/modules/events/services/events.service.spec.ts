@@ -224,7 +224,7 @@ describe('EventsService', () => {
     expect(repository.createEvent).toHaveBeenCalled();
   });
 
-  it('createEvent UPCOMING upserts venue config', async () => {
+  it('createEvent UPCOMING creates event with venue config atomically', async () => {
     repository.findEventTypeByIdForWrite.mockResolvedValue(
       makeEventTypeRow({
         catalogChannel: EventTypeCatalogChannel.UPCOMING_HUB,
@@ -232,14 +232,13 @@ describe('EventsService', () => {
       }),
     );
     repository.findEventTypeName.mockResolvedValue({ name: 'Gala' });
-    repository.createEvent.mockResolvedValue(
+    repository.createUpcomingEventWithVenueConfig.mockResolvedValue(
       makeEventRow({
         publicSection: EventPublicSection.UPCOMING_EVENTS,
         slug: 'gala',
         experienceType: UpcomingExperienceType.VENUE_SEATING,
       }),
     );
-    repository.upsertUpcomingVenueConfig.mockResolvedValue({});
 
     await service.createEvent(
       makeCreateEventDto({
@@ -248,7 +247,31 @@ describe('EventsService', () => {
         slug: 'gala',
       }),
     );
-    expect(repository.upsertUpcomingVenueConfig).toHaveBeenCalledWith('evt-1');
+    expect(repository.createUpcomingEventWithVenueConfig).toHaveBeenCalled();
+    expect(repository.createEvent).not.toHaveBeenCalled();
+    expect(repository.upsertUpcomingVenueConfig).not.toHaveBeenCalled();
+  });
+
+  it('createEvent maps P2002 from atomic upcoming create to ConflictException', async () => {
+    repository.findEventTypeByIdForWrite.mockResolvedValue(
+      makeEventTypeRow({
+        catalogChannel: EventTypeCatalogChannel.UPCOMING_HUB,
+        isActive: true,
+      }),
+    );
+    repository.findEventTypeName.mockResolvedValue({ name: 'Gala' });
+    repository.createUpcomingEventWithVenueConfig.mockRejectedValue({
+      code: 'P2002',
+    });
+
+    await expect(
+      service.createEvent(
+        makeCreateEventDto({
+          publicSection: EventPublicSection.UPCOMING_EVENTS,
+          slug: 'gala',
+        }),
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('createEvent maps P2002 to ConflictException', async () => {

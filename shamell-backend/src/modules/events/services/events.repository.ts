@@ -3,6 +3,7 @@ import {
   EventPublicSection,
   EventTypeCatalogChannel,
   EventTypeOccasionUsage,
+  FixedTicketMode,
   Prisma,
   UpcomingClassEnrollmentStatus,
   VenueSeatReservationStatus,
@@ -109,8 +110,8 @@ export class EventsRepository {
     });
   }
 
-  createEvent(data: CreateEventData) {
-    return this.prisma.event.create({
+  private eventCreateArgs(data: CreateEventData) {
+    return {
       data: {
         eventTypeId: data.eventTypeId,
         description: data.description,
@@ -123,6 +124,38 @@ export class EventsRepository {
         ...(data.price !== undefined ? { price: data.price } : {}),
       },
       include: eventWithTypeAndGalleryInclude,
+    } as const;
+  }
+
+  /** Draft venue config that satisfies chk_capacity_by_mode (PACKAGES + null capacity). */
+  private upcomingVenueConfigDraftCreate(eventId: string) {
+    return {
+      eventId,
+      clientEnabled: false,
+      fixedTicketMode: FixedTicketMode.PACKAGES,
+      fixedTicketCapacity: null,
+    };
+  }
+
+  createEvent(data: CreateEventData) {
+    return this.prisma.event.create(this.eventCreateArgs(data)) as Promise<
+      Prisma.EventGetPayload<{ include: typeof eventWithTypeAndGalleryInclude }>
+    >;
+  }
+
+  /**
+   * Create upcoming event + venue config atomically so a failed config insert
+   * cannot leave an orphan event (which would block retries with 409).
+   */
+  createUpcomingEventWithVenueConfig(data: CreateEventData) {
+    return this.prisma.$transaction(async (tx) => {
+      const created = await tx.event.create(this.eventCreateArgs(data));
+      await tx.upcomingVenueConfig.upsert({
+        where: { eventId: created.id },
+        create: this.upcomingVenueConfigDraftCreate(created.id),
+        update: {},
+      });
+      return created;
     }) as Promise<
       Prisma.EventGetPayload<{ include: typeof eventWithTypeAndGalleryInclude }>
     >;
@@ -131,7 +164,7 @@ export class EventsRepository {
   upsertUpcomingVenueConfig(eventId: string) {
     return this.prisma.upcomingVenueConfig.upsert({
       where: { eventId },
-      create: { eventId },
+      create: this.upcomingVenueConfigDraftCreate(eventId),
       update: {},
     });
   }

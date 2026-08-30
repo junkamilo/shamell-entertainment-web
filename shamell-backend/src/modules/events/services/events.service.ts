@@ -112,24 +112,24 @@ export class EventsService {
       : null;
     const experienceType = isUpcoming ? (dto.experienceType ?? null) : null;
 
-    try {
-      const created = await this.repository.createEvent({
-        eventTypeId,
-        description: dto.description,
-        items: dto.items,
-        showOnHome: dto.showOnHome ?? true,
-        publicSection,
-        slug,
-        experienceType,
-        classVariant: isUpcoming ? (dto.classVariant ?? null) : null,
-        ...(dto.price !== undefined && dto.price !== null
-          ? { price: dto.price }
-          : {}),
-      });
+    const createData = {
+      eventTypeId,
+      description: dto.description,
+      items: dto.items,
+      showOnHome: dto.showOnHome ?? true,
+      publicSection,
+      slug,
+      experienceType,
+      classVariant: isUpcoming ? (dto.classVariant ?? null) : null,
+      ...(dto.price !== undefined && dto.price !== null
+        ? { price: dto.price }
+        : {}),
+    };
 
-      if (created.publicSection === EventPublicSection.UPCOMING_EVENTS) {
-        await this.repository.upsertUpcomingVenueConfig(created.id);
-      }
+    try {
+      const created = isUpcoming
+        ? await this.repository.createUpcomingEventWithVenueConfig(createData)
+        : await this.repository.createEvent(createData);
 
       return {
         message: 'Event created successfully.',
