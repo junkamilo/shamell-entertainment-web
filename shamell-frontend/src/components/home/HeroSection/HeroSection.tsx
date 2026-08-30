@@ -234,16 +234,8 @@ const HeroSection = ({
             WebkitClipPath: heroClipPath,
           }}
         >
-          <motion.div
-            className="absolute inset-0"
-            initial={false}
-            animate={hasHydrated ? { opacity: 1 } : { opacity: 0 }}
-            transition={
-              prefersReducedMotion
-                ? { duration: 0 }
-                : { duration: 1.15, ease: [0.16, 1, 0.3, 1] }
-            }
-          >
+          {/* LCP media must paint immediately — do not gate opacity on hydration. */}
+          <div className="absolute inset-0">
             <div className="absolute -inset-y-28 left-0 right-0 min-h-full min-w-full">
               <div className="absolute inset-0">
                 {hasRemotePhotos ? (
@@ -253,7 +245,11 @@ const HeroSection = ({
                         <motion.div
                           key={`${activePhoto.id}-${activeIndex}`}
                           className="absolute inset-0"
-                          initial={animateVisuals ? { opacity: 0 } : { opacity: 1 }}
+                          initial={
+                            animateVisuals && activeIndex !== 0
+                              ? { opacity: 0 }
+                              : { opacity: 1 }
+                          }
                           animate={{ opacity: 1 }}
                           exit={animateVisuals ? { opacity: 0 } : { opacity: 0 }}
                           transition={{
@@ -315,7 +311,7 @@ const HeroSection = ({
               className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_65%_at_50%_38%,rgba(0,0,0,0.15)_0%,transparent_55%,rgba(0,0,0,0.55)_100%)]"
               aria-hidden
             />
-          </motion.div>
+          </div>
         </div>
 
         <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-5 pb-36 pt-24 sm:px-8 sm:pb-40 sm:pt-28 md:px-10">

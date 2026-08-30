@@ -35,6 +35,10 @@ describe("fetchHomeAboveFold", () => {
     expect(data.upcomingEvents).toHaveLength(1);
     expect(data.upcomingEvents[0]?.slug).toBe(FIXTURE_HOME_EVENT_SLUG);
     expect(data.upcomingEvents[0]?.eventTypeName).toBe("Gala Night");
+    expect(data.services).toHaveLength(1);
+    expect(data.services[0]?.title).toBe("Fire Show");
+    expect(data.generalEvents).toHaveLength(1);
+    expect(data.generalEvents[0]?.eventTypeName).toBe("Private Gala");
   });
 
   it("clears upcoming events when clientEnabled is false", async () => {
@@ -60,6 +64,8 @@ describe("fetchHomeAboveFold", () => {
     expect(data.onComingSettings).toBeTruthy();
     expect(Array.isArray(data.headerPhotos)).toBe(true);
     expect(Array.isArray(data.upcomingEvents)).toBe(true);
+    expect(Array.isArray(data.services)).toBe(true);
+    expect(Array.isArray(data.generalEvents)).toBe(true);
   });
 
   it("falls back when aggregated JSON is null/invalid", async () => {

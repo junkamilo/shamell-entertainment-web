@@ -17,9 +17,19 @@ const PARTICLE_POSITIONS = [
   { top: 80, left: 25, delay: 0.9 },
 ];
 
+/**
+ * Desktop: animated orbs + particles.
+ * Mobile / reduced-motion: CSS hides `.orbs` so the first paint is a static wash
+ * (no blur/will-change cost) without waiting for JS matchMedia.
+ */
 export function AnimatedBackground({ forceAnimation = false }: AnimatedBackgroundProps) {
   return (
-    <div className={styles.stage} data-force-motion={forceAnimation}>
+    <div
+      className={styles.stage}
+      data-force-motion={forceAnimation ? "true" : undefined}
+      data-testid="animated-background"
+    >
+      <div className={styles.liteWash} aria-hidden="true" />
       <div className={styles.orbs} aria-hidden="true">
         <div className={`${styles.orb} ${styles.orbPurple}`} />
         <div className={`${styles.orb} ${styles.orbPurple2}`} />

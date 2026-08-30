@@ -9,16 +9,17 @@ describe("AnimatedBackground", () => {
     cleanup();
   });
 
-  it("renders orb stage with particles", () => {
-    const { container } = render(<AnimatedBackground />);
-    const stage = container.firstElementChild;
-    expect(stage?.getAttribute("data-force-motion")).toBe("false");
-    expect(container.querySelectorAll("[aria-hidden='true']")).toHaveLength(1);
+  it("renders lite wash and orb stage (CSS hides orbs on mobile)", () => {
+    const { container, getByTestId } = render(<AnimatedBackground />);
+    const stage = getByTestId("animated-background");
+    expect(stage.getAttribute("data-force-motion")).toBeNull();
+    expect(container.querySelectorAll("[aria-hidden='true']")).toHaveLength(2);
+    expect(container.querySelectorAll("span").length).toBe(8);
   });
 
   it("sets data-force-motion when requested", () => {
-    const { container } = render(<AnimatedBackground forceAnimation />);
-    expect(container.firstElementChild?.getAttribute("data-force-motion")).toBe(
+    const { getByTestId } = render(<AnimatedBackground forceAnimation />);
+    expect(getByTestId("animated-background").getAttribute("data-force-motion")).toBe(
       "true",
     );
   });

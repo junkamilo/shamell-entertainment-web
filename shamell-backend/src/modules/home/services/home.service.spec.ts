@@ -1,4 +1,5 @@
 import { Test } from '@nestjs/testing';
+import { EventPublicSection } from '@prisma/client';
 import { createAboutServiceMock } from '../../about/__mocks__/about.service.mock';
 import { AboutService } from '../../about/services/about.service';
 import { createEventsServiceMock } from '../../events/__mocks__/events.service.mock';
@@ -7,6 +8,8 @@ import { createHeaderMediaServiceMock } from '../../header-media/__mocks__/heade
 import { createHeaderTextServiceMock } from '../../header-media/__mocks__/header-text.service.mock';
 import { HeaderMediaService } from '../../header-media/services/header-media.service';
 import { HeaderTextService } from '../../header-media/services/header-text.service';
+import { createServicesServiceMock } from '../../services/__mocks__/services.service.mock';
+import { ServicesService } from '../../services/services/services.service';
 import { VenueLayoutSettingsService } from '../../venue-layout-settings/services/venue-layout-settings.service';
 import { makeOnComingSettings } from '../__mocks__/home.fixtures';
 import { createVenueLayoutSettingsServiceMock } from '../../venue-layout-settings/__mocks__/venue-layout-settings.service.mock';
@@ -19,6 +22,7 @@ describe('HomeService', () => {
   const headerText = createHeaderTextServiceMock();
   const venueLayout = createVenueLayoutSettingsServiceMock();
   const events = createEventsServiceMock();
+  const services = createServicesServiceMock();
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -31,6 +35,12 @@ describe('HomeService', () => {
     events.getPublicUpcomingHubEvents.mockResolvedValue([
       { id: 'event-1', title: 'Show' },
     ]);
+    events.getPublicEvents.mockResolvedValue([
+      { id: 'gen-1', eventTypeName: 'Gala' },
+    ]);
+    services.getPublicServices.mockResolvedValue([
+      { id: 'svc-1', serviceTypeName: 'Fire' },
+    ]);
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -40,6 +50,7 @@ describe('HomeService', () => {
         { provide: HeaderTextService, useValue: headerText },
         { provide: VenueLayoutSettingsService, useValue: venueLayout },
         { provide: EventsService, useValue: events },
+        { provide: ServicesService, useValue: services },
       ],
     }).compile();
     service = moduleRef.get(HomeService);
@@ -55,6 +66,14 @@ describe('HomeService', () => {
     expect(result.about).toEqual({ id: 'about-1', title: 'About' });
     expect(result.headerPhotos).toHaveLength(1);
     expect(result.headerText).toEqual({ headline: 'SHAMELL' });
+    expect(result.services).toEqual([{ id: 'svc-1', serviceTypeName: 'Fire' }]);
+    expect(result.generalEvents).toEqual([
+      { id: 'gen-1', eventTypeName: 'Gala' },
+    ]);
+    expect(events.getPublicEvents).toHaveBeenCalledWith({
+      publicSection: EventPublicSection.GENERAL,
+    });
+    expect(services.getPublicServices).toHaveBeenCalled();
   });
 
   it('clears upcoming events when clientEnabled is false', async () => {
@@ -65,5 +84,7 @@ describe('HomeService', () => {
     const result = await service.getAboveFoldData();
     expect(result.upcomingEvents).toEqual([]);
     expect(events.getPublicUpcomingHubEvents).toHaveBeenCalled();
+    expect(result.services).toHaveLength(1);
+    expect(result.generalEvents).toHaveLength(1);
   });
 });

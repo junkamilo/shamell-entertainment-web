@@ -48,10 +48,11 @@ describe("RevealFromDepth", () => {
     expect(screen.queryByTestId("motion-div")).toBeNull();
   });
 
-  it("uses mobile motion path", () => {
+  it("renders static visible content on mobile (no initial opacity 0)", () => {
     mediaState.mobile = true;
     render(<RevealFromDepth delay={50} duration={900}>Mobile</RevealFromDepth>);
-    expect(screen.getByTestId("motion-div")).toHaveTextContent("Mobile");
+    expect(screen.getByText("Mobile")).toBeInTheDocument();
+    expect(screen.queryByTestId("motion-div")).toBeNull();
   });
 
   it("uses desktop blur motion path", () => {

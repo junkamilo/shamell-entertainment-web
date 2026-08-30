@@ -296,7 +296,7 @@
     }
   }
 
-  /* Home hero — staggered reveal + slow background drift */
+  /* Home hero — staggered reveal + slow background drift (desktop). Mobile: visible immediately. */
   .shamell-hero-enter {
     opacity: 0;
     animation: shamell-hero-enter 1.05s cubic-bezier(0.22, 1, 0.36, 1) forwards;
@@ -313,6 +313,14 @@
   }
   .shamell-hero-enter--d4 {
     animation-delay: 0.56s;
+  }
+
+  @media (max-width: 767.98px) {
+    .shamell-hero-enter {
+      animation: none;
+      opacity: 1;
+      transform: none;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

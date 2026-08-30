@@ -95,6 +95,21 @@ describe("HeroSection", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it("paints seeded LCP image immediately without waiting for hydrate", () => {
+    const { container } = render(
+      <HeroSection
+        initialPhotos={[makeHomeHeaderPhoto()]}
+        initialHeaderText={makeHomeHeaderText()}
+      />,
+    );
+    const lcp = container.querySelector(
+      'img[src="https://cdn.example.com/home/header.jpg"]',
+    );
+    expect(lcp).toBeTruthy();
+    expect(lcp).toHaveAttribute("fetchpriority", "high");
+    expect(lcp).toHaveAttribute("loading", "eager");
+  });
+
   it("fetches header-media when initialPhotos is empty", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

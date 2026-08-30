@@ -24,31 +24,12 @@ export function RevealFromDepth({
 }: RevealFromDepthProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)");
-  const effectiveDuration = isMobile && !prefersReducedMotion ? Math.min(duration, 640) : duration;
 
-  if (prefersReducedMotion) {
+  if (prefersReducedMotion || isMobile) {
     return (
       <div className={cn(className)} style={style}>
         {children}
       </div>
-    );
-  }
-
-  if (isMobile) {
-    return (
-      <motion.div
-        className={cn(className)}
-        style={style}
-        initial={{ opacity: 0, y: 36, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{
-          delay: delay / 1000,
-          duration: effectiveDuration / 1000,
-          ease: easeLux,
-        }}
-      >
-        {children}
-      </motion.div>
     );
   }
 

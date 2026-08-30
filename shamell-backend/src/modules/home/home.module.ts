@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AboutModule } from '../about/about.module';
 import { EventsModule } from '../events/events.module';
 import { HeaderMediaModule } from '../header-media/header-media.module';
+import { ServicesModule } from '../services/services.module';
 import { VenueLayoutSettingsModule } from '../venue-layout-settings/venue-layout-settings.module';
 import { HomeController } from './controllers/home.controller';
 import { HomeService } from './services/home.service';
@@ -12,6 +13,7 @@ import { HomeService } from './services/home.service';
     HeaderMediaModule,
     VenueLayoutSettingsModule,
     EventsModule,
+    ServicesModule,
   ],
   controllers: [HomeController],
   providers: [HomeService],
