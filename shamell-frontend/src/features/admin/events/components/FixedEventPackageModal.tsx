@@ -19,6 +19,8 @@ type Props = {
   open: boolean;
   onClose: () => void;
   activities: EventActivityForm[];
+  /** When true, draft activities (clientKey, no server id) can be selected. */
+  allowDraftActivityRefs?: boolean;
   initial?: AdminFixedEventPackage | null;
   onSave: (body: Record<string, unknown>) => Promise<{ ok: boolean; message?: string }>;
 };
@@ -64,6 +66,7 @@ export function FixedEventPackageModal({
   open,
   onClose,
   activities,
+  allowDraftActivityRefs = false,
   initial,
   onSave,
 }: Props) {
@@ -77,18 +80,25 @@ export function FixedEventPackageModal({
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const savedActivities = useMemo(
-    () => activities.filter((a) => a.id && a.title.trim()),
-    [activities],
+  const selectableActivities = useMemo(
+    () =>
+      activities.filter((a) => {
+        if (!a.title.trim()) return false;
+        if (allowDraftActivityRefs) {
+          return Boolean(a.clientKey?.trim() || a.id?.trim());
+        }
+        return Boolean(a.id);
+      }),
+    [activities, allowDraftActivityRefs],
   );
 
   const activityOptions = useMemo(
     () =>
-      savedActivities.map((a) => ({
-        id: a.id!,
+      selectableActivities.map((a) => ({
+        id: (a.id?.trim() || a.clientKey?.trim())!,
         label: a.title.trim(),
       })),
-    [savedActivities],
+    [selectableActivities],
   );
 
   useEffect(() => {
@@ -153,6 +163,10 @@ export function FixedEventPackageModal({
       setError("Arrival end time is required.");
       return;
     }
+    if (arrivalStartTime.trim() === arrivalEndTime.trim()) {
+      setError("Arrival end time must differ from the start time.");
+      return;
+    }
     setSaving(true);
     const body: Record<string, unknown> = {
       title: title.trim(),
@@ -207,7 +221,9 @@ export function FixedEventPackageModal({
                   disabled={saving || activityOptions.length === 0}
                   error={
                     activityOptions.length === 0
-                      ? "Add and save activities first, then create a package."
+                      ? allowDraftActivityRefs
+                        ? "Add at least one activity above, then create a package."
+                        : "Add and save activities first, then create a package."
                       : undefined
                   }
                 />

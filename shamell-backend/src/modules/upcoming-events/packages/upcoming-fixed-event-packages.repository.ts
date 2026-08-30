@@ -63,6 +63,12 @@ export class UpcomingFixedEventPackagesRepository {
     });
   }
 
+  deleteActivityPackageLinks(activityId: string) {
+    return this.prisma.upcomingEventPackageActivity.deleteMany({
+      where: { activityId },
+    });
+  }
+
   deleteActivity(activityId: string) {
     return this.prisma.upcomingEventActivity.delete({
       where: { id: activityId },

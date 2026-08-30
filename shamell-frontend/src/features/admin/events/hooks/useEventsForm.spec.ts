@@ -159,4 +159,98 @@ describe("useEventsForm", () => {
       price: 1500,
     });
   });
+
+  it("requires draft packages when creating with packages enabled", () => {
+    function useUpcomingHarness() {
+      const [eventTypeId, setEventTypeId] = useState(FIXTURE_EVENT_TYPE_ID);
+      return useEventsForm({
+        eventTypes: [makeEventTypeOption({ isActive: true })],
+        eventTypeId,
+        setEventTypeId,
+        isSubmitting: false,
+        defaultPublicSection: "UPCOMING_EVENTS",
+        freeEventNameMode: true,
+      });
+    }
+    const { result } = renderHook(() => useUpcomingHarness());
+    act(() => {
+      result.current.setEventName("Package Night");
+      result.current.setDescription("Long enough description for packages event");
+      result.current.setExperienceMode("FIXED_EVENT");
+      result.current.setSchedule({
+        ...result.current.schedule,
+        scheduleMode: "FIXED_EVENT",
+        salesStartDate: "2030-07-01",
+        salesEndDate: "2030-07-31",
+        eventDate: "2030-08-01",
+        eventStartTime: "20:00",
+        eventEndTime: "23:00",
+      });
+      result.current.setEnablePackages(true);
+      result.current.setActivities([
+        {
+          clientKey: "ck-1",
+          title: "Act",
+          description: "Activity description long enough",
+          accentColor: "",
+          showText: true,
+          displayOrder: 0,
+        },
+      ]);
+    });
+    expect(result.current.getValidationError()).toMatch(/at least one ticket package/i);
+
+    act(() => {
+      result.current.setDraftPackages([
+        {
+          clientKey: "pkg-1",
+          title: "VIP",
+          description: "",
+          badge: "",
+          priceInput: "40",
+          capacityInput: "10",
+          arrivalStartTime: "18:00",
+          arrivalEndTime: "20:00",
+          activityRefs: ["ck-1"],
+          displayOrder: 0,
+        },
+      ]);
+    });
+    expect(result.current.getValidationError()).toBeNull();
+  });
+
+  it("onPackagesUpdated marks edit form dirty", () => {
+    const { result } = renderHook(() => useFormHarness());
+    const event = makeAdminEvent({ id: FIXTURE_EVENT_ID });
+    act(() => {
+      result.current.startEdit(event);
+    });
+    expect(result.current.canSubmit).toBe(false);
+
+    act(() => {
+      result.current.onPackagesUpdated([]);
+    });
+    expect(result.current.canSubmit).toBe(false);
+
+    act(() => {
+      result.current.onPackagesUpdated([
+        {
+          id: "pkg-1",
+          title: "VIP",
+          description: null,
+          badge: null,
+          priceCents: 4000,
+          price: 40,
+          capacity: 10,
+          arrivalStartTime: "18:00",
+          arrivalEndTime: "20:00",
+          arrivalLabel: "6–8 PM",
+          displayOrder: 0,
+          isActive: true,
+          activityIds: ["act-1"],
+        },
+      ]);
+    });
+    expect(result.current.canSubmit).toBe(true);
+  });
 });

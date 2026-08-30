@@ -51,9 +51,15 @@ export function FixedEventPackagesSection({
     }
   }, [eventId, onPackagesUpdated, token]);
 
+  const activityIdsKey = activities
+    .map((a) => a.id)
+    .filter(Boolean)
+    .sort()
+    .join(",");
+
   useEffect(() => {
     void reload();
-  }, [reload]);
+  }, [reload, activityIdsKey]);
 
   const ensureActivitiesSaved = async (): Promise<EventActivityForm[] | null> => {
     if (listedActivities.every((a) => a.id) && listedActivities.every((a) => !a.pendingMediaFile)) {

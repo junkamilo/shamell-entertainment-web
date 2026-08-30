@@ -2,6 +2,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
 const routerReplace = vi.hoisted(() => vi.fn());
@@ -216,6 +217,7 @@ describe("ConciergeInquiryForm", () => {
   });
 
   it("submits concierge inquiry when form is valid", async () => {
+    const user = userEvent.setup();
     submitConciergeInquiry.mockResolvedValue({ ok: true });
     const { container } = renderWithProviders(<ConciergeInquiryForm />);
 

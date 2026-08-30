@@ -20,7 +20,11 @@ import { isCatalogMediaFile } from "../lib/eventsMedia";
 import { formatPriceInput, parseOptionalPrice } from "../lib/eventsPrice";
 import type { AdminEvent, CatalogImage, EventFormSnapshot, EventsEventTypeOption } from "../types/events.types";
 import type { CreateAdminEventBody, UpdateAdminEventBody } from "../types/events.types";
-import type { EventActivityForm } from "@/features/admin/on-coming-events/fixed-packages/types/fixedEventPackage.types";
+import type {
+  AdminFixedEventPackage,
+  EventActivityForm,
+  FixedEventPackageForm,
+} from "@/features/admin/on-coming-events/fixed-packages/types/fixedEventPackage.types";
 import type {
   EventPublicSection,
   UpcomingClassVariant,
@@ -100,6 +104,51 @@ function normalizeItemsText(text: string): string {
     .join("\n");
 }
 
+/** Stable signature so package CRUD (already persisted via API) still dirties the edit form. */
+export function buildPackagesSignature(packages: AdminFixedEventPackage[]): string {
+  return packages
+    .map(
+      (pkg) =>
+        [
+          pkg.id,
+          pkg.title,
+          pkg.priceCents,
+          pkg.capacity,
+          pkg.isActive !== false ? "1" : "0",
+          pkg.arrivalStartTime,
+          pkg.arrivalEndTime ?? "",
+          [...pkg.activityIds].sort().join(","),
+        ].join("|"),
+    )
+    .sort()
+    .join(";");
+}
+
+function draftPackageValidationError(
+  pkg: FixedEventPackageForm,
+  index: number,
+): string | null {
+  const where = `Package ${index + 1}`;
+  if (!pkg.title.trim()) return `${where}: title is required.`;
+  const price = parseOptionalPrice(pkg.priceInput, "create");
+  if (!price.ok || price.value == null || price.value < 0.5) {
+    return `${where}: price must be at least $0.50.`;
+  }
+  const capacity = Number.parseInt(pkg.capacityInput.trim(), 10);
+  if (!Number.isFinite(capacity) || capacity < 1) {
+    return `${where}: tickets for sale must be at least 1.`;
+  }
+  if (pkg.activityRefs.length === 0) {
+    return `${where}: select at least one activity.`;
+  }
+  if (!pkg.arrivalStartTime.trim()) return `${where}: arrival start time is required.`;
+  if (!pkg.arrivalEndTime.trim()) return `${where}: arrival end time is required.`;
+  if (pkg.arrivalStartTime.trim() === pkg.arrivalEndTime.trim()) {
+    return `${where}: arrival end time must differ from the start time.`;
+  }
+  return null;
+}
+
 export function useEventsForm({
   eventTypes,
   eventTypeId,
@@ -122,6 +171,7 @@ export function useEventsForm({
   const [enableVenueSeating, setEnableVenueSeating] = useState(false);
   const [enablePackages, setEnablePackages] = useState(false);
   const [activities, setActivities] = useState<EventActivityForm[]>([]);
+  const [draftPackages, setDraftPackages] = useState<FixedEventPackageForm[]>([]);
   const [fixedTicketCapacityInput, setFixedTicketCapacityInput] = useState("");
   const [linkedTemplateId, setLinkedTemplateId] = useState<string | null>(null);
   const [monthPackageEnabled, setMonthPackageEnabled] = useState(false);
@@ -130,6 +180,10 @@ export function useEventsForm({
   const [existingImages, setExistingImages] = useState<CatalogImage[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [originalSnapshot, setOriginalSnapshot] = useState<EventFormSnapshot | null>(null);
+  const [packagesSignature, setPackagesSignature] = useState<string | null>(null);
+  const [originalPackagesSignature, setOriginalPackagesSignature] = useState<string | null>(
+    null,
+  );
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
 
@@ -155,6 +209,7 @@ export function useEventsForm({
     setEnableVenueSeating(false);
     setEnablePackages(false);
     setActivities([]);
+    setDraftPackages([]);
     setFixedTicketCapacityInput("");
     setLinkedTemplateId(null);
     setMonthPackageEnabled(false);
@@ -164,6 +219,8 @@ export function useEventsForm({
     setPendingFiles([]);
     setEditingId(null);
     setOriginalSnapshot(null);
+    setPackagesSignature(null);
+    setOriginalPackagesSignature(null);
     setIsTypeDropdownOpen(false);
   }, [defaultPublicSection, eventTypes, freeEventNameMode, setEventTypeId]);
 
@@ -188,6 +245,11 @@ export function useEventsForm({
   const priceMode = editingId ? ("edit" as const) : ("create" as const);
   const priceResult = parseOptionalPrice(priceInput, priceMode);
 
+  const packagesChanged =
+    packagesSignature !== null &&
+    originalPackagesSignature !== null &&
+    packagesSignature !== originalPackagesSignature;
+
   const hasChanges = editingId
     ? Boolean(
         originalSnapshot &&
@@ -207,6 +269,7 @@ export function useEventsForm({
                 monthPackagePrice !== (originalSnapshot.monthPackagePrice ?? "") ||
                 monthPackageLabel !== (originalSnapshot.monthPackageLabel ?? ""))) ||
             pendingFiles.length > 0 ||
+            packagesChanged ||
             (priceResult.ok &&
               (originalSnapshot.price ?? null) !== (priceResult.value ?? null))),
       )
@@ -216,10 +279,11 @@ export function useEventsForm({
           normalizedItems.length ||
           Boolean(priceInput.trim()) ||
           publicSection !== defaultPublicSection ||
-          (isUpcomingForm &&
+            (isUpcomingForm &&
             (experienceMode !== "NORMAL" ||
               enableVenueSeating ||
               enablePackages ||
+              draftPackages.length > 0 ||
               fixedTicketCapacityInput.trim() ||
               monthPackageEnabled ||
               monthPackagePrice.trim() ||
@@ -263,6 +327,15 @@ export function useEventsForm({
       }
       if (enablePackages && activities.filter((a) => a.title.trim()).length === 0) {
         return "Add at least one activity before enabling ticket packages.";
+      }
+      if (enablePackages && !editingId) {
+        if (draftPackages.length === 0) {
+          return "Add at least one ticket package before creating the event.";
+        }
+        for (const [index, pkg] of draftPackages.entries()) {
+          const pkgErr = draftPackageValidationError(pkg, index);
+          if (pkgErr) return pkgErr;
+        }
       }
     }
     if (experienceMode === "RECURRING_WEEKLY") {
@@ -402,11 +475,12 @@ export function useEventsForm({
         item.experienceType === "VENUE_SEATING",
     );
     setEnablePackages(
-      mode === "FIXED_EVENT" &&
-        !venueClientEnabled &&
-        venueFixedTicketMode === "PACKAGES",
+      mode === "FIXED_EVENT" && venueFixedTicketMode === "PACKAGES",
     );
     setActivities(initialActivities);
+    setDraftPackages([]);
+    setPackagesSignature(null);
+    setOriginalPackagesSignature(null);
     setFixedTicketCapacityInput(
       mode === "FIXED_EVENT" && venueFixedTicketCapacity != null
         ? String(venueFixedTicketCapacity)
@@ -439,9 +513,7 @@ export function useEventsForm({
         venueClientEnabled &&
         item.experienceType === "VENUE_SEATING",
       enablePackages:
-        mode === "FIXED_EVENT" &&
-        !venueClientEnabled &&
-        venueFixedTicketMode === "PACKAGES",
+        mode === "FIXED_EVENT" && venueFixedTicketMode === "PACKAGES",
       fixedTicketCapacityInput:
         mode === "FIXED_EVENT" && venueFixedTicketCapacity != null
           ? String(venueFixedTicketCapacity)
@@ -495,6 +567,7 @@ export function useEventsForm({
       if (enabled) {
         setFixedTicketCapacityInput("");
         setEnablePackages(false);
+        setDraftPackages([]);
       }
     },
     enablePackages,
@@ -503,10 +576,19 @@ export function useEventsForm({
       if (enabled) {
         setEnableVenueSeating(false);
         setFixedTicketCapacityInput("");
+      } else {
+        setDraftPackages([]);
       }
     },
     activities,
     setActivities,
+    draftPackages,
+    setDraftPackages,
+    onPackagesUpdated: (packages: AdminFixedEventPackage[]) => {
+      const sig = buildPackagesSignature(packages);
+      setPackagesSignature(sig);
+      setOriginalPackagesSignature((prev) => (prev === null ? sig : prev));
+    },
     fixedTicketCapacityInput,
     setFixedTicketCapacityInput,
     parseFixedTicketCapacity: (): number | null => {

@@ -11,9 +11,14 @@ import { cn } from "@/lib/utils";
 import { MAX_CATALOG_IMAGES } from "../lib/eventsConstants";
 import { isVideoCatalogItem, isVideoFile } from "../lib/eventsMedia";
 import { FixedEventPackagesSection } from "./FixedEventPackagesSection";
+import { FixedEventPackagesDraftSection } from "./FixedEventPackagesDraftSection";
 import { EventActivitiesEditor } from "./EventActivitiesEditor";
 import { getEventsBearerToken } from "../lib/eventsAuth";
-import type { EventActivityForm } from "@/features/admin/on-coming-events/fixed-packages/types/fixedEventPackage.types";
+import type {
+  AdminFixedEventPackage,
+  EventActivityForm,
+  FixedEventPackageForm,
+} from "@/features/admin/on-coming-events/fixed-packages/types/fixedEventPackage.types";
 import type {
   CatalogImage,
   EventsEventTypeOption,
@@ -60,6 +65,9 @@ type Props = {
   onEnablePackagesChange?: (enabled: boolean) => void;
   activities?: EventActivityForm[];
   onActivitiesChange?: (activities: EventActivityForm[]) => void;
+  draftPackages?: FixedEventPackageForm[];
+  onDraftPackagesChange?: (packages: FixedEventPackageForm[]) => void;
+  onPackagesUpdated?: (packages: AdminFixedEventPackage[]) => void;
   fixedTicketCapacityInput?: string;
   onFixedTicketCapacityInputChange?: (value: string) => void;
   monthPackageEnabled?: boolean;
@@ -110,6 +118,9 @@ export default function EventsFormModal({
   onEnablePackagesChange,
   activities = [],
   onActivitiesChange,
+  draftPackages = [],
+  onDraftPackagesChange,
+  onPackagesUpdated,
   fixedTicketCapacityInput = "",
   onFixedTicketCapacityInputChange,
   monthPackageEnabled = false,
@@ -183,38 +194,39 @@ export default function EventsFormModal({
         ) : null}
 
         {lockPublicSection && experienceMode === "FIXED_EVENT" && enablePackages ? (
-          <div className="space-y-4 rounded-lg border border-gold/15 bg-black/20 p-4">
-            {(() => {
-              const token = getEventsBearerToken();
-              return onActivitiesChange ? (
+          <div className="space-y-4">
+            {onActivitiesChange ? (
+              <div className="rounded-lg border border-gold/15 bg-black/20 p-4">
                 <EventActivitiesEditor
                   eventId={editingId}
-                  token={token}
+                  token={getEventsBearerToken()}
                   activities={activities}
                   onActivitiesChange={onActivitiesChange}
                   disabled={isSubmitting}
                 />
-              ) : null;
-            })()}
-            {(() => {
-              const token = getEventsBearerToken();
-              const hasActivities = activities.some((a) => a.title.trim());
-              if (!editingId) {
-                return hasActivities ? (
-                  <p className="text-xs text-foreground/55">
-                    After you create the event, this form will reopen so you can add ticket packages.
-                  </p>
+              </div>
+            ) : null}
+            {editingId ? (
+              (() => {
+                const token = getEventsBearerToken();
+                return token ? (
+                  <FixedEventPackagesSection
+                    eventId={editingId}
+                    token={token}
+                    activities={activities}
+                    onActivitiesChange={onActivitiesChange}
+                    onPackagesUpdated={onPackagesUpdated}
+                  />
                 ) : null;
-              }
-              return token && hasActivities ? (
-                <FixedEventPackagesSection
-                  eventId={editingId}
-                  token={token}
-                  activities={activities}
-                  onActivitiesChange={onActivitiesChange}
-                />
-              ) : null;
-            })()}
+              })()
+            ) : onDraftPackagesChange ? (
+              <FixedEventPackagesDraftSection
+                activities={activities}
+                draftPackages={draftPackages}
+                onDraftPackagesChange={onDraftPackagesChange}
+                disabled={isSubmitting}
+              />
+            ) : null}
           </div>
         ) : null}
 

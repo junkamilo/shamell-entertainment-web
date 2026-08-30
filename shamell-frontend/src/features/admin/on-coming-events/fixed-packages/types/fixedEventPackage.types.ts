@@ -12,7 +12,9 @@ export type EventActivityForm = {
   pendingMediaFile?: File | null;
 };
 
+/** Local draft package (create flow) or edit staging. `activityRefs` are activity clientKeys and/or persisted ids. */
 export type FixedEventPackageForm = {
+  clientKey: string;
   id?: string;
   title: string;
   description: string;
@@ -21,7 +23,7 @@ export type FixedEventPackageForm = {
   capacityInput: string;
   arrivalStartTime: string;
   arrivalEndTime: string;
-  activityIds: string[];
+  activityRefs: string[];
   displayOrder: number;
   isActive?: boolean;
 };
@@ -53,4 +55,5 @@ export type AdminEventActivity = {
   accentColor: string | null;
   showText: boolean;
   displayOrder: number;
+  isActive?: boolean;
 };

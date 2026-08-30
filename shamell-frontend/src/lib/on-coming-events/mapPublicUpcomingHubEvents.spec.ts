@@ -10,11 +10,24 @@ describe("mapPublicUpcomingHubEvents", () => {
     expect(
       mapPublicUpcomingHubEvents([
         { id: "x" },
-        makeUpcomingEventApiItem({ items: [] }),
         makeUpcomingEventApiItem({ slug: "" }),
         makeUpcomingEventApiItem({ slug: "   " }),
+        makeUpcomingEventApiItem({ description: "" }),
       ]),
     ).toEqual([]);
+  });
+
+  it("maps hub cards when items is empty or missing (items optional)", () => {
+    const [emptyItems] = mapPublicUpcomingHubEvents([
+      makeUpcomingEventApiItem({ items: [], slug: "no-items-night" }),
+    ]);
+    expect(emptyItems?.slug).toBe("no-items-night");
+    expect(emptyItems?.eventTypeName).toBe("Gala Night");
+
+    const [missingItems] = mapPublicUpcomingHubEvents([
+      makeUpcomingEventApiItem({ items: undefined, slug: "missing-items" }),
+    ]);
+    expect(missingItems?.slug).toBe("missing-items");
   });
 
   it("maps a valid venue seating hub card by slug", () => {

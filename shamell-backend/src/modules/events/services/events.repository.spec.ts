@@ -66,6 +66,53 @@ describe('EventsRepository', () => {
     );
   });
 
+  it('createUpcomingEventWithVenueConfig creates event + PACKAGES draft config in one transaction', async () => {
+    prisma.event.create.mockResolvedValue({
+      id: 'evt-upcoming-1',
+      publicSection: EventPublicSection.UPCOMING_EVENTS,
+    });
+    prisma.upcomingVenueConfig.upsert.mockResolvedValue({ id: 'vc-1' });
+
+    const result = await repository.createUpcomingEventWithVenueConfig({
+      eventTypeId: 'et-1',
+      description: 'Desc',
+      items: [],
+      showOnHome: true,
+      publicSection: EventPublicSection.UPCOMING_EVENTS,
+      slug: 'gala',
+      experienceType: null,
+      classVariant: null,
+    });
+
+    expect(result.id).toBe('evt-upcoming-1');
+    expect(prisma.$transaction).toHaveBeenCalled();
+    expect(prisma.upcomingVenueConfig.upsert).toHaveBeenCalledWith({
+      where: { eventId: 'evt-upcoming-1' },
+      create: {
+        eventId: 'evt-upcoming-1',
+        clientEnabled: false,
+        fixedTicketMode: 'PACKAGES',
+        fixedTicketCapacity: null,
+      },
+      update: {},
+    });
+  });
+
+  it('upsertUpcomingVenueConfig creates with PACKAGES draft defaults', async () => {
+    prisma.upcomingVenueConfig.upsert.mockResolvedValue({ id: 'vc-1' });
+    await repository.upsertUpcomingVenueConfig('evt-1');
+    expect(prisma.upcomingVenueConfig.upsert).toHaveBeenCalledWith({
+      where: { eventId: 'evt-1' },
+      create: {
+        eventId: 'evt-1',
+        clientEnabled: false,
+        fixedTicketMode: 'PACKAGES',
+        fixedTicketCapacity: null,
+      },
+      update: {},
+    });
+  });
+
   it('findPublicEventsForSection applies section where', async () => {
     prisma.event.findMany.mockResolvedValue([]);
     await repository.findPublicEventsForSection(EventPublicSection.GENERAL);

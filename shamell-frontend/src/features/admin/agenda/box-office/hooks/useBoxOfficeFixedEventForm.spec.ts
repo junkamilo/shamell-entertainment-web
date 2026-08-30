@@ -6,11 +6,17 @@ import {
   makeBoxOfficePackage,
   makeFixedTicketEvent,
   makePackagesFixedTicketEvent,
+  makeSeatAvailability,
+  makeVenueFixedEvent,
 } from "../test/fixtures/boxOffice.fixture";
 import {
   FIXTURE_FIXED_EVENT_ID,
+  FIXTURE_LAYOUT_CHAIR_ID,
+  FIXTURE_LAYOUT_TABLE_ID,
   FIXTURE_PACKAGE_ID,
   FIXTURE_PACKAGE_ID_2,
+  FIXTURE_VENUE_EVENT_ID,
+  FIXTURE_VENUE_TABLE_CONFIG_ID,
 } from "../test/fixtures/uuids.fixture";
 
 const toastMock = vi.fn();

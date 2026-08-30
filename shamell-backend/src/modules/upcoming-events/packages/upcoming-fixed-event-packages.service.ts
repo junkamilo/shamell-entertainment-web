@@ -18,6 +18,7 @@ import {
   mapActivityAdmin,
   mapPackageAdmin,
   parseTimeToDate,
+  validateArrivalWindow,
 } from './util/fixed-event-package.mapper';
 import { UPCOMING_ACTIVITY_CLOUDINARY_FOLDER } from './constants/upcoming-activities.constants';
 import type {
@@ -46,12 +47,14 @@ export class UpcomingEventActivitiesService {
     await this.assertUpcomingEvent(eventId);
     const rows = await this.repository.listActivitiesByEvent(eventId);
     return {
-      activities: rows.map((r) =>
-        mapActivityAdmin({
-          ...r,
-          displayOrder: r.displayOrder,
-        }),
-      ),
+      activities: rows
+        .filter((r) => r.isActive !== false)
+        .map((r) =>
+          mapActivityAdmin({
+            ...r,
+            displayOrder: r.displayOrder,
+          }),
+        ),
     };
   }
 
@@ -84,7 +87,7 @@ export class UpcomingEventActivitiesService {
           accentColor: item.accentColor?.trim() || null,
           showText,
           displayOrder,
-          ...(item.isActive !== undefined ? { isActive: item.isActive } : {}),
+          isActive: item.isActive ?? true,
         });
       } else {
         // New activities may set showText=false; FE must upload media immediately after.
@@ -102,14 +105,9 @@ export class UpcomingEventActivitiesService {
 
     for (const prev of existing) {
       if (incomingIds.has(prev.id)) continue;
-      const linkCount = await this.repository.countActivityPackageLinks(
-        prev.id,
-      );
-      if (linkCount > 0) {
-        await this.repository.deactivateActivity(prev.id);
-      } else {
-        await this.repository.deleteActivity(prev.id);
-      }
+      // Unlink from packages first, then hard-delete so admin UI removals stick.
+      await this.repository.deleteActivityPackageLinks(prev.id);
+      await this.repository.deleteActivity(prev.id);
     }
 
     return this.listActivities(eventId);
@@ -254,24 +252,54 @@ export class UpcomingFixedEventPackagesService {
     };
   }
 
+  private assertArrivalWindow(startStr: string, endStr?: string | null) {
+    const message = validateArrivalWindow(startStr, endStr);
+    if (message) {
+      throw new BadRequestException(
+        packageErrorBody(
+          FIXED_EVENT_PACKAGE_ERROR_CODES.PACKAGE_ARRIVAL_INVALID,
+          message,
+        ),
+      );
+    }
+  }
+
+  private isArrivalWindowConstraintError(err: unknown): boolean {
+    const message = err instanceof Error ? err.message : String(err);
+    return message.includes('chk_arrival_window');
+  }
+
   async createPackage(eventId: string, dto: CreateFixedEventPackageDto) {
     await this.assertUpcomingEvent(eventId);
     await this.validateActivityIds(eventId, dto.activityIds);
+    this.assertArrivalWindow(dto.arrivalStartTime, dto.arrivalEndTime);
 
-    const pkg = await this.repository.createPackage({
-      eventId,
-      title: dto.title.trim(),
-      description: dto.description?.trim() || null,
-      badge: dto.badge?.trim() || null,
-      priceCents: dto.priceCents,
-      capacity: dto.capacity,
-      arrivalStartTime: parseTimeToDate(dto.arrivalStartTime),
-      arrivalEndTime: dto.arrivalEndTime
-        ? parseTimeToDate(dto.arrivalEndTime)
-        : null,
-      displayOrder: dto.displayOrder ?? 0,
-      isActive: true,
-    });
+    const pkg = await this.repository
+      .createPackage({
+        eventId,
+        title: dto.title.trim(),
+        description: dto.description?.trim() || null,
+        badge: dto.badge?.trim() || null,
+        priceCents: dto.priceCents,
+        capacity: dto.capacity,
+        arrivalStartTime: parseTimeToDate(dto.arrivalStartTime),
+        arrivalEndTime: dto.arrivalEndTime
+          ? parseTimeToDate(dto.arrivalEndTime)
+          : null,
+        displayOrder: dto.displayOrder ?? 0,
+        isActive: true,
+      })
+      .catch((err: unknown) => {
+        if (this.isArrivalWindowConstraintError(err)) {
+          throw new BadRequestException(
+            packageErrorBody(
+              FIXED_EVENT_PACKAGE_ERROR_CODES.PACKAGE_ARRIVAL_INVALID,
+              'Arrival end time must differ from the start time.',
+            ),
+          );
+        }
+        throw err;
+      });
 
     await this.repository.replacePackageActivities(
       pkg.id,
@@ -318,6 +346,25 @@ export class UpcomingFixedEventPackagesService {
 
     if (dto.activityIds) {
       await this.validateActivityIds(eventId, dto.activityIds);
+    }
+
+    if (
+      dto.arrivalStartTime !== undefined ||
+      dto.arrivalEndTime !== undefined
+    ) {
+      const formatExisting = (d: Date) =>
+        `${String(d.getUTCHours()).padStart(2, '0')}:${String(
+          d.getUTCMinutes(),
+        ).padStart(2, '0')}`;
+      const start =
+        dto.arrivalStartTime ?? formatExisting(existing.arrivalStartTime);
+      const end =
+        dto.arrivalEndTime !== undefined
+          ? dto.arrivalEndTime
+          : existing.arrivalEndTime
+            ? formatExisting(existing.arrivalEndTime)
+            : null;
+      this.assertArrivalWindow(start, end);
     }
 
     await this.repository.updatePackage(packageId, {

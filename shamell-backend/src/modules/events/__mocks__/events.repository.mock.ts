@@ -10,6 +10,7 @@ export function createEventsRepositoryMock(
     createEventTypeInline: jest.fn(),
     findEventTypeName: jest.fn(),
     createEvent: jest.fn(),
+    createUpcomingEventWithVenueConfig: jest.fn(),
     upsertUpcomingVenueConfig: jest.fn(),
     findPublicEventsForSection: jest.fn(),
     findPublicUpcomingHubEvents: jest.fn(),

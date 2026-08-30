@@ -138,4 +138,42 @@ describe("persistEventActivities", () => {
     expect(replaceMock.mock.calls[0]![2][0]!.showText).toBe(false);
     expect(uploadMock).not.toHaveBeenCalled();
   });
+
+  it("filters inactive activities from the result", async () => {
+    replaceMock.mockResolvedValue({
+      ok: true,
+      activities: [
+        {
+          id: "act-1",
+          title: "Active",
+          description: "Activity description",
+          accentColor: null,
+          showText: true,
+          displayOrder: 0,
+          mediaUrl: null,
+          mediaType: null,
+          isActive: true,
+        },
+        {
+          id: "act-2",
+          title: "Gone",
+          description: "Activity description",
+          accentColor: null,
+          showText: true,
+          displayOrder: 1,
+          mediaUrl: null,
+          mediaType: null,
+          isActive: false,
+        },
+      ],
+    });
+
+    const result = await persistEventActivities("token", "evt-1", [
+      makeForm({ id: "act-1", title: "Active" }),
+    ]);
+
+    expect(result.ok).toBe(true);
+    expect(result.activities).toHaveLength(1);
+    expect(result.activities[0]?.id).toBe("act-1");
+  });
 });

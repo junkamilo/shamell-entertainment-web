@@ -142,6 +142,9 @@ export default function EventsPageContent({ state }: Props) {
         onEnablePackagesChange={form.setEnablePackages}
         activities={form.activities}
         onActivitiesChange={form.setActivities}
+        draftPackages={form.draftPackages}
+        onDraftPackagesChange={form.setDraftPackages}
+        onPackagesUpdated={form.onPackagesUpdated}
         fixedTicketCapacityInput={form.fixedTicketCapacityInput}
         onFixedTicketCapacityInputChange={form.setFixedTicketCapacityInput}
         monthPackageEnabled={form.monthPackageEnabled}

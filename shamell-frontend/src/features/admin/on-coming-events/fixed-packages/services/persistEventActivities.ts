@@ -12,6 +12,7 @@ export function adminActivityToForm(
     accentColor: activity.accentColor ?? "",
     showText: activity.showText !== false,
     displayOrder: activity.displayOrder,
+    isActive: activity.isActive !== false,
     mediaUrl: activity.mediaUrl ?? null,
     mediaType: activity.mediaType ?? null,
     pendingMediaFile,
@@ -46,9 +47,10 @@ export async function persistEventActivities(
     return { ok: false, message: result.message, activities: [] };
   }
 
-  let saved = result.activities.map((activity, index) =>
-    adminActivityToForm(activity, pendingByIndex[index] ?? null),
-  );
+  let saved = result.activities.map((activity, index) => ({
+    ...adminActivityToForm(activity, pendingByIndex[index] ?? null),
+    clientKey: next[index]?.clientKey,
+  }));
 
   for (let index = 0; index < pendingByIndex.length; index += 1) {
     const file = pendingByIndex[index];
@@ -65,7 +67,12 @@ export async function persistEventActivities(
     }
 
     saved = saved.map((row, i) =>
-      i === index ? adminActivityToForm(upload.activity!, null) : row,
+      i === index
+        ? {
+            ...adminActivityToForm(upload.activity!, null),
+            clientKey: row.clientKey ?? next[index]?.clientKey,
+          }
+        : row,
     );
   }
 
@@ -102,14 +109,18 @@ export async function persistEventActivities(
       };
     }
 
-    saved = hideResult.activities.map((activity) => adminActivityToForm(activity, null));
+    saved = hideResult.activities.map((activity, index) => ({
+      ...adminActivityToForm(activity, null),
+      clientKey: next[index]?.clientKey ?? saved[index]?.clientKey,
+    }));
   } else {
     saved = saved.map((row, index) => ({
       ...row,
       showText: desiredShowText[index] ?? row.showText,
       pendingMediaFile: null,
+      clientKey: row.clientKey ?? next[index]?.clientKey,
     }));
   }
 
-  return { ok: true, activities: saved };
+  return { ok: true, activities: saved.filter((row) => row.isActive !== false) };
 }

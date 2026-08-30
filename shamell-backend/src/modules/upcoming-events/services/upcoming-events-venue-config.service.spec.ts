@@ -120,9 +120,91 @@ describe('UpcomingEventsVenueConfigService', () => {
 
     expect(result.fixedTicketMode).toBe('PACKAGES');
     expect(prisma.upcomingVenueConfig.upsert).toHaveBeenCalled();
+    const [[upsertArg]] = prisma.upcomingVenueConfig.upsert.mock
+      .calls as unknown as Array<
+      [
+        {
+          create: {
+            fixedTicketMode: string;
+            fixedTicketCapacity: number | null;
+            clientEnabled: boolean;
+          };
+        },
+      ]
+    >;
+    expect(upsertArg.create).toMatchObject({
+      fixedTicketMode: 'PACKAGES',
+      fixedTicketCapacity: null,
+      clientEnabled: false,
+    });
     expect(packagesRepository.minActivePackagePriceCents).toHaveBeenCalledWith(
       'event-1',
     );
+  });
+
+  it('upsertAdminVenueConfig create path never persists SINGLE + null capacity', async () => {
+    const template = {
+      id: 'tpl-weekly-1',
+      scheduleMode: ReservationEventScheduleMode.RECURRING_WEEKLY,
+      eventDate: null,
+      eventStartTime: null,
+      eventEndTime: null,
+      salesStartDate: null,
+      salesEndDate: null,
+      timezone: 'America/New_York',
+      name: 'Weekly Classes',
+      weekdays: [{ weekday: 1, isActive: true }],
+      recurringEffectiveFrom: new Date('2026-01-01T00:00:00.000Z'),
+      recurringStartTime: '18:00',
+      recurringEndTime: '19:00',
+    };
+    prisma.upcomingVenueConfig.findUnique.mockResolvedValue(null);
+    reservationTemplates.findByIdOrThrow.mockResolvedValue(template);
+    prisma.upcomingVenueConfig.upsert.mockResolvedValue({
+      id: 'config-2',
+      eventId: 'event-1',
+      clientEnabled: false,
+      promoTitle: null,
+      promoDescription: null,
+      promoImageUrl: null,
+      reservationEventDate: null,
+      reservationOpensAt: null,
+      reservationClosesAt: null,
+      reservationEventLabel: 'Weekly Classes',
+      reservationTimezone: 'America/New_York',
+      floorLayoutId: null,
+      fixedTicketCapacity: null,
+      fixedTicketMode: 'PACKAGES',
+      classPackageEnabled: false,
+      classPackagePrice: null,
+      classPackageLabel: null,
+      reservationEventTemplateId: 'tpl-weekly-1',
+      reservationEventTemplate: template,
+    });
+
+    await service.upsertAdminVenueConfig('event-1', {
+      reservationEventTemplateId: 'tpl-weekly-1',
+      clientEnabled: false,
+    });
+
+    expect(prisma.upcomingVenueConfig.upsert).toHaveBeenCalled();
+    const [[upsertArg]] = prisma.upcomingVenueConfig.upsert.mock
+      .calls as unknown as Array<
+      [
+        {
+          create: {
+            fixedTicketMode: string;
+            fixedTicketCapacity: number | null;
+            clientEnabled: boolean;
+          };
+        },
+      ]
+    >;
+    expect(upsertArg.create).toMatchObject({
+      fixedTicketMode: 'PACKAGES',
+      fixedTicketCapacity: null,
+      clientEnabled: false,
+    });
   });
 
   it('getVenueConfigForEvent returns null when missing', async () => {
