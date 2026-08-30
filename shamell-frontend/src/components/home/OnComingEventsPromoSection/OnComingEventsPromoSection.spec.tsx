@@ -168,7 +168,7 @@ describe("OnComingEventsPromoSection", () => {
     });
   });
 
-  it("refreshes seeded events on window focus", async () => {
+  it("refreshes seeded events on mount", async () => {
     settingsState.clientEnabled = true;
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -195,7 +195,6 @@ describe("OnComingEventsPromoSection", () => {
     );
 
     expect(screen.getByTestId("hub-card-gala-night")).toBeInTheDocument();
-    window.dispatchEvent(new Event("focus"));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalled();
@@ -205,7 +204,7 @@ describe("OnComingEventsPromoSection", () => {
     });
   });
 
-  it("keeps seeded events when focus refresh fails", async () => {
+  it("keeps seeded events when mount refresh fails", async () => {
     settingsState.clientEnabled = true;
     vi.stubGlobal(
       "fetch",
@@ -219,7 +218,6 @@ describe("OnComingEventsPromoSection", () => {
       />,
     );
 
-    window.dispatchEvent(new Event("focus"));
     await waitFor(() => {
       expect(screen.getByTestId("hub-card-gala-night")).toBeInTheDocument();
     });
@@ -269,7 +267,7 @@ describe("OnComingEventsPromoSection", () => {
     expect(document.body.textContent).not.toContain("Gala Night");
   });
 
-  it("keeps seed when focus refresh returns non-ok", async () => {
+  it("keeps seed when mount refresh returns non-ok", async () => {
     settingsState.clientEnabled = true;
     vi.stubGlobal(
       "fetch",
@@ -285,7 +283,6 @@ describe("OnComingEventsPromoSection", () => {
         initialEvents={[seededEvent]}
       />,
     );
-    window.dispatchEvent(new Event("focus"));
     await waitFor(() => {
       expect(screen.getByTestId("hub-card-gala-night")).toBeInTheDocument();
     });
@@ -353,7 +350,7 @@ describe("OnComingEventsPromoSection", () => {
     expect(screen.queryByTestId("hub-card-late")).toBeNull();
   });
 
-  it("ignores focus refresh after unmount", async () => {
+  it("ignores mount refresh after unmount", async () => {
     settingsState.clientEnabled = true;
     let resolveFetch!: (value: {
       ok: boolean;
@@ -374,7 +371,6 @@ describe("OnComingEventsPromoSection", () => {
         initialEvents={[seededEvent]}
       />,
     );
-    window.dispatchEvent(new Event("focus"));
     unmount();
     resolveFetch({
       ok: true,

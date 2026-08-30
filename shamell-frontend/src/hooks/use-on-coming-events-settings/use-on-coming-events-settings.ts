@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
-import { ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
+import { subscribeOnComingEventsPublicDataChanged } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
 import {
   defaultOnComingSettings,
   normalizeOnComingSettings,
@@ -108,15 +108,14 @@ export function useOnComingEventsSettings(
   }, []);
 
   useEffect(() => {
-    void load();
+    if (!initialSettings) {
+      void load();
+    }
 
-    // Admin / same-tab updates only — avoid focus spam across SiteHeader + promo.
-    const onChanged = () => void load({ quiet: true, force: true });
-    window.addEventListener(ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT, onChanged);
-    return () => {
-      window.removeEventListener(ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT, onChanged);
-    };
-  }, [load]);
+    return subscribeOnComingEventsPublicDataChanged(() => {
+      void load({ quiet: true, force: true });
+    });
+  }, [initialSettings, load]);
 
   return { promo, clientEnabled: promo.clientEnabled, isLoading, reload: load };
 }

@@ -16,6 +16,7 @@ import {
   makeFutureClassSessionStub,
   makeMonthPackageVenueConfigStub,
   makeUpcomingClassSessionStub,
+  futureSameCalendarDaySessions,
   futureSessionUtcWindow,
 } from '../__mocks__/upcoming-events.fixtures';
 import { currentCalendarMonthIso } from '../utils/class-month-package.util';
@@ -81,11 +82,14 @@ describe('AdminClassEnrollmentService', () => {
   }
 
   function makeSameDayBundleSessions() {
-    const dayStart = Date.now() + 7 * 86_400_000;
+    const [first, second] = futureSameCalendarDaySessions({
+      firstStartHourUtc: 14,
+      gapHours: 3,
+    });
     const session1 = makeFutureClassSessionStub({
       id: 'session-a',
-      startsAt: new Date(dayStart),
-      endsAt: new Date(dayStart + 3_600_000),
+      startsAt: first.startsAt,
+      endsAt: first.endsAt,
       section: null,
       weekday: 5,
       price: 50,
@@ -94,8 +98,8 @@ describe('AdminClassEnrollmentService', () => {
     });
     const session2 = makeFutureClassSessionStub({
       id: 'session-b',
-      startsAt: new Date(dayStart + 4 * 3_600_000),
-      endsAt: new Date(dayStart + 5 * 3_600_000),
+      startsAt: second.startsAt,
+      endsAt: second.endsAt,
       section: null,
       weekday: 5,
       price: 50,

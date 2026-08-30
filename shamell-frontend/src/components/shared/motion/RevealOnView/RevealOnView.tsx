@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "motion/react";
+import { useHasMounted } from "@/hooks/use-has-mounted";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,7 @@ export function RevealOnView({
   amount = 0.22,
   style,
 }: RevealOnViewProps) {
+  const hasMounted = useHasMounted();
   const ref = useRef<HTMLDivElement>(null);
   const [bfcacheKey, setBfcacheKey] = useState(0);
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -40,6 +42,14 @@ export function RevealOnView({
     window.addEventListener("pageshow", onPageShow);
     return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
+
+  if (!hasMounted) {
+    return (
+      <div className={cn(className)} style={style}>
+        {children}
+      </div>
+    );
+  }
 
   if (prefersReducedMotion) {
     return (

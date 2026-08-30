@@ -70,7 +70,7 @@ async function legacyAboveFold(): Promise<HomeAboveFold> {
 export async function fetchHomeAboveFold(): Promise<HomeAboveFold> {
   try {
     const response = await fetch(`${apiBaseUrl()}/api/v1/home/above-fold`, {
-      next: { revalidate: HOME_ABOVE_FOLD_REVALIDATE_SEC },
+      next: { revalidate: HOME_ABOVE_FOLD_REVALIDATE_SEC, tags: ["home-above-fold"] },
     });
     if (!response.ok) return legacyAboveFold();
     const data = (await response.json().catch(() => null)) as {
