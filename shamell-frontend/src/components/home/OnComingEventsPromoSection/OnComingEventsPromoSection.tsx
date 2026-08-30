@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
+import { usePublicUpcomingHubEvents } from "@/hooks/use-public-upcoming-hub-events";
+import type { OnComingEventsPromo } from "@/lib/on-coming-events/onComingSettings";
 import Link from "next/link";
 import {
   OnComingEventHubCard,
   type OnComingEventHubCardItem,
 } from "@/features/on-coming-events/components/OnComingEventHubCard";
 import { RevealOnView, CatalogCardCarousel } from "@/components/shared";
-import { useOnComingEventsSettings } from "@/hooks/use-on-coming-events-settings";
-import type { OnComingEventsPromo } from "@/lib/on-coming-events/onComingSettings";
-import { mapPublicUpcomingHubEvents } from "@/lib/on-coming-events/mapPublicUpcomingHubEvents";
 import { ON_COMING_EVENTS_PUBLIC_PATH } from "@/lib/on-coming-events/onComingEventsRoutes";
 
 type OnComingEventsPromoSectionProps = {
@@ -23,63 +22,10 @@ export default function OnComingEventsPromoSection({
 }: OnComingEventsPromoSectionProps = {}) {
   const { clientEnabled, promo, isLoading: settingsLoading } =
     useOnComingEventsSettings(initialSettings);
-  const apiBaseUrl = useMemo(
-    () => (process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:3001").replace(/\/$/, ""),
-    [],
-  );
-  const seededEvents = initialEvents ?? [];
-  const hasSeed = Array.isArray(initialEvents);
-  const [events, setEvents] = useState<OnComingEventHubCardItem[]>(seededEvents);
-  const [eventsLoading, setEventsLoading] = useState(!hasSeed);
-
-  useEffect(() => {
-    if (!clientEnabled) {
-      setEvents([]);
-      setEventsLoading(false);
-      return;
-    }
-
-    // SSR already provided events — keep them; refresh quietly in the background.
-    if (hasSeed) {
-      let cancelled = false;
-      const refresh = () => {
-        fetch(`${apiBaseUrl}/api/v1/events?publicSection=UPCOMING_EVENTS`)
-          .then((response) => (response.ok ? response.json() : []))
-          .then((data: unknown) => {
-            if (!cancelled) setEvents(mapPublicUpcomingHubEvents(data));
-          })
-          .catch(() => {
-            /* keep seeded events */
-          });
-      };
-
-      const onFocus = () => refresh();
-      window.addEventListener("focus", onFocus);
-      return () => {
-        cancelled = true;
-        window.removeEventListener("focus", onFocus);
-      };
-    }
-
-    let cancelled = false;
-    setEventsLoading(true);
-
-    fetch(`${apiBaseUrl}/api/v1/events?publicSection=UPCOMING_EVENTS`)
-      .then((response) => (response.ok ? response.json() : []))
-      .then((data: unknown) => {
-        if (!cancelled) setEvents(mapPublicUpcomingHubEvents(data));
-      })
-      .catch(() => {
-        if (!cancelled) setEvents([]);
-      })
-      .finally(() => {
-        if (!cancelled) setEventsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [apiBaseUrl, clientEnabled, hasSeed]);
+  const { events, isRefreshing } = usePublicUpcomingHubEvents({
+    initialEvents,
+    enabled: clientEnabled,
+  });
 
   if (settingsLoading || !clientEnabled) return null;
 
@@ -87,7 +33,8 @@ export default function OnComingEventsPromoSection({
   const description =
     promo.promoDescription?.trim() ||
     "Discover on coming experiences curated by Shamell. View details, schedules, and book your place.";
-  const loading = eventsLoading;
+  const showLoading = isRefreshing && events.length === 0;
+  const showEmpty = !isRefreshing && events.length === 0;
 
   return (
     <section id="on-coming-events" className="bg-transparent px-4 py-20 md:py-24">
@@ -110,19 +57,19 @@ export default function OnComingEventsPromoSection({
           </div>
         </RevealOnView>
 
-        {loading ? (
+        {showLoading ? (
           <p className="text-center font-body text-base font-medium text-foreground/85 md:text-lg">
             Loading upcoming events…
           </p>
         ) : null}
 
-        {!loading && events.length === 0 ? (
+        {showEmpty ? (
           <p className="text-center font-body text-base font-medium text-foreground/85 md:text-lg">
             Upcoming events coming soon.
           </p>
         ) : null}
 
-        {!loading && events.length > 0 ? (
+        {!showLoading && events.length > 0 ? (
           <RevealOnView delay={0} amount={0.12}>
             <CatalogCardCarousel ariaLabel="On coming events">
               {events.map((event, index) => (

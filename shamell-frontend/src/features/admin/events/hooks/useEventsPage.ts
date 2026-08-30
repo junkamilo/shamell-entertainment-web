@@ -32,6 +32,11 @@ import { parseOptionalPrice } from "../lib/eventsPrice";
 import { useEventsCatalog } from "./useEventsCatalog";
 import { useEventsForm } from "./useEventsForm";
 import { useEventsList } from "./useEventsList";
+import { notifyOnComingEventsPublicDataChanged } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
+
+function notifyUpcomingPublicIfNeeded(isUpcoming: boolean) {
+  if (isUpcoming) notifyOnComingEventsPublicDataChanged();
+}
 
 function isOfflineError(err: unknown) {
   const description = err instanceof Error ? err.message : "Could not reach the server.";
@@ -384,6 +389,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
           });
           if (created) {
             await startEdit(created);
+            notifyUpcomingPublicIfNeeded(isUpcomingAdminRoute);
             return;
           }
         }
@@ -396,6 +402,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
             ? "Event changes were saved successfully."
             : "The new event was created successfully.",
         });
+        notifyUpcomingPublicIfNeeded(isUpcomingAdminRoute);
         void catalog.loadAllData();
       } catch (err) {
         toastApiError(err, "Error");
@@ -463,6 +470,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
             ? "The event is hidden from the catalog."
             : "The event is visible again in the catalog.",
         });
+        notifyUpcomingPublicIfNeeded(isUpcomingAdminRoute);
         await catalog.loadAllData();
       } catch (err) {
         toastApiError(err, "Error");
@@ -470,7 +478,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
         setTogglingId(null);
       }
     },
-    [form, catalog],
+    [form, catalog, isUpcomingAdminRoute],
   );
 
   const openDeleteConfirm = useCallback((item: AdminEvent) => {
@@ -502,6 +510,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
         title: "Event deleted",
         description: "The event was removed from the catalog.",
       });
+      notifyUpcomingPublicIfNeeded(isUpcomingAdminRoute);
       setPendingDelete(null);
       await catalog.loadAllData();
     } catch (err) {
@@ -509,7 +518,7 @@ export function useEventsPage(options?: UseEventsPageOptions) {
     } finally {
       setIsDeleting(false);
     }
-  }, [pendingDelete, form, viewEvent, catalog]);
+  }, [pendingDelete, form, viewEvent, catalog, isUpcomingAdminRoute]);
 
   const closeDeleteModal = useCallback(() => {
     if (!isDeleting) setPendingDelete(null);

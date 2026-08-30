@@ -11,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useHasMounted } from "@/hooks/use-has-mounted";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { CatalogSlideProvider } from "../catalog-slide-context";
@@ -114,9 +115,12 @@ export function CatalogCardCarousel({
   className,
   visibleOnDesktop = DEFAULT_MAX_VISIBLE_DESKTOP,
 }: CatalogCardCarouselProps) {
+  const hasMounted = useHasMounted();
   const scrollerRef = useRef<HTMLDivElement>(null);
-  const isLgUp = useMediaQuery("(min-width: 1024px)");
-  const isXlUp = useMediaQuery("(min-width: 1280px)");
+  const isLgUpQuery = useMediaQuery("(min-width: 1024px)");
+  const isXlUpQuery = useMediaQuery("(min-width: 1280px)");
+  const isLgUp = hasMounted && isLgUpQuery;
+  const isXlUp = hasMounted && isXlUpQuery;
   const { atStart, atEnd, sync } = useScrollEdges(scrollerRef);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const visibilityRef = useRef<Map<number, number>>(new Map());

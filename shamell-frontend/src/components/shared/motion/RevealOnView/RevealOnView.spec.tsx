@@ -9,6 +9,11 @@ const mediaState = vi.hoisted(() => ({
 }));
 
 const inViewState = vi.hoisted(() => ({ current: false }));
+const mountedState = vi.hoisted(() => ({ value: true }));
+
+vi.mock("@/hooks/use-has-mounted", () => ({
+  useHasMounted: () => mountedState.value,
+}));
 
 vi.mock("@/hooks/use-media-query", () => ({
   useMediaQuery: (query: string) => {
@@ -39,10 +44,19 @@ describe("RevealOnView", () => {
     mediaState.mobile = false;
     mediaState.reducedMotion = false;
     inViewState.current = false;
+    mountedState.value = true;
   });
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("renders a static div before mount (SSR hydration safe)", () => {
+    mountedState.value = false;
+    mediaState.reducedMotion = true;
+    render(<RevealOnView>SSR</RevealOnView>);
+    expect(screen.getByText("SSR")).toBeInTheDocument();
+    expect(screen.queryByTestId("motion-div")).toBeNull();
   });
 
   it("renders a plain div when reduced motion is preferred", () => {
