@@ -9,6 +9,7 @@ import {
   IsIn,
   IsDateString,
   IsObject,
+  ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
@@ -81,4 +82,26 @@ export class CreateContactDto {
   @MinLength(10)
   @MaxLength(4000)
   message: string;
+
+  @ApiPropertyOptional({
+    description:
+      'One-time token from POST /email-verification/verify. Required for concierge_gate instead of recaptchaToken.',
+    example: 'a1b2c3d4e5f6...',
+  })
+  @IsOptional()
+  @IsString()
+  @MinLength(20)
+  @MaxLength(400)
+  emailVerificationToken?: string;
+
+  @ApiProperty({
+    description: 'Google reCAPTCHA v2 response token from the public form',
+    example: '03AGdBq25...',
+  })
+  @ValidateIf((o: CreateContactDto) => !o.emailVerificationToken)
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(20)
+  @MaxLength(4000)
+  recaptchaToken?: string;
 }

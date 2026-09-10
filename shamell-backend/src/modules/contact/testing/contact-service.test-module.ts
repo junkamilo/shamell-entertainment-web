@@ -1,18 +1,23 @@
+import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { createAvailabilityServiceMock } from '../../availability/__mocks__/availability.service.mock';
 import { AvailabilityService } from '../../availability/services/availability.service';
+import { EmailVerificationService } from '../../email-verification/services/email-verification.service';
 import { createBookingsServiceMock } from '../../bookings/__mocks__/bookings.service.mock';
 import { BookingsService } from '../../bookings/services/bookings.service';
 import { createAdminCustomerActivityNotifyServiceMock } from '../../mail/__mocks__/admin-customer-activity-notify.service.mock';
 import { createMailServiceMock } from '../../mail/__mocks__/mail.service.mock';
 import { AdminCustomerActivityNotifyService } from '../../mail/services/admin-customer-activity-notify.service';
 import { MailService } from '../../mail/services/mail.service';
+import { EMAIL_VERIFICATION_REQUIRED_MESSAGE } from '../../email-verification/constants/email-verification.constants';
 import { createContactInboxServiceMock } from '../__mocks__/contact-inbox.service.mock';
 import { createContactRepositoryMock } from '../__mocks__/contact.repository.mock';
+import { createRecaptchaVerifierMock } from '../__mocks__/recaptcha.verifier.mock';
 import { ContactInboxService } from '../services/contact-inbox.service';
 import { ContactRepository } from '../services/contact.repository';
 import { ContactService } from '../services/contact.service';
+import { RecaptchaVerifier } from '../services/recaptcha.verifier';
 
 export type ContactServiceTestHarness = {
   moduleRef: TestingModule;
@@ -25,6 +30,10 @@ export type ContactServiceTestHarness = {
     typeof createAdminCustomerActivityNotifyServiceMock
   >;
   bookings: ReturnType<typeof createBookingsServiceMock>;
+  recaptcha: ReturnType<typeof createRecaptchaVerifierMock>;
+  emailVerification: {
+    consumeVerifiedToken: jest.Mock;
+  };
   config: { get: jest.Mock };
 };
 
@@ -35,6 +44,15 @@ export async function createContactServiceTestModule(): Promise<ContactServiceTe
   const mail = createMailServiceMock();
   const adminActivityNotify = createAdminCustomerActivityNotifyServiceMock();
   const bookings = createBookingsServiceMock();
+  const recaptcha = createRecaptchaVerifierMock();
+  const emailVerification = {
+    consumeVerifiedToken: jest.fn(({ token }: { token?: string }) => {
+      if (!token) {
+        throw new BadRequestException(EMAIL_VERIFICATION_REQUIRED_MESSAGE);
+      }
+      return Promise.resolve();
+    }),
+  };
   const config = {
     get: jest.fn((key: string) => {
       if (key === 'APP_PUBLIC_NAME') return 'Shamell Entertainment';
@@ -64,6 +82,8 @@ export async function createContactServiceTestModule(): Promise<ContactServiceTe
       { provide: ConfigService, useValue: config },
       { provide: BookingsService, useValue: bookings },
       { provide: ContactInboxService, useValue: inbox },
+      { provide: RecaptchaVerifier, useValue: recaptcha },
+      { provide: EmailVerificationService, useValue: emailVerification },
     ],
   }).compile();
 
@@ -76,6 +96,8 @@ export async function createContactServiceTestModule(): Promise<ContactServiceTe
     mail,
     adminActivityNotify,
     bookings,
+    recaptcha,
+    emailVerification,
     config,
   };
 }

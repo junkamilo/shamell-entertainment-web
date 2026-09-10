@@ -42,9 +42,13 @@ import {
   buildConciergeInquiryAckText,
 } from '../mail/concierge-inquiry-ack.mail';
 import { buildConciergeVisionSnapshot } from '../utils/concierge-vision-snapshot.util';
+import { assertConciergeGatePayload } from '../utils/assert-concierge-gate-payload';
 import { contactInquiryDetailLines } from '../utils/contact-inquiry-lines.util';
 import { ContactInboxService } from './contact-inbox.service';
 import { ContactRepository } from './contact.repository';
+import { RecaptchaVerifier } from './recaptcha.verifier';
+import { EmailVerificationService } from '../../email-verification/services/email-verification.service';
+import { EMAIL_VERIFICATION_PURPOSE } from '../../email-verification/constants/email-verification.constants';
 
 @Injectable()
 export class ContactService {
@@ -58,6 +62,8 @@ export class ContactService {
     private readonly config: ConfigService,
     private readonly bookings: BookingsService,
     private readonly inbox: ContactInboxService,
+    private readonly recaptcha: RecaptchaVerifier,
+    private readonly emailVerification: EmailVerificationService,
   ) {}
 
   private async enrichInquiryDetails(
@@ -101,8 +107,27 @@ export class ContactService {
       subject,
       inquiryDetails: rawInquiryDetails,
       message,
+      recaptchaToken,
+      emailVerificationToken,
       ...rest
     } = dto;
+
+    const conciergeGate =
+      rawInquiryDetails &&
+      typeof rawInquiryDetails === 'object' &&
+      !Array.isArray(rawInquiryDetails) &&
+      rawInquiryDetails.entrySource === 'concierge_gate';
+
+    assertConciergeGatePayload(dto);
+    if (conciergeGate) {
+      await this.emailVerification.consumeVerifiedToken({
+        token: emailVerificationToken,
+        email: dto.email,
+        purpose: EMAIL_VERIFICATION_PURPOSE.CONCIERGE_INQUIRY,
+      });
+    } else {
+      await this.recaptcha.assertHuman(recaptchaToken);
+    }
     const inquiryDetails = sanitizeInquiryDetails(rawInquiryDetails);
     let enriched: SanitizedInquiryDetails | undefined =
       inquiryDetails && Object.keys(inquiryDetails).length > 0

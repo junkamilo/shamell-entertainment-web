@@ -1,6 +1,8 @@
 import {
   makeRecurringTemplateRow,
   makeTemplateRow,
+  FIXED_TEMPLATE_EVENT_DATE_ISO,
+  FIXED_TEMPLATE_SALES_START_ISO,
 } from '../__mocks__/reservation-event-templates.fixtures';
 import { mapTemplate } from './reservation-event-template-mapper.util';
 
@@ -11,8 +13,8 @@ describe('reservation-event-template-mapper.util', () => {
         venueConfigs: [{ eventId: 'event-1' }],
       }),
     );
-    expect(mapped.salesStartDate).toBe('2026-09-01');
-    expect(mapped.eventDate).toBe('2026-09-25');
+    expect(mapped.salesStartDate).toBe(FIXED_TEMPLATE_SALES_START_ISO);
+    expect(mapped.eventDate).toBe(FIXED_TEMPLATE_EVENT_DATE_ISO);
     expect(mapped.linkedEventIds).toEqual(['event-1']);
     expect(mapped.activeDayLabels).toEqual([]);
     expect(mapped.summary).toContain('Sales');
