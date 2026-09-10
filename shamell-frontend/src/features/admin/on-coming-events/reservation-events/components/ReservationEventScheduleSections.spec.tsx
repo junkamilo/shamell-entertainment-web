@@ -448,8 +448,7 @@ describe("ReservationEventScheduleSections", () => {
     expect(screen.queryByTestId("bulk-sections-editor")).not.toBeInTheDocument();
   });
 
-  it("applies bulk and per-day section edits and date/time pickers", async () => {
-    const user = userEvent.setup();
+  it("applies bulk and per-day section edits and date/time pickers", () => {
     const form = emptyScheduleForm();
     form.scheduleMode = "RECURRING_WEEKLY";
     form.weekdays = form.weekdays.map((w) =>
@@ -468,35 +467,34 @@ describe("ReservationEventScheduleSections", () => {
     ];
     renderWithProviders(<Harness initial={form} />);
 
-    await user.click(screen.getByRole("button", { name: "bulk-apply" }));
-    await user.click(screen.getByRole("button", { name: "bulk-apply-empty" }));
-    await user.click(screen.getByRole("button", { name: "section-change" }));
-    await user.click(screen.getByRole("button", { name: "section-change-empty" }));
+    fireEvent.click(screen.getByRole("button", { name: "bulk-apply" }));
+    fireEvent.click(screen.getByRole("button", { name: "bulk-apply-empty" }));
+    fireEvent.click(screen.getByRole("button", { name: "section-change" }));
+    fireEvent.click(screen.getByRole("button", { name: "section-change-empty" }));
 
-    await user.click(screen.getByRole("button", { name: "pick-sales-start" }));
-    await user.click(screen.getByRole("button", { name: "pick-sales-end" }));
-    await user.click(screen.getByRole("button", { name: "pick-event-date" }));
-    await user.click(screen.getByRole("button", { name: "pick-event-start" }));
-    await user.click(screen.getByRole("button", { name: "pick-event-end" }));
-    await user.click(screen.getByRole("button", { name: "pick-recur-start" }));
-    await user.click(screen.getByRole("button", { name: "pick-recur-end" }));
-    await user.click(screen.getByRole("button", { name: "close-date" }));
-    await user.click(screen.getByRole("button", { name: "close-time" }));
+    fireEvent.click(screen.getByRole("button", { name: "pick-sales-start" }));
+    fireEvent.click(screen.getByRole("button", { name: "pick-sales-end" }));
+    fireEvent.click(screen.getByRole("button", { name: "pick-event-date" }));
+    fireEvent.click(screen.getByRole("button", { name: "pick-event-start" }));
+    fireEvent.click(screen.getByRole("button", { name: "pick-event-end" }));
+    fireEvent.click(screen.getByRole("button", { name: "pick-recur-start" }));
+    fireEvent.click(screen.getByRole("button", { name: "pick-recur-end" }));
+    fireEvent.click(screen.getByRole("button", { name: "close-date" }));
+    fireEvent.click(screen.getByRole("button", { name: "close-time" }));
 
-    const clickLabeledPicker = async (label: string) => {
+    const clickLabeledPicker = (label: string) => {
       const button = screen.getByText(label).parentElement?.querySelector("button");
       expect(button).toBeTruthy();
-      await user.click(button!);
+      fireEvent.click(button!);
     };
-    await clickLabeledPicker("Sales start");
-    await clickLabeledPicker("Sales end");
-    await clickLabeledPicker("Event date");
-    await clickLabeledPicker("Event start time");
-    await clickLabeledPicker("Event end time");
+    clickLabeledPicker("Sales start");
+    clickLabeledPicker("Sales end");
+    clickLabeledPicker("Event date");
+    clickLabeledPicker("Event start time");
+    clickLabeledPicker("Event end time");
   });
 
-  it("opens bulk and per-section time pickers and confirms both fields", async () => {
-    const user = userEvent.setup();
+  it("opens bulk and per-section time pickers and confirms both fields", () => {
     const form = emptyScheduleForm();
     form.scheduleMode = "RECURRING_WEEKLY";
     form.weekdays = form.weekdays.map((w) =>
@@ -524,29 +522,29 @@ describe("ReservationEventScheduleSections", () => {
     ];
     renderWithProviders(<Harness initial={form} />);
 
-    await user.click(screen.getByRole("button", { name: "bulk-pick-missing" }));
+    fireEvent.click(screen.getByRole("button", { name: "bulk-pick-missing" }));
     expect(screen.getByText("Section start")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "close-section-time" }));
+    fireEvent.click(screen.getByRole("button", { name: "close-section-time" }));
 
-    await user.click(screen.getByRole("button", { name: "bulk-pick-start" }));
+    fireEvent.click(screen.getByRole("button", { name: "bulk-pick-start" }));
     expect(screen.getByText("Section start")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "confirm-section-time" }));
+    fireEvent.click(screen.getByRole("button", { name: "confirm-section-time" }));
 
-    await user.click(screen.getByRole("button", { name: "bulk-pick-end" }));
+    fireEvent.click(screen.getByRole("button", { name: "bulk-pick-end" }));
     expect(screen.getByText("Section end")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "confirm-section-time" }));
+    fireEvent.click(screen.getByRole("button", { name: "confirm-section-time" }));
 
-    await user.click(screen.getByRole("button", { name: "section-pick-start" }));
+    fireEvent.click(screen.getByRole("button", { name: "section-pick-start" }));
     expect(screen.getByText("Section start")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "confirm-section-time" }));
+    fireEvent.click(screen.getByRole("button", { name: "confirm-section-time" }));
 
-    await user.click(screen.getByRole("button", { name: "section-pick-end" }));
+    fireEvent.click(screen.getByRole("button", { name: "section-pick-end" }));
     expect(screen.getByText("Section end")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "close-section-time" }));
+    fireEvent.click(screen.getByRole("button", { name: "close-section-time" }));
 
-    await user.click(screen.getByRole("button", { name: "section-pick-missing" }));
+    fireEvent.click(screen.getByRole("button", { name: "section-pick-missing" }));
     expect(screen.getByText("Section end")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "confirm-section-time" }));
+    fireEvent.click(screen.getByRole("button", { name: "confirm-section-time" }));
   });
 
   it("infers a shared blueprint when two matching weekdays become active", () => {

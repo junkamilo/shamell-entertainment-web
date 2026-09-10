@@ -106,7 +106,7 @@ export function makeConciergeFormData(
     eventDate: "2030-08-01",
     occasionHint: "Wedding",
     guestCount: "80",
-    planningStage: "Exploring options",
+    planningStage: "EARLY_IDEA",
     message: "Looking for guidance on a private celebration.",
     ...overrides,
   };

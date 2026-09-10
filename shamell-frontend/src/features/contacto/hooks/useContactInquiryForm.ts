@@ -29,6 +29,7 @@ export function useContactInquiryForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFeedbackPhase, setSubmitFeedbackPhase] = useState<InquirySubmitFeedbackPhase>("idle");
   const [apiError, setApiError] = useState<string | null>(null);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
 
   const [data, setData] = useState(() => emptyWizard(initialServiceType));
   const [phaseIndex, setPhaseIndex] = useState(0);
@@ -110,6 +111,10 @@ export function useContactInquiryForm({
       wizard.setStepError(errContact ?? errExp ?? errLog);
       return;
     }
+    if (!recaptchaToken) {
+      setApiError("Confirm you are not a robot before sending.");
+      return;
+    }
     setApiError(null);
     submitInFlightRef.current = true;
     setSubmitFeedbackPhase("sending");
@@ -131,6 +136,7 @@ export function useContactInquiryForm({
         location: wizard.data.location.trim() || undefined,
         serviceType: wizard.data.inquiryCode || undefined,
         message: wizard.data.message.trim(),
+        recaptchaToken,
         /* v8 ignore next */
         inquiryDetails: inquiryDetails ?? {},
       });
@@ -274,6 +280,8 @@ export function useContactInquiryForm({
     isSubmitting,
     submitFeedbackPhase,
     apiError,
+    recaptchaToken,
+    setRecaptchaToken,
     onSubmit,
     handleInquirySubmitComplete,
     selectedLine,

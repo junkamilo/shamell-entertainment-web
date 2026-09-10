@@ -3,14 +3,24 @@ import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
 import { submitConciergeInquiry } from "./submitConciergeInquiry";
 
+const completeBody = {
+  fullName: "Ada Lovelace",
+  email: "ada@example.com",
+  phone: "+15551234567",
+  eventDate: "2030-08-01",
+  location: "Miami",
+  message: "Need guidance planning a celebration.",
+  emailVerificationToken: "a".repeat(40),
+  inquiryDetails: {
+    entrySource: "concierge_gate",
+    planningStage: "EARLY_IDEA",
+    guestCount: 12,
+  },
+};
+
 describe("submitConciergeInquiry", () => {
   it("returns ok on success", async () => {
-    const result = await submitConciergeInquiry({
-      fullName: "Ada Lovelace",
-      email: "ada@example.com",
-      message: "Need guidance planning a celebration.",
-      inquiryDetails: { entrySource: "concierge_gate" },
-    });
+    const result = await submitConciergeInquiry(completeBody);
     expect(result).toEqual({ ok: true });
   });
 
@@ -23,18 +33,10 @@ describe("submitConciergeInquiry", () => {
       }),
     );
 
-    await submitConciergeInquiry({
-      fullName: "Ada Lovelace",
-      email: "ada@example.com",
-      message: "Need guidance",
-      inquiryDetails: { planningStage: "Exploring" },
-    });
+    await submitConciergeInquiry(completeBody);
 
     expect(body).toEqual({
-      fullName: "Ada Lovelace",
-      email: "ada@example.com",
-      message: "Need guidance",
-      inquiryDetails: { planningStage: "Exploring" },
+      ...completeBody,
       serviceType: "GENERAL",
       subject: "Concierge inquiry - client needs guidance",
     });
@@ -47,12 +49,7 @@ describe("submitConciergeInquiry", () => {
       ),
     );
 
-    const result = await submitConciergeInquiry({
-      fullName: "Ada",
-      email: "ada@example.com",
-      message: "Hello",
-      inquiryDetails: {},
-    });
+    const result = await submitConciergeInquiry(completeBody);
 
     expect(result).toEqual({ ok: false, message: "Rate limited" });
   });
@@ -62,12 +59,7 @@ describe("submitConciergeInquiry", () => {
       http.post("*/api/v1/contact", () => HttpResponse.json({}, { status: 500 })),
     );
 
-    const result = await submitConciergeInquiry({
-      fullName: "Ada",
-      email: "ada@example.com",
-      message: "Hello",
-      inquiryDetails: {},
-    });
+    const result = await submitConciergeInquiry(completeBody);
 
     expect(result).toEqual({
       ok: false,

@@ -7,12 +7,19 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ShamellBackButton } from "@/components/shared";
+import { ShamellBackButton, ShamellBusyOverlay, EmailVerificationModal } from "@/components/shared";
 import { CONTACTO_PATH } from "@/lib/contacto/contactInquiryConstants";
+import { EMAIL_VERIFICATION_PURPOSE } from "@/lib/email-verification";
+import { startEmailVerification } from "@/lib/email-verification/startEmailVerification";
+import { verifyEmailCode } from "@/lib/email-verification/verifyEmailCode";
+import { resendEmailVerification } from "@/lib/email-verification/resendEmailVerification";
 import bailarinaLogo from "@/public/01_bailarina.png";
 import { submitConciergeInquiry } from "../services/submitConciergeInquiry";
 import type { ConciergeFormData } from "../types/contacto.types";
+import { CONCIERGE_PLANNING_STAGE_OPTIONS } from "../lib/conciergePlanningStages";
+import { validateConciergeForm } from "../lib/conciergeFormValidation";
 import ContactDatePickerModal from "./ContactDatePickerModal";
+import RecaptchaCheckbox from "./RecaptchaCheckbox";
 import InquirySubmitFeedbackLayer, {
   type InquirySubmitFeedbackPhase,
 } from "./InquirySubmitFeedbackLayer";
@@ -30,30 +37,8 @@ const emptyConciergeForm: ConciergeFormData = {
   message: "",
 };
 
-const planningStages = [
-  { value: "EARLY_IDEA", label: "I have an idea, but need direction" },
-  { value: "COMPARING_OPTIONS", label: "I am comparing possible experiences" },
-  { value: "DATE_OR_VENUE_READY", label: "I have a date or venue in mind" },
-  { value: "JUST_EXPLORING", label: "I am exploring what Shamell offers" },
-];
-
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 const conciergeDatePickerTriggerClass =
   "mt-2 flex min-h-[48px] w-full items-center justify-between gap-3 border border-gold/40 bg-black/30 px-4 py-3 text-left text-sm text-foreground outline-none transition hover:border-gold focus:border-gold focus:ring-1 focus:ring-gold/30";
-
-function validateConciergeForm(data: ConciergeFormData): string | null {
-  if (data.fullName.trim().length < 2) return "Please enter your full name.";
-  if (!emailRegex.test(data.email.trim())) return "Please enter a valid email.";
-  if (data.guestCount.trim()) {
-    const n = Number(data.guestCount);
-    if (!Number.isInteger(n) || n < 1) return "Guest count must be a whole number.";
-  }
-  if (data.message.trim().length < 10) {
-    return "Tell us a little more about the experience you have in mind.";
-  }
-  return null;
-}
 
 export default function ConciergeInquiryForm() {
   const router = useRouter();
@@ -62,16 +47,63 @@ export default function ConciergeInquiryForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitFeedbackPhase, setSubmitFeedbackPhase] = useState<InquirySubmitFeedbackPhase>("idle");
   const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
+  const [recaptchaResetKey, setRecaptchaResetKey] = useState(0);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [isVerifyingCode, setIsVerifyingCode] = useState(false);
+  const [isResendingCode, setIsResendingCode] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [resendCooldownSec, setResendCooldownSec] = useState(0);
+  const isFormReady = validateConciergeForm(data) === null;
+
+  useEffect(() => {
+    if (!isFormReady) {
+      setRecaptchaToken(null);
+    }
+  }, [isFormReady]);
+
+  useEffect(() => {
+    if (resendCooldownSec <= 0) return;
+    const id = window.setTimeout(() => {
+      setResendCooldownSec((sec) => Math.max(0, sec - 1));
+    }, 1000);
+    return () => window.clearTimeout(id);
+  }, [resendCooldownSec]);
 
   const handleConciergeSubmitComplete = useCallback(() => {
     setData(emptyConciergeForm);
     setSubmitFeedbackPhase("idle");
+    setVerifyOpen(false);
+    setChallengeId(null);
     router.replace("/");
   }, [router]);
 
   const updateField = (field: keyof ConciergeFormData, value: string) => {
     setData((prev) => ({ ...prev, [field]: value }));
     if (error) setError(null);
+  };
+
+  const buildInquiryBody = (emailVerificationToken: string) => {
+    const vision = data.message.trim();
+    return {
+      fullName: data.fullName.trim(),
+      email: data.email.trim(),
+      phone: data.phone.trim(),
+      eventDate: data.eventDate,
+      location: data.location.trim(),
+      message: vision,
+      emailVerificationToken,
+      inquiryDetails: {
+        entrySource: "concierge_gate",
+        conciergeIntent: "needs_guidance",
+        planningStage: data.planningStage,
+        occasionHint: data.occasionHint.trim() || undefined,
+        guestCount: Number(data.guestCount.trim()),
+        visionSummary: vision.length > 1000 ? vision.slice(0, 1000) : vision,
+      },
+    };
   };
 
   const onSubmit = async (ev: FormEvent) => {
@@ -81,40 +113,86 @@ export default function ConciergeInquiryForm() {
       setError(validationError);
       return;
     }
+    if (!recaptchaToken) {
+      setError("Confirm you are not a robot before sending.");
+      return;
+    }
 
-    setIsSubmitting(true);
-    setSubmitFeedbackPhase("sending");
+    setIsSendingCode(true);
     setError(null);
+    const resetCaptcha = () => {
+      setRecaptchaToken(null);
+      setRecaptchaResetKey((key) => key + 1);
+    };
     try {
-      const guestCount = data.guestCount.trim() ? Number(data.guestCount) : undefined;
-      const vision = data.message.trim();
-      const result = await submitConciergeInquiry({
-        fullName: data.fullName.trim(),
+      const started = await startEmailVerification({
+        purpose: EMAIL_VERIFICATION_PURPOSE.CONCIERGE_INQUIRY,
         email: data.email.trim(),
-        phone: data.phone.trim() || undefined,
-        eventDate: data.eventDate || undefined,
-        location: data.location.trim() || undefined,
-        message: vision,
-        inquiryDetails: {
-          entrySource: "concierge_gate",
-          conciergeIntent: "needs_guidance",
-          planningStage: data.planningStage || undefined,
-          occasionHint: data.occasionHint.trim() || undefined,
-          guestCount,
-          visionSummary: vision.length > 1000 ? vision.slice(0, 1000) : vision,
-        },
+        recaptchaToken,
       });
+      if (!started.ok) {
+        setError(started.message);
+        resetCaptcha();
+        return;
+      }
+      setChallengeId(started.challengeId);
+      setVerifyError(null);
+      setVerifyOpen(true);
+      setResendCooldownSec(60);
+      setRecaptchaToken(null);
+    } catch {
+      setError("Cannot reach the server. Check that the API is running.");
+      resetCaptcha();
+    } finally {
+      setIsSendingCode(false);
+    }
+  };
+
+  const onVerifyCode = async (code: string) => {
+    if (!challengeId) return;
+    setIsVerifyingCode(true);
+    setVerifyError(null);
+    try {
+      const verified = await verifyEmailCode({ challengeId, code });
+      if (!verified.ok) {
+        setVerifyError(verified.message);
+        return;
+      }
+      setIsSubmitting(true);
+      setSubmitFeedbackPhase("sending");
+      const result = await submitConciergeInquiry(buildInquiryBody(verified.verifiedToken));
       if (!result.ok) {
-        setError(result.message);
+        setVerifyError(result.message);
         setSubmitFeedbackPhase("idle");
         return;
       }
+      setVerifyOpen(false);
       setSubmitFeedbackPhase("done");
     } catch {
-      setError("Cannot reach the server. Check that the API is running.");
+      setVerifyError("Cannot reach the server. Check that the API is running.");
       setSubmitFeedbackPhase("idle");
     } finally {
+      setIsVerifyingCode(false);
       setIsSubmitting(false);
+    }
+  };
+
+  const onResendCode = async () => {
+    if (!challengeId || resendCooldownSec > 0) return;
+    setIsResendingCode(true);
+    setVerifyError(null);
+    try {
+      const resent = await resendEmailVerification(challengeId);
+      if (!resent.ok) {
+        setVerifyError(resent.message);
+        return;
+      }
+      setChallengeId(resent.challengeId);
+      setResendCooldownSec(60);
+    } catch {
+      setVerifyError("Cannot reach the server. Check that the API is running.");
+    } finally {
+      setIsResendingCode(false);
     }
   };
 
@@ -176,6 +254,7 @@ export default function ConciergeInquiryForm() {
             label="Phone"
             value={data.phone}
             onChange={(value) => updateField("phone", value)}
+            required
             hint="Helpful if the team needs to clarify details quickly."
           />
           <ConciergeField
@@ -183,11 +262,11 @@ export default function ConciergeInquiryForm() {
             label="City or event location"
             value={data.location}
             onChange={(value) => updateField("location", value)}
+            required
           />
           <div>
             <span className="font-brand text-xs tracking-[0.14em] text-gold">
-              Tentative date{" "}
-              <span className="font-body text-foreground/40 normal-case">(optional)</span>
+              Tentative date <span className="text-red-300">*</span>
             </span>
             <button
               type="button"
@@ -215,6 +294,7 @@ export default function ConciergeInquiryForm() {
             label="Approximate guests"
             value={data.guestCount}
             onChange={(value) => updateField("guestCount", value)}
+            required
             min={1}
             inputMode="numeric"
           />
@@ -226,7 +306,8 @@ export default function ConciergeInquiryForm() {
             label="Where are you in planning?"
             value={data.planningStage}
             onChange={(value) => updateField("planningStage", value)}
-            options={planningStages}
+            options={CONCIERGE_PLANNING_STAGE_OPTIONS}
+            required
           />
           <ConciergeField
             name="occasionHint"
@@ -260,24 +341,36 @@ export default function ConciergeInquiryForm() {
           </p>
         ) : null}
 
+        <div className="mt-6">
+          {!verifyOpen ? (
+            <RecaptchaCheckbox
+              key={recaptchaResetKey}
+              onToken={setRecaptchaToken}
+              enabled={isFormReady}
+            />
+          ) : null}
+        </div>
+
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-body text-xs leading-relaxed text-foreground/48">
             This creates a concierge request, not a confirmed reservation.
           </p>
-          <button
-            type="submit"
-            disabled={isSubmitting || submitFeedbackPhase !== "idle"}
-            className="inline-flex min-h-12 items-center justify-center border border-gold/55 bg-gold/10 px-7 py-3 font-brand text-xs tracking-[0.18em] text-gold uppercase transition-colors hover:border-gold hover:bg-gold/15 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isSubmitting ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Sending
-              </span>
-            ) : (
-              "Send concierge inquiry"
-            )}
-          </button>
+          {recaptchaToken ? (
+            <button
+              type="submit"
+              disabled={isSendingCode || isSubmitting || submitFeedbackPhase !== "idle"}
+              className="inline-flex min-h-12 items-center justify-center border border-gold/55 bg-gold/10 px-7 py-3 font-brand text-xs tracking-[0.18em] text-gold uppercase transition-colors hover:border-gold hover:bg-gold/15 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSendingCode ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                  Sending
+                </span>
+              ) : (
+                "Send concierge inquiry"
+              )}
+            </button>
+          ) : null}
         </div>
         </form>
 
@@ -289,6 +382,27 @@ export default function ConciergeInquiryForm() {
           onConfirm={(iso) => updateField("eventDate", iso)}
         />
         <InquirySubmitFeedbackLayer phase={submitFeedbackPhase} onAccept={handleConciergeSubmitComplete} />
+        <ShamellBusyOverlay
+          active={isSendingCode}
+          title="Sending your code"
+          description="We are emailing a 6-digit verification code."
+        />
+        <EmailVerificationModal
+          open={verifyOpen}
+          email={data.email.trim()}
+          onVerify={(code) => void onVerifyCode(code)}
+          onResend={() => void onResendCode()}
+          onClose={() => {
+            setVerifyOpen(false);
+            setVerifyError(null);
+            setRecaptchaToken(null);
+            setRecaptchaResetKey((key) => key + 1);
+          }}
+          isVerifying={isVerifyingCode || isSubmitting}
+          isResending={isResendingCode}
+          error={verifyError}
+          resendCooldownSec={resendCooldownSec}
+        />
       </div>
     </div>
   );
@@ -348,12 +462,14 @@ function ConciergeSelect({
   value,
   onChange,
   options,
+  required = false,
 }: {
   name: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
+  required?: boolean;
 }) {
   const uid = useId();
   const listId = `${uid}-list`;
@@ -401,7 +517,12 @@ function ConciergeSelect({
       <input type="hidden" name={name} value={value} readOnly aria-hidden />
       <div className="block">
         <span id={labelId} className="font-brand text-xs tracking-[0.14em] text-gold">
-          {label} <span className="font-body text-foreground/40 normal-case">(optional)</span>
+          {label}{" "}
+          {required ? (
+            <span className="text-red-300">*</span>
+          ) : (
+            <span className="font-body text-foreground/40 normal-case">(optional)</span>
+          )}
         </span>
         <motion.button
           type="button"

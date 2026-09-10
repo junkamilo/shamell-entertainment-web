@@ -17,6 +17,14 @@ vi.mock("../hooks/useContactInquiryForm", () => ({
   useContactInquiryForm: formMock.useContactInquiryForm,
 }));
 
+vi.mock("./RecaptchaCheckbox", () => ({
+  default: ({ onToken }: { onToken: (token: string | null) => void }) => (
+    <button type="button" onClick={() => onToken("test-recaptcha-token-ok-xx")}>
+      mock-recaptcha
+    </button>
+  ),
+}));
+
 vi.mock("next/image", () => ({
   default: ({ alt = "" }: { alt?: string }) => (
     // eslint-disable-next-line @next/next/no-img-element
@@ -338,6 +346,18 @@ describe("ContactInquiryForm", () => {
     await user.click(screen.getByRole("button", { name: /submit inquiry/i }));
     expect(state.onSubmit).toHaveBeenCalled();
     fireEvent.submit(screen.getByRole("button", { name: /submit inquiry/i }).closest("form")!);
+  });
+
+  it("hides submit until recaptcha passes", () => {
+    renderForm({
+      recaptchaToken: null,
+      wizard: {
+        ...createMockUseContactInquiryFormReturn().wizard,
+        currentPhase: "review",
+        phaseIndex: 7,
+      },
+    });
+    expect(screen.queryByRole("button", { name: /submit inquiry/i })).not.toBeInTheDocument();
   });
 
   it("shows remaining phases", () => {

@@ -4,10 +4,11 @@ import { getPublicApiBaseUrl } from "@/lib/publicApiBaseUrl";
 export type SubmitConciergeInquiryBody = {
   fullName: string;
   email: string;
-  phone?: string;
-  eventDate?: string;
-  location?: string;
+  phone: string;
+  eventDate: string;
+  location: string;
   message: string;
+  emailVerificationToken: string;
   inquiryDetails: Record<string, unknown>;
 };
 
