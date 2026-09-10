@@ -17,3 +17,5 @@ export type {
   ShamellTime12hColumnsProps,
   ShamellTime12hParts,
 } from "./ShamellTime12hColumns";
+export { EmailVerificationModal } from "./EmailVerificationModal";
+export type { EmailVerificationModalProps } from "./EmailVerificationModal";

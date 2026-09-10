@@ -13,6 +13,7 @@ import ContactOccasionPickerModal from "./ContactOccasionPickerModal";
 import ContactTimePickerModal from "./ContactTimePickerModal";
 import InquirySelectionSummary from "./InquirySelectionSummary";
 import InquirySubmitFeedbackLayer from "./InquirySubmitFeedbackLayer";
+import RecaptchaCheckbox from "./RecaptchaCheckbox";
 import ContactInquiryPhaseContact from "./contact-inquiry/ContactInquiryPhaseContact";
 import ContactInquiryPhaseDetail from "./contact-inquiry/ContactInquiryPhaseDetail";
 import ContactInquiryPhaseExpectations from "./contact-inquiry/ContactInquiryPhaseExpectations";
@@ -48,6 +49,8 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
     isSubmitting,
     submitFeedbackPhase,
     apiError,
+    recaptchaToken,
+    setRecaptchaToken,
     onSubmit,
     handleInquirySubmitComplete,
     /* v8 ignore start */
@@ -286,7 +289,9 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
           </div>
         ) : (
           /* v8 ignore start */
-          <form onSubmit={onSubmit} className="mt-6 flex flex-wrap gap-3">
+          <form onSubmit={onSubmit} className="mt-6 flex flex-col gap-4">
+            <RecaptchaCheckbox onToken={setRecaptchaToken} />
+            <div className="flex flex-wrap gap-3">
             <button
               type="button"
               onClick={goBack}
@@ -294,6 +299,7 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
             >
               Back
             </button>
+            {recaptchaToken ? (
             <button
               type="submit"
               className="btn-outline-gold flex-1 min-w-40 justify-center gap-2 font-brand disabled:opacity-60 disabled:pointer-events-none"
@@ -308,6 +314,8 @@ export default function ContactInquiryForm(props: ContactInquiryFormProps) {
                 "Submit inquiry"
               )}
             </button>
+            ) : null}
+            </div>
           </form>
           /* v8 ignore stop */
         )}

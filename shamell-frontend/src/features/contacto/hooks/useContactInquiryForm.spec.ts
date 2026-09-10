@@ -83,6 +83,8 @@ vi.mock("./useContactInquiryAvailability", () => ({
 
 import { useContactInquiryForm } from "./useContactInquiryForm";
 
+const TEST_RECAPTCHA_TOKEN = "test-recaptcha-token-ok-xx";
+
 function validSubmitData(
   overrides: Parameters<typeof makeWizardData>[0] = {},
 ) {
@@ -134,6 +136,9 @@ describe("useContactInquiryForm", () => {
     const { result } = renderHook(() =>
       useContactInquiryForm({ entrySource: "home_service_card" }),
     );
+    act(() => {
+      result.current.setRecaptchaToken(TEST_RECAPTCHA_TOKEN);
+    });
     await act(async () => {
       await result.current.onSubmit({
         preventDefault: vi.fn(),
@@ -145,6 +150,7 @@ describe("useContactInquiryForm", () => {
         email: "ada@example.com",
         phone: undefined,
         serviceType: undefined,
+        recaptchaToken: TEST_RECAPTCHA_TOKEN,
         inquiryDetails: expect.objectContaining({ entrySource: "home_service_card" }),
       }),
     );
@@ -161,6 +167,9 @@ describe("useContactInquiryForm", () => {
       projectDeadlineNote: "Need it in June",
     });
     const { result } = renderHook(() => useContactInquiryForm({}));
+    act(() => {
+      result.current.setRecaptchaToken(TEST_RECAPTCHA_TOKEN);
+    });
     await act(async () => {
       await result.current.onSubmit({
         preventDefault: vi.fn(),
@@ -175,6 +184,9 @@ describe("useContactInquiryForm", () => {
     catalogMock.catalogDismissed = true;
     catalogMock.catalogSnapshot = makeCatalogSnapshot();
     const { result } = renderHook(() => useContactInquiryForm({}));
+    act(() => {
+      result.current.setRecaptchaToken(TEST_RECAPTCHA_TOKEN);
+    });
     await act(async () => {
       await result.current.onSubmit({
         preventDefault: vi.fn(),
@@ -190,6 +202,9 @@ describe("useContactInquiryForm", () => {
   it("sets apiError when submit fails", async () => {
     submitContactInquiryMock.mockResolvedValue({ ok: false, message: "Invalid payload" });
     const { result } = renderHook(() => useContactInquiryForm({}));
+    act(() => {
+      result.current.setRecaptchaToken(TEST_RECAPTCHA_TOKEN);
+    });
     await act(async () => {
       await result.current.onSubmit({
         preventDefault: vi.fn(),
@@ -202,6 +217,9 @@ describe("useContactInquiryForm", () => {
   it("sets a network error when submit throws", async () => {
     submitContactInquiryMock.mockRejectedValue(new Error("offline"));
     const { result } = renderHook(() => useContactInquiryForm({}));
+    act(() => {
+      result.current.setRecaptchaToken(TEST_RECAPTCHA_TOKEN);
+    });
     await act(async () => {
       await result.current.onSubmit({
         preventDefault: vi.fn(),
@@ -225,6 +243,9 @@ describe("useContactInquiryForm", () => {
     const event = { preventDefault: vi.fn() } as unknown as React.FormEvent<HTMLFormElement>;
     let first: Promise<void> | undefined;
     act(() => {
+      result.current.setRecaptchaToken(TEST_RECAPTCHA_TOKEN);
+    });
+    act(() => {
       first = result.current.onSubmit(event);
     });
     await act(async () => {
@@ -235,6 +256,17 @@ describe("useContactInquiryForm", () => {
       resolveSubmit?.({ ok: true });
       await first;
     });
+  });
+
+  it("blocks submit until recaptcha passes", async () => {
+    const { result } = renderHook(() => useContactInquiryForm({}));
+    await act(async () => {
+      await result.current.onSubmit({
+        preventDefault: vi.fn(),
+      } as unknown as React.FormEvent<HTMLFormElement>);
+    });
+    expect(submitContactInquiryMock).not.toHaveBeenCalled();
+    expect(result.current.apiError).toMatch(/not a robot/i);
   });
 
   it("sets step error when contact validation fails", async () => {

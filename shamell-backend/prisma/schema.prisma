@@ -469,6 +469,25 @@ model ContactRequest {
   @@map("contact_requests")
 }
 
+/** One-time email OTP challenges. Plaintext codes are never stored. */
+model EmailVerificationChallenge {
+  id                String    @id @default(uuid())
+  purpose           String
+  email             String
+  codeHash          String
+  expiresAt         DateTime
+  attemptCount      Int       @default(0)
+  resendCount       Int       @default(0)
+  lastSentAt        DateTime
+  verifiedTokenHash String?   @unique
+  verifiedExpiresAt DateTime?
+  consumedAt        DateTime?
+  createdAt         DateTime  @default(now())
+
+  @@index([email, purpose])
+  @@map("email_verification_challenges")
+}
+
 model Performer {
   id          String   @id @default(uuid())
   stageName   String

@@ -8,6 +8,7 @@ export type SubmitContactInquiryBody = {
   location?: string;
   serviceType?: string;
   message: string;
+  recaptchaToken: string;
   inquiryDetails: Record<string, unknown>;
 };
 

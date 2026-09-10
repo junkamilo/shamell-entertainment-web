@@ -15,8 +15,30 @@ export function makeCreateContactDto(
     email: 'ada@example.com',
     phone: '+15551234567',
     message: 'Looking for a private performance.',
+    recaptchaToken: 'test-recaptcha-token-ok-xx',
     ...overrides,
   };
+}
+
+export function makeConciergeCreateContactDto(
+  overrides: Partial<CreateContactDto> = {},
+): CreateContactDto {
+  const { inquiryDetails, ...rest } = overrides;
+  return makeCreateContactDto({
+    phone: '+15551234567',
+    location: 'Miami',
+    eventDate: '2030-08-01',
+    subject: 'Concierge inquiry - client needs guidance',
+    inquiryDetails: {
+      entrySource: 'concierge_gate',
+      conciergeIntent: 'needs_guidance',
+      guestCount: 12,
+      planningStage: 'EARLY_IDEA',
+      ...(inquiryDetails ?? {}),
+    },
+    emailVerificationToken: 'a'.repeat(40),
+    ...rest,
+  });
 }
 
 export function makeContactRequestRow(

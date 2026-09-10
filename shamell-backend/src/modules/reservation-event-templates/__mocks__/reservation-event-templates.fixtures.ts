@@ -5,7 +5,34 @@ import type {
   ValidatedTemplatePayload,
 } from '../types/reservation-event-templates.types';
 
-const NOW = new Date('2026-08-09T12:00:00.000Z');
+function utcNoonDaysFromToday(days: number): Date {
+  const now = new Date();
+  return new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + days,
+      12,
+      0,
+      0,
+    ),
+  );
+}
+
+function isoDay(date: Date): string {
+  return date.toISOString().slice(0, 10);
+}
+
+/** Keep create-payload dates in the future so “not in the past” validation does not rot. */
+const FIXED_SALES_START = utcNoonDaysFromToday(21);
+const FIXED_SALES_END = utcNoonDaysFromToday(40);
+const FIXED_EVENT_DATE = utcNoonDaysFromToday(45);
+
+export const FIXED_TEMPLATE_SALES_START_ISO = isoDay(FIXED_SALES_START);
+export const FIXED_TEMPLATE_SALES_END_ISO = isoDay(FIXED_SALES_END);
+export const FIXED_TEMPLATE_EVENT_DATE_ISO = isoDay(FIXED_EVENT_DATE);
+
+const NOW = utcNoonDaysFromToday(0);
 
 export function makeWeekdays(active: number[] = [1, 3, 5]) {
   return [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({
@@ -21,9 +48,9 @@ export function makeFixedCreateDto(
     name: 'Gala Night',
     timezone: 'America/New_York',
     scheduleMode: ReservationEventScheduleMode.FIXED_EVENT,
-    salesStartDate: '2026-09-01',
-    salesEndDate: '2026-09-20',
-    eventDate: '2026-09-25',
+    salesStartDate: FIXED_TEMPLATE_SALES_START_ISO,
+    salesEndDate: FIXED_TEMPLATE_SALES_END_ISO,
+    eventDate: FIXED_TEMPLATE_EVENT_DATE_ISO,
     eventStartTime: '19:00',
     eventEndTime: '22:00',
     ...overrides,
@@ -61,9 +88,9 @@ export function makeValidatedFixedPayload(
     name: 'Gala Night',
     timezone: 'America/New_York',
     scheduleMode: ReservationEventScheduleMode.FIXED_EVENT,
-    salesStartDate: new Date('2026-09-01T12:00:00.000Z'),
-    salesEndDate: new Date('2026-09-20T12:00:00.000Z'),
-    eventDate: new Date('2026-09-25T12:00:00.000Z'),
+    salesStartDate: FIXED_SALES_START,
+    salesEndDate: FIXED_SALES_END,
+    eventDate: FIXED_EVENT_DATE,
     eventStartTime: '19:00',
     eventEndTime: '22:00',
     recurringEffectiveFrom: null,
@@ -83,16 +110,16 @@ export function makeTemplateRow(
     name: 'Gala Night',
     timezone: 'America/New_York',
     scheduleMode: ReservationEventScheduleMode.FIXED_EVENT,
-    salesStartDate: new Date('2026-09-01T12:00:00.000Z'),
-    salesEndDate: new Date('2026-09-20T12:00:00.000Z'),
-    eventDate: new Date('2026-09-25T12:00:00.000Z'),
+    salesStartDate: FIXED_SALES_START,
+    salesEndDate: FIXED_SALES_END,
+    eventDate: FIXED_EVENT_DATE,
     eventStartTime: '19:00',
     eventEndTime: '22:00',
     recurringEffectiveFrom: null,
     recurringStartTime: null,
     recurringEndTime: null,
-    startDate: new Date('2026-09-01T12:00:00.000Z'),
-    endDate: new Date('2026-09-20T12:00:00.000Z'),
+    startDate: FIXED_SALES_START,
+    endDate: FIXED_SALES_END,
     startTime: '19:00',
     endTime: '22:00',
     createdAt: NOW,

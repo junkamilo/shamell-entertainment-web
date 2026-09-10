@@ -26,6 +26,7 @@ export {
   ShamellAlertDialog,
   ShamellBackButton,
   ShamellTime12hColumns,
+  EmailVerificationModal,
 } from "./shamell";
 export type {
   CountdownParts,
@@ -35,6 +36,7 @@ export type {
   ShamellBackButtonProps,
   ShamellTime12hColumnsProps,
   ShamellTime12hParts,
+  EmailVerificationModalProps,
 } from "./shamell";
 
 export { FixedTicketInventoryDisplay } from "./tickets";

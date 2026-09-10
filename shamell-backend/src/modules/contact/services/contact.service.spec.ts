@@ -3,6 +3,7 @@ import { ContactRequestStatus } from '@prisma/client';
 import {
   makeContactRequestRow,
   makeCreateContactDto,
+  makeConciergeCreateContactDto,
 } from '../__mocks__/contact.fixtures';
 import { createContactServiceTestModule } from '../testing/contact-service.test-module';
 import type { ContactService } from './contact.service';
@@ -32,6 +33,12 @@ describe('ContactService', () => {
   let bookings: Awaited<
     ReturnType<typeof createContactServiceTestModule>
   >['bookings'];
+  let recaptcha: Awaited<
+    ReturnType<typeof createContactServiceTestModule>
+  >['recaptcha'];
+  let emailVerification: Awaited<
+    ReturnType<typeof createContactServiceTestModule>
+  >['emailVerification'];
 
   beforeEach(async () => {
     const harness = await createContactServiceTestModule();
@@ -42,6 +49,8 @@ describe('ContactService', () => {
     mail = harness.mail;
     adminActivityNotify = harness.adminActivityNotify;
     bookings = harness.bookings;
+    recaptcha = harness.recaptcha;
+    emailVerification = harness.emailVerification;
   });
 
   it('create booking inquiry prepares and inserts booking in a transaction', async () => {
@@ -117,9 +126,8 @@ describe('ContactService', () => {
     repository.create.mockResolvedValue(created);
 
     const result = await service.create(
-      makeCreateContactDto({
+      makeConciergeCreateContactDto({
         subject: 'Concierge inquiry',
-        inquiryDetails: { entrySource: 'concierge_gate' },
       }),
     );
 
@@ -127,7 +135,15 @@ describe('ContactService', () => {
     const createCalls = repository.create.mock.calls as Array<
       [
         {
-          conciergeVisionSnapshot: { fullName: string; email: string };
+          conciergeVisionSnapshot: {
+            fullName: string;
+            email: string;
+            phone: string;
+            location: string;
+            eventDate: string | null;
+            guestCount: number | null;
+            planningStage: string;
+          };
         },
       ]
     >;
@@ -137,11 +153,54 @@ describe('ContactService', () => {
     expect(createCalls[0][0].conciergeVisionSnapshot.email).toBe(
       'ada@example.com',
     );
+    expect(createCalls[0][0].conciergeVisionSnapshot).toEqual(
+      expect.objectContaining({
+        phone: '+15551234567',
+        location: 'Miami',
+        eventDate: '2030-08-01',
+        guestCount: 12,
+        planningStage: 'EARLY_IDEA',
+      }),
+    );
     expect(bookings.preparePublicBookingInquiry).not.toHaveBeenCalled();
+    expect(emailVerification.consumeVerifiedToken).toHaveBeenCalledWith(
+      expect.objectContaining({
+        token: 'a'.repeat(40),
+        email: 'ada@example.com',
+        purpose: 'CONCIERGE_INQUIRY',
+      }),
+    );
+    expect(recaptcha.assertHuman).not.toHaveBeenCalled();
     expect(mail.sendTransactional).toHaveBeenCalled();
     expect(adminActivityNotify.notifyCustomerActivity).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'CONCIERGE_INQUIRY' }),
     );
+  });
+
+  it('create concierge path rejects incomplete required fields before persist', async () => {
+    await expect(
+      service.create(
+        makeCreateContactDto({
+          emailVerificationToken: 'a'.repeat(40),
+          inquiryDetails: { entrySource: 'concierge_gate' },
+        }),
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(mail.sendTransactional).not.toHaveBeenCalled();
+    expect(emailVerification.consumeVerifiedToken).not.toHaveBeenCalled();
+  });
+
+  it('create concierge path rejects missing email verification token', async () => {
+    await expect(
+      service.create(
+        makeConciergeCreateContactDto({
+          emailVerificationToken: undefined,
+        }),
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(recaptcha.assertHuman).not.toHaveBeenCalled();
   });
 
   it('create generic inquiry without booking entrySource uses repository.create', async () => {
@@ -153,6 +212,35 @@ describe('ContactService', () => {
     expect(result).toEqual(created);
     expect(repository.create).toHaveBeenCalled();
     expect(bookings.preparePublicBookingInquiry).not.toHaveBeenCalled();
+  });
+
+  it('create rejects before persist when recaptcha fails', async () => {
+    recaptcha.assertHuman.mockRejectedValue(
+      new BadRequestException('Could not verify you are human.'),
+    );
+
+    await expect(service.create(makeCreateContactDto())).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(repository.create).not.toHaveBeenCalled();
+    expect(mail.sendTransactional).not.toHaveBeenCalled();
+  });
+
+  it('create strips recaptchaToken before repository.create', async () => {
+    const created = makeContactRequestRow();
+    repository.create.mockResolvedValue(created);
+
+    await service.create(makeCreateContactDto());
+
+    expect(recaptcha.assertHuman).toHaveBeenCalledWith(
+      'test-recaptcha-token-ok-xx',
+    );
+    const payload = (
+      repository.create.mock.calls as Array<[Record<string, unknown>]>
+    )[0]?.[0];
+    expect(payload).toMatchObject({ fullName: 'Ada Lovelace' });
+    expect(payload).not.toHaveProperty('recaptchaToken');
+    expect(payload).not.toHaveProperty('emailVerificationToken');
   });
 
   it('create dedupe returns existing contact when active booking exists for day', async () => {

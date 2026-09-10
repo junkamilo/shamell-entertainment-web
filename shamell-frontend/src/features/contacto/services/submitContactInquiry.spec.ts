@@ -3,12 +3,15 @@ import { http, HttpResponse } from "msw";
 import { server } from "@/test/server";
 import { submitContactInquiry } from "./submitContactInquiry";
 
+const recaptchaToken = "test-recaptcha-token-ok-xx";
+
 describe("submitContactInquiry", () => {
   it("returns ok on success", async () => {
     const result = await submitContactInquiry({
       fullName: "Ada Lovelace",
       email: "ada@example.com",
       message: "Hello from the contact form.",
+      recaptchaToken,
       inquiryDetails: { entrySource: "contact_page" },
     });
     expect(result).toEqual({ ok: true });
@@ -30,6 +33,7 @@ describe("submitContactInquiry", () => {
       email: "ada@example.com",
       phone: "+15551234567",
       message: "Hello",
+      recaptchaToken,
       inquiryDetails: {},
     });
 
@@ -39,6 +43,7 @@ describe("submitContactInquiry", () => {
       email: "ada@example.com",
       phone: "+15551234567",
       message: "Hello",
+      recaptchaToken,
       inquiryDetails: {},
     });
   });
@@ -54,6 +59,7 @@ describe("submitContactInquiry", () => {
       fullName: "Ada",
       email: "bad",
       message: "Hello",
+      recaptchaToken,
       inquiryDetails: {},
     });
 
@@ -71,6 +77,7 @@ describe("submitContactInquiry", () => {
       fullName: "A",
       email: "",
       message: "Hello",
+      recaptchaToken,
       inquiryDetails: {},
     });
 
@@ -86,6 +93,7 @@ describe("submitContactInquiry", () => {
       fullName: "Ada",
       email: "ada@example.com",
       message: "Hello",
+      recaptchaToken,
       inquiryDetails: {},
     });
 

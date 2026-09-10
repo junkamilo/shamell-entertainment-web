@@ -164,6 +164,8 @@ export function createMockUseContactInquiryFormReturn(
     isSubmitting: false,
     submitFeedbackPhase: "idle" as const,
     apiError: null as string | null,
+    recaptchaToken: "test-recaptcha-token-ok-xx" as string | null,
+    setRecaptchaToken: vi.fn(),
     onSubmit: vi.fn((e: { preventDefault: () => void }) => e.preventDefault()),
     handleInquirySubmitComplete: vi.fn(),
     selectedLine: contactLine,

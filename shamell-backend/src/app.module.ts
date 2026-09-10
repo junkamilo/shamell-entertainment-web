@@ -8,6 +8,7 @@ import { UsersModule } from './modules/users/users.module';
 import { ServicesModule } from './modules/services/services.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { ContactModule } from './modules/contact/contact.module';
+import { EmailVerificationModule } from './modules/email-verification/email-verification.module';
 import { PerformersModule } from './modules/performers/performers.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EventsModule } from './modules/events/events.module';
@@ -38,6 +39,7 @@ import { HomeModule } from './modules/home/home.module';
     ServicesModule,
     BookingsModule,
     ContactModule,
+    EmailVerificationModule,
     PerformersModule,
     AuthModule,
     EventsModule,

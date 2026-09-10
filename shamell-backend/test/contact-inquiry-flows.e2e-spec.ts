@@ -5,6 +5,7 @@ import type { App } from 'supertest/types';
 import {
   makeContactRequestRow,
   makeCreateContactDto,
+  makeConciergeCreateContactDto,
 } from '../src/modules/contact/__mocks__/contact.fixtures';
 import { createContactServiceMock } from '../src/modules/contact/__mocks__/contact.service.mock';
 import { createContactHttpApp } from '../src/modules/contact/testing/contact-http-app';
@@ -118,9 +119,8 @@ describe('Contact inquiry flows (deep e2e)', () => {
     const res = await request(app.getHttpServer())
       .post('/api/v1/contact')
       .send(
-        makeCreateContactDto({
+        makeConciergeCreateContactDto({
           subject: 'Concierge inquiry',
-          inquiryDetails: { entrySource: 'concierge_gate' },
         }),
       )
       .expect(201);
@@ -130,6 +130,48 @@ describe('Contact inquiry flows (deep e2e)', () => {
     expect(repository.create).toHaveBeenCalled();
     expect(mail.sendTransactional).toHaveBeenCalled();
     expect(bookings.preparePublicBookingInquiry).not.toHaveBeenCalled();
+  });
+
+  it('POST /contact concierge inquiry rejects incomplete required fields', async () => {
+    await boot();
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/contact')
+      .send(
+        makeCreateContactDto({
+          subject: 'Concierge inquiry',
+          emailVerificationToken: 'a'.repeat(40),
+          inquiryDetails: { entrySource: 'concierge_gate' },
+        }),
+      )
+      .expect(400);
+
+    const error = res.body as ErrorBody;
+    const message = Array.isArray(error.message)
+      ? error.message.join(' ')
+      : error.message;
+    expect(message).toMatch(/location|date|guest|planning/i);
+    expect(repository.create).not.toHaveBeenCalled();
+  });
+
+  it('POST /contact concierge inquiry rejects missing email verification', async () => {
+    await boot();
+
+    const res = await request(app.getHttpServer())
+      .post('/api/v1/contact')
+      .send(
+        makeConciergeCreateContactDto({
+          emailVerificationToken: undefined,
+        }),
+      )
+      .expect(400);
+
+    const error = res.body as ErrorBody;
+    const message = Array.isArray(error.message)
+      ? error.message.join(' ')
+      : error.message;
+    expect(message).toMatch(/verify your email/i);
+    expect(repository.create).not.toHaveBeenCalled();
   });
 
   it('POST /contact booking inquiry materializes RESERVED via real service', async () => {

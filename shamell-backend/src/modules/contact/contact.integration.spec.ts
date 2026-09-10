@@ -13,6 +13,7 @@ import type { BookingsService } from '../bookings/services/bookings.service';
 import type { MailService } from '../mail/services/mail.service';
 import type { AdminCustomerActivityNotifyService } from '../mail/services/admin-customer-activity-notify.service';
 import type { ConfigService } from '@nestjs/config';
+import type { RecaptchaVerifier } from './services/recaptcha.verifier';
 
 const run = process.env.CONTACT_INTEGRATION === '1';
 
@@ -53,6 +54,12 @@ const run = process.env.CONTACT_INTEGRATION === '1';
       preparePublicBookingInquiry: () => Promise.resolve(null),
       insertPublicBookingInquiry: () => Promise.resolve(undefined),
     } as unknown as BookingsService;
+    const recaptcha = {
+      assertHuman: () => Promise.resolve(undefined),
+    } as unknown as RecaptchaVerifier;
+    const emailVerification = {
+      consumeVerifiedToken: () => Promise.resolve(undefined),
+    } as unknown as import('../email-verification/services/email-verification.service').EmailVerificationService;
 
     service = new ContactService(
       repository,
@@ -62,6 +69,8 @@ const run = process.env.CONTACT_INTEGRATION === '1';
       config,
       bookings,
       inbox,
+      recaptcha,
+      emailVerification,
     );
   });
 

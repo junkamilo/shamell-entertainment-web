@@ -37,6 +37,7 @@ describe("contacto test environment", () => {
       fullName: "Ada Lovelace",
       email: "ada@example.com",
       message: "Hello",
+      recaptchaToken: "test-recaptcha-token-ok-xx",
       inquiryDetails: {},
     });
     expect(submitted.ok).toBe(true);
