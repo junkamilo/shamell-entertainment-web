@@ -10,7 +10,7 @@ import {
   ReservationEventScheduleMode,
   UpcomingExperienceType,
 } from '@prisma/client';
-import { ensureUniqueEventSlug } from '../../../common/event-slug.util';
+import { ensureUniqueEventSlug } from '../../../common/util/event-slug.util';
 import { GalleryService } from '../../gallery/services/gallery.service';
 import { resolveUpcomingPurchaseContext } from '../../upcoming-events/utils/upcoming-purchase-mode.util';
 import { fixedEventStartsAtIso } from '../../upcoming-events/utils/upcoming-fixed-ticket.util';

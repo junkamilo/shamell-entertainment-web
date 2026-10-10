@@ -15,7 +15,7 @@
     "build": "node scripts/run-prisma.mjs generate && tsc -p tsconfig.build.json && node scripts/copy-email-assets.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "node banner.js && nest start --watch",
+    "start:dev": "node scripts/banner.js && nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node scripts/run-prisma.mjs migrate deploy && node dist/main.js",
     "lint": "node scripts/run-prisma.mjs generate && eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
@@ -24,6 +24,9 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
+    "test:integration:local": "cross-env DATABASE_URL=postgresql://test:test@localhost:5434/shamell_test DIRECT_URL=postgresql://test:test@localhost:5434/shamell_test JWT_SECRET=local-test-jwt-secret AUTH_INTEGRATION=1 jest --runInBand test/integration test/security",
+    "test:db:up": "docker compose -f docker-compose.test.yml -p shamell-backend-test up -d && cross-env DATABASE_URL=postgresql://test:test@localhost:5434/shamell_test DIRECT_URL=postgresql://test:test@localhost:5434/shamell_test node scripts/run-prisma.mjs db push",
+    "test:db:down": "docker compose -f docker-compose.test.yml -p shamell-backend-test down",
     "test:cov:upcoming": "jest modules/upcoming-events --coverage --runInBand --collectCoverageFrom=\"modules/upcoming-events/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
     "test:cov:venue-reservations": "jest modules/venue-reservations --coverage --runInBand --collectCoverageFrom=\"modules/venue-reservations/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
     "test:cov:bookings": "jest modules/bookings --coverage --runInBand --collectCoverageFrom=\"modules/bookings/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
@@ -38,7 +41,8 @@
     "test:cov:header-media": "jest modules/header-media --coverage --runInBand --collectCoverageFrom=\"modules/header-media/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
     "test:cov:services": "jest modules/services --coverage --runInBand --collectCoverageFrom=\"modules/services/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
     "test:cov:venue-layout-settings": "jest modules/venue-layout-settings --coverage --runInBand --collectCoverageFrom=\"modules/venue-layout-settings/**/*.ts\" --collectCoverageFrom=\"!**/*.module.ts\" --collectCoverageFrom=\"!**/*.dto.ts\" --collectCoverageFrom=\"!**/__mocks__/**\" --collectCoverageFrom=\"!**/*.spec.ts\" --collectCoverageFrom=\"!**/testing/**\"",
-    "resend:venue-confirmation": "ts-node -r tsconfig-paths/register scripts/resend-venue-seat-confirmation.ts"
+    "resend:venue-confirmation": "ts-node -r tsconfig-paths/register scripts/resend-venue-seat-confirmation.ts",
+    "test:mutation:auth": "stryker run"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -76,10 +80,13 @@
     "@nestjs/cli": "^11.0.0",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.0.1",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/jest-runner": "^10.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.0.0",
     "@types/pdfkit": "^0.17.6",
     "@types/supertest": "^7.0.0",
+    "cross-env": "^10.1.0",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
@@ -100,7 +107,17 @@
       "json",
       "ts"
     ],
-    "rootDir": "src",
+    "rootDir": ".",
+    "roots": [
+      "<rootDir>/src/",
+      "<rootDir>/test/unit/",
+      "<rootDir>/test/integration/",
+      "<rootDir>/test/security/"
+    ],
+    "moduleNameMapper": {
+      "^@app/(.*)$": "<rootDir>/src/$1",
+      "^@test-support/(.*)$": "<rootDir>/test/support/$1"
+    },
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
@@ -115,7 +132,7 @@
       "!**/*.spec.ts",
       "!**/*.integration.spec.ts"
     ],
-    "coverageDirectory": "../coverage",
+    "coverageDirectory": "./coverage",
     "testEnvironment": "node"
   }
 }

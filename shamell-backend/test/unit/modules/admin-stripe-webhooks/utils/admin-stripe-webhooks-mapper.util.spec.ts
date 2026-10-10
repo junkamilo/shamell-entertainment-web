@@ -1,0 +1,75 @@
+import {
+  makeBookingPaymentRelated,
+  makeClassEnrollmentRelated,
+  makePrismaWebhookEvent,
+  makeRelatedSources,
+  makeVenueReservationRelated,
+} from '@test-support/modules/admin-stripe-webhooks/fixtures/admin-stripe-webhooks.fixtures';
+import {
+  emptyRelatedPaymentSources,
+  mapRelatedPaymentsFromSources,
+  toDetailRow,
+  toRow,
+} from '@app/modules/admin-stripe-webhooks/utils/admin-stripe-webhooks-mapper.util';
+
+describe('admin-stripe-webhooks-mapper.util', () => {
+  it('toRow maps dates and object payloadSummary', () => {
+    const row = toRow(
+      makePrismaWebhookEvent({
+        payloadSummary: { foo: 'bar' },
+      }),
+    );
+    expect(row.payloadSummary).toEqual({ foo: 'bar' });
+    expect(row.processedAt).toBe('2026-07-15T12:00:00.000Z');
+    expect(row.status).toBe('PROCESSED');
+  });
+
+  it('toRow nulls non-object payloadSummary', () => {
+    const row = toRow(makePrismaWebhookEvent({ payloadSummary: 'x' as never }));
+    expect(row.payloadSummary).toBeNull();
+  });
+
+  it('toDetailRow exposes redacted payload object', () => {
+    const detail = toDetailRow(
+      makePrismaWebhookEvent({
+        payload: {
+          object: { id: 'pi_1', client_secret: '[redacted]' },
+          previous_attributes: null,
+        },
+      }),
+    );
+    expect(detail.payload).toEqual({
+      object: { id: 'pi_1', client_secret: '[redacted]' },
+      previous_attributes: null,
+    });
+  });
+  it('mapRelatedPaymentsFromSources returns empty for empty sources', () => {
+    expect(mapRelatedPaymentsFromSources(emptyRelatedPaymentSources())).toEqual(
+      [],
+    );
+  });
+
+  it('maps booking, class, and venue related payments', () => {
+    const mapped = mapRelatedPaymentsFromSources(
+      makeRelatedSources({
+        bookingPayment: makeBookingPaymentRelated(),
+        classEnrollment: makeClassEnrollmentRelated(),
+        venueReservation: makeVenueReservationRelated(),
+      }),
+    );
+    expect(mapped).toHaveLength(3);
+    expect(mapped[0]).toMatchObject({
+      kind: 'booking_payment',
+      customerEmail: 'ada@example.com',
+      amount: '150',
+    });
+    expect(mapped[1]).toMatchObject({
+      kind: 'class_enrollment',
+      customerEmail: 'marie@example.com',
+    });
+    expect(mapped[2]).toMatchObject({
+      kind: 'venue_seat_reservation',
+      id: 'vsr-1',
+    });
+  });
+});

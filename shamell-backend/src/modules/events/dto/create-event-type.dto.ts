@@ -13,7 +13,7 @@ import {
 import {
   CONTACT_INQUIRY_CODES,
   type ContactInquiryCode,
-} from '../../../common/contact-inquiry-codes';
+} from '../../../common/constants/contact-inquiry-codes';
 import { EventTypeOccasionAssignmentDto } from './event-type-occasion-assignment.dto';
 
 export class CreateEventTypeDto {

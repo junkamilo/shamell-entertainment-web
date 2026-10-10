@@ -3,6 +3,10 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "moduleNameMapper": {
+    "^@app/(.*)$": "<rootDir>/../src/$1",
+    "^@test-support/(.*)$": "<rootDir>/support/$1"
+  },
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }
