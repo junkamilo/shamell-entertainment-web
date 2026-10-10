@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { renderWithProviders } from "../test/utils/renderWithProviders";
 
 vi.mock("next/navigation", () => ({

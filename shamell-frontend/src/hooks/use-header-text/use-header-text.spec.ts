@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { DEFAULT_HEADER_TEXT } from "@/lib/header-media/headerTextTypes";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { makeHeaderTextContent } from "../test/fixtures/hooks.fixture";
 import { FIXTURE_HEADER_HEADLINE } from "../test/fixtures/uuids.fixture";
 import { useHeaderText } from "./use-header-text";

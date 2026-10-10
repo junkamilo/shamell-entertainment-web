@@ -1,0 +1,44 @@
+/** @vitest-environment jsdom */
+
+import { describe, expect, it, vi } from "vitest";
+import { screen } from "@testing-library/react";
+import { renderWithProviders } from "@test/features/contacto/support/helpers/renderWithProviders";
+
+const gateState = vi.hoisted(() => ({ suspend: false }));
+
+vi.mock("@/components/shared", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/components/shared")>();
+  return {
+    ...actual,
+    SiteHeader: () => <header data-testid="site-header" />,
+    Footer: () => <footer data-testid="site-footer" />,
+  };
+});
+
+vi.mock("@/features/contacto/components/ContactInquiryGate", () => ({
+  default: function Gate() {
+    if (gateState.suspend) {
+      throw new Promise(() => undefined);
+    }
+    return <div data-testid="contact-inquiry-gate" />;
+  },
+}));
+
+import ContactoPage from "@/features/contacto/components/ContactoPage";
+
+describe("ContactoPage", () => {
+  it("renders shell and inquiry gate", () => {
+    gateState.suspend = false;
+    renderWithProviders(<ContactoPage />);
+    expect(screen.getByTestId("site-header")).toBeInTheDocument();
+    expect(screen.getByTestId("contact-inquiry-gate")).toBeInTheDocument();
+    expect(screen.getByTestId("site-footer")).toBeInTheDocument();
+  });
+
+  it("shows the suspense fallback while the gate is pending", () => {
+    gateState.suspend = true;
+    renderWithProviders(<ContactoPage />);
+    expect(screen.getByText("Loading form…")).toBeInTheDocument();
+    gateState.suspend = false;
+  });
+});

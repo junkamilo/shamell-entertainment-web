@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { MailService } from '@app/modules/mail/services/mail.service';
 import { AdminPaymentNotifyService } from '@app/modules/mail/services/admin-payment-notify.service';
-import { createStripeServiceMock } from '@app/modules/stripe/__mocks__/stripe.service.mock';
+import { createStripeServiceMock } from '@test-support/modules/stripe/mocks/stripe.service.mock';
 import { StripeService } from '@app/modules/stripe/services/stripe.service';
 import { createBookingsRepositoryMock } from '@test-support/modules/bookings/mocks/bookings.repository.mock';
 import { BookingsAdminService } from '@app/modules/bookings/services/bookings-admin.service';

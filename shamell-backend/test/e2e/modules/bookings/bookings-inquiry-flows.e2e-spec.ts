@@ -1,5 +1,5 @@
 import { BadRequestException } from '@nestjs/common';
-import { makeCreateContactDto } from '@app/modules/contact/__mocks__/contact.fixtures';
+import { makeCreateContactDto } from '@test-support/modules/contact/mocks/contact.fixtures';
 import { makeBookingWithRelations } from '@test-support/modules/bookings/fixtures/bookings.fixtures';
 import { createBookingsInquiryServiceTestModule } from '@test-support/modules/bookings/harnesses/bookings-inquiry-service.test-module';
 

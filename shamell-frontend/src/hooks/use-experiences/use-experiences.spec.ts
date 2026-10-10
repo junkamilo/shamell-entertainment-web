@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { experienceServicesHandler } from "../test/mocks/handlers";
 import { makeExperienceServiceApiItem } from "../test/fixtures/hooks.fixture";
 import {

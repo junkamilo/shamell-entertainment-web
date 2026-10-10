@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { createFixedEventCheckoutSession } from "./createFixedEventCheckoutSession";
 import { FIXTURE_CLIENT_SECRET, FIXTURE_EVENT_SLUG } from "../test/fixtures/uuids.fixture";
 

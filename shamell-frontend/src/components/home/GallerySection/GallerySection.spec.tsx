@@ -6,12 +6,12 @@ import userEvent from "@testing-library/user-event";
 import {
   makeGalleryPhotoItem,
   makeGalleryTabItem,
-} from "@/features/gallery/test/fixtures/gallery.fixture";
+} from "@test/features/gallery/support/fixtures/gallery.fixture";
 import {
   FIXTURE_CATEGORY_SLUG,
   FIXTURE_CATEGORY_SLUG_2,
   FIXTURE_PHOTO_ID_2,
-} from "@/features/gallery/test/fixtures/uuids.fixture";
+} from "@test/features/gallery/support/fixtures/uuids.fixture";
 
 const photosState = {
   photos: [

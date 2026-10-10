@@ -3,7 +3,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { publicAvailabilityHandler } from "../test/mocks/handlers";
 import {
   clearPublicAvailabilityCache,

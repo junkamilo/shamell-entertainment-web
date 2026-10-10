@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Test, type TestingModule } from '@nestjs/testing';
-import { createMailServiceMock } from '@app/modules/mail/__mocks__/mail.service.mock';
+import { createMailServiceMock } from '@test-support/modules/mail/mocks/mail.service.mock';
 import { MailService } from '@app/modules/mail/services/mail.service';
 import { createAuthRepositoryMock } from '@test-support/modules/auth/mocks/auth.repository.mock';
 import { createJwtServiceMock } from '@test-support/modules/auth/mocks/jwt.service.mock';

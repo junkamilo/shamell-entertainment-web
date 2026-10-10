@@ -14,6 +14,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { randomUUID } from 'crypto';
 import { diskStorage } from 'multer';
@@ -24,11 +25,13 @@ import { UpsertAboutContentDto } from '../dto/upsert-about-content.dto';
 import { AboutService } from '../services/about.service';
 
 @Controller('about')
+@UseGuards(ThrottlerGuard)
 export class AboutController {
   constructor(private readonly aboutService: AboutService) {}
 
   @Get()
   @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @Header('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
   getPublicAboutContent() {
     return this.aboutService.getPublicAboutContent();

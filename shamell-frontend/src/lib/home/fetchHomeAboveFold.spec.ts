@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { HttpResponse, http } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { fallbackAboutContent } from "@/lib/about/aboutContent";
 import { DEFAULT_HEADER_TEXT } from "@/lib/header-media/headerTextTypes";
 import { fetchHomeAboveFold } from "./fetchHomeAboveFold";

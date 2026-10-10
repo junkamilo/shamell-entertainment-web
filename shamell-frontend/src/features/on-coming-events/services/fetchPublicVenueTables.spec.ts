@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { fetchPublicVenueTables } from "./fetchPublicVenueTables";
 import { FIXTURE_TABLE_CONFIG_ID } from "../test/fixtures/uuids.fixture";
 

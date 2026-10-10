@@ -5,7 +5,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { defaultOnComingSettings } from "@/lib/on-coming-events/onComingSettings";
 import { ON_COMING_EVENTS_SETTINGS_CHANGED_EVENT } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { onComingSettingsHandler } from "../test/mocks/handlers";
 import { makeOnComingPromo } from "../test/fixtures/hooks.fixture";
 import {

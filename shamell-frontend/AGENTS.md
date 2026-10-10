@@ -119,10 +119,23 @@ Sign-in: canonical `/admin/login` is a thin page → `@/features/admin/auth`. Le
 
 ### Unit / Vitest convention
 
-- **Co-locate** specs next to the code: `foo.ts` → `foo.spec.ts` (or `.spec.tsx` for UI). Vitest `include` is `src/**/*.{spec.ts,spec.tsx}` — do **not** use `.test.ts` (invisible to the runner).
-- Feature `test/` is **infra only** (fixtures, MSW handlers, render helpers, optional `test/integration/`). Do not dump primary unit suites under `test/unit/`.
-- Global MSW/RTL setup: `src/test/setup.ts` + `src/test/server.ts`. `*.spec.tsx` runs in jsdom via `environmentMatchGlobs`.
-- Example suite: `src/features/admin/about` — `npx vitest run src/features/admin/about` (prefer local `node_modules/.bin/vitest`).
+**Migración en curso a un árbol QA central `test/`** (guía: `migracion-tests-about.md`; piloto `about` ya migrado). El código de producción no se mueve; solo specs + infra.
+
+- **Módulos migrados** (hoy: **todo `features/admin/`** — los 17 módulos — y `features/contacto`, `features/forgot-password`, `features/gallery`): specs en `test/` espejando `src/` — `src/features/admin/about/components/X.tsx` → `test/features/admin/about/components/X.spec.tsx`. Infra del módulo en `test/features/<ruta>/support/{fixtures,mocks,helpers}`; integración en `test/features/<ruta>/integration/`.
+- **Módulos aún no migrados:** siguen co-locados (`foo.ts` → `foo.spec.ts`) con infra en `features/<ruta>/test/`. Vitest `include` cubre `src/**` y `test/**` durante la coexistencia.
+- Solo `*.spec.{ts,tsx}` — do **not** use `.test.ts` (invisible to the runner).
+- **Imports desde `test/`:** a producción con `@/…`, entre tests con `@test/…` (alias en `tsconfig.json` + `vitest.config.ts`). Nunca relativos cruzando `test/` ↔ `src/`.
+- Global MSW/RTL setup: `test/support/setup.ts` + `test/support/server.ts` (importar el server como `@test/support/server`). Al migrar un módulo, reconectar su línea de handlers en `server.ts`.
+- **jsdom:** lo activa el pragma `/** @vitest-environment jsdom */` en la línea 1 de cada `*.spec.tsx` (y hooks con `renderHook`). Entorno por defecto `node`.
+- **Codemod para migrar un módulo:** `node scripts/migrate-tests-to-test-dir.mjs features/<ruta> [--dry]` (mueve con `git mv`, reescribe imports a `@/…` / `@test/…` y reconecta referencias externas como `test/support/server.ts`). Scripts `.mjs` movidos (smokes) requieren actualizar su ruta en `package.json`.
+- Example suite: `npx vitest run test/features/admin/about` (prefer local `node_modules/.bin/vitest`).
+
+### Cypress Component Testing
+
+- Specs `test/**/*.cy.tsx` junto al `.spec.tsx` del mismo componente (Vitest excluye `*.cy.*`; Cypress solo corre `*.cy.*`).
+- Soporte en `test/support/cypress/` (`component.ts` monta + CSS global; `component-index.html` con el ancla `__next_css__DO_NOT_USE__`). Tipos: `tsconfig.cypress.json`.
+- `cypress.config.ts` incluye un plugin que corrige `pagesDir` (sin carpeta `pages/`, Next trataría todo `src/` como páginas). Imágenes de `next/image` en specs: usar assets locales de `public/`.
+- `npm run test:ct` (headless) / `npm run test:ct:open`. No corre en CI todavía.
 
 ### Auth and API base (required)
 

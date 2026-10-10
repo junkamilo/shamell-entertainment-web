@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it } from "vitest";
 import { HttpResponse, http } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { fallbackAboutContent } from "./aboutContent";
 import { fetchPublicAbout } from "./fetchPublicAbout";
 import { aboutPublicHandler } from "./test/mocks/handlers";

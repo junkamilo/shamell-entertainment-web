@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { fetchPublicFloorLayout } from "./fetchPublicFloorLayout";
 import { FIXTURE_LAYOUT_ITEM_ID } from "../test/fixtures/uuids.fixture";
 

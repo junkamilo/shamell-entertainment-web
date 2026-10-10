@@ -15,7 +15,7 @@ import {
 import { BookingsService } from '@app/modules/bookings/services/bookings.service';
 import { createBookingsWebhookServiceTestModule } from '@test-support/modules/bookings/harnesses/bookings-webhook-service.test-module';
 import type { ErrorBody } from '@test-support/modules/bookings/harnesses/bookings.test-types';
-import { makeCheckoutSessionWebhookEvent } from '@app/modules/stripe/__mocks__/stripe.fixtures';
+import { makeCheckoutSessionWebhookEvent } from '@test-support/modules/stripe/mocks/stripe.fixtures';
 import { StripeWebhookAuditService } from '@app/modules/stripe/services/stripe-webhook-audit.service';
 import { StripeService } from '@app/modules/stripe/services/stripe.service';
 import { UpcomingEventsService } from '@app/modules/upcoming-events/services/upcoming-events.service';

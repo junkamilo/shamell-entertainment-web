@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import { fallbackAboutContent } from "@/lib/about/aboutContent";
 import { makeAboutContent } from "../test/fixtures/hooks.fixture";
 import { FIXTURE_ABOUT_TITLE } from "../test/fixtures/uuids.fixture";

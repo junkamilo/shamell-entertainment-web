@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { ON_COMING_EVENTS_PUBLIC_DATA_CHANGED_EVENT } from "@/lib/on-coming-events/onComingEventsSettingsEvents";
-import { server } from "@/test/server";
+import { server } from "@test/support/server";
 import type { OnComingEventHubCardItem } from "@/features/on-coming-events/components/OnComingEventHubCard";
 import { usePublicUpcomingHubEvents } from "./use-public-upcoming-hub-events";
 

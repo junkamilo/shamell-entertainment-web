@@ -3,7 +3,7 @@ import { Test } from '@nestjs/testing';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@app/prisma/prisma.service';
 import { FloorLayoutService } from '@app/modules/floor-layout/services/floor-layout.service';
-import { createFloorLayoutServiceMock } from '@app/modules/floor-layout/__mocks__/floor-layout.service.mock';
+import { createFloorLayoutServiceMock } from '@test-support/modules/floor-layout/mocks/floor-layout.service.mock';
 import { createPrismaMock } from '@app/testing';
 import { createAdminPaymentsRepositoryMock } from '@test-support/modules/admin-payments/mocks/admin-payments.repository.mock';
 import {
