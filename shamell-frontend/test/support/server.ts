@@ -27,7 +27,7 @@ import { venueTablesHandlers } from "@test/features/admin/venue-tables/support/m
 import { contactoHandlers } from "@test/features/contacto/support/mocks/handlers";
 import { forgotPasswordHandlers } from "@test/features/forgot-password/support/mocks/handlers";
 import { publicGalleryHandlers } from "@test/features/gallery/support/mocks/handlers";
-import { publicOnComingEventsHandlers } from "@/features/on-coming-events/test/mocks/handlers";
+import { publicOnComingEventsHandlers } from "@test/features/on-coming-events/support/mocks/handlers";
 import { hooksHandlers } from "@/hooks/test/mocks/handlers";
 import { adminLibHandlers } from "@/lib/admin/test/mocks/handlers";
 import { stripeLibHandlers } from "@/lib/stripe/test/mocks/handlers";
