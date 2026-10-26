@@ -1,5 +1,5 @@
 import type { PrismaService } from '../../../prisma/prisma.service';
-import type { ContactInquiryCode } from '../../../common/contact-inquiry-codes';
+import type { ContactInquiryCode } from '../../../common/constants/contact-inquiry-codes';
 import { EventTypeCatalogChannel } from '@prisma/client';
 import { bookingInquiryCatalogEventWhere } from '../../events/utils/booking-inquiry-catalog.util';
 import type { SanitizedInquiryDetails } from '../types/booking-inquiry.types';

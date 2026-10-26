@@ -11,7 +11,7 @@ test.describe("Payment return UI", () => {
   test("venue return shows paid confirmation", async ({ page }) => {
     await mockVenuePaidStatus(page);
     await page.goto(
-      "/on-coming-events/return?session_id=cs_e2e&event_slug=test",
+      "/upcoming-events/return?session_id=cs_e2e&event_slug=test",
     );
     await expect(page.getByTestId("payment-confirmation-paid")).toBeVisible({
       timeout: 15_000,
@@ -25,7 +25,7 @@ test.describe("Payment return UI", () => {
   test("class session return shows paid confirmation", async ({ page }) => {
     await mockClassSessionPaidStatus(page);
     await page.goto(
-      "/on-coming-events/test-slug/classes/return?session_id=cs_e2e",
+      "/upcoming-events/test-slug/classes/return?session_id=cs_e2e",
     );
     await expect(page.getByTestId("payment-confirmation-paid")).toBeVisible({
       timeout: 15_000,
@@ -39,7 +39,7 @@ test.describe("Payment return UI", () => {
   test("class package return shows paid confirmation", async ({ page }) => {
     await mockClassPackagePaidStatus(page);
     await page.goto(
-      "/on-coming-events/test-slug/classes/package-return?session_id=cs_e2e",
+      "/upcoming-events/test-slug/classes/package-return?session_id=cs_e2e",
     );
     await expect(page.getByTestId("payment-confirmation-paid")).toBeVisible({
       timeout: 15_000,
@@ -64,7 +64,7 @@ test.describe("Payment return UI", () => {
 
   test("fixed ticket return shows paid confirmation", async ({ page }) => {
     await mockFixedTicketPaidStatus(page);
-    await page.goto("/on-coming-events/test-slug/return?session_id=cs_e2e");
+    await page.goto("/upcoming-events/test-slug/return?session_id=cs_e2e");
     await expect(page.getByTestId("payment-confirmation-paid")).toBeVisible({
       timeout: 15_000,
     });

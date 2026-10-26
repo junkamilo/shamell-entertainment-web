@@ -17,7 +17,7 @@ test.describe("Event detail purchase CTAs", () => {
 
   test("venue seating CTA navigates to seats", async ({ page }) => {
     await mockUpcomingEventDetail(page, E2E_SEATS_SLUG, seatsEventDetail());
-    await page.goto(`/on-coming-events/${E2E_SEATS_SLUG}`);
+    await page.goto(`/upcoming-events/${E2E_SEATS_SLUG}`);
 
     await expect(
       page.getByRole("heading", { name: "Seating Gala" }),
@@ -26,13 +26,13 @@ test.describe("Event detail purchase CTAs", () => {
     await expect(purchase).toBeVisible();
     await purchase.getByRole("button", { name: "Choose your seat" }).click();
     await expect(page).toHaveURL(
-      new RegExp(`/on-coming-events/${E2E_SEATS_SLUG}/seats`),
+      new RegExp(`/upcoming-events/${E2E_SEATS_SLUG}/seats`),
     );
   });
 
   test("fixed ticket CTA opens buy ticket modal", async ({ page }) => {
     await mockUpcomingEventDetail(page, E2E_TICKET_SLUG, ticketEventDetail());
-    await page.goto(`/on-coming-events/${E2E_TICKET_SLUG}`);
+    await page.goto(`/upcoming-events/${E2E_TICKET_SLUG}`);
 
     await expect(
       page.getByRole("heading", { name: "Ticket Night" }),
@@ -48,7 +48,7 @@ test.describe("Event detail purchase CTAs", () => {
 
   test("classes month package CTA opens booking wizard", async ({ page }) => {
     await mockUpcomingEventDetail(page, E2E_CLASSES_SLUG, classesEventDetail());
-    await page.goto(`/on-coming-events/${E2E_CLASSES_SLUG}`);
+    await page.goto(`/upcoming-events/${E2E_CLASSES_SLUG}`);
 
     await expect(
       page.getByRole("heading", { name: "Weekly Bachata" }),

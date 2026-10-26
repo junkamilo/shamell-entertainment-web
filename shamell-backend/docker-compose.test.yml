@@ -1,0 +1,10 @@
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    container_name: shamell-postgres-test # unique name — no clash with pos-casa-verde
+    environment:
+      POSTGRES_DB: shamell_test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    ports:
+      - '5434:5432' # 5434, NOT 5433 — pos-casa-verde uses that one

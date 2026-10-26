@@ -62,7 +62,7 @@ function OnComingEventDetailError({
           className="mt-6 inline-block text-sm text-gold hover:underline"
           onClick={() => onBackNavigateStart?.()}
         >
-          All On Coming Events
+          All Upcoming Events
         </Link>
       </div>
     </div>

@@ -29,15 +29,15 @@ export default function OnComingEventsPromoSection({
 
   if (settingsLoading || !clientEnabled) return null;
 
-  const title = promo.promoTitle?.trim() || "On Coming Events";
+  const title = promo.promoTitle?.trim() || "Upcoming Events";
   const description =
     promo.promoDescription?.trim() ||
-    "Discover on coming experiences curated by Shamell. View details, schedules, and book your place.";
+    "Discover upcoming experiences curated by Shamell. View details, schedules, and book your place.";
   const showLoading = isRefreshing && events.length === 0;
   const showEmpty = !isRefreshing && events.length === 0;
 
   return (
-    <section id="on-coming-events" className="bg-transparent px-4 py-20 md:py-24">
+    <section id="upcoming-events" className="bg-transparent px-4 py-20 md:py-24">
       <div className="mx-auto max-w-6xl">
         <RevealOnView className="relative mb-10 text-center md:mb-12" delay={40}>
           <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -71,7 +71,7 @@ export default function OnComingEventsPromoSection({
 
         {!showLoading && events.length > 0 ? (
           <RevealOnView delay={0} amount={0.12}>
-            <CatalogCardCarousel ariaLabel="On coming events">
+            <CatalogCardCarousel ariaLabel="Upcoming events">
               {events.map((event, index) => (
                 <OnComingEventHubCard
                   key={event.slug}

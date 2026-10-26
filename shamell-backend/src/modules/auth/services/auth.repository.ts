@@ -109,6 +109,13 @@ export class AuthRepository {
     passwordHash: string;
   }): Promise<void> {
     return this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.adminInvite.updateMany({
+        where: { id: params.inviteId, consumedAt: null },
+        data: { consumedAt: new Date() },
+      });
+      if (consumed.count !== 1) {
+        throw new Error('INVITE_ALREADY_USED');
+      }
       await tx.user.create({
         data: {
           email: params.email,
@@ -117,13 +124,6 @@ export class AuthRepository {
           role: 'ADMIN',
         },
       });
-      const consumed = await tx.adminInvite.updateMany({
-        where: { id: params.inviteId, consumedAt: null },
-        data: { consumedAt: new Date() },
-      });
-      if (consumed.count !== 1) {
-        throw new Error('INVITE_ALREADY_USED');
-      }
     });
   }
 

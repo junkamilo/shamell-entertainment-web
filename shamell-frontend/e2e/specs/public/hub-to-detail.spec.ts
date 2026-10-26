@@ -48,13 +48,13 @@ test.describe("Hub to detail / seats", () => {
       eventTypeName: "Hub Ticket Night",
     });
 
-    await page.goto("/on-coming-events");
+    await page.goto("/upcoming-events");
     await expect(
-      page.getByRole("heading", { name: "ON COMING EVENTS" }),
+      page.getByRole("heading", { name: "UPCOMING EVENTS" }),
     ).toBeVisible({ timeout: 20_000 });
     await page.getByRole("link", { name: "Buy ticket" }).click();
     await expect(page).toHaveURL(
-      new RegExp(`/on-coming-events/${E2E_HUB_TICKET_SLUG}`),
+      new RegExp(`/upcoming-events/${E2E_HUB_TICKET_SLUG}`),
     );
     await expect(
       page.getByRole("heading", { name: "Hub Ticket Night" }),
@@ -153,10 +153,10 @@ test.describe("Hub to detail / seats", () => {
       },
     );
 
-    await page.goto("/on-coming-events");
+    await page.goto("/upcoming-events");
     await page.getByRole("link", { name: "Buy tables / seats" }).click();
     await expect(page).toHaveURL(
-      new RegExp(`/on-coming-events/${E2E_SEATS_SLUG}/seats`),
+      new RegExp(`/upcoming-events/${E2E_SEATS_SLUG}/seats`),
     );
   });
 });

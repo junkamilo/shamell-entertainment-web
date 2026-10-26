@@ -21,7 +21,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@/features/*": ["./src/features/*"],
-      "@/lib/admin/*": ["./src/lib/admin/*"]
+      "@/lib/admin/*": ["./src/lib/admin/*"],
+      "@test/*": ["./test/*"]
     }
   },
   "include": [
@@ -40,6 +41,10 @@
     "**/*.test.ts",
     "**/*.test.tsx",
     "**/playwright.config.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "cypress.config.ts",
+    "**/*.cy.ts",
+    "**/*.cy.tsx",
+    "test/support/cypress/**"
   ]
 }

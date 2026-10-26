@@ -97,7 +97,7 @@ export default function UpcomingClassesPublicPage({ slug }: Props) {
     <main className="relative z-10 min-h-screen text-foreground">
       <SiteHeader />
       <div className="mx-auto max-w-3xl px-4 pb-20 pt-28 md:pt-32">
-        <p className="mb-2 font-brand text-xs tracking-[0.2em] text-gold/90">ON COMING EVENTS</p>
+        <p className="mb-2 font-brand text-xs tracking-[0.2em] text-gold/90">UPCOMING EVENTS</p>
         <h1 className="font-display text-3xl text-gold">{eventName || "Classes"}</h1>
         <p className="mt-2 text-sm text-foreground/75">Select a session and complete payment.</p>
 
@@ -171,7 +171,7 @@ export default function UpcomingClassesPublicPage({ slug }: Props) {
 
         <p className="mt-10 text-center">
           <Link href={onComingEventHubHref()} className="text-sm text-gold hover:underline">
-            All On Coming Events
+            All Upcoming Events
           </Link>
         </p>
       </div>

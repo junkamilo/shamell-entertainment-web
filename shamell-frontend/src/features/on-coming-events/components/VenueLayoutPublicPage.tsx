@@ -120,7 +120,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
     cachedState?.standaloneChairs ?? null,
   );
   const [eventLabel, setEventLabel] = useState<string | null>(cachedState?.eventLabel ?? null);
-  const [eventTitle, setEventTitle] = useState(cachedState?.eventTitle ?? "On Coming Events");
+  const [eventTitle, setEventTitle] = useState(cachedState?.eventTitle ?? "Upcoming Events");
   const [eventDescription, setEventDescription] = useState(cachedState?.eventDescription ?? "");
   const [eventItems, setEventItems] = useState<string[]>(cachedState?.eventItems ?? []);
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(
@@ -359,7 +359,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
 
           let nextClientEnabled = true;
           let nextEventLabel: string | null = null;
-          let nextEventTitle = "On Coming Events";
+          let nextEventTitle = "Upcoming Events";
           let nextEventDescription = "";
           let nextEventItems: string[] = [];
           let nextHeroImageUrl: string | null = null;
@@ -382,7 +382,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
             } else if (labelTitle) {
               nextEventTitle = labelTitle;
             } else {
-              nextEventTitle = "On Coming Events";
+              nextEventTitle = "Upcoming Events";
             }
             nextEventDescription = settings.promoDescription?.trim() ?? "";
             const promoUrl = settings.promoImageUrl?.trim() || null;
@@ -643,7 +643,7 @@ export default function VenueLayoutPublicPage({ eventSlug }: Props) {
       {!showBusyOverlay && !loading && clientEnabled === false
         ? pageShell(
             <>
-              <h1 className="font-display text-2xl text-shamell-gold">On Coming Events unavailable</h1>
+              <h1 className="font-display text-2xl text-shamell-gold">Upcoming Events unavailable</h1>
               <p className="mt-3 text-sm text-shamell-muted">
                 The interactive floor plan is not published at this time.
               </p>

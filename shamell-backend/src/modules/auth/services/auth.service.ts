@@ -119,16 +119,18 @@ export class AuthService {
   async loginAdmin(dto: LoginDto): Promise<AdminLoginResponse> {
     const user = await this.repository.findUserByEmail(dto.email.toLowerCase());
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+    let isPasswordValid = false;
+    const DUMMY_HASH =
+      '$2a$10$xn39X/N0p4I6U6p0n186Y.jI1U5E2E2.H9m1R6K8hT0cZ2D9o6B.S';
+
+    if (user && user.password) {
+      isPasswordValid = await comparePassword(dto.password, user.password);
+    } else {
+      // Dummy compare to prevent timing attacks (user enumeration)
+      await comparePassword(dto.password, DUMMY_HASH);
     }
 
-    if (!user.password) {
-      throw new UnauthorizedException('Use Google sign-in for this account.');
-    }
-
-    const isPasswordValid = await comparePassword(dto.password, user.password);
-    if (!isPasswordValid) {
+    if (!user || !user.password || !isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
 

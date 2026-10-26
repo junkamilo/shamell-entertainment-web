@@ -1,5 +1,5 @@
 /**
- * Smoke test: public on-coming-events tree must not 404; legacy aliases must redirect.
+ * Smoke test: public upcoming-events tree must not 404; legacy aliases must redirect.
  * Usage: npm run build && npm run start (in another terminal), then npm run smoke:on-coming-events
  * Override base: SMOKE_BASE_URL=http://localhost:3010 node scripts/smoke-on-coming-events-routes.mjs
  *
@@ -16,28 +16,28 @@ const isNotFound = (s) => s === 404;
 
 const cases = [
   {
-    name: "on-coming-events hub",
-    path: "/on-coming-events",
-    expectStatus: (s) => !isNotFound(s),
-  },
-  {
-    name: "on-coming-events detail",
-    path: "/on-coming-events/test-slug",
-    expectStatus: (s) => !isNotFound(s),
-  },
-  {
-    name: "on-coming-events seats",
-    path: "/on-coming-events/test-slug/seats",
-    expectStatus: (s) => !isNotFound(s),
-  },
-  {
-    name: "on-coming-events classes",
-    path: "/on-coming-events/test-slug/classes",
-    expectStatus: (s) => !isNotFound(s),
-  },
-  {
-    name: "legacy upcoming-events",
+    name: "upcoming-events hub",
     path: "/upcoming-events",
+    expectStatus: (s) => !isNotFound(s),
+  },
+  {
+    name: "upcoming-events detail",
+    path: "/upcoming-events/test-slug",
+    expectStatus: (s) => !isNotFound(s),
+  },
+  {
+    name: "upcoming-events seats",
+    path: "/upcoming-events/test-slug/seats",
+    expectStatus: (s) => !isNotFound(s),
+  },
+  {
+    name: "upcoming-events classes",
+    path: "/upcoming-events/test-slug/classes",
+    expectStatus: (s) => !isNotFound(s),
+  },
+  {
+    name: "legacy on-coming-events",
+    path: "/on-coming-events",
     expectStatus: isRedirect,
   },
   {

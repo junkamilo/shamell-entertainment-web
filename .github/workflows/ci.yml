@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, shamell-dev]
   pull_request:
 
 jobs:
@@ -37,10 +37,17 @@ jobs:
           cache: npm
           cache-dependency-path: shamell-frontend/package-lock.json
       - run: npm ci
+        env:
+          # Cypress solo se usa en local (test:ct); evita descargar su binario en CI.
+          CYPRESS_INSTALL_BINARY: "0"
       - run: npm run lint
+      # Vitest (src/** + test/**); el backend se simula con MSW, no hace falta levantarlo.
+      - run: npm test
       - run: npm run build
       - run: npm run start &
       - run: npx wait-on http://localhost:3000 --timeout 120000
       - run: npm run smoke:returns
         env:
           SMOKE_BASE_URL: http://localhost:3000
+      # Opcional en esta fase (Cypress Component Testing, specs test/**/*.cy.tsx):
+      # - run: npm run test:ct

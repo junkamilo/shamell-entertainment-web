@@ -5,10 +5,10 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
-    setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.{spec.ts,spec.tsx}"],
-    exclude: ["**/tests/e2e/**", "node_modules/**"],
-    environmentMatchGlobs: [["**/*.spec.tsx", "jsdom"]],
+    setupFiles: ["./test/support/setup.ts"],
+    include: ["test/**/*.spec.{ts,tsx}"],
+    exclude: ["**/node_modules/**", "**/tests/e2e/**", "e2e/**", "**/*.cy.{ts,tsx}"],
+    // jsdom se activa por pragma `// @vitest-environment jsdom` en cada *.spec.tsx.
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
@@ -17,7 +17,6 @@ export default defineConfig({
       exclude: [
         "src/**/*.{spec,test}.{ts,tsx}",
         "src/**/test/**",
-        "src/test/**",
         "src/**/*.d.ts",
 
         // ── Boilerplate sin lógica runtime ──────────────────
@@ -39,6 +38,7 @@ export default defineConfig({
     dedupe: ["three"],
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@test": path.resolve(__dirname, "./test"),
       three: path.resolve(__dirname, "./node_modules/three"),
     },
   },

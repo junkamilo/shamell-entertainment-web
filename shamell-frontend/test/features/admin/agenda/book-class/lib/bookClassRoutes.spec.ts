@@ -1,0 +1,10 @@
+import { describe, it, expect } from "vitest";
+import { BOOK_CLASS_SETUP_PATH } from "@/features/admin/agenda/book-class/lib/bookClassRoutes";
+import { ON_COMING_EVENTS_ADMIN_PATH } from "@/lib/on-coming-events/onComingEventsRoutes";
+
+describe("bookClassRoutes", () => {
+  it("re-exports the On Coming Events admin path for setup", () => {
+    expect(BOOK_CLASS_SETUP_PATH).toBe(ON_COMING_EVENTS_ADMIN_PATH);
+    expect(BOOK_CLASS_SETUP_PATH).toBe("/admin/on-coming-events");
+  });
+});

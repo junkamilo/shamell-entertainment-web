@@ -1,0 +1,27 @@
+/** @vitest-environment jsdom */
+
+import { describe, expect, it } from "vitest";
+import { screen } from "@testing-library/react";
+import { DEFAULT_HEADER_TEXT } from "@/lib/header-media/headerTextTypes";
+import { renderWithProviders } from "@test/features/admin/header-media/support/helpers/renderWithProviders";
+import HeaderTextPreview from "@/features/admin/header-media/components/HeaderTextPreview";
+
+describe("HeaderTextPreview", () => {
+  it("renders headline tagline and quote", () => {
+    renderWithProviders(<HeaderTextPreview content={DEFAULT_HEADER_TEXT} />);
+    expect(screen.getByRole("heading", { name: "SHAMELL" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Exclusive Belly Dance Performance Artistry"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Dance is the hidden language of the soul/),
+    ).toBeInTheDocument();
+  });
+
+  it("applies compact layout class path without crashing", () => {
+    renderWithProviders(
+      <HeaderTextPreview content={DEFAULT_HEADER_TEXT} compact />,
+    );
+    expect(screen.getByRole("heading", { name: "SHAMELL" })).toBeInTheDocument();
+  });
+});

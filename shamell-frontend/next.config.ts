@@ -62,23 +62,33 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/upcoming-events",
-        destination: "/on-coming-events",
+        source: "/on-coming-events/seats/return",
+        destination: "/upcoming-events/return",
+        permanent: false,
+      },
+      {
+        source: "/on-coming-events/:slug/seats/return",
+        destination: "/upcoming-events/return?event_slug=:slug",
+        permanent: false,
+      },
+      {
+        source: "/on-coming-events",
+        destination: "/upcoming-events",
         permanent: true,
       },
       {
-        source: "/upcoming-events/:path*",
-        destination: "/on-coming-events/:path*",
+        source: "/on-coming-events/:path*",
+        destination: "/upcoming-events/:path*",
         permanent: true,
       },
       {
         source: "/venue-layout",
-        destination: "/on-coming-events",
+        destination: "/upcoming-events",
         permanent: true,
       },
       {
         source: "/venue-layout/:path*",
-        destination: "/on-coming-events/:path*",
+        destination: "/upcoming-events/:path*",
         permanent: true,
       },
       {
@@ -102,13 +112,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/on-coming-events/seats/return",
-        destination: "/on-coming-events/return",
+        source: "/upcoming-events/seats/return",
+        destination: "/upcoming-events/return",
         permanent: false,
       },
       {
-        source: "/on-coming-events/:slug/seats/return",
-        destination: "/on-coming-events/return?event_slug=:slug",
+        source: "/upcoming-events/:slug/seats/return",
+        destination: "/upcoming-events/return?event_slug=:slug",
         permanent: false,
       },
     ];

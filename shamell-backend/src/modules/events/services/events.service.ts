@@ -10,7 +10,7 @@ import {
   ReservationEventScheduleMode,
   UpcomingExperienceType,
 } from '@prisma/client';
-import { ensureUniqueEventSlug } from '../../../common/event-slug.util';
+import { ensureUniqueEventSlug } from '../../../common/util/event-slug.util';
 import { GalleryService } from '../../gallery/services/gallery.service';
 import { resolveUpcomingPurchaseContext } from '../../upcoming-events/utils/upcoming-purchase-mode.util';
 import { fixedEventStartsAtIso } from '../../upcoming-events/utils/upcoming-fixed-ticket.util';
@@ -157,7 +157,7 @@ export class EventsService {
   }
 
   /**
-   * Lightweight upcoming hub cards (Home + /on-coming-events list).
+   * Lightweight upcoming hub cards (Home + /upcoming-events list).
    * Hero-only media; purchase context without per-event floor/reservation N+1.
    */
   async getPublicUpcomingHubEvents() {

@@ -27,6 +27,11 @@ import type {
   VenueRow,
 } from '../utils/admin-payments-mapper.util';
 
+/** Makes `%`, `_` and `\` match literally inside an ILIKE pattern. */
+function escapeLikePattern(value: string): string {
+  return value.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
 @Injectable()
 export class AdminPaymentsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -212,7 +217,7 @@ export class AdminPaymentsRepository {
     const updatedAtClass = this.updatedAtSql('uce', from, to);
     const updatedAtPackage = this.updatedAtSql('ucp', from, to);
     const updatedAtFixed = this.updatedAtSql('ufe', from, to);
-    const searchPattern = q ? `%${q}%` : null;
+    const searchPattern = q ? `%${escapeLikePattern(q)}%` : null;
 
     if (flows.includes('BOOKING_QUOTE')) {
       const statusSql = this.bookingStatusSql(status);

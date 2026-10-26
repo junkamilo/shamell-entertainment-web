@@ -1,0 +1,21 @@
+import { describe, expect, it, vi, beforeEach } from "vitest";
+
+const getAdminBearerTokenMock = vi.fn((): string | null => "tok");
+
+vi.mock("@/lib/admin/auth", () => ({
+  getAdminBearerToken: (...args: unknown[]) => getAdminBearerTokenMock(...args),
+}));
+
+import { getServicesBearerToken } from "@/features/admin/services/lib/servicesAuth";
+
+describe("servicesAuth", () => {
+  beforeEach(() => {
+    getAdminBearerTokenMock.mockClear();
+    getAdminBearerTokenMock.mockReturnValue("tok");
+  });
+
+  it("getServicesBearerToken calls through to getAdminBearerToken", () => {
+    expect(getServicesBearerToken()).toBe("tok");
+    expect(getAdminBearerTokenMock).toHaveBeenCalledOnce();
+  });
+});

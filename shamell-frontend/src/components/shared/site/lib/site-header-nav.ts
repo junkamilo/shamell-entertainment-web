@@ -8,7 +8,7 @@ export const HOME_SECTION_SCROLL_ORDER = [
   "services",
   "experiences",
   "about",
-  "on-coming-events",
+  "upcoming-events",
   "gallery",
 ] as const;
 
@@ -56,10 +56,10 @@ const baseNavItems: SiteHeaderNavItem[] = [
 ];
 
 const onComingEventsNavItem: SiteHeaderNavItem = {
-  label: "ON COMING EVENTS",
-  shortLabel: "ON COMING",
-  href: "/#on-coming-events",
-  sectionId: "on-coming-events",
+  label: "UPCOMING EVENTS",
+  shortLabel: "UPCOMING",
+  href: "/#upcoming-events",
+  sectionId: "upcoming-events",
 };
 
 export function buildSiteHeaderNavItems(
@@ -78,7 +78,7 @@ export function buildHomeScrollSectionIds(
   onComingEventsEnabled: boolean,
 ): string[] {
   if (!onComingEventsEnabled) {
-    return HOME_SECTION_SCROLL_ORDER.filter((id) => id !== "on-coming-events");
+    return HOME_SECTION_SCROLL_ORDER.filter((id) => id !== "upcoming-events");
   }
   return [...HOME_SECTION_SCROLL_ORDER];
 }
@@ -127,7 +127,7 @@ export function scrollWindowToHomeSection(sectionId: string): boolean {
 /**
  * While true, scroll-spy must not rewrite `location.hash`.
  * Prevents layout-shift after back/forward from overwriting `/#services` with
- * `/#on-coming-events` before the intentional hash scroll finishes.
+ * `/#upcoming-events` before the intentional hash scroll finishes.
  */
 let homeHashScrollLockUntil = 0;
 

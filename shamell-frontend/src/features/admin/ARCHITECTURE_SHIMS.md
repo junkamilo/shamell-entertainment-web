@@ -104,7 +104,7 @@ app/admin/(dashboard)/<module>/
   layout.tsx  # metadata only
 ```
 
-Vitest: co-located `*.spec.ts` / `*.spec.tsx` only (see `vitest.config.ts`); shared setup under `src/test/`. Reference: `features/admin/about`.
+Vitest: `*.spec.ts` / `*.spec.tsx` only (see `vitest.config.ts`); migración en curso a `test/` (espejo de `src/`, ver `AGENTS.md` → Unit / Vitest convention). Shared setup under `test/support/`. Reference (ya migrado): `test/features/admin/about`.
 
 ### Alias: `upcoming-events`
 

@@ -5,7 +5,7 @@ import {
 
 export { ON_COMING_EVENTS_ADMIN_PATH, ON_COMING_EVENTS_LAYOUT_ADMIN_PATH };
 
-export const ON_COMING_EVENTS_PUBLIC_PATH = "/on-coming-events";
+export const ON_COMING_EVENTS_PUBLIC_PATH = "/upcoming-events";
 export const SEATING_LAYOUT_ADMIN_LABEL = "Seating layout";
 
 export const ON_COMING_EVENTS_SITE_TAB_UPCOMING = "upcoming";

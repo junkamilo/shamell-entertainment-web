@@ -27,7 +27,7 @@ test.describe("Classes booking form", () => {
       },
     );
 
-    await page.goto(`/on-coming-events/${E2E_CLASSES_SLUG}/classes`);
+    await page.goto(`/upcoming-events/${E2E_CLASSES_SLUG}/classes`);
     await expect(
       page.getByRole("heading", { name: "Weekly Bachata" }),
     ).toBeVisible({ timeout: 20_000 });
