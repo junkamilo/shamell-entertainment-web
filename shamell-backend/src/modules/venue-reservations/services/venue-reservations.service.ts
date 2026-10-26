@@ -1593,7 +1593,7 @@ export class VenueReservationsService {
     const eventSlugQuery = eventSlug
       ? `&event_slug=${encodeURIComponent(eventSlug)}`
       : '';
-    return `${frontendUrl}/on-coming-events/return?session_id={CHECKOUT_SESSION_ID}${eventSlugQuery}`;
+    return `${frontendUrl}/upcoming-events/return?session_id={CHECKOUT_SESSION_ID}${eventSlugQuery}`;
   }
 
   private hashPayToken(rawToken: string): string {

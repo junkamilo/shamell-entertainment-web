@@ -37,6 +37,17 @@ describe('AdminPaymentsRepository', () => {
     expect(Array.isArray(parts[0].values)).toBe(true);
   });
 
+  it('buildUnionParts escapes LIKE wildcards in the search term', () => {
+    const [part] = repository.buildUnionParts(
+      ['VENUE_SEAT'],
+      undefined,
+      '50%_off\\',
+      null,
+      null,
+    );
+    expect(part.values).toContain('%50\\%\\_off\\\\%');
+  });
+
   it('countUnion returns 0 for empty parts', async () => {
     await expect(repository.countUnion([])).resolves.toBe(0);
     expect(prisma.$queryRaw).not.toHaveBeenCalled();

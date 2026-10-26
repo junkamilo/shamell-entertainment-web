@@ -303,7 +303,7 @@ export class AdminFixedEventEnrollmentService {
         'Event slug is required for payment links.',
       );
     }
-    const successUrl = `${frontendUrl}/on-coming-events/${encodeURIComponent(slug)}/return?session_id={CHECKOUT_SESSION_ID}`;
+    const successUrl = `${frontendUrl}/upcoming-events/${encodeURIComponent(slug)}/return?session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${frontendUrl}/shamell-admin/agenda/box-office`;
 
     const productName = packageSnapshot?.packageTitle

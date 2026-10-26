@@ -7,6 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import { AdminJwtGuard } from '../../../common/auth/guards/admin-jwt.guard';
 import {
   ADMIN_PAYMENT_DETAIL_FLOWS,
@@ -20,11 +21,12 @@ import {
 
 @ApiTags('Admin Payments')
 @Controller('admin/payments')
+@Throttle({ default: { limit: 120, ttl: 60000 } })
 export class AdminPaymentsController {
   constructor(private readonly adminPaymentsService: AdminPaymentsService) {}
 
   @Get()
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Unified Stripe payment history (admin)' })
   listPayments(@Query() query: AdminPaymentsQueryDto) {
@@ -32,7 +34,7 @@ export class AdminPaymentsController {
   }
 
   @Get('badge')
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Count payment status updates since timestamp (admin badge)',
@@ -42,7 +44,7 @@ export class AdminPaymentsController {
   }
 
   @Get(':flow/:id')
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminJwtGuard, ThrottlerGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Payment detail for admin summary modal' })
   getPaymentDetail(@Param('flow') flow: string, @Param('id') id: string) {

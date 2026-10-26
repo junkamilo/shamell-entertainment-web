@@ -7,6 +7,7 @@ import {
   IsOptional,
   IsString,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
@@ -26,6 +27,12 @@ export const ADMIN_PAYMENT_STATUSES = [
   'CANCELLED',
 ] as const;
 
+/** Deepest page reachable; beyond it OFFSET overflows the DB driver. */
+export const ADMIN_PAYMENTS_MAX_PAGE = 10_000;
+export const ADMIN_PAYMENTS_MAX_SEARCH_LENGTH = 100;
+/** Largest valid JS Date (ms since epoch). */
+export const MAX_DATE_MS = 8_640_000_000_000_000;
+
 export type AdminPaymentFlow = (typeof ADMIN_PAYMENT_FLOWS)[number];
 export type AdminPaymentStatus = (typeof ADMIN_PAYMENT_STATUSES)[number];
 
@@ -35,6 +42,7 @@ export class AdminPaymentsQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
+  @Max(ADMIN_PAYMENTS_MAX_PAGE)
   page?: number;
 
   @ApiPropertyOptional({ default: 20 })
@@ -58,6 +66,7 @@ export class AdminPaymentsQueryDto {
   @ApiPropertyOptional({ description: 'Search by customer name or email' })
   @IsOptional()
   @IsString()
+  @MaxLength(ADMIN_PAYMENTS_MAX_SEARCH_LENGTH)
   q?: string;
 
   @ApiPropertyOptional({ description: 'ISO date — filter from (inclusive)' })
@@ -79,5 +88,6 @@ export class AdminPaymentsBadgeQueryDto {
   @Type(() => Number)
   @IsInt()
   @Min(0)
+  @Max(MAX_DATE_MS)
   since?: number;
 }

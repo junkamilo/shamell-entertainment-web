@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AdminJwtGuard } from '@app/common/auth/guards/admin-jwt.guard';
 import { createAdminPaymentsServiceMock } from '@test-support/modules/admin-payments/mocks/admin-payments.service.mock';
 import {
@@ -23,6 +24,8 @@ describe('AdminPaymentsController', () => {
       ],
     })
       .overrideGuard(AdminJwtGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

@@ -138,7 +138,7 @@ export class AdminPaymentsService {
       sinceMs != null && Number.isFinite(sinceMs) && sinceMs > 0
         ? new Date(sinceMs)
         : null;
-    if (!since) return { count: 0 };
+    if (!since || Number.isNaN(since.getTime())) return { count: 0 };
     const count = await this.repository.countBadgeSince(since);
     return { count };
   }
@@ -168,8 +168,10 @@ export class AdminPaymentsService {
     const venueIds = byFlow.get('VENUE_SEAT') ?? [];
     if (venueIds.length > 0) {
       const rows = await this.repository.findVenueReservationsByIds(venueIds);
+      // One page shares a handful of layouts: load each once, not once per row.
+      const cache = createSeatLabelCache();
       for (const row of rows) {
-        const seatLabel = await this.resolveVenueSeatLabelForRow(row);
+        const seatLabel = await this.resolveVenueSeatLabelForRow(row, cache);
         rowByKey.set(
           `VENUE_SEAT:${row.id}`,
           buildVenuePaymentRow(row, seatLabel),
@@ -211,17 +213,34 @@ export class AdminPaymentsService {
       .filter((row): row is AdminStripePaymentRow => row != null);
   }
 
-  private async resolveVenueSeatLabelForRow(r: VenueRow): Promise<string> {
+  private async resolveVenueSeatLabelForRow(
+    r: VenueRow,
+    cache: SeatLabelCache = createSeatLabelCache(),
+  ): Promise<string> {
+    const activeLayoutId = () =>
+      memo(cache.activeLayoutId, 'active', () =>
+        this.floorLayout.getActiveFloorLayoutId(),
+      );
+
     let floorLayoutId: string | null = null;
     if (r.upcomingEventId) {
+      const eventId = r.upcomingEventId;
       floorLayoutId =
-        (await this.repository.findFloorLayoutIdForEvent(r.upcomingEventId)) ??
-        (await this.floorLayout.getActiveFloorLayoutId());
+        (await memo(cache.layoutIdByEvent, eventId, () =>
+          this.repository.findFloorLayoutIdForEvent(eventId),
+        )) ?? (await activeLayoutId());
     } else {
-      floorLayoutId = await this.floorLayout.getActiveFloorLayoutId();
+      floorLayoutId = await activeLayoutId();
     }
 
-    return resolveVenueSeatDisplayLabel(this.prisma, this.floorLayout, {
+    const floorLayout = {
+      getPublicFloorLayoutForClient: (id?: string | null) =>
+        memo(cache.layoutById, id ?? null, () =>
+          this.floorLayout.getPublicFloorLayoutForClient(id),
+        ),
+    };
+
+    return resolveVenueSeatDisplayLabel(this.prisma, floorLayout, {
       kind: r.kind,
       layoutItemId: r.layoutItemId,
       venueTableConfigId: r.venueTableConfigId,
@@ -236,4 +255,35 @@ export class AdminPaymentsService {
           : null,
     });
   }
+}
+
+type PublicFloorLayout = Awaited<
+  ReturnType<FloorLayoutService['getPublicFloorLayoutForClient']>
+>;
+
+type SeatLabelCache = {
+  activeLayoutId: Map<string, Promise<string | null>>;
+  layoutIdByEvent: Map<string, Promise<string | null>>;
+  layoutById: Map<string | null, Promise<PublicFloorLayout>>;
+};
+
+function createSeatLabelCache(): SeatLabelCache {
+  return {
+    activeLayoutId: new Map(),
+    layoutIdByEvent: new Map(),
+    layoutById: new Map(),
+  };
+}
+
+function memo<K, V>(
+  map: Map<K, Promise<V>>,
+  key: K,
+  load: () => Promise<V>,
+): Promise<V> {
+  let value = map.get(key);
+  if (!value) {
+    value = load();
+    map.set(key, value);
+  }
+  return value;
 }

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AdminPaymentsController } from '@app/modules/admin-payments/controllers/admin-payments.controller';
@@ -27,6 +28,8 @@ describe('AdminPayments (e2e smoke)', () => {
     })
       .overrideGuard(AdminJwtGuard)
       .useValue({ canActivate: () => false })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
       .compile();
 
     app = moduleFixture.createNestApplication();
@@ -52,6 +55,8 @@ describe('AdminPayments (e2e smoke)', () => {
       ],
     })
       .overrideGuard(AdminJwtGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

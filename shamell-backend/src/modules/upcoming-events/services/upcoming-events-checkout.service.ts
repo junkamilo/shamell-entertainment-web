@@ -127,7 +127,7 @@ export class UpcomingEventsCheckoutService {
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
-    const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/classes/return?session_id={CHECKOUT_SESSION_ID}`;
+    const returnUrl = `${frontendUrl}/upcoming-events/${event.slug}/classes/return?session_id={CHECKOUT_SESSION_ID}`;
     const customerEmail = dto.customerEmail.trim().toLowerCase();
     const sessionLabel = formatSessionLabel(session);
     const productName = `${event.eventType.name} — class`;
@@ -260,7 +260,7 @@ export class UpcomingEventsCheckoutService {
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
-    const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/classes/package-return?session_id={CHECKOUT_SESSION_ID}`;
+    const returnUrl = `${frontendUrl}/upcoming-events/${event.slug}/classes/package-return?session_id={CHECKOUT_SESSION_ID}`;
     const sectionCount = resolved.length;
     const dateLabel = bundleDateIso;
     const customerEmail = dto.customerEmail.trim().toLowerCase();
@@ -394,7 +394,7 @@ export class UpcomingEventsCheckoutService {
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
-    const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/classes/package-return?session_id={CHECKOUT_SESSION_ID}`;
+    const returnUrl = `${frontendUrl}/upcoming-events/${event.slug}/classes/package-return?session_id={CHECKOUT_SESSION_ID}`;
     const sectionCount = resolved.length;
     const dayCount = new Set(resolved.map((r) => r.dateIso)).size;
     const customerEmail = dto.customerEmail.trim().toLowerCase();
@@ -533,7 +533,7 @@ export class UpcomingEventsCheckoutService {
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
-    const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/classes/package-return?session_id={CHECKOUT_SESSION_ID}`;
+    const returnUrl = `${frontendUrl}/upcoming-events/${event.slug}/classes/package-return?session_id={CHECKOUT_SESSION_ID}`;
     const packageLabel =
       venueConfig.classPackageLabel?.trim() || 'Full month package';
     const sessionCount = resolved.length;
@@ -622,7 +622,7 @@ export class UpcomingEventsCheckoutService {
 
     const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MINUTES * 60 * 1000);
     const frontendUrl = this.stripeService.frontendUrl();
-    const returnUrl = `${frontendUrl}/on-coming-events/${event.slug}/return?session_id={CHECKOUT_SESSION_ID}`;
+    const returnUrl = `${frontendUrl}/upcoming-events/${event.slug}/return?session_id={CHECKOUT_SESSION_ID}`;
     const customerEmail = dto.customerEmail.trim().toLowerCase();
 
     let amountCents: number;

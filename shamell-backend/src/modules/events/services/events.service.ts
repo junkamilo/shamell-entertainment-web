@@ -157,7 +157,7 @@ export class EventsService {
   }
 
   /**
-   * Lightweight upcoming hub cards (Home + /on-coming-events list).
+   * Lightweight upcoming hub cards (Home + /upcoming-events list).
    * Hero-only media; purchase context without per-event floor/reservation N+1.
    */
   async getPublicUpcomingHubEvents() {
