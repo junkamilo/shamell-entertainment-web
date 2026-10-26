@@ -35,7 +35,7 @@ Public event-type catalog UI (not admin DS). Import from `@/components/catalog`.
 
 Deps: `@/components/media` (`CardMedia`), `catalog-slide-context`, `formatCatalogPriceAmount`, contact href helpers (`buildEventLineContactHref`).
 
-Co-located Vitest: `npx vitest run src/components/catalog`.
+Vitest: `npx vitest run test/components/catalog`.
 
 ## Public service catalog UI (`components/experiences`)
 
@@ -46,7 +46,7 @@ Home SERVICE CATALOG (`ExperiencesSection` + `ExperienceCard`). Folder name `exp
 - Import: `@/components/experiences` (named `ExperienceCard`).
 - Reuses `CatalogExpandRow` only; does **not** use `EventCatalogCard*`.
 
-Co-located Vitest: `npx vitest run src/components/experiences`.
+Vitest: `npx vitest run test/components/experiences`.
 
 ## Public card media (`components/media`)
 
@@ -56,7 +56,7 @@ Co-located Vitest: `npx vitest run src/components/experiences`.
 - Native `<img>` / `<video>` for CDN URLs; brand crop `object-[center_28%]`.
 - Import: `@/components/media`.
 
-Co-located Vitest: `npx vitest run src/components/media`.
+Vitest: `npx vitest run test/components/media`.
 
 ## Public shared UI (`components/shared`)
 
@@ -75,7 +75,7 @@ Kitchen of cross-cutting **public** UI. Import from `@/components/shared` (named
 
 **Boundaries:** admin `BackButton` ≠ `ShamellBackButton`; admin overlays ≠ `ShamellAlertDialog` / `ShamellBusyOverlay` (Busy is shared intentionally for public + some admin forms). Do not absorb admin DS here. Home landing sections are **not** in `shared` — see **Home landing UI**.
 
-Co-located Vitest: `npx vitest run src/components/shared`.
+Vitest: `npx vitest run test/components/shared`.
 
 ## Home landing UI (`components/home`)
 
@@ -92,7 +92,7 @@ Shell for Stripe **Embedded Checkout** (`StripeCheckoutHost` with `layout="page"
 - **Boundaries:** keys / branding / payment-flow routes / return polling stay in `lib/stripe`. Admin agenda `stripe-webhooks` is unrelated. CSS shell remains `styles/stripe-checkout.css` (global; `body:has` hide chrome).
 - Do **not** absorb this into `components/shared`.
 
-Co-located Vitest: `npx vitest run src/components/stripe`.
+Vitest: `npx vitest run test/components/stripe`.
 
 ## Admin feature module template
 
@@ -101,11 +101,10 @@ Domain lives under `src/features/admin/<feature>/`. App Router entry is a thin r
 ```
 features/admin/<feature>/
 ├── types/                # feature-specific types
-├── lib/                  # pure helpers (+ co-located *.spec.ts)
-├── services/             # fetch/mutate; use getAdminApiBaseUrl() (+ *.spec.ts)
-├── hooks/                # use<Feature>Page (+ selective *.spec.ts)
-├── components/           # *Page, modals (+ selective *.spec.tsx)
-├── test/                 # fixtures / MSW handlers / RTL utils / optional integration
+├── lib/                  # pure helpers (specs en test/features/admin/<feature>/lib)
+├── services/             # fetch/mutate; use getAdminApiBaseUrl() (specs en test/…/services)
+├── hooks/                # use<Feature>Page (specs en test/…/hooks)
+├── components/           # *Page, modals (specs en test/…/components)
 └── index.ts              # default export for the thin page
 
 app/admin/(dashboard)/<feature>/
@@ -119,15 +118,15 @@ Sign-in: canonical `/admin/login` is a thin page → `@/features/admin/auth`. Le
 
 ### Unit / Vitest convention
 
-**Migración en curso a un árbol QA central `test/`** (guía: `migracion-tests-about.md`; piloto `about` ya migrado). El código de producción no se mueve; solo specs + infra.
+**Todos los tests viven en el árbol QA central `test/`** (migración completada; guía histórica: `migracion-tests-about.md`). `src/` contiene solo código de producción — no crear `*.spec.*` ni carpetas `test/` dentro de `src/`.
 
-- **Módulos migrados** (hoy: **todo `features/admin/`** — los 17 módulos — y `features/contacto`, `features/forgot-password`, `features/gallery`): specs en `test/` espejando `src/` — `src/features/admin/about/components/X.tsx` → `test/features/admin/about/components/X.spec.tsx`. Infra del módulo en `test/features/<ruta>/support/{fixtures,mocks,helpers}`; integración en `test/features/<ruta>/integration/`.
-- **Módulos aún no migrados:** siguen co-locados (`foo.ts` → `foo.spec.ts`) con infra en `features/<ruta>/test/`. Vitest `include` cubre `src/**` y `test/**` durante la coexistencia.
+- Specs en `test/` espejando `src/` — `src/features/admin/about/components/X.tsx` → `test/features/admin/about/components/X.spec.tsx`; `src/components/venue-3d/scene/VenueScene3D.tsx` → `test/components/venue-3d/scene/VenueScene3D.spec.tsx`. Infra del módulo en `test/<ruta>/support/{fixtures,mocks,helpers}`; integración en `test/<ruta>/integration/`.
+- Vitest `include` solo cubre `test/**/*.spec.{ts,tsx}`.
 - Solo `*.spec.{ts,tsx}` — do **not** use `.test.ts` (invisible to the runner).
 - **Imports desde `test/`:** a producción con `@/…`, entre tests con `@test/…` (alias en `tsconfig.json` + `vitest.config.ts`). Nunca relativos cruzando `test/` ↔ `src/`.
-- Global MSW/RTL setup: `test/support/setup.ts` + `test/support/server.ts` (importar el server como `@test/support/server`). Al migrar un módulo, reconectar su línea de handlers en `server.ts`.
+- Global MSW/RTL setup: `test/support/setup.ts` + `test/support/server.ts` (importar el server como `@test/support/server`). Un módulo nuevo con handlers MSW se registra en `server.ts`.
 - **jsdom:** lo activa el pragma `/** @vitest-environment jsdom */` en la línea 1 de cada `*.spec.tsx` (y hooks con `renderHook`). Entorno por defecto `node`.
-- **Codemod para migrar un módulo:** `node scripts/migrate-tests-to-test-dir.mjs features/<ruta> [--dry]` (mueve con `git mv`, reescribe imports a `@/…` / `@test/…` y reconecta referencias externas como `test/support/server.ts`). Scripts `.mjs` movidos (smokes) requieren actualizar su ruta en `package.json`.
+- **Codemod histórico:** `node scripts/migrate-tests-to-test-dir.mjs <ruta-bajo-src> [--dry]` (mueve con `git mv`, reescribe imports a `@/…` / `@test/…`); útil solo si reaparece un spec co-locado en `src/`.
 - Example suite: `npx vitest run test/features/admin/about` (prefer local `node_modules/.bin/vitest`).
 
 ### Cypress Component Testing
@@ -237,7 +236,7 @@ Shared layout contract (not admin DS, not public page UI). Import from `@/compon
 - **`shapeConfig`:** 2D admin palette / drag-ghost visuals only (`tableVisualForSize`, `STANDALONE_CHAIR_VISUAL`) — not the R3F scene.
 - Consumers: admin layout editor, public seats, `venue-3d`, venue-reservations, box-office.
 
-Co-located Vitest: `npx vitest run src/components/floor-layout`.
+Vitest: `npx vitest run test/components/floor-layout`.
 
 ## Venue 3D (`components/venue-3d`)
 
@@ -282,7 +281,7 @@ venue-3d/
 3. **Host smoke** — `VenueScene3D` / `PlacedItemsLayer` with Canvas/children stubs.
 
 ```bash
-npx vitest run src/components/venue-3d
+npx vitest run test/components/venue-3d
 npx eslint src/components/venue-3d
 ```
 

@@ -6,10 +6,7 @@ export default defineConfig({
     environment: "node",
     globals: true,
     setupFiles: ["./test/support/setup.ts"],
-    include: [
-      "src/**/*.spec.{ts,tsx}", // ← quitar cuando no quede ningún spec en src
-      "test/**/*.spec.{ts,tsx}",
-    ],
+    include: ["test/**/*.spec.{ts,tsx}"],
     exclude: ["**/node_modules/**", "**/tests/e2e/**", "e2e/**", "**/*.cy.{ts,tsx}"],
     // jsdom se activa por pragma `// @vitest-environment jsdom` en cada *.spec.tsx.
     coverage: {
