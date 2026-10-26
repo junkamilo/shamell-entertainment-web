@@ -5,8 +5,8 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { AdminPaymentsService } from '../admin-payments/services/admin-payments.service';
-import { ContactInboxService } from '../contact/services/contact-inbox.service';
+import { AdminPaymentsService } from '@app/modules/admin-payments/services/admin-payments.service';
+import { ContactInboxService } from '@app/modules/contact/services/contact-inbox.service';
 import { AgendaRepository } from '@app/modules/agenda/services/agenda.repository';
 import { AgendaService } from '@app/modules/agenda/services/agenda.service';
 

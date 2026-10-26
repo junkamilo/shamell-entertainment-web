@@ -5,7 +5,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import type { GalleryService } from '../gallery/services/gallery.service';
+import type { GalleryService } from '@app/modules/gallery/services/gallery.service';
 import { HeaderMediaRepository } from '@app/modules/header-media/services/header-media.repository';
 import { HeaderMediaService } from '@app/modules/header-media/services/header-media.service';
 import { HeaderTextRepository } from '@app/modules/header-media/services/header-text.repository';

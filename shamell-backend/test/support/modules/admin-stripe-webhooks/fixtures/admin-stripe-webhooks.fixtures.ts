@@ -1,10 +1,10 @@
 import { StripeWebhookProcessingStatus } from '@prisma/client';
-import type { AdminStripeWebhookEventsQueryDto } from '../dto/admin-stripe-webhook-events-query.dto';
+import type { AdminStripeWebhookEventsQueryDto } from '@app/modules/admin-stripe-webhooks/dto/admin-stripe-webhook-events-query.dto';
 import type {
   AdminStripeWebhookEventDetail,
   AdminStripeWebhookEventRow,
   AdminStripeWebhookRelatedPayment,
-} from '../types/admin-stripe-webhooks.types';
+} from '@app/modules/admin-stripe-webhooks/types/admin-stripe-webhooks.types';
 import type {
   BookingPaymentRelated,
   ClassEnrollmentRelated,

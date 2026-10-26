@@ -1,9 +1,9 @@
 import { ContactRequestStatus } from '@prisma/client';
-import type { CreateContactDto } from '../dto/create-contact.dto';
+import type { CreateContactDto } from '@app/modules/contact/dto/create-contact.dto';
 import type {
   ContactRequestRow,
   PeticionesFeedRow,
-} from '../types/contact.types';
+} from '@app/modules/contact/types/contact.types';
 
 const NOW = new Date('2026-06-01T12:00:00.000Z');
 

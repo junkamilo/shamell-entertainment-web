@@ -2,7 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { Response } from 'express';
-import type { AdminJwtPayload } from '../../auth/decorators/current-admin.decorator';
+import type { AdminJwtPayload } from '@app/modules/auth/decorators/current-admin.decorator';
 import { AdminJwtGuard } from '@app/common/auth/guards/admin-jwt.guard';
 import { createBookingsServiceMock } from '@test-support/modules/bookings/mocks/bookings.service.mock';
 import { makeOccupiedPayload } from '@test-support/modules/bookings/fixtures/bookings.fixtures';

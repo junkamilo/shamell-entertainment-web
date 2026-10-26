@@ -6,7 +6,7 @@ import {
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import request from 'supertest';
-import type { AdminJwtPayload } from '../../auth/decorators/current-admin.decorator';
+import type { AdminJwtPayload } from '@app/modules/auth/decorators/current-admin.decorator';
 import { AdminJwtGuard } from '@app/common/auth/guards/admin-jwt.guard';
 import { createVenueReservationsServiceMock } from '@test-support/modules/venue-reservations/mocks/venue-reservations.service.mock';
 import { VenueReservationsService } from '@app/modules/venue-reservations/services/venue-reservations.service';

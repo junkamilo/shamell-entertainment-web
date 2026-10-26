@@ -4,7 +4,7 @@ import { DEFAULT_HEADER_TEXT } from '@app/modules/header-media/constants/header-
 import type {
   HeaderCategoryRow,
   HeaderPhotoRow,
-} from '../types/header-media.types';
+} from '@app/modules/header-media/types/header-media.types';
 
 export function makeHeaderCategory(
   overrides: Partial<HeaderCategoryRow> = {},

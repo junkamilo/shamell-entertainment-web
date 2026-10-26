@@ -8,7 +8,9 @@ import { AdminAuthModule } from '@app/common/auth/admin-auth.module';
 import { applyHttpObservability } from '@app/common/http/apply-http-observability';
 import { AboutModule } from '@app/modules/about/about.module';
 
-export async function createRealAboutHttpApp(): Promise<{ app: INestApplication<App> }> {
+export async function createRealAboutHttpApp(): Promise<{
+  app: INestApplication<App>;
+}> {
   const moduleRef = await Test.createTestingModule({
     imports: [
       ConfigModule.forRoot({ isGlobal: true, ignoreEnvFile: true }),
@@ -18,7 +20,8 @@ export async function createRealAboutHttpApp(): Promise<{ app: INestApplication<
     ],
   }).compile();
 
-  const app = moduleRef.createNestApplication() as unknown as INestApplication<App>;
+  const app =
+    moduleRef.createNestApplication() as unknown as INestApplication<App>;
   applyHttpObservability(app);
   app.use(helmet());
   app.useGlobalPipes(

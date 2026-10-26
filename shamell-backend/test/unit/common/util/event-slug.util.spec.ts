@@ -1,4 +1,7 @@
-import { ensureUniqueEventSlug, slugifyEventName } from '@app/common/util/event-slug.util';
+import {
+  ensureUniqueEventSlug,
+  slugifyEventName,
+} from '@app/common/util/event-slug.util';
 
 describe('event-slug.util', () => {
   it('slugifyEventName normalizes and supports suffix', () => {

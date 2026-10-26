@@ -31,16 +31,16 @@ describe('upcoming-fixed-ticket.util', () => {
       },
     };
     await expect(
-      countBlockingFixedEventEnrollments(prisma, 'evt-1'),
+      countBlockingFixedEventEnrollments(prisma as never, 'evt-1'),
     ).resolves.toBe(3);
     const blockingCalls = prisma.upcomingFixedEventEnrollment.count.mock
       .calls as unknown as Array<[{ where: { eventId: string } }]>;
     expect(blockingCalls[0]?.[0]?.where.eventId).toBe('evt-1');
 
     prisma.upcomingFixedEventEnrollment.count.mockResolvedValue(2);
-    await expect(countPaidFixedEventEnrollments(prisma, 'evt-1')).resolves.toBe(
-      2,
-    );
+    await expect(
+      countPaidFixedEventEnrollments(prisma as never, 'evt-1'),
+    ).resolves.toBe(2);
     expect(prisma.upcomingFixedEventEnrollment.count).toHaveBeenCalledWith({
       where: {
         eventId: 'evt-1',
@@ -55,7 +55,9 @@ describe('upcoming-fixed-ticket.util', () => {
         count: jest.fn().mockResolvedValue(4),
       },
     };
-    await expect(fixedTicketsRemaining(prisma, 'evt-1', 10)).resolves.toBe(6);
+    await expect(
+      fixedTicketsRemaining(prisma as never, 'evt-1', 10),
+    ).resolves.toBe(6);
   });
 
   it('assignFixedEventTicketNumber assigns next and rejects sold out', async () => {
@@ -87,7 +89,9 @@ describe('upcoming-fixed-ticket.util', () => {
         count: jest.fn().mockResolvedValueOnce(3).mockResolvedValueOnce(2),
       },
     };
-    await expect(fixedTicketPublicStats(prisma, 'evt-1', 10)).resolves.toEqual({
+    await expect(
+      fixedTicketPublicStats(prisma as never, 'evt-1', 10),
+    ).resolves.toEqual({
       fixedTicketCapacity: 10,
       ticketsRemaining: 7,
       ticketsSold: 2,

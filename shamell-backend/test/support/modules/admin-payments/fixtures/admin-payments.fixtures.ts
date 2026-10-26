@@ -5,12 +5,12 @@ import {
   VenueSeatKind,
   VenueSeatReservationStatus,
 } from '@prisma/client';
-import type { AdminPaymentsQueryDto } from '../dto/admin-payments-query.dto';
-import type { AdminStripePaymentDetail } from '../types/admin-payments-detail.types';
+import type { AdminPaymentsQueryDto } from '@app/modules/admin-payments/dto/admin-payments-query.dto';
+import type { AdminStripePaymentDetail } from '@app/modules/admin-payments/types/admin-payments-detail.types';
 import type {
   AdminStripePaymentRow,
   PaymentListKey,
-} from '../types/admin-payments.types';
+} from '@app/modules/admin-payments/types/admin-payments.types';
 import type {
   BookingPaymentRow,
   ClassRow,

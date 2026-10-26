@@ -1,6 +1,9 @@
 import { DEFAULT_HEADER_TEXT } from '@app/modules/header-media/constants/header-media.constants';
 import { makeHeroHeaderContent } from '@test-support/modules/header-media/fixtures/header-media.fixtures';
-import { mapAdminHeaderText, mapHeaderText } from '@app/modules/header-media/utils/header-text-mapper.util';
+import {
+  mapAdminHeaderText,
+  mapHeaderText,
+} from '@app/modules/header-media/utils/header-text-mapper.util';
 
 describe('header-text-mapper.util', () => {
   it('returns defaults when row is null', () => {

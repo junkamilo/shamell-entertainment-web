@@ -15,14 +15,14 @@ import {
 import { BookingsService } from '@app/modules/bookings/services/bookings.service';
 import { createBookingsWebhookServiceTestModule } from '@test-support/modules/bookings/harnesses/bookings-webhook-service.test-module';
 import type { ErrorBody } from '@test-support/modules/bookings/harnesses/bookings.test-types';
-import { makeCheckoutSessionWebhookEvent } from '@test-support/modules/stripe/mocks/stripe.fixtures';
+import { makeCheckoutSessionWebhookEvent } from '@test-support/modules/stripe/fixtures/stripe.fixtures';
 import { StripeWebhookAuditService } from '@app/modules/stripe/services/stripe-webhook-audit.service';
 import { StripeService } from '@app/modules/stripe/services/stripe.service';
 import { UpcomingEventsService } from '@app/modules/upcoming-events/services/upcoming-events.service';
 import { StripeWebhookController } from '@app/modules/venue-reservations/controllers/stripe-webhook.controller';
 import { StripeWebhookDispatchService } from '@app/modules/venue-reservations/services/stripe-webhook-dispatch.service';
 import { VenueReservationsService } from '@app/modules/venue-reservations/services/venue-reservations.service';
-import type { WebhookDispatchBody } from '@app/modules/venue-reservations/testing/venue-reservations.test-types';
+import type { WebhookDispatchBody } from '@test-support/modules/venue-reservations/testing/venue-reservations.test-types';
 
 type DeepWebhookHarness = {
   app: INestApplication<App>;

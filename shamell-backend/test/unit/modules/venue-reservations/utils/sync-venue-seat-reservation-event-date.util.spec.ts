@@ -6,7 +6,7 @@ describe('syncVenueSeatReservationEventDates', () => {
     const prisma = { venueSeatReservation: { updateMany } };
     const next = new Date('2026-09-01T00:00:00.000Z');
 
-    await syncVenueSeatReservationEventDates(prisma, 'evt-1', next);
+    await syncVenueSeatReservationEventDates(prisma as never, 'evt-1', next);
 
     expect(updateMany).toHaveBeenCalledWith({
       where: { upcomingEventId: 'evt-1' },

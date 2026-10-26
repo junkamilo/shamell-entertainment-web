@@ -11,7 +11,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { EventsRepository } from '@app/modules/events/services/events.repository';
 import { EventsService } from '@app/modules/events/services/events.service';
-import type { GalleryService } from '../gallery/services/gallery.service';
+import type { GalleryService } from '@app/modules/gallery/services/gallery.service';
 
 const run = process.env.EVENTS_INTEGRATION === '1';
 

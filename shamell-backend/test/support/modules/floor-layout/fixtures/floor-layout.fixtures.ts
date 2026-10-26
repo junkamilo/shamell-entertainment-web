@@ -3,7 +3,7 @@ import type {
   FloorLayoutPalette,
   FloorLayoutRow,
   PlacedLayoutItem,
-} from '../types/floor-layout.types';
+} from '@app/modules/floor-layout/types/floor-layout.types';
 import { DEFAULT_FLOOR_SCENE_ZONES } from '@app/modules/floor-layout/utils/floor-scene-zones.util';
 
 const NOW = new Date('2026-06-01T12:00:00.000Z');

@@ -64,7 +64,7 @@ describe('EventsService', () => {
     expect(result[0]).toMatchObject({
       hasActiveSessions: false,
     });
-    expect(typeof result[0].salesOpen).toBe('boolean');
+    expect(result[0]).toHaveProperty('salesOpen', expect.any(Boolean));
     expect(repository.findPublicUpcomingHubEvents).toHaveBeenCalled();
   });
 

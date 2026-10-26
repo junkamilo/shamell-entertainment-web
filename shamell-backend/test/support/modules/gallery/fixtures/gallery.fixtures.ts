@@ -2,7 +2,7 @@ import { GalleryMediaType } from '@prisma/client';
 import type {
   GalleryCategoryRow,
   PhotoWithCategory,
-} from '../types/gallery.types';
+} from '@app/modules/gallery/types/gallery.types';
 
 export function makeGalleryCategory(
   overrides: Partial<GalleryCategoryRow> = {},

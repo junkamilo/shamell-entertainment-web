@@ -1,5 +1,8 @@
 import { EMAIL_VERIFICATION_PURPOSE } from '@app/modules/email-verification/constants/email-verification.constants';
-import { maskEmail, hashesMatch } from '@app/modules/email-verification/utils/email-verification.util';
+import {
+  maskEmail,
+  hashesMatch,
+} from '@app/modules/email-verification/utils/email-verification.util';
 
 describe('email-verification.util', () => {
   it('masks local-part but keeps the domain', () => {

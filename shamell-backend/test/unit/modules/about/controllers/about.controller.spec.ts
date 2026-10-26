@@ -1,5 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AdminJwtGuard } from '@app/common/auth/guards/admin-jwt.guard';
 import { createAboutServiceMock } from '@test-support/modules/about/mocks/about.service.mock';
 import {
@@ -21,6 +22,8 @@ describe('AboutController', () => {
       providers: [{ provide: AboutService, useValue: aboutService }],
     })
       .overrideGuard(AdminJwtGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(ThrottlerGuard)
       .useValue({ canActivate: () => true })
       .compile();
 

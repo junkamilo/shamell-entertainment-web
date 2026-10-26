@@ -8,12 +8,12 @@ import { Pool } from 'pg';
 import { ContactInboxService } from '@app/modules/contact/services/contact-inbox.service';
 import { ContactRepository } from '@app/modules/contact/services/contact.repository';
 import { ContactService } from '@app/modules/contact/services/contact.service';
-import type { AvailabilityService } from '../availability/services/availability.service';
-import type { BookingsService } from '../bookings/services/bookings.service';
-import type { MailService } from '../mail/services/mail.service';
-import type { AdminCustomerActivityNotifyService } from '../mail/services/admin-customer-activity-notify.service';
+import type { AvailabilityService } from '@app/modules/availability/services/availability.service';
+import type { BookingsService } from '@app/modules/bookings/services/bookings.service';
+import type { MailService } from '@app/modules/mail/services/mail.service';
+import type { AdminCustomerActivityNotifyService } from '@app/modules/mail/services/admin-customer-activity-notify.service';
 import type { ConfigService } from '@nestjs/config';
-import type { RecaptchaVerifier } from './services/recaptcha.verifier';
+import type { RecaptchaVerifier } from '@app/modules/contact/services/recaptcha.verifier';
 
 const run = process.env.CONTACT_INTEGRATION === '1';
 
@@ -59,7 +59,7 @@ const run = process.env.CONTACT_INTEGRATION === '1';
     } as unknown as RecaptchaVerifier;
     const emailVerification = {
       consumeVerifiedToken: () => Promise.resolve(undefined),
-    } as unknown as import('../email-verification/services/email-verification.service').EmailVerificationService;
+    } as unknown as import('@app/modules/email-verification/services/email-verification.service').EmailVerificationService;
 
     service = new ContactService(
       repository,

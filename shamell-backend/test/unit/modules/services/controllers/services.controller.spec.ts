@@ -6,7 +6,10 @@ import {
   makeServiceWithType,
 } from '@test-support/modules/services/fixtures/services.fixtures';
 import { createServicesServiceMock } from '@test-support/modules/services/mocks/services.service.mock';
-import { mapPublicService, mapService } from '@app/modules/services/utils/services-mapper.util';
+import {
+  mapPublicService,
+  mapService,
+} from '@app/modules/services/utils/services-mapper.util';
 import { ServicesService } from '@app/modules/services/services/services.service';
 import { ServicesController } from '@app/modules/services/controllers/services.controller';
 

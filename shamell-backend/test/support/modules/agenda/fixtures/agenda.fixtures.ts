@@ -1,8 +1,8 @@
-import type { AgendaHubBadgesQueryDto } from '../dto/agenda-hub-badges-query.dto';
+import type { AgendaHubBadgesQueryDto } from '@app/modules/agenda/dto/agenda-hub-badges-query.dto';
 import type {
   AgendaHubBadgesResponse,
   AgendarCatalogResponse,
-} from '../types/agenda.types';
+} from '@app/modules/agenda/types/agenda.types';
 import type { ServiceCatalogRow } from '@app/modules/agenda/utils/agenda-catalog.util';
 
 export function makeHubBadgesQuery(

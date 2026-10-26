@@ -32,7 +32,7 @@ describe('venue-seat-display-label.util', () => {
           findMany: jest.fn(),
         },
         venueStandaloneChair: { findFirst: jest.fn(), findMany: jest.fn() },
-      },
+      } as never,
       { getPublicFloorLayoutForClient: jest.fn() },
       {
         kind: VenueSeatKind.CATALOG_TABLE,
@@ -60,7 +60,7 @@ describe('venue-seat-display-label.util', () => {
       {
         venueTableConfig: { findFirst: jest.fn(), findMany },
         venueStandaloneChair: { findFirst: jest.fn(), findMany: jest.fn() },
-      },
+      } as never,
       { getPublicFloorLayoutForClient: jest.fn() },
       {
         kind: VenueSeatKind.CATALOG_TABLE,
@@ -90,7 +90,7 @@ describe('venue-seat-display-label.util', () => {
       {
         venueTableConfig: { findFirst: jest.fn(), findMany: jest.fn() },
         venueStandaloneChair: { findFirst, findMany },
-      },
+      } as never,
       { getPublicFloorLayoutForClient: jest.fn() },
       {
         kind: VenueSeatKind.STANDALONE_CHAIR,

@@ -16,7 +16,7 @@ import { BookingsRepository } from '@app/modules/bookings/services/bookings.repo
 import { BookingsAdminService } from '@app/modules/bookings/services/bookings-admin.service';
 import { BookingsQuoteService } from '@app/modules/bookings/services/bookings-quote.service';
 import type { AvailabilityService } from '@app/modules/availability/services/availability.service';
-import type { StripeService } from '../stripe/services/stripe.service';
+import type { StripeService } from '@app/modules/stripe/services/stripe.service';
 
 const run = process.env.BOOKINGS_INTEGRATION === '1';
 

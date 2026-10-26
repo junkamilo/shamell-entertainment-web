@@ -1,7 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
-import type { AdminJwtPayload } from '../../auth/decorators/current-admin.decorator';
+import type { AdminJwtPayload } from '@app/modules/auth/decorators/current-admin.decorator';
 import { AdminJwtGuard } from '@app/common/auth/guards/admin-jwt.guard';
 import { createAdminClassEnrollmentServiceMock } from '@test-support/modules/upcoming-events/mocks/admin-class-enrollment.service.mock';
 import { createAdminFixedEventEnrollmentServiceMock } from '@test-support/modules/upcoming-events/mocks/admin-fixed-event-enrollment.service.mock';
@@ -215,7 +215,10 @@ describe('UpcomingEventsController', () => {
       ).resolves.toEqual({ id: SESSION_ID });
       await expect(
         controller.updateAdminSession(EVENT_ID, SESSION_ID, {
+          startsAt: '2026-08-15T18:00:00.000Z',
+          endsAt: '2026-08-15T19:00:00.000Z',
           capacity: 12,
+          price: 50,
         }),
       ).resolves.toEqual({ id: SESSION_ID });
       await expect(

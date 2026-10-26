@@ -1,10 +1,10 @@
 import { AvailabilityClosureKind } from '@prisma/client';
-import type { CreateClosureDto } from '../dto/create-closure.dto';
-import type { UpsertWeeklySlotsDto } from '../dto/upsert-weekly-slots.dto';
+import type { CreateClosureDto } from '@app/modules/availability/dto/create-closure.dto';
+import type { UpsertWeeklySlotsDto } from '@app/modules/availability/dto/upsert-weekly-slots.dto';
 import type {
   AdminAvailabilitySnapshot,
   PublicAvailabilityRules,
-} from '../types/availability.types';
+} from '@app/modules/availability/types/availability.types';
 
 export function makeWeeklySlotsDto(
   overrides: Partial<UpsertWeeklySlotsDto> = {},

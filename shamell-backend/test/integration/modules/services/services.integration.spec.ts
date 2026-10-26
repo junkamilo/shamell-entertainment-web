@@ -5,7 +5,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { ServicesMediaService } from './services/services-media.service';
+import { ServicesMediaService } from '@app/modules/services/services/services-media.service';
 import { ServicesRepository } from '@app/modules/services/services/services.repository';
 import { ServicesService } from '@app/modules/services/services/services.service';
 

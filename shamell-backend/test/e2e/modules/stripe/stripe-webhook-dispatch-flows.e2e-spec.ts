@@ -18,7 +18,7 @@ import { VenueReservationsService } from '@app/modules/venue-reservations/servic
 import type {
   ErrorBody,
   WebhookDispatchBody,
-} from '@app/modules/venue-reservations/testing/venue-reservations.test-types';
+} from '@test-support/modules/venue-reservations/testing/venue-reservations.test-types';
 
 type DeepDispatchHarness = {
   app: INestApplication<App>;

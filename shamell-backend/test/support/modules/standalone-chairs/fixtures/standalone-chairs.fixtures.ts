@@ -1,10 +1,10 @@
 import { VenueSeatReservationStatus } from '@prisma/client';
-import type { PlacedLayoutItem } from '../../floor-layout/types/floor-layout.types';
+import type { PlacedLayoutItem } from '@app/modules/floor-layout/types/floor-layout.types';
 import type {
   BlockingStandaloneChairReservation,
   StandaloneChairConfigRow,
   StandaloneChairRow,
-} from '../types/standalone-chairs.types';
+} from '@app/modules/standalone-chairs/types/standalone-chairs.types';
 
 const NOW = new Date('2026-01-15T12:00:00.000Z');
 

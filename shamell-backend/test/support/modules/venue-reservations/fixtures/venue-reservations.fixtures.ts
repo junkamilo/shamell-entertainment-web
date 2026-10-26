@@ -19,6 +19,10 @@ export function makeVenueSeatReservationLite(
     customerEmail: string;
     customerEmailSentAt: Date | null;
     venueTableConfigId: string | null;
+    venueTableConfig: {
+      tableName: string;
+      size: VenueTableSize;
+    } | null;
     paidAt: Date | null;
     expiresAt: Date | null;
     customerPhone: string | null;

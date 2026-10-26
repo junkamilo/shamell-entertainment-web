@@ -5,7 +5,7 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { FloorLayoutService } from '../floor-layout/services/floor-layout.service';
+import { FloorLayoutService } from '@app/modules/floor-layout/services/floor-layout.service';
 import { StandaloneChairsRepository } from '@app/modules/standalone-chairs/services/standalone-chairs.repository';
 import { StandaloneChairsService } from '@app/modules/standalone-chairs/services/standalone-chairs.service';
 

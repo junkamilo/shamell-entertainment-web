@@ -8,12 +8,15 @@ import {
 import { createContactServiceTestModule } from '@test-support/modules/contact/harnesses/contact-service.test-module';
 import type { ContactService } from '@app/modules/contact/services/contact.service';
 
-jest.mock('@app/modules/booking-inquiry/utils/booking-guide-investment.util', () => ({
-  computeBookingGuideInvestmentUsd: jest.fn().mockResolvedValue({
-    totalUsd: null,
-    isPartial: false,
+jest.mock(
+  '@app/modules/booking-inquiry/utils/booking-guide-investment.util',
+  () => ({
+    computeBookingGuideInvestmentUsd: jest.fn().mockResolvedValue({
+      totalUsd: null,
+      isPartial: false,
+    }),
   }),
-}));
+);
 
 describe('ContactService', () => {
   let service: ContactService;

@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { makePeticionesFeedRow } from '@test-support/modules/contact/fixtures/contact.fixtures';
 import { createContactRepositoryMock } from '@test-support/modules/contact/mocks/contact.repository.mock';
-import type { AdminPeticionesQueryDto } from '../dto/admin-peticiones-query.dto';
+import type { AdminPeticionesQueryDto } from '@app/modules/contact/dto/admin-peticiones-query.dto';
 import { ContactInboxService } from '@app/modules/contact/services/contact-inbox.service';
 import { ContactRepository } from '@app/modules/contact/services/contact.repository';
 

@@ -89,7 +89,10 @@ async function createDeepAdminFixedEnrollmentHttpApp(): Promise<DeepHttpHarness>
     controllers: [UpcomingEventsController],
     providers: [
       AdminFixedEventEnrollmentService,
-      { provide: UpcomingFixedEventPackagesRepository, useValue: { listActivePackages: jest.fn().mockResolvedValue([]) } },
+      {
+        provide: UpcomingFixedEventPackagesRepository,
+        useValue: { listActivePackages: jest.fn().mockResolvedValue([]) },
+      },
       { provide: UpcomingEventsRepository, useValue: repository },
       { provide: UpcomingEventsService, useValue: upcomingEventsService },
       { provide: StripeService, useValue: stripe },

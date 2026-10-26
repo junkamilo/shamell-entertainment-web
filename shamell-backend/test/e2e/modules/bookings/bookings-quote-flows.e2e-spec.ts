@@ -193,12 +193,13 @@ describe('Bookings quote flows (deep e2e)', () => {
     stripe.client.checkout.sessions.retrieve = jest
       .fn()
       .mockImplementation((id: string) => {
-        if (id === 'cs_expired') return Promise.resolve({
-          id: 'cs_expired',
-          status: 'expired',
-          payment_status: 'unpaid',
-          client_secret: null,
-        });
+        if (id === 'cs_expired')
+          return Promise.resolve({
+            id: 'cs_expired',
+            status: 'expired',
+            payment_status: 'unpaid',
+            client_secret: null,
+          });
         return Promise.resolve({
           id: 'cs_reissued',
           status: 'open',

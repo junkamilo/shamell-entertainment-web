@@ -106,14 +106,14 @@ describe('venue-tables-mapper.util', () => {
 
     it('rejects incomplete catalog_table missing venueTableConfigId', () => {
       const incomplete = makeIncompleteCatalogTableLayoutItemJson();
-      delete incomplete.venueTableConfigId;
+      delete (incomplete as Partial<typeof incomplete>).venueTableConfigId;
 
       expect(parseLayoutItems([incomplete])).toEqual([]);
     });
 
     it('rejects catalog_table missing rotation', () => {
       const incomplete = makeCatalogTableLayoutItemJson();
-      delete incomplete.rotation;
+      delete (incomplete as Partial<typeof incomplete>).rotation;
 
       expect(parseLayoutItems([incomplete])).toEqual([]);
     });
@@ -136,7 +136,7 @@ describe('venue-tables-mapper.util', () => {
 
     it('defaults chairName to Chair when missing', () => {
       const item = makeStandaloneChairLayoutItemJson();
-      delete item.chairName;
+      delete (item as Partial<typeof item>).chairName;
 
       const result = parseLayoutItems([item]);
 

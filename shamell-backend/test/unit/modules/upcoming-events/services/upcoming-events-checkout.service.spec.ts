@@ -20,10 +20,10 @@ import {
 } from '@test-support/modules/upcoming-events/harnesses/upcoming-events-checkout-service.test-module';
 import * as classMonthPackageUtil from '@app/modules/upcoming-events/utils/class-month-package.util';
 import * as fixedTicketUtil from '@app/modules/upcoming-events/utils/upcoming-fixed-ticket.util';
-import type { CreateClassCheckoutDto } from '../dto/create-class-checkout.dto';
-import type { CreateClassBundleCheckoutDto } from '../dto/create-class-bundle-checkout.dto';
-import type { CreateClassPackageCheckoutDto } from '../dto/create-class-package-checkout.dto';
-import type { CreateFixedEventCheckoutDto } from '../dto/create-fixed-event-checkout.dto';
+import type { CreateClassCheckoutDto } from '@app/modules/upcoming-events/dto/create-class-checkout.dto';
+import type { CreateClassBundleCheckoutDto } from '@app/modules/upcoming-events/dto/create-class-bundle-checkout.dto';
+import type { CreateClassPackageCheckoutDto } from '@app/modules/upcoming-events/dto/create-class-package-checkout.dto';
+import type { CreateFixedEventCheckoutDto } from '@app/modules/upcoming-events/dto/create-fixed-event-checkout.dto';
 
 describe('UpcomingEventsCheckoutService (money matrix)', () => {
   let harness: UpcomingEventsCheckoutServiceTestHarness;

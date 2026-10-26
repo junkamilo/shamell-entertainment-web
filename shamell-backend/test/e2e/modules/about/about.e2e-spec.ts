@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, NotFoundException } from '@nestjs/common';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AboutController } from '@app/modules/about/controllers/about.controller';
@@ -24,6 +25,8 @@ describe('About (e2e smoke)', () => {
     })
       .overrideGuard(AdminJwtGuard)
       .useValue({ canActivate: () => false })
+      .overrideGuard(ThrottlerGuard)
+      .useValue({ canActivate: () => true })
       .compile();
 
     app = moduleFixture.createNestApplication();

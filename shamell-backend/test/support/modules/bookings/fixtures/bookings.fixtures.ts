@@ -4,7 +4,7 @@ import {
   BookingStatus,
   EventTypeCatalogChannel,
 } from '@prisma/client';
-import type { BookingWithRelations } from '../constants/booking-includes';
+import type { BookingWithRelations } from '@app/modules/bookings/constants/booking-includes';
 
 const NOW = new Date('2026-07-15T16:00:00.000Z');
 

@@ -4,7 +4,10 @@ import {
   EventTypeOccasionUsage,
   GalleryMediaType,
 } from '@prisma/client';
-import type { EventMapInput, OccasionLinkRow } from '../types/events.types';
+import type {
+  EventMapInput,
+  OccasionLinkRow,
+} from '@app/modules/events/types/events.types';
 
 const NOW = new Date('2026-06-01T12:00:00.000Z');
 

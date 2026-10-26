@@ -1,9 +1,9 @@
 import { ReservationEventScheduleMode } from '@prisma/client';
-import type { CreateReservationEventTemplateDto } from '../dto/create-reservation-event-template.dto';
+import type { CreateReservationEventTemplateDto } from '@app/modules/reservation-event-templates/dto/create-reservation-event-template.dto';
 import type {
   TemplateWithWeekdays,
   ValidatedTemplatePayload,
-} from '../types/reservation-event-templates.types';
+} from '@app/modules/reservation-event-templates/types/reservation-event-templates.types';
 
 function utcNoonDaysFromToday(days: number): Date {
   const now = new Date();

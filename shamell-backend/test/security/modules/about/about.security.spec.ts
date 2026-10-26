@@ -26,8 +26,14 @@ const run = process.env.AUTH_INTEGRATION === '1';
     await db.truncate('users', 'about_content');
     ({ app } = await createRealAboutHttpApp());
 
-    const superAdmin = await seedUser(db.prisma, { email: 'admin-about@test.com', role: 'SUPER_ADMIN' });
-    const client = await seedUser(db.prisma, { email: 'client-about@test.com', role: 'CLIENT' });
+    const superAdmin = await seedUser(db.prisma, {
+      email: 'admin-about@test.com',
+      role: 'SUPER_ADMIN',
+    });
+    const client = await seedUser(db.prisma, {
+      email: 'client-about@test.com',
+      role: 'CLIENT',
+    });
 
     superAdminToken = await jwt.signAsync({
       sub: superAdmin.id,
@@ -51,7 +57,9 @@ const run = process.env.AUTH_INTEGRATION === '1';
 
   describe('Authorization on /api/v1/about/admin', () => {
     it('rejects unauthenticated requests to PATCH /api/v1/about/admin (401)', async () => {
-      const res = await http().patch('/api/v1/about/admin').send({ title: 'Test' });
+      const res = await http()
+        .patch('/api/v1/about/admin')
+        .send({ title: 'Test' });
       expect(res.status).toBe(401);
     });
 
@@ -72,9 +80,9 @@ const run = process.env.AUTH_INTEGRATION === '1';
         .send({
           title: 'Valid Title',
           role: 'SUPER_ADMIN', // Mass assignment attempt
-          id: 'malicious-id'
+          id: 'malicious-id',
         });
-      
+
       // If validation pipe is perfectly strict, it should 400.
       // If it strips, it should 200 but NOT save the fields.
       // Let's assume strict (400) or 200 (stripped). We'll assert it's not 500.
@@ -93,7 +101,7 @@ const run = process.env.AUTH_INTEGRATION === '1';
         .patch('/api/v1/about/admin')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({ paragraph1: hugeString });
-      
+
       expect(res.status).toBe(400); // Should be blocked by validation
     });
 
@@ -103,10 +111,9 @@ const run = process.env.AUTH_INTEGRATION === '1';
         .patch('/api/v1/about/admin')
         .set('Authorization', `Bearer ${superAdminToken}`)
         .send({ title: sqlInjection });
-      
+
       // The update should work (OR 400), but never execute the SQL and never 500
       expect(res.status).not.toBe(500);
     });
   });
-
 });

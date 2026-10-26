@@ -13,10 +13,13 @@ import { BookingsAdminService } from '@app/modules/bookings/services/bookings-ad
 import { BookingsInquiryService } from '@app/modules/bookings/services/bookings-inquiry.service';
 import { BookingsRepository } from '@app/modules/bookings/services/bookings.repository';
 
-jest.mock('@app/modules/booking-inquiry/utils/contact-inquiry-booking.util', () => ({
-  resolvePrimaryServiceIdForInquiry: jest.fn(),
-  bookingDetailsForPublicInquiry: jest.fn(),
-}));
+jest.mock(
+  '@app/modules/booking-inquiry/utils/contact-inquiry-booking.util',
+  () => ({
+    resolvePrimaryServiceIdForInquiry: jest.fn(),
+    bookingDetailsForPublicInquiry: jest.fn(),
+  }),
+);
 
 const SERVICE_ID = '11111111-1111-4111-8111-111111111111';
 const EVENT_TYPE_ID = '22222222-2222-4222-8222-222222222222';

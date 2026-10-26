@@ -18,6 +18,7 @@ describe('buildPublicScheduleDisplay', () => {
     } as never);
 
     expect(display.mode).toBe('FIXED_EVENT');
+    if (display.mode !== 'FIXED_EVENT') return;
     expect(display.timezone).toBe('America/New_York');
     expect(display.eventDate).toBe('2026-08-15');
     expect(display.startTime).toBe('20:00');
@@ -55,6 +56,7 @@ describe('buildPublicScheduleDisplay', () => {
     } as never);
 
     expect(display.mode).toBe('RECURRING_WEEKLY');
+    if (display.mode !== 'RECURRING_WEEKLY') return;
     expect(display.weekdayLabels).toEqual(['Mon', 'Fri']);
     expect(JSON.stringify(display)).toContain('Beginner');
     expect(JSON.stringify(display)).toContain('"weekday":1');

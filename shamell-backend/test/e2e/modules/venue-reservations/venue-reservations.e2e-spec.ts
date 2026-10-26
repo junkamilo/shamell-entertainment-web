@@ -37,12 +37,14 @@ describe('VenueReservations (contract e2e)', () => {
   let app: INestApplication<App>;
   const venueReservationsService = createVenueReservationsServiceMock();
   const stripeWebhookDispatch = {
-    handle: jest.fn((_raw: Buffer, signature?: string) => {
-      if (!signature) {
-        throw new BadRequestException('Missing stripe-signature header.');
-      }
-      return Promise.resolve({ received: true });
-    }),
+    handle: jest.fn(
+      (_raw: Buffer, signature?: string): Promise<WebhookDispatchBody> => {
+        if (!signature) {
+          throw new BadRequestException('Missing stripe-signature header.');
+        }
+        return Promise.resolve({ received: true });
+      },
+    ),
   };
 
   afterEach(async () => {

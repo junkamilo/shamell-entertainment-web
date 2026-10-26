@@ -120,7 +120,8 @@ export class AuthService {
     const user = await this.repository.findUserByEmail(dto.email.toLowerCase());
 
     let isPasswordValid = false;
-    const DUMMY_HASH = '$2a$10$xn39X/N0p4I6U6p0n186Y.jI1U5E2E2.H9m1R6K8hT0cZ2D9o6B.S';
+    const DUMMY_HASH =
+      '$2a$10$xn39X/N0p4I6U6p0n186Y.jI1U5E2E2.H9m1R6K8hT0cZ2D9o6B.S';
 
     if (user && user.password) {
       isPasswordValid = await comparePassword(dto.password, user.password);

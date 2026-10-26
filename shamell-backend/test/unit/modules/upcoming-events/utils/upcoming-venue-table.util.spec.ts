@@ -21,7 +21,7 @@ describe('upcoming-venue-table.util', () => {
     };
 
     await expect(
-      loadCatalogTableLayoutItemIds(prisma, 'layout-1'),
+      loadCatalogTableLayoutItemIds(prisma as never, 'layout-1'),
     ).resolves.toEqual(['t1', 't2']);
     expect(prisma.venueFloorLayout.findUnique).toHaveBeenCalled();
   });
@@ -35,7 +35,7 @@ describe('upcoming-venue-table.util', () => {
       venueSeatReservation: { findMany: jest.fn() },
     };
     await expect(
-      venueTablePublicStats(prisma, {
+      venueTablePublicStats(prisma as never, {
         eventId: 'e1',
         eventDate: new Date('2026-08-01T00:00:00.000Z'),
         floorLayoutId: 'layout-1',
@@ -66,7 +66,7 @@ describe('upcoming-venue-table.util', () => {
     };
 
     await expect(
-      venueTablePublicStats(prisma, {
+      venueTablePublicStats(prisma as never, {
         eventId: 'e1',
         eventDate,
         floorLayoutId: 'layout-1',

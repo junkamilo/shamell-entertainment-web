@@ -34,9 +34,11 @@ import { UpcomingEventsAdminSessionsService } from '@app/modules/upcoming-events
 import { GalleryMediaService } from '@app/modules/gallery/services/gallery-media.service';
 import { UpcomingEventsVenueConfigService } from '@app/modules/upcoming-events/services/upcoming-events-venue-config.service';
 import { UpcomingFixedEventPackagesRepository } from '@app/modules/upcoming-events/packages/upcoming-fixed-event-packages.repository';
-import { AdminFixedEventEnrollmentService } from '@app/modules/upcoming-events/services/admin-fixed-event-enrollment.service';
 
-import { UpcomingEventActivitiesService, UpcomingFixedEventPackagesService } from '@app/modules/upcoming-events/packages/upcoming-fixed-event-packages.service';
+import {
+  UpcomingEventActivitiesService,
+  UpcomingFixedEventPackagesService,
+} from '@app/modules/upcoming-events/packages/upcoming-fixed-event-packages.service';
 import type {
   CheckoutSessionCreatedBody,
   ReconcileBody,
@@ -211,7 +213,7 @@ describe('UpcomingEvents class flows (deep e2e)', () => {
     jest.clearAllMocks();
     harness = await createDeepUpcomingEventsHttpApp();
     harness.prisma.$transaction.mockImplementation(
-      async (cb: any) => await cb(harness.prisma),
+      (fn: (tx: unknown) => unknown) => fn(harness.prisma),
     );
   });
 

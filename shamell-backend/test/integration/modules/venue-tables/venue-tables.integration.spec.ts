@@ -5,7 +5,7 @@
 import { PrismaClient, VenueTableSize } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import { FloorLayoutService } from '../floor-layout/services/floor-layout.service';
+import { FloorLayoutService } from '@app/modules/floor-layout/services/floor-layout.service';
 import { VenueTablesRepository } from '@app/modules/venue-tables/services/venue-tables.repository';
 import { VenueTablesService } from '@app/modules/venue-tables/services/venue-tables.service';
 

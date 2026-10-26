@@ -1,6 +1,6 @@
-import type { UpsertAboutContentDto } from '../dto/upsert-about-content.dto';
-import type { AboutContentResponseDto } from '../dto/about-response.dto';
-import type { AboutContentRow } from '../types/about.types';
+import type { UpsertAboutContentDto } from '@app/modules/about/dto/upsert-about-content.dto';
+import type { AboutContentResponseDto } from '@app/modules/about/dto/about-response.dto';
+import type { AboutContentRow } from '@app/modules/about/types/about.types';
 
 const NOW = new Date('2026-06-01T12:00:00.000Z');
 

@@ -6,12 +6,15 @@ import {
   PrismaClient,
   BookingPaymentStatus,
   BookingPaymentStage,
+  BookingQuotePaymentModel,
+  BookingSource,
+  BookingStatus,
 } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { AdminPaymentsRepository } from '@app/modules/admin-payments/services/admin-payments.repository';
 import { AdminPaymentsService } from '@app/modules/admin-payments/services/admin-payments.service';
-import type { FloorLayoutService } from '../floor-layout/services/floor-layout.service';
+import type { FloorLayoutService } from '@app/modules/floor-layout/services/floor-layout.service';
 
 const run = process.env.ADMIN_PAYMENTS_INTEGRATION === '1';
 
@@ -78,19 +81,32 @@ const run = process.env.ADMIN_PAYMENTS_INTEGRATION === '1';
         guestPhone: '+15550001111',
         eventDate: new Date(),
         location: 'Integration Venue',
-        status: 'QUOTE_SENT',
-        source: 'ADMIN_CREATED',
+        status: BookingStatus.CONFIRMED,
+        source: BookingSource.ADMIN_PHONE,
       },
     });
     createdBookingId = booking.id;
 
+    const quote = await prisma.bookingQuote.create({
+      data: {
+        bookingId: booking.id,
+        paymentModel: BookingQuotePaymentModel.DEPOSIT,
+        totalAmount: 198,
+        depositAmount: 99,
+        tokenHash: `integration-quote-${suffix}`,
+        tokenExpiresAt: new Date(Date.now() + 86_400_000),
+      },
+    });
+
     const payment = await prisma.bookingPayment.create({
       data: {
         bookingId: booking.id,
+        quoteId: quote.id,
         stage: BookingPaymentStage.DEPOSIT,
         status: BookingPaymentStatus.PAID,
         expectedAmount: 99,
         currency: 'usd',
+        stripeCheckoutSessionId: `cs_integration_${suffix}`,
         paidAt: new Date(),
       },
     });

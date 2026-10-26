@@ -148,7 +148,7 @@ describe('resolve-canonical-reservation-event-date.util', () => {
           }),
       },
     };
-    const result = await resolveCanonicalReservationEventDate(prisma, {
+    const result = await resolveCanonicalReservationEventDate(prisma as never, {
       upcomingEventId: 'evt-1',
       storedEventDate: eventNight,
     });
@@ -176,7 +176,7 @@ describe('resolve-canonical-reservation-event-date.util', () => {
           }),
       },
     };
-    const result = await resolveCanonicalReservationEventDate(prisma, {
+    const result = await resolveCanonicalReservationEventDate(prisma as never, {
       upcomingEventId: 'evt-1',
       storedEventDate: stored,
     });
@@ -192,7 +192,7 @@ describe('resolve-canonical-reservation-event-date.util', () => {
         findFirst: () => Promise.resolve(null),
       },
     };
-    const result = await resolveCanonicalReservationEventDate(prisma, {
+    const result = await resolveCanonicalReservationEventDate(prisma as never, {
       upcomingEventId: null,
       storedEventDate: null,
     });
