@@ -13,7 +13,7 @@ export function OnComingEventsHubHero({ onBackNavigateStart }: Props) {
     <header className="relative mb-10">
       <nav className="mb-6 md:mb-8" aria-label="Page navigation">
         <ShamellBackButton
-          href="/#on-coming-events"
+          href="/#upcoming-events"
           label="Back"
           hideLabelOnMobile
           onNavigateStart={onBackNavigateStart}
@@ -32,7 +32,7 @@ export function OnComingEventsHubHero({ onBackNavigateStart }: Props) {
       </div>
 
       <h1 className="mt-2 text-center font-brand text-2xl font-semibold tracking-[0.14em] text-gold md:mt-3 md:text-4xl">
-        ON COMING EVENTS
+        UPCOMING EVENTS
       </h1>
     </header>
   );

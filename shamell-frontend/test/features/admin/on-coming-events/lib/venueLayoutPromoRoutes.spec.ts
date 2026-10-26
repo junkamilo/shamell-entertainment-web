@@ -14,8 +14,8 @@ describe("venueLayoutPromoRoutes", () => {
   });
 
   it("re-exports public and deprecated alias paths", () => {
-    expect(ON_COMING_EVENTS_PUBLIC_PATH).toBe("/on-coming-events");
-    expect(VENUE_LAYOUT_PUBLIC_PATH).toBe("/on-coming-events");
+    expect(ON_COMING_EVENTS_PUBLIC_PATH).toBe("/upcoming-events");
+    expect(VENUE_LAYOUT_PUBLIC_PATH).toBe("/upcoming-events");
     expect(VENUE_LAYOUT_PROMO_ADMIN_PATH).toBe("/admin/on-coming-events");
   });
 });

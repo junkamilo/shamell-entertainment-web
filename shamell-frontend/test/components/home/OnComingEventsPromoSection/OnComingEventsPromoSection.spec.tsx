@@ -100,7 +100,7 @@ describe("OnComingEventsPromoSection", () => {
       />,
     );
 
-    expect(container.querySelector("#on-coming-events")).toBeTruthy();
+    expect(container.querySelector("#upcoming-events")).toBeTruthy();
     expect(
       screen.getByRole("heading", { name: "Home Promo" }),
     ).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("OnComingEventsPromoSection", () => {
     );
     expect(screen.getByRole("link", { name: "View all events" })).toHaveAttribute(
       "href",
-      "/on-coming-events",
+      "/upcoming-events",
     );
   });
 
@@ -249,10 +249,10 @@ describe("OnComingEventsPromoSection", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "On Coming Events" }),
+      screen.getByRole("heading", { name: "Upcoming Events" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Discover on coming experiences/i),
+      screen.getByText(/Discover upcoming experiences/i),
     ).toBeInTheDocument();
   });
 

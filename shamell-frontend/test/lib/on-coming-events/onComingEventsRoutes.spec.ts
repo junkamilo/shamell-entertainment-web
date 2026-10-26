@@ -14,7 +14,7 @@ import {
 
 describe("onComingEventsRoutes constants", () => {
   it("exposes public, admin, and layout paths", () => {
-    expect(ON_COMING_EVENTS_PUBLIC_PATH).toBe("/on-coming-events");
+    expect(ON_COMING_EVENTS_PUBLIC_PATH).toBe("/upcoming-events");
     expect(ON_COMING_EVENTS_ADMIN_PATH).toBe("/admin/on-coming-events");
     expect(ON_COMING_EVENTS_LAYOUT_ADMIN_PATH).toBe(
       "/admin/on-coming-events/layout",

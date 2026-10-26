@@ -16,21 +16,21 @@ describe("isPaymentFlowRoute", () => {
     expect(isPaymentFlowRoute(PAY_QUOTE_RETURN_PATH)).toBe(true);
   });
 
-  it("matches on-coming-events Stripe return paths", () => {
-    expect(isPaymentFlowRoute("/on-coming-events/return")).toBe(true);
-    expect(isPaymentFlowRoute("/on-coming-events/gala/return")).toBe(true);
-    expect(isPaymentFlowRoute("/on-coming-events/gala/classes/return")).toBe(true);
-    expect(isPaymentFlowRoute("/on-coming-events/gala/classes/package-return")).toBe(
+  it("matches upcoming-events Stripe return paths", () => {
+    expect(isPaymentFlowRoute("/upcoming-events/return")).toBe(true);
+    expect(isPaymentFlowRoute("/upcoming-events/gala/return")).toBe(true);
+    expect(isPaymentFlowRoute("/upcoming-events/gala/classes/return")).toBe(true);
+    expect(isPaymentFlowRoute("/upcoming-events/gala/classes/package-return")).toBe(
       true,
     );
-    expect(isPaymentFlowRoute("/on-coming-events/gala/seats/return")).toBe(true);
+    expect(isPaymentFlowRoute("/upcoming-events/gala/seats/return")).toBe(true);
   });
 
   it("rejects unrelated public routes", () => {
     expect(isPaymentFlowRoute("/")).toBe(false);
     expect(isPaymentFlowRoute("/gallery")).toBe(false);
-    expect(isPaymentFlowRoute("/on-coming-events")).toBe(false);
-    expect(isPaymentFlowRoute("/on-coming-events/gala")).toBe(false);
+    expect(isPaymentFlowRoute("/upcoming-events")).toBe(false);
+    expect(isPaymentFlowRoute("/upcoming-events/gala")).toBe(false);
     expect(isPaymentFlowRoute("/admin/login")).toBe(false);
   });
 

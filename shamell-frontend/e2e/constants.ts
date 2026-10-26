@@ -1,7 +1,7 @@
 /** Shared E2E route + session constants (no path aliases). */
 
 export const HOME_PATH = "/";
-export const ON_COMING_EVENTS_HUB_PATH = "/on-coming-events";
+export const ON_COMING_EVENTS_HUB_PATH = "/upcoming-events";
 export const CONTACTO_PATH = "/contacto";
 
 export const ADMIN_LOGIN_PATH = "/admin/login";

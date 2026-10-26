@@ -29,9 +29,9 @@ vi.mock("next/link", () => ({
 
 describe("ShamellBackButton", () => {
   it("renders a Link when href is set", () => {
-    render(<ShamellBackButton href="/on-coming-events" label="Back" />);
+    render(<ShamellBackButton href="/upcoming-events" label="Back" />);
     const link = screen.getByRole("link", { name: "Back" });
-    expect(link).toHaveAttribute("href", "/on-coming-events");
+    expect(link).toHaveAttribute("href", "/upcoming-events");
   });
 
   it("calls router.back when history exists and href is omitted", async () => {

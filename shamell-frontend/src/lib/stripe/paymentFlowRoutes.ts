@@ -6,12 +6,12 @@ export function isPaymentFlowRoute(pathname: string): boolean {
 
   if (path === PAY_ROOT_PATH || path.startsWith(`${PAY_ROOT_PATH}/`)) return true;
 
-  if (path === "/on-coming-events/return") return true;
+  if (path === "/upcoming-events/return") return true;
 
-  if (/^\/on-coming-events\/[^/]+\/return$/.test(path)) return true;
-  if (/^\/on-coming-events\/[^/]+\/classes\/return$/.test(path)) return true;
-  if (/^\/on-coming-events\/[^/]+\/classes\/package-return$/.test(path)) return true;
-  if (/^\/on-coming-events\/[^/]+\/seats\/return$/.test(path)) return true;
+  if (/^\/upcoming-events\/[^/]+\/return$/.test(path)) return true;
+  if (/^\/upcoming-events\/[^/]+\/classes\/return$/.test(path)) return true;
+  if (/^\/upcoming-events\/[^/]+\/classes\/package-return$/.test(path)) return true;
+  if (/^\/upcoming-events\/[^/]+\/seats\/return$/.test(path)) return true;
 
   return false;
 }

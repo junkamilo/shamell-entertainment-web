@@ -420,7 +420,7 @@ describe("VenueLayoutPublicPage", () => {
     useHappyHandlers({ venueOk: false });
     renderWithProviders(<VenueLayoutPublicPage eventSlug={FIXTURE_EVENT_SLUG} />);
     expect(
-      await screen.findByText(/on coming events unavailable/i),
+      await screen.findByText(/upcoming events unavailable/i),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("link", { name: /return to events/i }));
   });
@@ -520,7 +520,7 @@ describe("VenueLayoutPublicPage", () => {
     useHappyHandlers({ settings: { clientEnabled: false } });
     renderWithProviders(<VenueLayoutPublicPage />);
     expect(
-      await screen.findByText(/on coming events unavailable/i),
+      await screen.findByText(/upcoming events unavailable/i),
     ).toBeInTheDocument();
   });
 
@@ -681,7 +681,7 @@ describe("VenueLayoutPublicPage", () => {
     );
     renderWithProviders(<VenueLayoutPublicPage eventSlug={FIXTURE_EVENT_SLUG} />);
     expect(
-      await screen.findByText(/on coming events unavailable/i),
+      await screen.findByText(/upcoming events unavailable/i),
     ).toBeInTheDocument();
   });
 

@@ -35,7 +35,7 @@ function isNavItemActive(
     return Boolean(item.sectionId && item.sectionId === activeSection);
   }
   if (
-    item.sectionId === "on-coming-events" &&
+    item.sectionId === "upcoming-events" &&
     pathname.startsWith(ON_COMING_EVENTS_PUBLIC_PATH)
   ) {
     return true;
@@ -264,7 +264,7 @@ export default function SiteHeader({
     if (pathname.startsWith("/contacto")) return "/contacto";
 
     if (pathname.startsWith(ON_COMING_EVENTS_PUBLIC_PATH)) {
-      return "/#on-coming-events";
+      return "/#upcoming-events";
     }
 
     return "";
@@ -362,7 +362,7 @@ export default function SiteHeader({
                         underlineWhenActive={
                           !(
                             pathname === "/" &&
-                            item.sectionId === "on-coming-events"
+                            item.sectionId === "upcoming-events"
                           )
                         }
                       />

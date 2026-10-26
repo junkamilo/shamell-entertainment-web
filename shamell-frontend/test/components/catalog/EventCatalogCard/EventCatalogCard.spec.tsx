@@ -62,13 +62,13 @@ describe("EventCatalogCard", () => {
     render(
       <EventCatalogCard
         item={baseItem}
-        primaryActionHref="/on-coming-events/gala"
+        primaryActionHref="/upcoming-events/gala"
         primaryActionLabel="View event"
       />,
     );
     expect(screen.getByRole("link", { name: /view event/i })).toHaveAttribute(
       "href",
-      "/on-coming-events/gala",
+      "/upcoming-events/gala",
     );
     expect(
       screen.getByRole("link", { name: /or inquire without booking/i }),

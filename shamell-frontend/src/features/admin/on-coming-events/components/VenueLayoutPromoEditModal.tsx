@@ -31,7 +31,7 @@ export function VenueLayoutPromoEditModal({
             value={promoTitle}
             onChange={(e) => setPromoTitle(e.target.value)}
             className="mt-2 h-11 w-full rounded-xl border border-gold/30 px-4 text-sm text-foreground outline-none focus:border-gold"
-            placeholder="ON COMING EVENTS"
+            placeholder="UPCOMING EVENTS"
           />
         </label>
 

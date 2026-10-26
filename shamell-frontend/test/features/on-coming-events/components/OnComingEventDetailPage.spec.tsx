@@ -357,7 +357,7 @@ describe("OnComingEventDetailPage", () => {
     expect(
       await screen.findByText(/this event could not be found/i),
     ).toBeInTheDocument();
-    await user.click(screen.getByRole("link", { name: /all on coming events/i }));
+    await user.click(screen.getByRole("link", { name: /all upcoming events/i }));
     expect(screen.getByTestId("busy")).toHaveTextContent(/upcoming events/i);
   });
 

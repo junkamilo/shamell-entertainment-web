@@ -152,13 +152,13 @@ describe("SiteHeader", () => {
     render(<SiteHeader />);
     expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
     expect(screen.getAllByText("Inquire").length).toBeGreaterThan(0);
-    expect(screen.getByText("ON COMING EVENTS")).toBeInTheDocument();
+    expect(screen.getByText("UPCOMING EVENTS")).toBeInTheDocument();
   });
 
   it("hides on-coming nav when settings disable it", () => {
     settingsState.clientEnabled = false;
     render(<SiteHeader />);
-    expect(screen.queryByText("ON COMING EVENTS")).toBeNull();
+    expect(screen.queryByText("UPCOMING EVENTS")).toBeNull();
   });
 
   it("marks gallery active off-home", () => {
@@ -175,9 +175,9 @@ describe("SiteHeader", () => {
   });
 
   it("marks on-coming active on hub routes", () => {
-    pathnameRef.current = "/on-coming-events/gala";
+    pathnameRef.current = "/upcoming-events/gala";
     render(<SiteHeader />);
-    expect(screen.getByText("ON COMING EVENTS").closest("a")?.className).toMatch(
+    expect(screen.getByText("UPCOMING EVENTS").closest("a")?.className).toMatch(
       /border-gold|text-gold/,
     );
   });

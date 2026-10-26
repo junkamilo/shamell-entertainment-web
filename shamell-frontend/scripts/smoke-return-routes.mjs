@@ -9,22 +9,22 @@ const BASE = (process.env.SMOKE_BASE_URL ?? "http://localhost:3000").replace(/\/
 const cases = [
   {
     name: "venue canonical return",
-    path: "/on-coming-events/return?session_id=test&event_slug=test",
+    path: "/upcoming-events/return?session_id=test&event_slug=test",
     expectStatus: (s) => s === 200,
   },
   {
     name: "class session return",
-    path: "/on-coming-events/test-slug/classes/return?session_id=test",
+    path: "/upcoming-events/test-slug/classes/return?session_id=test",
     expectStatus: (s) => s === 200,
   },
   {
     name: "class package return",
-    path: "/on-coming-events/test-slug/classes/package-return?session_id=test",
+    path: "/upcoming-events/test-slug/classes/package-return?session_id=test",
     expectStatus: (s) => s === 200,
   },
   {
     name: "fixed ticket return",
-    path: "/on-coming-events/test-slug/return?session_id=test",
+    path: "/upcoming-events/test-slug/return?session_id=test",
     expectStatus: (s) => s === 200,
   },
   {

@@ -83,7 +83,7 @@ describe("OnComingEventHubCard", () => {
     );
     expect(screen.getByRole("heading", { name: "Weekly Bachata" })).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /book a session/i });
-    expect(link).toHaveAttribute("href", `/on-coming-events/${FIXTURE_EVENT_SLUG}`);
+    expect(link).toHaveAttribute("href", `/upcoming-events/${FIXTURE_EVENT_SLUG}`);
   });
 
   it("navigates to seats for venue_seating CTA", async () => {
@@ -105,9 +105,9 @@ describe("OnComingEventHubCard", () => {
     );
 
     const link = screen.getByRole("link", { name: /buy tables \/ seats/i });
-    expect(link).toHaveAttribute("href", `/on-coming-events/${slug}/seats`);
+    expect(link).toHaveAttribute("href", `/upcoming-events/${slug}/seats`);
 
     await user.click(link);
-    expect(pushMock).toHaveBeenCalledWith(`/on-coming-events/${slug}/seats`);
+    expect(pushMock).toHaveBeenCalledWith(`/upcoming-events/${slug}/seats`);
   });
 });

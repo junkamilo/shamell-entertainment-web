@@ -22,7 +22,7 @@ describe("on-coming-events lib test environment", () => {
   });
 
   it("keeps core helpers wired for smoke", () => {
-    expect(ON_COMING_EVENTS_PUBLIC_PATH).toBe("/on-coming-events");
+    expect(ON_COMING_EVENTS_PUBLIC_PATH).toBe("/upcoming-events");
     expect(normalizeOnComingSettings(makeOnComingPromo()).clientEnabled).toBe(
       true,
     );
@@ -30,7 +30,7 @@ describe("on-coming-events lib test environment", () => {
       mapPublicUpcomingHubEvents([makeUpcomingEventApiItem()])[0]?.slug,
     ).toBe(FIXTURE_EVENT_SLUG);
     expect(onComingEventDetailHref(FIXTURE_EVENT_SLUG)).toBe(
-      `/on-coming-events/${FIXTURE_EVENT_SLUG}`,
+      `/upcoming-events/${FIXTURE_EVENT_SLUG}`,
     );
   });
 });

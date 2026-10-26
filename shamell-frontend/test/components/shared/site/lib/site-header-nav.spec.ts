@@ -24,24 +24,24 @@ describe("homeSectionHref", () => {
 describe("buildSiteHeaderNavItems", () => {
   it("omits on-coming events when disabled", () => {
     const items = buildSiteHeaderNavItems(false);
-    expect(items.some((i) => i.sectionId === "on-coming-events")).toBe(false);
+    expect(items.some((i) => i.sectionId === "upcoming-events")).toBe(false);
     expect(items.some((i) => i.sectionId === "gallery")).toBe(true);
   });
 
   it("inserts on-coming events before gallery when enabled", () => {
     const items = buildSiteHeaderNavItems(true);
     const ids = items.map((i) => i.sectionId);
-    expect(ids.indexOf("on-coming-events")).toBeLessThan(ids.indexOf("gallery"));
+    expect(ids.indexOf("upcoming-events")).toBeLessThan(ids.indexOf("gallery"));
   });
 });
 
 describe("buildHomeScrollSectionIds", () => {
   it("filters on-coming when disabled", () => {
-    expect(buildHomeScrollSectionIds(false)).not.toContain("on-coming-events");
+    expect(buildHomeScrollSectionIds(false)).not.toContain("upcoming-events");
   });
 
   it("includes on-coming when enabled", () => {
-    expect(buildHomeScrollSectionIds(true)).toContain("on-coming-events");
+    expect(buildHomeScrollSectionIds(true)).toContain("upcoming-events");
   });
 });
 
@@ -122,7 +122,7 @@ describe("syncHomeSectionHash", () => {
       location: {
         pathname: "/",
         search: "",
-        hash: "#on-coming-events",
+        hash: "#upcoming-events",
       },
       history: {
         state: { idx: 0 },
@@ -212,7 +212,7 @@ describe("syncHomeSectionHash", () => {
     lockHomeHashScroll(5000);
     expect(isHomeHashScrollLocked()).toBe(true);
 
-    syncHomeSectionHash("on-coming-events");
+    syncHomeSectionHash("upcoming-events");
 
     expect(replaceState).not.toHaveBeenCalled();
   });

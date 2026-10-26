@@ -40,7 +40,7 @@ describe("PublicBackgroundGate", () => {
   });
 
   it("returns null on payment return routes", () => {
-    pathnameRef.current = "/on-coming-events/return";
+    pathnameRef.current = "/upcoming-events/return";
     const { container } = render(<PublicBackgroundGate />);
     expect(container).toBeEmptyDOMElement();
   });

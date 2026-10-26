@@ -17,11 +17,11 @@ describe("OnComingEventsHubHero", () => {
   it("renders hub title and back navigation", () => {
     renderWithProviders(<OnComingEventsHubHero />);
     expect(
-      screen.getByRole("heading", { name: "ON COMING EVENTS" }),
+      screen.getByRole("heading", { name: "UPCOMING EVENTS" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /back/i })).toHaveAttribute(
       "href",
-      "/#on-coming-events",
+      "/#upcoming-events",
     );
   });
 });

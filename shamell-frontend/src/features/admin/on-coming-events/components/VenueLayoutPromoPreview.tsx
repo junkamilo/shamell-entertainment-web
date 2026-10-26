@@ -12,7 +12,7 @@ type Props = {
 };
 
 export function VenueLayoutPromoPreview({ settings, onEdit, embedded = false }: Props) {
-  const title = settings.promoTitle?.trim() || "ON COMING EVENTS";
+  const title = settings.promoTitle?.trim() || "UPCOMING EVENTS";
   const description =
     settings.promoDescription?.trim() ||
     "Discover on coming experiences curated by Shamell. View details, schedules, and book your place.";

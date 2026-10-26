@@ -69,7 +69,7 @@ describe("VenueLayoutPromoEditModal", () => {
   it("notifies setPromoTitle when typing", async () => {
     const user = userEvent.setup();
     const { props } = renderModal();
-    await user.type(screen.getByPlaceholderText("ON COMING EVENTS"), "!");
+    await user.type(screen.getByPlaceholderText("UPCOMING EVENTS"), "!");
     expect(props.setPromoTitle).toHaveBeenCalled();
   });
 

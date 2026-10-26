@@ -76,7 +76,7 @@ test.describe("Seats page chrome", () => {
       },
     );
 
-    await page.goto(`/on-coming-events/${E2E_SEATS_SLUG}/seats`);
+    await page.goto(`/upcoming-events/${E2E_SEATS_SLUG}/seats`);
     await expect(
       page.getByRole("heading", { name: "Seating Gala" }),
     ).toBeVisible({ timeout: 25_000 });
