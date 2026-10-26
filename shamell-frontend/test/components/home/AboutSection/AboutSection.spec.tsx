@@ -3,8 +3,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { makeHomeAbout } from "@/lib/home/test/fixtures/homeLib.fixture";
-import { FIXTURE_HOME_ABOUT_TITLE } from "@/lib/home/test/fixtures/uuids.fixture";
+import { makeHomeAbout } from "@test/lib/home/support/fixtures/homeLib.fixture";
+import { FIXTURE_HOME_ABOUT_TITLE } from "@test/lib/home/support/fixtures/uuids.fixture";
 
 vi.mock("next/image", () => ({
   default: ({

@@ -6,7 +6,7 @@ import userEvent from "@testing-library/user-event";
 import {
   makeExperienceFixture,
   makeStaticImageStub,
-} from "@/lib/services/test/fixtures/servicesLib.fixture";
+} from "@test/lib/services/support/fixtures/servicesLib.fixture";
 import type { Experience } from "@/lib/services/experiencesData";
 import { ExperienceCard } from "@/components/experiences/ExperienceCard/ExperienceCard";
 

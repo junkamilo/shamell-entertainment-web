@@ -29,20 +29,20 @@ import { forgotPasswordHandlers } from "@test/features/forgot-password/support/m
 import { publicGalleryHandlers } from "@test/features/gallery/support/mocks/handlers";
 import { publicOnComingEventsHandlers } from "@test/features/on-coming-events/support/mocks/handlers";
 import { hooksHandlers } from "@test/hooks/support/mocks/handlers";
-import { adminLibHandlers } from "@/lib/admin/test/mocks/handlers";
-import { stripeLibHandlers } from "@/lib/stripe/test/mocks/handlers";
-import { aboutLibHandlers } from "@/lib/about/test/mocks/handlers";
-import { agendaLibHandlers } from "@/lib/agenda/test/mocks/handlers";
-import { contactoLibHandlers } from "@/lib/contacto/test/mocks/handlers";
-import { galleryLibHandlers } from "@/lib/gallery/test/mocks/handlers";
-import { headerMediaLibHandlers } from "@/lib/header-media/test/mocks/handlers";
-import { heroLibHandlers } from "@/lib/hero/test/mocks/handlers";
-import { homeLibHandlers } from "@/lib/home/test/mocks/handlers";
-import { onComingEventsLibHandlers } from "@/lib/on-coming-events/test/mocks/handlers";
-import { servicesLibHandlers } from "@/lib/services/test/mocks/handlers";
-import { themeLibHandlers } from "@/lib/theme/test/mocks/handlers";
-import { sharedLibHandlers } from "@/lib/test/mocks/handlers";
-import { adminSharedLibHandlers } from "@/app/admin/shared/lib/test/mocks/handlers";
+import { adminLibHandlers } from "@test/lib/admin/support/mocks/handlers";
+import { stripeLibHandlers } from "@test/lib/stripe/support/mocks/handlers";
+import { aboutLibHandlers } from "@test/lib/about/support/mocks/handlers";
+import { agendaLibHandlers } from "@test/lib/agenda/support/mocks/handlers";
+import { contactoLibHandlers } from "@test/lib/contacto/support/mocks/handlers";
+import { galleryLibHandlers } from "@test/lib/gallery/support/mocks/handlers";
+import { headerMediaLibHandlers } from "@test/lib/header-media/support/mocks/handlers";
+import { heroLibHandlers } from "@test/lib/hero/support/mocks/handlers";
+import { homeLibHandlers } from "@test/lib/home/support/mocks/handlers";
+import { onComingEventsLibHandlers } from "@test/lib/on-coming-events/support/mocks/handlers";
+import { servicesLibHandlers } from "@test/lib/services/support/mocks/handlers";
+import { themeLibHandlers } from "@test/lib/theme/support/mocks/handlers";
+import { sharedLibHandlers } from "@test/lib/support/mocks/handlers";
+import { adminSharedLibHandlers } from "@test/app/admin/shared/lib/support/mocks/handlers";
 
 export const server = setupServer(
   ...homeLibHandlers,

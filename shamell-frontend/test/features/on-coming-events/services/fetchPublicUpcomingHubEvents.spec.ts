@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { http, HttpResponse } from "msw";
 import { server } from "@test/support/server";
-import { makeUpcomingEventApiItem } from "@/lib/on-coming-events/test/fixtures/onComingEventsLib.fixture";
-import { FIXTURE_EVENT_SLUG } from "@/lib/on-coming-events/test/fixtures/uuids.fixture";
+import { makeUpcomingEventApiItem } from "@test/lib/on-coming-events/support/fixtures/onComingEventsLib.fixture";
+import { FIXTURE_EVENT_SLUG } from "@test/lib/on-coming-events/support/fixtures/uuids.fixture";
 import { fetchPublicUpcomingHubEvents } from "@/features/on-coming-events/services/fetchPublicUpcomingHubEvents";
 
 describe("fetchPublicUpcomingHubEvents", () => {

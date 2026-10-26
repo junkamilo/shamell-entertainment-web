@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
-import { makeHomeOnComingSettings } from "@/lib/home/test/fixtures/homeLib.fixture";
+import { makeHomeOnComingSettings } from "@test/lib/home/support/fixtures/homeLib.fixture";
 import type { OnComingEventHubCardItem } from "@/features/on-coming-events/components/OnComingEventHubCard";
 
 const settingsState = {

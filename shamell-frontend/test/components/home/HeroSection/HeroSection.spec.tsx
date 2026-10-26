@@ -5,8 +5,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import {
   makeHomeHeaderPhoto,
   makeHomeHeaderText,
-} from "@/lib/home/test/fixtures/homeLib.fixture";
-import { FIXTURE_HOME_HEADLINE } from "@/lib/home/test/fixtures/uuids.fixture";
+} from "@test/lib/home/support/fixtures/homeLib.fixture";
+import { FIXTURE_HOME_HEADLINE } from "@test/lib/home/support/fixtures/uuids.fixture";
 
 vi.mock("motion/react", () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => <>{children}</>,
